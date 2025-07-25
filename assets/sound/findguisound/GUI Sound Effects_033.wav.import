@@ -1,0 +1,24 @@
+[remap]
+
+importer="wav"
+type="AudioStreamWAV"
+uid="uid://byuokgmtgfp0r"
+path="res://.godot/imported/GUI Sound Effects_033.wav-8b9145a4bb9e6fb2f2af1a88e915e56a.sample"
+
+[deps]
+
+source_file="res://Magic-Castle/assets/sound/findguisound/GUI Sound Effects_033.wav"
+dest_files=["res://.godot/imported/GUI Sound Effects_033.wav-8b9145a4bb9e6fb2f2af1a88e915e56a.sample"]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=2
