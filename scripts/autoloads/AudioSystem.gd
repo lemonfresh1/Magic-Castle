@@ -130,12 +130,5 @@ func _on_sound_setting_changed(enabled: bool) -> void:
 	print("Sound %s" % ("enabled" if enabled else "disabled"))
 
 # === SPECIAL SOUNDS ===
-func play_peak_clear_sound(peak_number: int) -> void:
-	if peak_number == 1:
-		play_sound("PeakClear1")
-	elif peak_number == 2:
-		play_sound("PeakClear2")
-	# Peak 3 uses win sound instead
-
 func play_lobby_connect_sound() -> void:
 	play_sound("Connect")

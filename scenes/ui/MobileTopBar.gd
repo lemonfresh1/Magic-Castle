@@ -10,6 +10,7 @@ extends Control
 # Left side elements
 @onready var timer_label: Label = $HBoxContainer/LeftInfo/TimerLabel
 @onready var combo_label: Label = $HBoxContainer/LeftInfo/ComboLabel
+@onready var combo_timer_label: Label
 @onready var draw_counter_label: Label = $HBoxContainer/LeftInfo/DrawCounterLabel
 
 # Right side elements  
@@ -28,6 +29,7 @@ const SLOT_SPACING: int = 10
 
 func _ready() -> void:
 	_setup_mobile_layout()
+	_create_combo_timer_label()
 	_connect_signals()
 	_initialize_slots()
 	set_process(true)
@@ -42,18 +44,19 @@ func _setup_mobile_layout() -> void:
 	anchor_top = 0.0
 	anchor_bottom = 0.0
 	
-	# Set up the HBoxContainer to have fixed slot sizes
-	if slots_container:
-		# Set minimum size for slots container to ensure it doesn't shrink
+	# CENTER THE SLOTS PROPERLY
+	if hbox_container and slots_container:
+		# Use expand fill for center alignment
+		hbox_container.alignment = BoxContainer.ALIGNMENT_CENTER
+		
+		# Set slots container to be centered
 		var total_slots_width = (MOBILE_CARD_WIDTH * 3) + (SLOT_SPACING * 2)
 		slots_container.custom_minimum_size = Vector2(total_slots_width, MOBILE_CARD_HEIGHT)
+		slots_container.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		
-		# Add spacers to keep slots centered
-		hbox_container.add_theme_constant_override("separation", 10)
-		
-		# Make left and right containers have equal minimum width
-		left_info_container.custom_minimum_size.x = 200
-		right_info_container.custom_minimum_size.x = 200
+		# Make side containers expand to push slots to center
+		left_info_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		right_info_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 func _connect_signals() -> void:
 	SignalBus.combo_updated.connect(_on_combo_updated)
@@ -93,6 +96,7 @@ func _process(_delta: float) -> void:
 	if GameState.is_round_active:
 		_update_timer_display()
 		_update_draw_counter()
+		_update_combo_timer()
 
 func _update_timer_display() -> void:
 	var time_left = int(GameState.time_remaining)
@@ -222,3 +226,26 @@ func update_lobby_scores(scores: Array[Dictionary]) -> void:
 			score_label.modulate = Color.CYAN
 		
 		lobby_scores_container.add_child(score_label)
+
+## Combo Timer
+func _create_combo_timer_label() -> void:
+	combo_timer_label = Label.new()
+	combo_timer_label.text = ""
+	combo_timer_label.add_theme_font_size_override("font_size", 16)
+	left_info_container.add_child(combo_timer_label)
+	left_info_container.move_child(combo_timer_label, 2)
+	
+func _update_combo_timer() -> void:
+	if CardManager.current_combo > 0 and ScoreSystem.combo_timer and not ScoreSystem.combo_timer.is_stopped():
+		var time_left = ScoreSystem.combo_timer.time_left
+		combo_timer_label.text = "⏱%.1f" % time_left
+		
+		# Color code based on time left
+		if time_left < 3:
+			combo_timer_label.modulate = Color.RED
+		elif time_left < 5:
+			combo_timer_label.modulate = Color.YELLOW
+		else:
+			combo_timer_label.modulate = Color.WHITE
+	else:
+		combo_timer_label.text = ""

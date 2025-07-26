@@ -261,9 +261,18 @@ func _on_mouse_exited() -> void:
 func _on_gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-			if is_face_up and is_selectable:
+			var is_blocked = not cards_blocking_me.is_empty()
+			
+			if is_blocked:
+				# Card is blocked - just flash, no penalty
+				flash_invalid()
+				return
+			
+			# Card is unblocked, check if valid move
+			if is_selectable:
 				SignalBus.card_selected.emit(self)
-			elif is_face_up and not is_selectable:
+			else:
+				# Unblocked but wrong value - this gets the penalty
 				SignalBus.card_invalid_selected.emit(self)
 				flash_invalid()
 

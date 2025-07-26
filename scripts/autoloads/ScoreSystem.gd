@@ -15,7 +15,7 @@ var current_multiplier: float = 1.0
 var last_selected_card: CardData = null
 
 # Track peaks cleared
-var peaks_cleared: int = 0
+var peaks_cleared_indices: Array[int] = []
 var peak_indices: Array[int] = [0, 1, 2]  # Top row cards are peaks
 
 # Round score components (calculated at round end)
@@ -37,7 +37,7 @@ const FIBONACCI_SEQUENCE: Array[int] = [10, 11, 12, 13, 15, 18, 23, 31, 44, 65, 
 var pending_round_end: bool = false
 
 func _ready() -> void:
-	print("ScoreSystem initialized")
+	print("ScoreSystem._ready() starting...")
 	
 	# Create combo timer
 	combo_timer = Timer.new()
@@ -45,11 +45,15 @@ func _ready() -> void:
 	combo_timer.timeout.connect(_on_combo_timeout)
 	add_child(combo_timer)
 	
-	# Connect signals
+	# Connect signals WITH logging
+	print("Connecting to round_started signal...")
+	SignalBus.round_started.connect(_on_round_started)
+	print("Connecting to card_selected signal...")
 	SignalBus.card_selected.connect(_on_card_selected)
 	SignalBus.score_changed.connect(_on_score_changed)
 	SignalBus.combo_updated.connect(_on_combo_updated)
-	SignalBus.round_started.connect(_on_round_started)
+	
+	print("ScoreSystem ready - peaks_cleared_indices: %s" % peaks_cleared_indices)
 
 func calculate_card_score(card: Control) -> int:
 	var base_points = GameState.get_base_card_points()
@@ -62,23 +66,6 @@ func calculate_card_score(card: Control) -> int:
 	
 	# Update last selected card
 	last_selected_card = card.card_data
-	
-	# Check if this was a peak card - IMPROVED timing
-	if card.board_index in peak_indices:
-		peaks_cleared += 1
-		print("Peak cleared! Total peaks: %d" % peaks_cleared)
-		
-		# If all peaks cleared, mark for board completion
-		if peaks_cleared == 3:
-			print("ALL PEAKS CLEARED! Board complete!")
-			
-			# Set board cleared flag immediately
-			GameState.board_cleared = true
-			
-			# Delay the round end check to allow scoring to complete
-			if not pending_round_end:
-				pending_round_end = true
-				_delayed_round_end_check()
 	
 	return total_points
 
@@ -125,17 +112,22 @@ func _calculate_cards_bonus(board_cleared: bool) -> int:
 	if not board_cleared:
 		return 0
 	
-	# Bonus for remaining draw pile cards - SUM all fibonacci values
+	# Bonus for remaining draw pile cards
 	var remaining_draws = GameState.get_draw_pile_limit() - CardManager.cards_drawn
+	var pile_size = CardManager.draw_pile.size()
+	
+	# Use the actual remaining cards, not just the theoretical limit
+	remaining_draws = min(remaining_draws, pile_size)
+	
 	if remaining_draws > 0:
 		var fib_sum = 0
 		# Sum up all fibonacci values up to remaining_draws
 		for i in range(min(remaining_draws, FIBONACCI_SEQUENCE.size())):
 			fib_sum += FIBONACCI_SEQUENCE[i]
 		
-		var round_multiplier = pow(1.05, GameState.current_round - 1)  # -1 because round 1 = no multiplier
+		var round_multiplier = pow(1.05, GameState.current_round - 1)
 		var bonus = int(fib_sum * round_multiplier)
-		print("Cards bonus: Sum of first %d fib = %d × %.2f = %d" % [remaining_draws, fib_sum, round_multiplier, bonus])
+		print("Cards bonus: %d remaining cards, fib sum = %d × %.2f = %d" % [remaining_draws, fib_sum, round_multiplier, bonus])
 		return bonus
 	return 0
 
@@ -153,11 +145,12 @@ func _calculate_time_bonus(board_cleared: bool) -> int:
 	return 0
 
 func _calculate_clear_bonus() -> int:
-	# Peak clearing bonus
-	match peaks_cleared:
+	var peaks_count = peaks_cleared_indices.size()
+	print("Peak bonus calculation: %d peaks cleared" % peaks_count)
+	match peaks_count:
 		1: return PEAK_BONUS_1
 		2: return PEAK_BONUS_2
-		3: return PEAK_BONUS_3  # This IS the full board clear
+		3: return PEAK_BONUS_3
 		_: return 0
 
 func update_combo_multiplier(combo: int) -> void:
@@ -173,21 +166,29 @@ func update_combo_multiplier(combo: int) -> void:
 
 # Signal handlers
 func _on_card_selected(card: Control) -> void:
-	# MOVE PEAK DETECTION HERE - BEFORE any other scoring
-	if card.board_index in peak_indices:
-		peaks_cleared += 1
-		print("Peak cleared! Total peaks: %d" % peaks_cleared)
+	print("=== CARD SELECTED ===")
+	print("Card index: %d, Is peak: %s" % [card.board_index, card.board_index in peak_indices])
+	print("Current peaks cleared: %s" % peaks_cleared_indices)
+	
+	# Check if this is a peak AND not already cleared
+	if card.board_index in peak_indices and card.board_index not in peaks_cleared_indices:
+		peaks_cleared_indices.append(card.board_index)
+		var peaks_count = peaks_cleared_indices.size()
+		print("NEW PEAK CLEARED! Index: %d, Total peaks cleared: %d/3" % [card.board_index, peaks_count])
+		print("Peaks cleared array: %s" % peaks_cleared_indices)
 		
-		# Play peak clear sound
-		if peaks_cleared <= 2:
-			AudioSystem.play_peak_clear_sound(peaks_cleared)
+		# Play sound based on how many peaks cleared
+		if peaks_count == 1:
+			AudioSystem.play_sound("PeakClear1")
+		elif peaks_count == 2:
+			AudioSystem.play_sound("PeakClear2")
 		
-		# If all peaks cleared, set flag immediately
-		if peaks_cleared == 3:
-			print("ALL PEAKS CLEARED! Board complete!")
+		# If all 3 peaks cleared, mark board as cleared
+		if peaks_count == 3:
+			print("ALL 3 PEAKS CLEARED! Setting board_cleared = true")
 			GameState.board_cleared = true
 	
-	# THEN do normal scoring
+	# Calculate score AFTER peak tracking
 	var points = calculate_card_score(card)
 	GameState.current_score += points
 	SignalBus.score_changed.emit(points, "card")
@@ -210,13 +211,19 @@ func _on_combo_timeout() -> void:
 	SignalBus.combo_updated.emit(0)
 
 func _on_round_started(round_number: int) -> void:
+	print("=== ScoreSystem._on_round_started(%d) ===" % round_number)
+	print("BEFORE reset - peaks_cleared_indices: %s" % peaks_cleared_indices)
+	
+	# RESET EVERYTHING
 	current_multiplier = 1.0
 	combo_timer.stop()
 	last_selected_card = null
-	peaks_cleared = 0
+	peaks_cleared_indices.clear()  # Only this, no peaks_cleared = 0
 	base_score = 0
 	cards_bonus = 0
 	time_bonus = 0
 	clear_bonus = 0
 	round_total = 0
 	pending_round_end = false
+	
+	print("AFTER reset - peaks_cleared_indices: %s" % peaks_cleared_indices)

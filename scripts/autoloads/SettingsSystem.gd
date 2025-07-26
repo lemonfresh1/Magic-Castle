@@ -18,6 +18,7 @@ var haptic_enabled: bool = true   # Placeholder for future
 var current_card_skin: String = "default"
 var current_board_skin: String = "default"
 var current_game_mode: String = "tri_peaks"
+var high_contrast: bool = true
 
 # === MOBILE SETTINGS ===
 var target_screen_width: int = 1080   # Pixel 8 width

@@ -62,7 +62,7 @@ func start_new_game(mode: String = "single") -> void:
 	start_round()
 
 func start_round() -> void:
-	print("Starting round %d" % current_round)
+	print("=== STARTING ROUND %d ===" % current_round)
 	
 	# Generate new seed for each round
 	deck_seed = randi()
@@ -71,17 +71,24 @@ func start_round() -> void:
 	round_time_limit = GameModeManager.get_round_time_limit(current_round)
 	time_remaining = float(round_time_limit)
 	
-	# Reset round state
+	# Reset round state - LOG EACH RESET
+	print("Resetting round state...")
 	current_score = 0
+	print("  - current_score reset to 0")
 	cards_cleared = 0
+	print("  - cards_cleared reset to 0")
 	board_cleared = false
+	print("  - board_cleared reset to false")
 	is_round_active = true
+	print("  - is_round_active set to true")
 	
 	# Start timer
 	set_process(true)
 	
 	print("Round %d started - Seed: %d, Time: %ds" % [current_round, deck_seed, round_time_limit])
+	print("About to emit round_started signal...")
 	SignalBus.round_started.emit(current_round)
+	print("Signal emitted")
 
 func check_round_end() -> void:
 	"""Check if round should end and determine the reason"""
@@ -173,14 +180,14 @@ func _continue_to_next_round() -> void:
 		start_round()
 
 func _end_game() -> void:
-	"""End the entire game"""
 	print("Game completed! Final score: %d" % total_score)
 	SignalBus.game_over.emit(total_score)
 	
-	# Reset for new game
-	current_round = 1
-	total_score = 0
-	round_scores.clear()
+	var score_screen = get_tree().get_first_node_in_group("score_screen")
+	if score_screen:
+		score_screen.show_game_complete(total_score)
+	else:
+		get_tree().change_scene_to_file("res://Magic-Castle/scenes/menus/MainMenu.tscn")
 
 # === HELPER FUNCTIONS ===
 func _has_valid_moves() -> bool:

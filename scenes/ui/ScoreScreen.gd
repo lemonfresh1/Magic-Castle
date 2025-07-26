@@ -103,9 +103,6 @@ func _animate_scores() -> void:
 func _on_continue_pressed() -> void:
 	print("Continue button pressed!")
 	
-	# Update game state
-	GameState.total_score += current_round_score
-	
 	# Check if game is over
 	if GameState.current_round >= GameConstants.MAX_ROUNDS:
 		_show_game_over()

@@ -12,23 +12,30 @@ size_flags_horizontal = 3
 script = ExtResource("1_gi1i6")
 
 [node name="HBoxContainer" type="HBoxContainer" parent="."]
-layout_mode = 0
-offset_right = 40.0
-offset_bottom = 40.0
-theme_override_constants/separation = 10
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 23.0
+grow_horizontal = 2
+theme_override_constants/separation = 40
+alignment = 1
 
 [node name="LeftInfo" type="HBoxContainer" parent="HBoxContainer"]
 layout_mode = 2
 theme_override_constants/separation = 10
+alignment = 2
 
 [node name="TimerLabel" type="Label" parent="HBoxContainer/LeftInfo"]
 layout_mode = 2
+text = "asd"
 
 [node name="ComboLabel" type="Label" parent="HBoxContainer/LeftInfo"]
 layout_mode = 2
+text = "asd"
 
 [node name="DrawCounterLabel" type="Label" parent="HBoxContainer/LeftInfo"]
 layout_mode = 2
+text = "asd"
 
 [node name="SlotsContainer" type="HBoxContainer" parent="HBoxContainer"]
 layout_mode = 2
@@ -39,6 +46,7 @@ theme_override_constants/separation = 10
 
 [node name="CurrentScoreLabel" type="Label" parent="HBoxContainer/RightInfo"]
 layout_mode = 2
+text = "asd"
 
 [node name="LobbyScores" type="VBoxContainer" parent="HBoxContainer/RightInfo"]
 layout_mode = 2

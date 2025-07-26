@@ -110,34 +110,44 @@ func select_card(card_data: CardData) -> void:
 	_process_combo_progression()
 	_place_card_in_slot(card_data, valid_slot)
 	_update_game_state(card_data)
-	
-	# Check win/lose conditions after brief delay
-	await get_tree().process_frame
-	await get_tree().process_frame
-	_check_game_end_conditions()
 
 func _process_combo_progression() -> void:
-	var old_combo = current_combo
-	current_combo += 1
+	current_combo += 1  # Increment FIRST
 	
-	# Unlock slots based on combo
-	if old_combo + 1 == GameConstants.SLOT_2_UNLOCK_COMBO and active_slots == 1:
+	# Unlock slots based on NEW combo value
+	if current_combo == GameConstants.SLOT_2_UNLOCK_COMBO and active_slots == 1:
 		_unlock_slot(2)
-	elif old_combo + 1 == GameConstants.SLOT_3_UNLOCK_COMBO and active_slots == 2:
+	elif current_combo == GameConstants.SLOT_3_UNLOCK_COMBO and active_slots == 2:
 		_unlock_slot(3)
 	
 	SignalBus.combo_updated.emit(current_combo)
 
 func _unlock_slot(slot_number: int) -> void:
-	if not draw_pile.is_empty():
-		var slot_index = slot_number - 1
-		slot_cards[slot_index] = draw_pile.pop_front()
-		active_slots = slot_number
-		print("Combo %d! Unlocked slot %d with %s" % [
-			current_combo + 1, 
+	# Check BOTH conditions - physical cards AND draw limit
+	if draw_pile.is_empty():
+		print("Cannot unlock slot %d - draw pile is empty" % slot_number)
+		return
+	
+	# ALSO check if we've reached the draw limit
+	if cards_drawn >= GameConstants.get_draw_pile_limit(GameState.current_round):
+		print("Cannot unlock slot %d - draw limit reached (%d/%d)" % [
 			slot_number, 
-			slot_cards[slot_index].get_display_value()
+			cards_drawn, 
+			GameConstants.get_draw_pile_limit(GameState.current_round)
 		])
+		return
+	
+	var slot_index = slot_number - 1
+	slot_cards[slot_index] = draw_pile.pop_front()
+	cards_drawn += 1  # INCREMENT cards_drawn when unlocking a slot!
+	active_slots = slot_number
+	
+	print("Combo %d! Unlocked slot %d with %s (cards drawn: %d)" % [
+		current_combo, 
+		slot_number, 
+		slot_cards[slot_index].get_display_value(),
+		cards_drawn
+	])
 
 func _place_card_in_slot(card_data: CardData, slot_index: int) -> void:
 	slot_cards[slot_index] = card_data
@@ -149,6 +159,7 @@ func _update_game_state(card_data: CardData) -> void:
 	if index != -1:
 		board_cards.remove_at(index)
 		GameState.cards_cleared += 1
+		print("Card cleared! Total: %d/%d" % [GameState.cards_cleared, GameConstants.BOARD_CARDS])
 
 func _check_game_end_conditions() -> void:
 	if GameState.cards_cleared == GameConstants.BOARD_CARDS:
@@ -161,15 +172,19 @@ func _check_game_end_conditions() -> void:
 # === DRAW PILE ===
 func draw_from_pile() -> bool:
 	if not _can_draw():
-		_check_game_end_after_draw_fail()
+		await _check_game_end_after_draw_fail()  # Add await here
 		return false
+	
+	# ... rest of the function remains the same
 	
 	var new_card = draw_pile.pop_front()
 	cards_drawn += 1
 	
-	# Reset slots and combo when drawing
+	# Reset combo FIRST
+	_reset_combo()
+	
+	# THEN reset slots (now combo is 0, so no extra slots will unlock)
 	_reset_slots_after_draw(new_card)
-	_reset_combo()  # This SHOULD be called to reset combo
 	
 	print("Drew: %s (%d/%d)" % [
 		new_card.get_display_value(), 
@@ -193,10 +208,11 @@ func _can_draw() -> bool:
 	return not draw_pile.is_empty() and cards_drawn < GameConstants.get_draw_pile_limit(GameState.current_round)
 
 func _reset_slots_after_draw(new_card: CardData) -> void:
-	# Simple reset - just one card in first slot
+	# Drawing ALWAYS resets to just 1 slot, no matter what combo you had
 	slot_cards = [new_card, null, null]
 	active_slots = 1
 	
+	# DON'T re-unlock slots - combo is broken by drawing!
 	print("Slots reset after draw. Active slots: 1")
 
 func _reset_combo() -> void:
@@ -208,6 +224,12 @@ func _reset_combo() -> void:
 		ScoreSystem.combo_timer.stop()
 
 func _check_game_end_after_draw_fail() -> void:
+	# Update board first if available
+	if game_board:
+		game_board.update_all_cards()
+		# Need to wait for update to complete
+		await get_tree().process_frame
+	
 	if not has_valid_moves():
 		print("No moves left after draw failure!")
 		GameState.check_round_end()
@@ -215,6 +237,11 @@ func _check_game_end_after_draw_fail() -> void:
 # === MOVE VALIDATION ===
 func has_valid_moves() -> bool:
 	print("=== CHECKING FOR VALID MOVES ===")
+	print("Draw pile size: %d, Cards drawn: %d, Limit: %d" % [
+		draw_pile.size(), 
+		cards_drawn, 
+		GameConstants.get_draw_pile_limit(GameState.current_round)
+	])
 	
 	# Can we draw more cards?
 	if _can_draw():
@@ -235,10 +262,9 @@ func has_valid_moves() -> bool:
 func _count_selectable_visual_cards() -> int:
 	var count = 0
 	for card_node in game_board.board_card_nodes:
-		if card_node and card_node.is_on_board and card_node.is_face_up:
-			if get_valid_slot_for_card(card_node.card_data) != -1:
-				count += 1
-				print("Card %s is selectable" % card_node.card_data.get_display_value())
+		if card_node and card_node.is_on_board and card_node.is_selectable:
+			count += 1
+			print("Card %s is selectable" % card_node.card_data.get_display_value())
 	return count
 
 func _has_valid_moves_in_data() -> bool:
@@ -251,6 +277,24 @@ func _has_valid_moves_in_data() -> bool:
 func _on_card_selected(card: Control) -> void:
 	if get_valid_slot_for_card(card.card_data) != -1:
 		select_card(card.card_data)
+		
+		# ALWAYS check if board is cleared first!
+		if GameState.cards_cleared >= GameConstants.BOARD_CARDS:
+			print("All board cards cleared! Win!")
+			GameState.board_cleared = true
+			GameState.check_round_end()
+			return
+		
+		# Otherwise, check for no moves
+		await get_tree().create_timer(0.3).timeout
+		
+		if game_board:
+			game_board.update_all_cards()
+			await get_tree().process_frame
+		
+		if not has_valid_moves():
+			print("No valid moves after card selection!")
+			GameState.check_round_end()
 	else:
 		SignalBus.card_invalid_selected.emit(card)
 
@@ -259,7 +303,17 @@ func _on_card_invalid_selected(card: Control) -> void:
 	SignalBus.score_changed.emit(GameConstants.INVALID_CLICK_PENALTY, "invalid_click")
 
 func _on_draw_pile_clicked() -> void:
-	draw_from_pile()
+	var success = await draw_from_pile()
+	# Force board update even if draw failed
+	if game_board:
+		await get_tree().process_frame
+		game_board.update_all_cards()
+	
+	# Then check for valid moves
+	await get_tree().create_timer(0.1).timeout
+	if not has_valid_moves():
+		print("No valid moves after draw attempt!")
+		GameState.check_round_end()
 
 func _on_round_started(round_number: int) -> void:
 	shuffle_deck(GameState.deck_seed)
