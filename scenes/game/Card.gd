@@ -54,7 +54,6 @@ func setup(data: CardData, index: int = -1) -> void:
 			card_sprite.size = Vector2(80, 110)
 			card_sprite.custom_minimum_size = Vector2(80, 110)
 		
-		print("SLOT: Card positioned at %v, size %v" % [position, size])
 	else:  # Board card
 		custom_minimum_size = Vector2(90, 126)
 		size = Vector2(90, 126)
@@ -150,18 +149,9 @@ func _update_display() -> void:
 		
 		# DEBUG: Check CardSprite positioning for slot cards
 		if board_index == -1:  # Slot card
-			# FIX: Change %v to %s for the array
-			print("SLOT CardSprite - size: %v, position: %v, anchors: %s" % [
-				card_sprite.size, 
-				card_sprite.position,
-				[card_sprite.anchor_left, card_sprite.anchor_top, card_sprite.anchor_right, card_sprite.anchor_bottom]
-			])
-			print("SLOT Card main size: %v" % size)
-			
 			# FORCE CardSprite to fill the entire card
 			card_sprite.position = Vector2.ZERO
 			card_sprite.size = size  # Make it same size as the main card
-			print("SLOT CardSprite AFTER force - size: %v, position: %v" % [card_sprite.size, card_sprite.position])
 
 func _on_area_entered(area: Area2D) -> void:
 	if not is_on_board:

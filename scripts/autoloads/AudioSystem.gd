@@ -17,11 +17,9 @@ var sound_groups: Dictionary = {
 }
 
 func _ready() -> void:
-	print("AudioSystem initializing...")
 	_create_audio_players()
 	_load_sound_effects()
 	_connect_signals()
-	print("AudioSystem initialized with %d sounds" % sound_effects.size())
 
 func _create_audio_players() -> void:
 	# Create multiple AudioStreamPlayer nodes for concurrent sounds
@@ -54,10 +52,9 @@ func _load_sound_effects() -> void:
 		var audio_stream = load(sound_path)
 		if audio_stream:
 			sound_effects[sound_name] = audio_stream
-			print("Loaded sound: %s" % sound_name)
 		else:
-			print("Failed to load sound: %s at %s" % [sound_name, sound_path])
-
+			pass
+			
 func _connect_signals() -> void:
 	# Connect to game events
 	SignalBus.card_selected.connect(_on_card_selected)
@@ -73,7 +70,6 @@ func play_sound(sound_name: String, volume_db: float = 0.0) -> void:
 		return
 		
 	if not sound_effects.has(sound_name):
-		print("Sound not found: %s" % sound_name)
 		return
 	
 	var player = _get_available_player()
@@ -84,7 +80,6 @@ func play_sound(sound_name: String, volume_db: float = 0.0) -> void:
 
 func play_random_from_group(group_name: String, volume_db: float = 0.0) -> void:
 	if not sound_groups.has(group_name):
-		print("Sound group not found: %s" % group_name)
 		return
 	
 	var sounds = sound_groups[group_name]

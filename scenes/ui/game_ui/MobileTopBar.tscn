@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://craksy104deun"]
 
-[ext_resource type="Script" uid="uid://d2b04oak45xe4" path="res://Magic-Castle/scenes/ui/MobileTopBar.gd" id="1_gi1i6"]
+[ext_resource type="Script" uid="uid://d2b04oak45xe4" path="res://Magic-Castle/scenes/ui/game_ui/MobileTopBar.gd" id="1_gi1i6"]
 
 [node name="MobileTopBar" type="Control"]
 custom_minimum_size = Vector2(0, 120)

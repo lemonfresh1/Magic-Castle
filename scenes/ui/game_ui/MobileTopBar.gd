@@ -121,14 +121,6 @@ func _update_draw_counter() -> void:
 		draw_counter_label.text = "🃏 %d" % draws_remaining
 
 func update_slots() -> void:
-	print("=== UPDATE SLOTS CALLED ===")
-	print("Active slots: %d" % CardManager.active_slots)
-	print("Slot cards: %s" % [
-		CardManager.slot_cards[0].get_display_value() if CardManager.slot_cards[0] else "null",
-		CardManager.slot_cards[1].get_display_value() if CardManager.slot_cards[1] else "null", 
-		CardManager.slot_cards[2].get_display_value() if CardManager.slot_cards[2] else "null"
-	])
-	
 	# Update all 3 slots based on CardManager state
 	var slot_index = 0
 	for i in range(slots_container.get_child_count()):
@@ -147,7 +139,6 @@ func update_slots() -> void:
 		
 		# Show the current card if this slot has one
 		if slot_index < CardManager.active_slots and CardManager.slot_cards[slot_index] != null:
-			print("Showing card in slot %d: %s" % [slot_index, CardManager.slot_cards[slot_index].get_display_value()])
 			
 			var card = card_scene.instantiate()
 			child.add_child(card)

@@ -36,8 +36,6 @@ func _ready() -> void:
 	
 	# Hide on start
 	visible = false
-	
-	print("ScoreScreen initialized with z_index: %d" % z_index)
 
 func show_round_complete(round_num: int, scores: Dictionary) -> void:
 	# Force to front
@@ -82,8 +80,6 @@ func show_round_complete(round_num: int, scores: Dictionary) -> void:
 	
 	# Animate score counting
 	_animate_scores()
-	
-	print("Score screen shown with z_index: %d" % z_index)
 
 func _animate_scores() -> void:
 	# Ensure we're on top
@@ -101,8 +97,6 @@ func _animate_scores() -> void:
 	tween.tween_property(panel, "scale", Vector2.ONE, 0.3).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
 
 func _on_continue_pressed() -> void:
-	print("Continue button pressed!")
-	
 	# Check if game is over
 	if GameState.current_round >= GameConstants.MAX_ROUNDS:
 		_show_game_over()
@@ -114,8 +108,6 @@ func _on_continue_pressed() -> void:
 		GameState._continue_to_next_round()
 
 func _show_game_over() -> void:
-	print("Game Over! Final Score: %d" % GameState.total_score)
-	
 	# Update UI for game over
 	title_label.text = "Game Complete!"
 	

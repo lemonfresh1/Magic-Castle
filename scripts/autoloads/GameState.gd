@@ -72,23 +72,16 @@ func start_round() -> void:
 	time_remaining = float(round_time_limit)
 	
 	# Reset round state - LOG EACH RESET
-	print("Resetting round state...")
 	current_score = 0
-	print("  - current_score reset to 0")
 	cards_cleared = 0
-	print("  - cards_cleared reset to 0")
 	board_cleared = false
-	print("  - board_cleared reset to false")
 	is_round_active = true
-	print("  - is_round_active set to true")
 	
 	# Start timer
 	set_process(true)
 	
 	print("Round %d started - Seed: %d, Time: %ds" % [current_round, deck_seed, round_time_limit])
-	print("About to emit round_started signal...")
 	SignalBus.round_started.emit(current_round)
-	print("Signal emitted")
 
 func check_round_end() -> void:
 	"""Check if round should end and determine the reason"""
@@ -129,7 +122,6 @@ func _delayed_end_round(reason: String) -> void:
 	if not is_round_active:
 		return
 		
-	print("Ending round after delay: %s" % reason)
 	end_round()
 
 func end_round() -> void:
@@ -153,13 +145,12 @@ func _show_score_screen(scores: Dictionary) -> void:
 	"""Display the score screen"""
 	var score_screen = get_tree().get_first_node_in_group("score_screen")
 	if not score_screen:
-		var score_scene = load("res://Magic-Castle/scenes/ui/ScoreScreen.tscn")
+		var score_scene = load("res://Magic-Castle/scenes/ui/game_ui/ScoreScreen.tscn")
 		if score_scene:
 			score_screen = score_scene.instantiate()
 			score_screen.add_to_group("score_screen")
 			get_tree().root.add_child(score_screen)
 		else:
-			print("Warning: ScoreScreen.tscn not found")
 			_continue_to_next_round()
 			return
 	

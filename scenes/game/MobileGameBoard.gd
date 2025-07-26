@@ -9,7 +9,7 @@ extends Control
 
 # === PRELOADS ===
 var card_scene = preload("res://Magic-Castle/scenes/game/Card.tscn")
-var mobile_topbar_scene = preload("res://Magic-Castle/scenes/ui/MobileTopBar.tscn")
+var mobile_topbar_scene = preload("res://Magic-Castle/scenes/ui/game_ui/MobileTopBar.tscn")
 
 # === MOBILE LAYOUT CONSTANTS ===
 const MOBILE_CARD_WIDTH: int = 50
@@ -23,27 +23,12 @@ var board_card_nodes: Array[Control] = []
 var mobile_top_bar: Control = null
 
 func _ready() -> void:
-	print("=== MobileGameBoard _ready() START ===")
-	
-	print("1. Setting up mobile layout...")
 	_setup_mobile_layout()
-	
-	print("2. Setting up draw zones...")
 	_setup_draw_zones()
-	
-	print("3. Connecting signals...")
 	_connect_signals()
-	
-	print("4. Setting CardManager reference...")
 	CardManager.set_game_board(self)
-	
-	print("5. Enabling keyboard input...")
 	set_process_unhandled_key_input(true)
-	
-	print("6. Starting new game...")
 	GameState.start_new_game("single")
-	
-	print("=== MobileGameBoard _ready() COMPLETE ===")
 
 func _setup_mobile_layout() -> void:
 	# Create and add mobile top bar
@@ -158,19 +143,14 @@ func _trigger_draw_pile() -> void:
 
 # === GAME BOARD MANAGEMENT ===
 func _on_round_started(_round: int) -> void:
-	print("=== ROUND STARTED EVENT ===")
 	clear_board()
 	await get_tree().process_frame
 	setup_mobile_board()
 	
-	print("Attempting slot update...")
 	if mobile_top_bar and mobile_top_bar.has_method("update_slots"):
 		await get_tree().process_frame
 		await get_tree().process_frame
 		mobile_top_bar.update_slots()
-		print("Slot update completed!")
-	else:
-		print("ERROR: Cannot update slots!")
 
 func clear_board() -> void:
 	for card in board_card_nodes:
@@ -249,12 +229,10 @@ func calculate_mobile_card_positions() -> Array[Vector2]:
 	return positions
 
 func update_all_cards() -> void:
-	print("=== UPDATING ALL CARDS ===")
 	for card in board_card_nodes:
 		if card and card.is_on_board:
 			card._check_visibility()
 			card.update_selectability()
-	print("Update complete")
 
 func _on_card_selected(card: Control) -> void:
 	# Remove from board

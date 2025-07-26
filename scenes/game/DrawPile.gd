@@ -51,6 +51,3 @@ func _on_gui_input(event: InputEvent) -> void:
 			
 			if can_draw:
 				SignalBus.draw_pile_clicked.emit()
-				print("Draw pile clicked")
-			else:
-				print("Cannot draw: pile empty or limit reached")
