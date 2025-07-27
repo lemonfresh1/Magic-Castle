@@ -23,6 +23,7 @@ signal sound_setting_changed(enabled: bool)
 signal card_skin_changed(skin_name: String)
 signal board_skin_changed(skin_name: String)
 signal game_mode_changed(mode_name: String)
+signal high_contrast_changed(enabled: bool)
 
 # === AUDIO SIGNALS (NEW) ===
 signal play_sound_effect(sound_name: String)

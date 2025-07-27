@@ -89,3 +89,48 @@ func handle_card_played(card_data: CardData, combo_count: int) -> Dictionary:
 
 func handle_round_end(round_number: int, board_cleared: bool) -> Dictionary:
 	return current_mode.on_round_end(round_number, board_cleared) if current_mode else {}
+
+func get_all_mode_info() -> Array[Dictionary]:
+	"""Returns info about all modes for the settings menu"""
+	var mode_info: Array[Dictionary] = []
+	
+	# Tri-Peaks (available)
+	mode_info.append({
+		"name": "tri_peaks",
+		"display": "Tri-Peaks",
+		"description": "Classic tri-peaks solitaire with combos",
+		"available": true,
+		"unlock_requirement": ""
+	})
+	
+	# Time Rush (locked)
+	mode_info.append({
+		"name": "time_rush",
+		"display": "Time Rush",
+		"description": "Race against time! No draw limit.",
+		"available": false,
+		"unlock_requirement": "Complete 10 games"
+	})
+	
+	# Quicky (locked)
+	mode_info.append({
+		"name": "quicky",
+		"display": "Quicky",
+		"description": "5-minute speed rounds",
+		"available": false,
+		"unlock_requirement": "Reach combo 20"
+	})
+	
+	return mode_info
+
+func is_mode_unlocked(mode_name: String) -> bool:
+	# Check unlock conditions based on SettingsSystem stats
+	match mode_name:
+		"tri_peaks":
+			return true
+		"time_rush":
+			return SettingsSystem.total_games_played >= 10
+		"quicky":
+			return SettingsSystem.highest_combo >= 20
+		_:
+			return false

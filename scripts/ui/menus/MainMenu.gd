@@ -16,9 +16,20 @@ extends Control
 func _ready() -> void:
 	_connect_buttons()
 	_hide_overlays()
-	
-	# Update button states based on current settings
 	_update_ui_state()
+	
+	# Safely connect overlay signals
+	if settings_overlay and settings_overlay.has_node("SettingsMenu"):
+		var settings_menu = settings_overlay.get_node("SettingsMenu")
+		settings_menu.settings_closed.connect(_on_settings_closed)
+	else:
+		print("Warning: SettingsMenu not found in SettingsOverlay")
+	
+	if achievements_overlay and achievements_overlay.has_node("AchievementsPanel"):
+		var achievements_panel = achievements_overlay.get_node("AchievementsPanel")
+		achievements_panel.achievements_closed.connect(_on_achievements_closed)
+	else:
+		print("Warning: AchievementsPanel not found in AchievementsOverlay")
 
 func _connect_buttons() -> void:
 	start_button.pressed.connect(_on_start_pressed)

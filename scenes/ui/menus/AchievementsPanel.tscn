@@ -1,0 +1,71 @@
+[gd_scene load_steps=2 format=3 uid="uid://djxgf7vr63kij"]
+
+[ext_resource type="Script" uid="uid://n8ole5iubk0s" path="res://Magic-Castle/scripts/ui/menus/AchievementsPanel.gd" id="1_0aona"]
+
+[node name="AchievementsPanel" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_0aona")
+
+[node name="Panel" type="Panel" parent="."]
+custom_minimum_size = Vector2(600, 500)
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="MarginContainer" type="MarginContainer" parent="Panel"]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Panel/MarginContainer"]
+layout_mode = 2
+
+[node name="Header" type="HBoxContainer" parent="Panel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="BackButton" type="Button" parent="Panel/MarginContainer/VBoxContainer/Header"]
+layout_mode = 2
+text = "<"
+
+[node name="Title" type="Label" parent="Panel/MarginContainer/VBoxContainer/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Achievements"
+
+[node name="HSeparator" type="HSeparator" parent="Panel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="TabContainer" type="TabContainer" parent="Panel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+current_tab = 0
+
+[node name="Achievements" type="Control" parent="Panel/MarginContainer/VBoxContainer/TabContainer"]
+layout_mode = 2
+metadata/_tab_index = 0
+
+[node name="ScrollContainer" type="ScrollContainer" parent="Panel/MarginContainer/VBoxContainer/TabContainer/Achievements"]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="AchievementsList" type="VBoxContainer" parent="Panel/MarginContainer/VBoxContainer/TabContainer/Achievements/ScrollContainer"]
+layout_mode = 2
+
+[node name="Highscores" type="Control" parent="Panel/MarginContainer/VBoxContainer/TabContainer"]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 1
+
+[node name="ScoresContainer" type="VBoxContainer" parent="Panel/MarginContainer/VBoxContainer/TabContainer/Highscores"]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
