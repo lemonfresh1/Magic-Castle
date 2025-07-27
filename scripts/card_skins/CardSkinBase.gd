@@ -103,3 +103,11 @@ func _create_card_labels(card_panel: Panel, rank: String, suit: String, color: C
 	suit_mirror.position = Vector2(suit_position_offset.x, card_size.y - suit_position_offset.y)
 	suit_mirror.scale = Vector2(-1, -1)
 	card_panel.add_child(suit_mirror)
+
+func get_card_texture_path(rank: int, suit: int, face_up: bool) -> String:
+	# Override in sprite-based skins
+	return ""
+
+func uses_sprites() -> bool:
+	# Override in sprite-based skins
+	return false

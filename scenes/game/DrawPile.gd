@@ -1,4 +1,4 @@
-#DrawPile.gd
+# DrawPile.gd
 extends Control
 
 @onready var card_back: TextureRect = $CardBack
@@ -28,6 +28,7 @@ func _ready() -> void:
 	
 	# Start updating counter
 	set_process(true)
+	set_process_unhandled_key_input(true)  # Enable keyboard input
 
 func _process(_delta: float) -> void:
 	# Show draws remaining according to game rules, not physical pile size
@@ -46,8 +47,30 @@ func _process(_delta: float) -> void:
 func _on_gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-			# Check if we can actually draw
-			var can_draw = CardManager.draw_pile.size() > 0 and CardManager.cards_drawn < GameConstants.get_draw_pile_limit(GameState.current_round)
+			# Check draw pile mode setting
+			var click_pos = event.position
+			var draw_allowed = false
 			
-			if can_draw:
-				SignalBus.draw_pile_clicked.emit()
+			match SettingsSystem.draw_pile_mode:
+				SettingsSystem.DrawPileMode.LEFT_ONLY:
+					draw_allowed = click_pos.x < size.x * 0.5
+				SettingsSystem.DrawPileMode.RIGHT_ONLY:
+					draw_allowed = click_pos.x >= size.x * 0.5
+				SettingsSystem.DrawPileMode.BOTH_SIDES:
+					draw_allowed = true
+			
+			if draw_allowed:
+				_attempt_draw()
+
+func _unhandled_key_input(event: InputEvent) -> void:
+	if event is InputEventKey:
+		if event.keycode == KEY_SPACE and event.pressed and not event.echo:
+			_attempt_draw()
+			get_viewport().set_input_as_handled()
+
+func _attempt_draw() -> void:
+	# Check if we can actually draw
+	var can_draw = CardManager.draw_pile.size() > 0 and CardManager.cards_drawn < GameConstants.get_draw_pile_limit(GameState.current_round)
+	
+	if can_draw:
+		SignalBus.draw_pile_clicked.emit()

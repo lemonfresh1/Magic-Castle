@@ -16,7 +16,7 @@ var animation_speed: float = 1.0  # Placeholder for future
 var haptic_enabled: bool = true   # Placeholder for future
 
 # === SKIN SETTINGS ===
-var current_card_skin: String = "default"
+var current_card_skin: String = "sprites"
 var current_board_skin: String = "default"
 var current_game_mode: String = "tri_peaks"
 var high_contrast: bool = true

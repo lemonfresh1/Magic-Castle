@@ -29,6 +29,8 @@ func _ready() -> void:
 	CardManager.set_game_board(self)
 	set_process_unhandled_key_input(true)
 	GameState.start_new_game("single")
+	_apply_board_skin()
+	SignalBus.board_skin_changed.connect(_apply_board_skin)
 
 func _setup_mobile_layout() -> void:
 	# Create and add mobile top bar
@@ -72,6 +74,10 @@ func _setup_draw_zones() -> void:
 	# Configure draw zones based on settings
 	left_draw_zone.visible = SettingsSystem.is_left_draw_enabled()
 	right_draw_zone.visible = SettingsSystem.is_right_draw_enabled()
+
+	# Ensure zones can receive mouse input
+	left_draw_zone.mouse_filter = Control.MOUSE_FILTER_PASS  # ADD THIS
+	right_draw_zone.mouse_filter = Control.MOUSE_FILTER_PASS  # ADD THIS
 	
 	if left_draw_zone.visible:
 		left_draw_zone.custom_minimum_size.x = DRAW_ZONE_WIDTH
@@ -92,6 +98,7 @@ func _setup_draw_zone_visual(zone: Control, text: String) -> void:
 	var background = ColorRect.new()
 	background.color = Color(0.2, 0.4, 0.6, 0.3)
 	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	background.mouse_filter = Control.MOUSE_FILTER_IGNORE  # ADD THIS
 	zone.add_child(background)
 	
 	# Add instructional label
@@ -100,6 +107,7 @@ func _setup_draw_zone_visual(zone: Control, text: String) -> void:
 	label.rotation = PI / 2
 	label.add_theme_font_size_override("font_size", SettingsSystem.get_scaled_font_size(10))
 	label.anchors_preset = Control.PRESET_CENTER
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE  # ADD THIS
 	zone.add_child(label)
 
 func _adjust_board_layout() -> void:
@@ -277,3 +285,46 @@ func _on_draw_pile_clicked() -> void:
 	# CRITICAL: Update all cards selectability after drawing
 	await get_tree().process_frame
 	update_all_cards()
+
+func _apply_board_skin() -> void:
+	# First try to load a sprite background
+	var sprite_path = "res://Magic-Castle/assets/backgrounds/%s-bg.png" % SettingsSystem.current_board_skin
+	
+	if ResourceLoader.exists(sprite_path):
+		# Use sprite background
+		var texture = load(sprite_path)
+		
+		# Create or update background TextureRect
+		var bg_sprite: TextureRect
+		if has_node("BackgroundSprite"):
+			bg_sprite = get_node("BackgroundSprite")
+		else:
+			bg_sprite = TextureRect.new()
+			bg_sprite.name = "BackgroundSprite"
+			add_child(bg_sprite)
+			move_child(bg_sprite, 0)  # Put at back
+		
+		bg_sprite.texture = texture
+		bg_sprite.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+		bg_sprite.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		bg_sprite.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		
+	else:
+		# Fall back to color
+		var bg_color: Color
+		match SettingsSystem.current_board_skin:
+			"green":
+				bg_color = Color(0.15, 0.4, 0.15)
+			"blue":
+				bg_color = Color(0.15, 0.25, 0.5)
+			"sunset":
+				bg_color = Color(0.6, 0.3, 0.15)
+			_:
+				bg_color = Color(0.2, 0.2, 0.2)
+		
+		if has_node("Background"):
+			var bg = get_node("Background")
+			if bg is ColorRect:
+				bg.color = bg_color
+		else:
+			RenderingServer.set_default_clear_color(bg_color)

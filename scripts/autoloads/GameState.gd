@@ -173,12 +173,6 @@ func _continue_to_next_round() -> void:
 func _end_game() -> void:
 	print("Game completed! Final score: %d" % total_score)
 	SignalBus.game_over.emit(total_score)
-	
-	var score_screen = get_tree().get_first_node_in_group("score_screen")
-	if score_screen:
-		score_screen.show_game_complete(total_score)
-	else:
-		get_tree().change_scene_to_file("res://Magic-Castle/scenes/menus/MainMenu.tscn")
 
 # === HELPER FUNCTIONS ===
 func _has_valid_moves() -> bool:
@@ -268,3 +262,12 @@ func print_game_state() -> void:
 	for key in info:
 		print("%s: %s" % [key, str(info[key])])
 	print("===================")
+
+func _return_to_menu() -> void:
+	# Clean up game state
+	current_round = 1
+	total_score = 0
+	round_scores.clear()
+	
+	# Return to main menu
+	get_tree().change_scene_to_file("res://Magic-Castle/scenes/ui/menus/MainMenu.tscn")

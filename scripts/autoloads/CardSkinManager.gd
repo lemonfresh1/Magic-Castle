@@ -10,7 +10,11 @@ func _ready() -> void:
 	_load_current_skin()
 
 func _register_skins() -> void:
-	# Register all available skins
+	# Sprite-based skin
+	var sprites = SpriteCardSkin.new()
+	available_skins[sprites.skin_name] = sprites
+	
+	# Programmatic skins
 	var classic = ClassicCardSkin.new()
 	available_skins[classic.skin_name] = classic
 	

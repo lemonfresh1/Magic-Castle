@@ -52,13 +52,15 @@ var available_modes: Array[Dictionary] = [
 ]
 
 var available_card_skins: Array[Dictionary] = [
-	{"name": "default", "display": "Classic", "has_contrast": false},
-	{"name": "classic_code", "display": "Classic HD", "has_contrast": true},
-	{"name": "modern", "display": "Modern", "has_contrast": false}
+	{"name": "sprites", "display": "Classic", "has_contrast": false},  # Sprite-based
+	{"name": "classic", "display": "Classic HD", "has_contrast": true},  # Programmatic
+	{"name": "modern", "display": "Modern", "has_contrast": false},
+	{"name": "retro", "display": "Retro", "has_contrast": true}
 ]
 
 var available_board_skins: Array[Dictionary] = [
-	{"name": "green", "display": "Classic Green"},
+	{"name": "classic", "display": "Classic Green"},  # This will use classic-bg.png
+	{"name": "green", "display": "Green Felt"},      # Color-only version
 	{"name": "blue", "display": "Ocean Blue"},
 	{"name": "sunset", "display": "Sunset"}
 ]
@@ -66,38 +68,28 @@ var available_board_skins: Array[Dictionary] = [
 var current_mode_index: int = 0
 var current_card_skin_index: int = 0
 var current_board_skin_index: int = 0
+var board_preview_instance: Panel = null
+
 
 signal settings_closed
 
 func _ready() -> void:
-	# Set up container properties
-	_setup_containers()
-	
 	# Connect all signals
 	_connect_controls()
 	
+	# Set up button groups
+	_setup_button_groups()
+	
 	# Load current settings
 	_load_current_settings()
-
-func _setup_containers() -> void:
-	# Ensure scroll container is set up properly
-	scroll_container.custom_minimum_size.y = 300
 	
-	# Set minimum heights for each section
-	if game_mode_section:
-		game_mode_section.custom_minimum_size.y = 150
-	if card_skin_section:
-		card_skin_section.custom_minimum_size.y = 180
-	if board_skin_section:
-		board_skin_section.custom_minimum_size.y = 120
-	if audio_section:
-		audio_section.custom_minimum_size.y = 220
-	if input_section:
-		input_section.custom_minimum_size.y = 120
+	# Create previews
+	_create_card_previews()
+	_create_board_preview()
 	
-	# Add separation between sections
-	sections_container.add_theme_constant_override("separation", 15)
-
+	# After everything is created, manually adjust panel sizes
+	await get_tree().process_frame
+	
 func _connect_controls() -> void:
 	# Back button
 	if back_button:
@@ -135,11 +127,14 @@ func _connect_controls() -> void:
 	
 	# Input controls
 	if left_button:
-		left_button.pressed.connect(func(): _on_input_mode_selected(SettingsSystem.DrawPileMode.LEFT_ONLY))
+		left_button.toggled.connect(func(pressed): 
+			if pressed: _on_input_mode_selected(SettingsSystem.DrawPileMode.LEFT_ONLY))
 	if right_button:
-		right_button.pressed.connect(func(): _on_input_mode_selected(SettingsSystem.DrawPileMode.RIGHT_ONLY))
+		right_button.toggled.connect(func(pressed): 
+			if pressed: _on_input_mode_selected(SettingsSystem.DrawPileMode.RIGHT_ONLY))
 	if both_button:
-		both_button.pressed.connect(func(): _on_input_mode_selected(SettingsSystem.DrawPileMode.BOTH_SIDES))
+		both_button.toggled.connect(func(pressed): 
+			if pressed: _on_input_mode_selected(SettingsSystem.DrawPileMode.BOTH_SIDES))
 
 func _load_current_settings() -> void:
 	# Load game mode
@@ -218,7 +213,9 @@ func _update_card_skin_display() -> void:
 		if skin.has_contrast:
 			high_contrast_check.button_pressed = SettingsSystem.high_contrast
 	
-	# TODO: Update card previews when implemented
+	for card in card_preview_container.get_children():
+		if card.has_method("set_skin"):
+			card.set_skin(available_card_skins[current_card_skin_index].name, SettingsSystem.high_contrast)
 	
 	SettingsSystem.set_card_skin(skin.name)
 
@@ -231,9 +228,25 @@ func _on_card_skin_right() -> void:
 	_update_card_skin_display()
 
 func _on_high_contrast_toggled(pressed: bool) -> void:
+	print("=== HIGH CONTRAST DEBUG ===")
+	print("Toggled to: %s" % pressed)
+	print("SettingsSystem.high_contrast before: %s" % SettingsSystem.high_contrast)
+	print("Current skin: %s" % available_card_skins[current_card_skin_index].name)
+	
 	SettingsSystem.high_contrast = pressed
 	SettingsSystem.save_settings()
-	# TODO: Update card previews
+	
+	print("SettingsSystem.high_contrast after: %s" % SettingsSystem.high_contrast)
+	print("Current skin supports contrast: %s" % available_card_skins[current_card_skin_index].has_contrast)
+	
+	# Update preview cards
+	if card_preview_container:
+		print("Updating %d preview cards" % card_preview_container.get_child_count())
+		for card in card_preview_container.get_children():
+			if card.has_method("set_skin"):
+				card.is_high_contrast = pressed
+				card._update_display()
+				print("  - Updated card: rank=%d, suit=%d" % [card.current_rank, card.current_suit])
 
 # === BOARD SKIN ===
 func _update_board_skin_display() -> void:
@@ -242,6 +255,10 @@ func _update_board_skin_display() -> void:
 		
 	var skin = available_board_skins[current_board_skin_index]
 	board_skin_name.text = skin.display
+	
+	if board_preview_instance and board_preview_instance.has_method("set_skin"):
+		board_preview_instance.set_skin(skin.name)  # Use skin.name instead
+		
 	SettingsSystem.set_board_skin(skin.name)
 
 func _on_board_skin_left() -> void:
@@ -298,3 +315,103 @@ func _on_input_mode_selected(mode: SettingsSystem.DrawPileMode) -> void:
 # === NAVIGATION ===
 func _on_back_pressed() -> void:
 	settings_closed.emit()
+
+func _create_card_previews() -> void:
+	if not card_preview_container:
+		print("ERROR: card_preview_container is null!")
+		return
+	
+	print("Creating card previews...")
+	
+	# Clear existing
+	for child in card_preview_container.get_children():
+		child.queue_free()
+	
+	# Create preview cards
+	var preview_cards = [
+		{"rank": 1, "suit": CardData.Suit.HEARTS},
+		{"rank": 13, "suit": CardData.Suit.SPADES},
+		{"rank": 12, "suit": CardData.Suit.DIAMONDS},
+		{"rank": 11, "suit": CardData.Suit.CLUBS}
+	]
+	
+	for i in range(preview_cards.size()):
+		var card_data = preview_cards[i]
+		var card_preview = preload("res://Magic-Castle/scenes/ui/components/CardPreview.tscn").instantiate()
+		card_preview_container.add_child(card_preview)
+		card_preview.set_card(card_data.rank, card_data.suit)
+		card_preview.set_skin(available_card_skins[current_card_skin_index].name, SettingsSystem.high_contrast)
+		card_preview.scale = Vector2(0.8, 0.8)
+	
+	# Force layout update
+	_force_layout_update(card_preview_container)
+	
+func _create_board_preview() -> void:
+	if not board_preview_container:
+		print("ERROR: board_preview_container is null!")
+		return
+	
+	print("Creating board preview...")
+	
+	# Clear existing
+	for child in board_preview_container.get_children():
+		child.queue_free()
+	
+	# Create board preview
+	board_preview_instance = preload("res://Magic-Castle/scenes/ui/components/BoardPreview.tscn").instantiate()
+	board_preview_container.add_child(board_preview_instance)
+	board_preview_instance.set_skin(available_board_skins[current_board_skin_index].name)
+	
+	# Force layout update
+	_force_layout_update(board_preview_container)
+	
+func _force_layout_update(node: Node) -> void:
+	# Walk up the tree and force each container to recalculate
+	var current = node
+	while current and current != scroll_container:
+		if current is Container:
+			current.queue_sort()
+		current = current.get_parent()
+	
+	# Final update on the scroll container
+	await get_tree().process_frame
+	if sections_container:
+		sections_container.queue_sort()
+
+func _setup_button_groups() -> void:
+	# Debug print
+	print("Setting up button groups...")
+	print("Left button exists: ", left_button != null)
+	print("Right button exists: ", right_button != null)
+	print("Both button exists: ", both_button != null)
+	
+	# Create button group for input mode buttons
+	var input_button_group = ButtonGroup.new()
+	
+	if left_button:
+		left_button.button_group = input_button_group
+		left_button.toggle_mode = true
+		left_button.disabled = false  # Ensure not disabled
+		print("Left button setup - toggle_mode: ", left_button.toggle_mode)
+	
+	if right_button:
+		right_button.button_group = input_button_group
+		right_button.toggle_mode = true
+		right_button.disabled = false
+		print("Right button setup - toggle_mode: ", right_button.toggle_mode)
+	
+	if both_button:
+		both_button.button_group = input_button_group
+		both_button.toggle_mode = true
+		both_button.disabled = false
+		print("Both button setup - toggle_mode: ", both_button.toggle_mode)
+	
+	# Debug: Check if buttons are visible and enabled
+	for button in [left_button, right_button, both_button]:
+		if button:
+			print("Button %s - visible: %s, disabled: %s, mouse_filter: %s" % [
+				button.name, 
+				button.visible, 
+				button.disabled,
+				button.mouse_filter
+			])

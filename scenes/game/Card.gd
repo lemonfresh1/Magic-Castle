@@ -109,49 +109,62 @@ func _update_display() -> void:
 	if not card_data:
 		return
 	
-	var card_path = "res://Magic-Castle/assets/cards/"
-	
-	if is_face_up:
-		# Convert rank and suit to filename
-		var rank_name = ""
-		match card_data.rank:
-			1: rank_name = "ace"
-			2: rank_name = "two"
-			3: rank_name = "three"
-			4: rank_name = "four"
-			5: rank_name = "five"
-			6: rank_name = "six"
-			7: rank_name = "seven"
-			8: rank_name = "eight"
-			9: rank_name = "nine"
-			10: rank_name = "ten"
-			11: rank_name = "jack"
-			12: rank_name = "queen"
-			13: rank_name = "king"
+	# Check if we should use sprites or programmatic display
+	if SettingsSystem.current_card_skin == "sprites":
+		# Use existing sprite logic
+		var card_path = "res://Magic-Castle/assets/cards/"
 		
-		var suit_name = ""
-		match card_data.suit:
-			CardData.Suit.SPADES: suit_name = "spades"
-			CardData.Suit.HEARTS: suit_name = "hearts"
-			CardData.Suit.CLUBS: suit_name = "clubs"
-			CardData.Suit.DIAMONDS: suit_name = "diamonds"
+		if is_face_up:
+			# Convert rank and suit to filename
+			var rank_name = ""
+			match card_data.rank:
+				1: rank_name = "ace"
+				2: rank_name = "two"
+				3: rank_name = "three"
+				4: rank_name = "four"
+				5: rank_name = "five"
+				6: rank_name = "six"
+				7: rank_name = "seven"
+				8: rank_name = "eight"
+				9: rank_name = "nine"
+				10: rank_name = "ten"
+				11: rank_name = "jack"
+				12: rank_name = "queen"
+				13: rank_name = "king"
+			
+			var suit_name = ""
+			match card_data.suit:
+				CardData.Suit.SPADES: suit_name = "spades"
+				CardData.Suit.HEARTS: suit_name = "hearts"
+				CardData.Suit.CLUBS: suit_name = "clubs"
+				CardData.Suit.DIAMONDS: suit_name = "diamonds"
+			
+			card_path += rank_name + "_of_" + suit_name + ".png"
+		else:
+			card_path += "pink_backing.png"
 		
-		card_path += rank_name + "_of_" + suit_name + ".png"
+		# Load and set texture
+		var texture = load(card_path)
+		if texture:
+			card_sprite.texture = texture
+			card_sprite.visible = true
+			card_sprite.modulate = Color.WHITE
+			
+			# DEBUG: Check CardSprite positioning for slot cards
+			if board_index == -1:  # Slot card
+				# FORCE CardSprite to fill the entire card
+				card_sprite.position = Vector2.ZERO
+				card_sprite.size = size  # Make it same size as the main card
 	else:
-		card_path += "pink_backing.png"
-	
-	# Load and set texture
-	var texture = load(card_path)
-	if texture:
-		card_sprite.texture = texture
-		card_sprite.visible = true
-		card_sprite.modulate = Color.WHITE
+		# Programmatic card display
+		card_sprite.visible = false
 		
-		# DEBUG: Check CardSprite positioning for slot cards
-		if board_index == -1:  # Slot card
-			# FORCE CardSprite to fill the entire card
-			card_sprite.position = Vector2.ZERO
-			card_sprite.size = size  # Make it same size as the main card
+		# Defer creation to avoid "busy setting up children" error
+		if not has_node("CardBG"):
+			call_deferred("_create_programmatic_card")
+		else:
+			# Update existing card
+			_update_programmatic_card()
 
 func _on_area_entered(area: Area2D) -> void:
 	if not is_on_board:
@@ -270,3 +283,102 @@ func flash_invalid() -> void:
 	modulate = INVALID_TINT
 	var tween = create_tween()
 	tween.tween_property(self, "modulate", Color.WHITE, 0.5)
+
+func _create_programmatic_card() -> void:
+	# Create background
+	var bg = Panel.new()
+	bg.name = "CardBG"
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color.WHITE if is_face_up else Color(0.8, 0.2, 0.4)
+	style.border_color = Color.BLACK
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(5)
+	bg.add_theme_stylebox_override("panel", style)
+	
+	add_child(bg)
+	move_child(bg, 0)
+	
+	# Create labels
+	var rank_label = Label.new()
+	rank_label.name = "RankLabel"
+	rank_label.position = Vector2(10, 10)
+	rank_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(rank_label)
+	
+	var suit_label = Label.new()
+	suit_label.name = "SuitLabel"
+	suit_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	suit_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(suit_label)
+	
+	# Update the card display
+	_update_programmatic_card()
+	
+func _update_programmatic_card() -> void:
+	# Update background color
+	if has_node("CardBG"):
+		var bg = get_node("CardBG")
+		var style = bg.get_theme_stylebox("panel") as StyleBoxFlat
+		if style:
+			style.bg_color = Color.WHITE if is_face_up else Color(0.8, 0.2, 0.4)
+	
+	# Update labels if face up
+	if is_face_up:
+		var rank_label = get_node_or_null("RankLabel")
+		var suit_label = get_node_or_null("SuitLabel")
+		
+		if rank_label and suit_label:
+			# Set rank text
+			var rank_text = ""
+			match card_data.rank:
+				1: rank_text = "A"
+				11: rank_text = "J"
+				12: rank_text = "Q"
+				13: rank_text = "K"
+				_: rank_text = str(card_data.rank)
+			rank_label.text = rank_text
+			
+			# Set suit text and color
+			var suit_text = ""
+			var card_color = Color.BLACK
+			match card_data.suit:
+				CardData.Suit.HEARTS:
+					suit_text = "♥"
+					card_color = Color.RED if not SettingsSystem.high_contrast else Color(0.92, 0.28, 0.28)  # Nice red
+				CardData.Suit.DIAMONDS:
+					suit_text = "♦"
+					card_color = Color.RED if not SettingsSystem.high_contrast else Color(0.56, 0.82, 0.52)  # Godot-style green (#8ed084)
+				CardData.Suit.CLUBS:
+					suit_text = "♣"
+					card_color = Color.BLACK if not SettingsSystem.high_contrast else Color(0.28, 0.55, 0.75)  # Godot-style blue (#478cbf)
+				CardData.Suit.SPADES:
+					suit_text = "♠"
+					card_color = Color.BLACK if not SettingsSystem.high_contrast else Color(0.2, 0.2, 0.2)  # Dark gray
+						
+			suit_label.text = suit_text
+			rank_label.modulate = card_color
+			suit_label.modulate = card_color
+			
+			# Apply font sizes
+			var font_size = 32
+			match SettingsSystem.current_card_skin:
+				"modern": font_size = 36
+				"retro": font_size = 28
+			
+			rank_label.add_theme_font_size_override("font_size", font_size)
+			suit_label.add_theme_font_size_override("font_size", font_size + 4)
+			
+			rank_label.visible = true
+			suit_label.visible = true
+		else:
+			# Labels don't exist yet, create them next frame
+			call_deferred("_update_programmatic_card")
+	else:
+		# Hide labels when face down
+		if has_node("RankLabel"):
+			get_node("RankLabel").visible = false
+		if has_node("SuitLabel"):
+			get_node("SuitLabel").visible = false

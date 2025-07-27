@@ -3,10 +3,13 @@
 [ext_resource type="Script" uid="uid://tybu7o8n2klx" path="res://Magic-Castle/scripts/ui/components/CardPreview.gd" id="1_an6kt"]
 
 [node name="CardPreview" type="Control"]
+custom_minimum_size = Vector2(60, 84)
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_right = -1140.0
+offset_bottom = -456.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_an6kt")
@@ -21,14 +24,20 @@ grow_vertical = 2
 
 [node name="RankLabel" type="Label" parent="."]
 layout_mode = 0
-offset_right = 40.0
-offset_bottom = 23.0
+offset_left = 5.0
+offset_top = 5.0
+offset_right = 35.0
+offset_bottom = 39.0
 theme_override_font_sizes/font_size = 24
+text = "A"
 
 [node name="SuitLabel" type="Label" parent="."]
 layout_mode = 0
-offset_right = 40.0
-offset_bottom = 23.0
+offset_left = 20.0
+offset_top = 30.0
+offset_right = 50.0
+offset_bottom = 60.0
 theme_override_font_sizes/font_size = 20
+text = "♠"
 horizontal_alignment = 1
 vertical_alignment = 1

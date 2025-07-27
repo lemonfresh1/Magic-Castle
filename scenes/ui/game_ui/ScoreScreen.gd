@@ -11,6 +11,8 @@ extends Control
 @onready var total_score_label: Label = $Panel/MarginContainer/VBoxContainer/TotalScoreLabel
 @onready var continue_button: Button = $Panel/MarginContainer/VBoxContainer/ContinueButton
 
+signal continue_pressed
+
 var current_round_score: int = 0
 
 func _ready() -> void:
@@ -139,8 +141,8 @@ func _on_play_again_pressed() -> void:
 	# Hide score screen
 	visible = false
 	
-	# Start new game
-	GameState.start_new_game("single")
+	# Return to main menu instead of starting new game
+	get_tree().change_scene_to_file("res://Magic-Castle/scenes/ui/menus/MainMenu.tscn")
 
 # Override to ensure we stay on top
 func _notification(what: int) -> void:
