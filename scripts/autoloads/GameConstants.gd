@@ -82,6 +82,13 @@ func get_draw_pile_limit(round: int) -> int:
 	return DRAW_PILE_LIMITS[round - 1]
 
 func get_round_time_limit(round: int) -> int:
+	# Check if GameModeManager exists and has a current mode
+	if Engine.has_singleton("GameModeManager"):
+		var gmm = Engine.get_singleton("GameModeManager")
+		if gmm and gmm.has_method("get_round_time_limit"):
+			return gmm.get_round_time_limit(round)
+	
+	# Fallback to original calculation
 	return STARTING_TIME - (TIME_DECREASE_PER_ROUND * (round - 1))
 
 func is_peak_card(index: int) -> bool:
@@ -131,11 +138,18 @@ func get_mobile_card_size(scale_factor: float) -> Vector2:
 	return Vector2(MOBILE_CARD_WIDTH * scale_factor, MOBILE_CARD_HEIGHT * scale_factor)
 
 # === VALIDATION HELPERS ===
-func is_valid_round(round: int) -> bool:
-	return round >= 1 and round <= MAX_ROUNDS
+static func is_valid_round(round: int, max_rounds: int = 10) -> bool:
+	return round >= 1 and round <= max_rounds
 
 func is_valid_card_index(index: int) -> bool:
 	return index >= 0 and index < BOARD_CARDS
 
 func is_valid_combo_count(combo: int) -> bool:
 	return combo >= 0 and combo <= BOARD_CARDS
+
+static func get_max_rounds() -> int:
+	if Engine.has_singleton("GameModeManager"):
+		var gmm = Engine.get_singleton("GameModeManager")
+		if gmm and gmm.has_method("get_max_rounds"):
+			return gmm.get_max_rounds()
+	return 10  # Fallback

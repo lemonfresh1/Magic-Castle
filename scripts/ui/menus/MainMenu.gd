@@ -14,6 +14,9 @@ extends Control
 @onready var achievements_overlay: Control = $AchievementsOverlay
 
 func _ready() -> void:
+	# Set up the gradient background FIRST
+	_setup_menu_background()
+	
 	_connect_buttons()
 	_hide_overlays()
 	_update_ui_state()
@@ -30,6 +33,55 @@ func _ready() -> void:
 		achievements_panel.achievements_closed.connect(_on_achievements_closed)
 	else:
 		print("Warning: AchievementsPanel not found in AchievementsOverlay")
+
+func _setup_menu_background() -> void:
+	# Remove any game board backgrounds that might exist
+	if has_node("BackgroundSprite"):
+		get_node("BackgroundSprite").queue_free()
+	
+	# Create gradient background
+	var bg_rect = ColorRect.new()
+	bg_rect.name = "MenuBackground"
+	bg_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	
+	# Create gradient texture
+	var gradient = Gradient.new()
+	var gradient_texture = GradientTexture2D.new()
+	
+	# Set gradient colors - dark forest green to lighter sage green
+	gradient.add_point(0.0, Color(0.1, 0.25, 0.15))  # Dark forest green
+	gradient.add_point(1.0, Color(0.25, 0.45, 0.3))  # Lighter sage green
+	
+	# Apply gradient vertically
+	gradient_texture.gradient = gradient
+	gradient_texture.fill_from = Vector2(0, 0)
+	gradient_texture.fill_to = Vector2(0, 1)
+	
+	# Apply to background
+	var shader = Shader.new()
+	shader.code = """
+	shader_type canvas_item;
+	
+	uniform sampler2D gradient_texture;
+	
+	void fragment() {
+		vec4 gradient_color = texture(gradient_texture, vec2(0.5, UV.y));
+		COLOR = gradient_color;
+	}
+	"""
+	
+	var material = ShaderMaterial.new()
+	material.shader = shader
+	material.set_shader_parameter("gradient_texture", gradient_texture)
+	
+	bg_rect.material = material
+	
+	# Add as first child (behind everything)
+	add_child(bg_rect)
+	move_child(bg_rect, 0)
+	
+	# Also set the clear color as fallback
+	RenderingServer.set_default_clear_color(Color(0.15, 0.3, 0.2))
 
 func _connect_buttons() -> void:
 	start_button.pressed.connect(_on_start_pressed)
@@ -51,7 +103,8 @@ func _update_ui_state() -> void:
 		start_button.text = "Start %s" % current_mode.display_name
 
 func _on_start_pressed() -> void:
-	# Transition to game scene
+	GameState.reset_game_completely()
+	GameModeManager._load_current_mode()
 	get_tree().change_scene_to_file("res://Magic-Castle/scenes/game/MobileGameBoard.tscn")
 
 func _on_multiplayer_pressed() -> void:

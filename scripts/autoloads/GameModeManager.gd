@@ -16,9 +16,17 @@ func _register_game_modes() -> void:
 	var tri_peaks = TriPeaksMode.new()
 	available_modes[tri_peaks.mode_name] = tri_peaks
 	
-	# Future modes would be registered here:
-	# var spider = SpiderMode.new()
-	# available_modes[spider.mode_name] = spider
+	# Register Rush mode
+	var rush = RushMode.new()
+	available_modes[rush.mode_name] = rush
+	
+	# Register Chill mode
+	var chill = ChillMode.new()
+	available_modes[chill.mode_name] = chill
+	
+	# Register Test mode
+	var test = TestMode.new()
+	available_modes[test.mode_name] = test
 	
 	print("Registered game modes: %s" % str(available_modes.keys()))
 
@@ -26,6 +34,7 @@ func _load_current_mode() -> void:
 	var mode_name = SettingsSystem.current_game_mode
 	if available_modes.has(mode_name):
 		current_mode = available_modes[mode_name]
+		print("Loaded mode from settings: %s" % mode_name)
 	else:
 		# Default to tri-peaks
 		current_mode = available_modes["tri_peaks"]
@@ -63,7 +72,17 @@ func get_max_rounds() -> int:
 func get_round_time_limit(round: int) -> int:
 	if not current_mode:
 		return 60
-	return current_mode.starting_time - (current_mode.time_decrease_per_round * (round - 1))
+		
+	# Handle special cases for each mode
+	if current_mode.mode_name == "chill":
+		return 0  # No timer in chill mode
+	elif current_mode.mode_name == "rush":
+		# Rush mode uses specific times from on_round_start
+		var round_data = current_mode.on_round_start(round)
+		return round_data.get("time_limit", 50)
+	else:
+		# Standard calculation
+		return current_mode.starting_time - (current_mode.time_decrease_per_round * (round - 1))
 
 func get_draw_pile_limit(round: int) -> int:
 	return current_mode.get_draw_pile_limit(round) if current_mode else 21
@@ -103,22 +122,31 @@ func get_all_mode_info() -> Array[Dictionary]:
 		"unlock_requirement": ""
 	})
 	
-	# Time Rush (locked)
+	# Rush (locked initially)
 	mode_info.append({
-		"name": "time_rush",
-		"display": "Time Rush",
-		"description": "Race against time! No draw limit.",
-		"available": false,
-		"unlock_requirement": "Complete 10 games"
+		"name": "rush",
+		"display": "Rush",
+		"description": "5 fast rounds with aggressive timing",
+		"available": is_mode_unlocked("rush"),
+		"unlock_requirement": "Complete 5 games"
 	})
 	
-	# Quicky (locked)
+	# Chill (locked initially)
 	mode_info.append({
-		"name": "quicky",
-		"display": "Quicky",
-		"description": "5-minute speed rounds",
-		"available": false,
-		"unlock_requirement": "Reach combo 20"
+		"name": "chill",
+		"display": "Chill",
+		"description": "No time pressure, extended combos",
+		"available": is_mode_unlocked("chill"),
+		"unlock_requirement": "Reach combo 15"
+	})
+	
+	# Test mode (always available)
+	mode_info.append({
+		"name": "test",
+		"display": "Test Mode",
+		"description": "2 rounds for quick testing",
+		"available": true,  # Always available
+		"unlock_requirement": ""
 	})
 	
 	return mode_info
@@ -128,9 +156,36 @@ func is_mode_unlocked(mode_name: String) -> bool:
 	match mode_name:
 		"tri_peaks":
 			return true
-		"time_rush":
-			return SettingsSystem.total_games_played >= 10
-		"quicky":
-			return SettingsSystem.highest_combo >= 20
+		"test":
+			return true  # Always unlocked for testing
+		"rush":
+			# Unlock after 5 completed games
+			return SettingsSystem.total_games_played >= 5
+		"chill":
+			# Unlock after reaching combo 15
+			return SettingsSystem.highest_combo >= 15
 		_:
 			return false
+
+# === COMBO TIMEOUT ===
+func get_combo_timeout() -> float:
+	# Get combo timeout from current mode's round data
+	if current_mode and current_mode.mode_name == "chill":
+		return 720.0  # 12 minutes for chill mode
+	else:
+		return 5.0  # Default 5 seconds for other modes
+
+# === UI HELPERS ===
+func should_show_timer() -> bool:
+	# Hide timer in chill mode
+	return current_mode.mode_name != "chill" if current_mode else true
+
+func get_score_multiplier_display() -> String:
+	# For UI display of mode multiplier
+	match current_mode.mode_name:
+		"rush":
+			return "1.5x"
+		"chill":
+			return "1.0x"
+		_:
+			return "1.0x"

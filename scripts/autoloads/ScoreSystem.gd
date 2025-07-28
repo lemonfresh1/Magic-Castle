@@ -1,7 +1,6 @@
 #ScoreSystem.gd
 extends Node
 
-const COMBO_BASE_TIME: float = 15.0
 
 # Scoring state
 var combo_timer: Timer
@@ -24,6 +23,8 @@ var cards_bonus: int = 0
 var time_bonus: int = 0
 var clear_bonus: int = 0
 var round_total: int = 0
+var COMBO_BASE_TIME: float = 15.0
+
 
 # Score constants
 const TIME_BONUS_BASE: int = 10
@@ -203,3 +204,7 @@ func _on_round_started(round_number: int) -> void:
 	clear_bonus = 0
 	round_total = 0
 	pending_round_end = false
+
+func set_combo_timeout(timeout: float) -> void:
+	COMBO_BASE_TIME = timeout
+	combo_decay_time = timeout

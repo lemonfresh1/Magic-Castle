@@ -15,6 +15,7 @@ var active_slots: int = 1
 var current_combo: int = 0
 var cards_drawn: int = 0
 var game_board: Node = null
+	
 
 func _ready() -> void:
 	print("CardManager initialized")

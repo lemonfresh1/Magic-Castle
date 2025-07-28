@@ -45,11 +45,7 @@ extends Control
 @onready var both_button: Button = $Panel/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/InputSection/MarginContainer/VBoxContainer/HBoxContainer/BothButton
 
 # Available options
-var available_modes: Array[Dictionary] = [
-	{"name": "tri_peaks", "display": "Tri-Peaks", "description": "Classic tri-peaks solitaire", "available": true},
-	{"name": "time_rush", "display": "Time Rush", "description": "Race against time!", "available": false},
-	{"name": "quicky", "display": "Quicky", "description": "Quick 5-minute games", "available": false}
-]
+var available_modes: Array[Dictionary] = []
 
 var available_card_skins: Array[Dictionary] = [
 	{"name": "sprites", "display": "Classic", "has_contrast": false},  # Sprite-based
@@ -74,16 +70,10 @@ var board_preview_instance: Panel = null
 signal settings_closed
 
 func _ready() -> void:
-	# Connect all signals
-	_connect_controls()
-	
-	# Set up button groups
+	available_modes = GameModeManager.get_all_mode_info()
+	_connect_controls()	
 	_setup_button_groups()
-	
-	# Load current settings
 	_load_current_settings()
-	
-	# Create previews
 	_create_card_previews()
 	_create_board_preview()
 	
@@ -190,14 +180,18 @@ func _on_mode_left() -> void:
 	_update_mode_display()
 	
 	if available_modes[current_mode_index].available:
-		SettingsSystem.set_game_mode(available_modes[current_mode_index].name)
+		var mode_name = available_modes[current_mode_index].name
+		GameModeManager.set_current_mode(mode_name)  # Add this line!
+		SettingsSystem.set_game_mode(mode_name)
 
 func _on_mode_right() -> void:
 	current_mode_index = wrapi(current_mode_index + 1, 0, available_modes.size())
 	_update_mode_display()
 	
 	if available_modes[current_mode_index].available:
-		SettingsSystem.set_game_mode(available_modes[current_mode_index].name)
+		var mode_name = available_modes[current_mode_index].name
+		GameModeManager.set_current_mode(mode_name)  # Add this line!
+		SettingsSystem.set_game_mode(mode_name)
 
 # === CARD SKIN ===
 func _update_card_skin_display() -> void:

@@ -20,6 +20,7 @@ var board_cleared: bool = false
 var current_score: int = 0
 var round_scores: Array[int] = []
 var total_score: int = 0
+var round_stats: Array[Dictionary] = []  # NEW: Track each round's details
 
 # === TIMER ===
 var game_timer: Timer
@@ -52,12 +53,21 @@ func _process(delta: float) -> void:
 # === GAME MANAGEMENT ===
 func start_new_game(mode: String = "single") -> void:
 	print("Starting new game - Mode: %s" % mode)
+	print("Current round BEFORE reset: %d" % current_round)
+	print("Current game mode: %s (max rounds: %d)" % [GameModeManager.get_current_mode().mode_name, GameModeManager.get_max_rounds()])
 	
+	# RESET EVERYTHING FIRST
 	game_mode = mode
 	is_multiplayer = (mode == "multi")
-	current_round = 1
+	current_round = 1  # Make sure this is 1, not whatever it was before
 	total_score = 0
 	round_scores.clear()
+	round_stats.clear()  # NEW: Clear round stats
+	current_score = 0
+	cards_cleared = 0
+	board_cleared = false
+	
+	print("Current round AFTER reset: %d" % current_round)
 	
 	start_round()
 
@@ -67,9 +77,16 @@ func start_round() -> void:
 	# Generate new seed for each round
 	deck_seed = randi()
 	
+	# Get round settings from current game mode
+	var round_data = GameModeManager.handle_round_start(current_round)
+	
 	# Calculate round parameters using GameModeManager
-	round_time_limit = GameModeManager.get_round_time_limit(current_round)
+	round_time_limit = round_data.get("time_limit", GameModeManager.get_round_time_limit(current_round))
 	time_remaining = float(round_time_limit)
+	
+	# Set combo timeout if specified (for chill mode)
+	if round_data.has("combo_timeout") and ScoreSystem.has_method("set_combo_timeout"):
+		ScoreSystem.call("set_combo_timeout", round_data.get("combo_timeout", 5.0))
 	
 	# Reset round state - LOG EACH RESET
 	current_score = 0
@@ -135,6 +152,19 @@ func end_round() -> void:
 	# Store round score
 	round_scores.append(scores.round_total)
 	
+	# NEW: Store detailed round stats
+	round_stats.append({
+		"round": current_round,
+		"score": scores.round_total,
+		"cleared": board_cleared,
+		"cards_cleared": cards_cleared,
+		"time_left": int(time_remaining),
+		"base_score": scores.base,
+		"cards_bonus": scores.cards,
+		"time_bonus": scores.time,
+		"clear_bonus": scores.clear
+	})
+	
 	print("Round %d completed - Score: %d" % [current_round, scores.round_total])
 	SignalBus.round_completed.emit(scores.round_total)
 	
@@ -162,12 +192,17 @@ func _continue_to_next_round() -> void:
 	if round_scores.size() > 0:
 		total_score += round_scores[-1]
 	
+	print("Before increment: Round %d/%d" % [current_round, GameModeManager.get_max_rounds()])
 	current_round += 1
+	print("After increment: Round %d/%d" % [current_round, GameModeManager.get_max_rounds()])
 	
-	# Check if game is complete
-	if current_round > GameConstants.MAX_ROUNDS:
+	# Check if game is complete based on current mode
+	var max_rounds = GameModeManager.get_max_rounds()
+	if current_round > max_rounds:
+		print("Game over: %d > %d" % [current_round, max_rounds])
 		_end_game()
 	else:
+		print("Continuing to round %d" % current_round)
 		start_round()
 
 func _end_game() -> void:
@@ -195,7 +230,7 @@ func get_round_progress() -> float:
 
 func get_game_progress() -> float:
 	"""Get progress through entire game (0.0 to 1.0)"""
-	return float(current_round - 1) / float(GameConstants.MAX_ROUNDS)
+	return float(current_round - 1) / float(GameModeManager.get_max_rounds())
 
 # === MULTIPLAYER HELPERS (Foundation) ===
 func get_player_data() -> Dictionary:
@@ -227,10 +262,10 @@ func is_game_active() -> bool:
 	return is_round_active
 
 func is_final_round() -> bool:
-	return current_round >= GameConstants.MAX_ROUNDS
+	return current_round >= GameModeManager.get_max_rounds()
 
 func get_rounds_remaining() -> int:
-	return max(0, GameConstants.MAX_ROUNDS - current_round + 1)
+	return max(0, GameModeManager.get_max_rounds() - current_round + 1)
 
 func get_current_round_info() -> Dictionary:
 	return {
@@ -263,11 +298,47 @@ func print_game_state() -> void:
 		print("%s: %s" % [key, str(info[key])])
 	print("===================")
 
-func _return_to_menu() -> void:
-	# Clean up game state
+func reset_game_completely() -> void:
+	print("=== RESETTING GAME COMPLETELY ===")
+	
+	# Clean up any persistent UI nodes
+	var score_screens = get_tree().get_nodes_in_group("score_screen")
+	for screen in score_screens:
+		print("Removing persistent score screen")
+		screen.queue_free()
+	
+	# Reset GameState variables
 	current_round = 1
 	total_score = 0
 	round_scores.clear()
+	round_stats.clear()
+	is_round_active = false
+	time_remaining = 0
+	cards_cleared = 0
+	board_cleared = false
+	current_score = 0
 	
-	# Return to main menu
+	# Reset CardManager
+	if CardManager:
+		CardManager.current_combo = 0
+		CardManager.cards_drawn = 0
+		CardManager.slot_cards = [null, null, null]
+		CardManager.active_slots = 1
+	
+	# Reset ScoreSystem
+	if ScoreSystem:
+		ScoreSystem.current_multiplier = 1.0
+		ScoreSystem.peaks_cleared_indices.clear()
+		ScoreSystem.last_selected_card = null
+		ScoreSystem.pending_round_end = false
+		if ScoreSystem.combo_timer:
+			ScoreSystem.combo_timer.stop()
+	
+	print("Game reset complete")
+
+func _return_to_menu() -> void:
+	# First reset everything
+	reset_game_completely()
+	
+	# Then return to main menu
 	get_tree().change_scene_to_file("res://Magic-Castle/scenes/ui/menus/MainMenu.tscn")

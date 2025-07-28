@@ -17,8 +17,15 @@ var current_round_score: int = 0
 
 func _ready() -> void:
 	if continue_button:
+		# Disconnect any existing connections first
+		if continue_button.pressed.is_connected(_on_play_again_pressed):
+			continue_button.pressed.disconnect(_on_play_again_pressed)
+		if continue_button.pressed.is_connected(_on_continue_pressed):
+			continue_button.pressed.disconnect(_on_continue_pressed)
+			
+		# Connect to the default handler
 		continue_button.pressed.connect(_on_continue_pressed)
-		continue_button.visible = true  # Ensure it's visible
+		continue_button.visible = true
 	
 	# CRITICAL: Set very high z-index to appear above all cards
 	z_index = 1000
@@ -62,17 +69,25 @@ func show_round_complete(round_num: int, scores: Dictionary) -> void:
 	score_label_time.text = "Time Bonus: %d" % scores.time
 	score_label_clear.text = "Peak Bonus: %d" % scores.clear
 	
+	# Make all score labels visible for round screen
+	score_label_base.visible = true
+	score_label_cards.visible = true
+	score_label_time.visible = true
+	score_label_clear.visible = true
+	
 	if round_score_label:
 		round_score_label.text = "Round Score: %d" % scores.round_total
 		round_score_label.add_theme_font_size_override("font_size", 32)
+		round_score_label.visible = true
 	
 	# Total is what we had before + this round
 	total_score_label.text = "Total Score: %d" % (GameState.total_score + scores.round_total)
 	total_score_label.add_theme_font_size_override("font_size", 28)
 	
-	# Update button text based on game state
-	if round_num >= GameConstants.MAX_ROUNDS:
-		continue_button.text = "Play Again"
+	# Update button text based on game state - FIXED to use GameModeManager
+	var max_rounds = GameModeManager.get_max_rounds()
+	if round_num >= max_rounds:
+		continue_button.text = "View Results"  # Show game over screen next
 	else:
 		continue_button.text = "Continue"
 	
@@ -99,8 +114,9 @@ func _animate_scores() -> void:
 	tween.tween_property(panel, "scale", Vector2.ONE, 0.3).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
 
 func _on_continue_pressed() -> void:
-	# Check if game is over
-	if GameState.current_round >= GameConstants.MAX_ROUNDS:
+	# Check if game is over based on current mode's max rounds
+	var max_rounds = GameModeManager.get_max_rounds()
+	if GameState.current_round >= max_rounds:
 		_show_game_over()
 	else:
 		# Hide score screen
@@ -113,17 +129,49 @@ func _show_game_over() -> void:
 	# Update UI for game over
 	title_label.text = "Game Complete!"
 	
-	# Hide score breakdown, show final score
-	score_label_base.visible = false
+	# Create round summary
+	var summary_text = "=== ROUND SUMMARY ===\n\n"
+	var best_round = 0
+	var best_score = 0
+	
+	for stat in GameState.round_stats:
+		summary_text += "Round %d: %d pts %s" % [
+			stat.round, 
+			stat.score, 
+			"✓" if stat.cleared else "✗"
+		]
+		if stat.time_left > 0:
+			summary_text += " (%ds left)" % stat.time_left
+		summary_text += "\n"
+		
+		# Track best round
+		if stat.score > best_score:
+			best_score = stat.score
+			best_round = stat.round
+	
+	# Add statistics
+	summary_text += "\n=== STATISTICS ===\n"
+	summary_text += "Total Rounds: %d\n" % GameState.round_stats.size()
+	summary_text += "Rounds Cleared: %d\n" % GameState.round_stats.filter(func(s): return s.cleared).size()
+	summary_text += "Best Round: #%d (%d pts)\n" % [best_round, best_score]
+	summary_text += "Game Mode: %s" % GameModeManager.get_current_mode().display_name
+	
+	# Use the base score label to show summary (it's multiline capable)
+	score_label_base.text = summary_text
+	score_label_base.visible = true
+	score_label_base.add_theme_font_size_override("font_size", 14)
+	
+	# Hide other score breakdowns
 	score_label_cards.visible = false
 	score_label_time.visible = false
 	score_label_clear.visible = false
 	round_score_label.visible = false
 	
+	# Show final score prominently
 	total_score_label.text = "Final Score: %d" % GameState.total_score
 	total_score_label.add_theme_font_size_override("font_size", 40)
 	
-	continue_button.text = "Play Again"
+	continue_button.text = "Return to Menu"
 	continue_button.visible = true
 	continue_button.disabled = false
 	
@@ -133,16 +181,8 @@ func _show_game_over() -> void:
 	continue_button.pressed.connect(_on_play_again_pressed)
 
 func _on_play_again_pressed() -> void:
-	# Reset game state
-	GameState.current_round = 1
-	GameState.total_score = 0
-	GameState.round_scores.clear()
-	
-	# Hide score screen
 	visible = false
-	
-	# Return to main menu instead of starting new game
-	get_tree().change_scene_to_file("res://Magic-Castle/scenes/ui/menus/MainMenu.tscn")
+	GameState._return_to_menu()
 
 # Override to ensure we stay on top
 func _notification(what: int) -> void:
