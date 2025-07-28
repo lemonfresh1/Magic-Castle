@@ -7,35 +7,72 @@ extends EditorScript
 
 # Status: "done" ✅, "working" 🔄, "open" ⬜
 var roadmap = {
+	"phase_0_mobile_ui": {
+		"status": "done",
+		"name": "Mobile UI Implementation",
+		"tasks": {
+			"0_1_mobile_layout": {
+				"status": "done",
+				"name": "Mobile Layout System",
+				"subtasks": {
+					"screen_adaptation": {"status": "done", "name": "2400x1080 landscape layout"},
+					"card_scaling": {"status": "done", "name": "Mobile card size constants"},
+					"pyramid_layout": {"status": "done", "name": "Compressed pyramid for mobile"}
+				}
+			},
+			"0_2_mobile_topbar": {
+				"status": "done",
+				"name": "Mobile Top Bar UI",
+				"subtasks": {
+					"scene_structure": {"status": "done", "name": "HBox layout with spacers"},
+					"timer_display": {"status": "done", "name": "Green timer bar with label"},
+					"draw_pile": {"status": "done", "name": "Draw pile with correct count"},
+					"card_slots": {"status": "done", "name": "Centered card slots with unlock UI"},
+					"combo_bar": {"status": "done", "name": "Yellow combo bar (right-to-left)"},
+					"pause_system": {"status": "done", "name": "Pause/Resume functionality"}
+				}
+			},
+			"0_3_mobile_fixes": {
+				"status": "done",
+				"name": "Mobile Bug Fixes",
+				"subtasks": {
+					"end_score_bug": {"status": "done", "name": "Fixed final score calculation"},
+					"slot_visibility": {"status": "done", "name": "Fixed card slot backgrounds"},
+					"draw_limit_display": {"status": "done", "name": "Show mode-specific draw limits"}
+				}
+			}
+		}
+	},
 	"phase_1_game_modes": {
-		"status": "working",
+		"status": "done",
 		"name": "Additional Game Modes",
 		"tasks": {
 			"1_1_game_mode_manager": {
-				"status": "working",  # Changed from "open"
+				"status": "done",
 				"name": "Create GameModeManager Autoload",
 				"subtasks": {
-					"base_class": {"status": "done", "name": "Create GameModeBase class"},  # Already existed
-					"manager_autoload": {"status": "done", "name": "Create GameModeManager autoload"},  # Already existed
-					"mode_registration": {"status": "working", "name": "Implement mode registration system"}
+					"base_class": {"status": "done", "name": "Create GameModeBase class"},
+					"manager_autoload": {"status": "done", "name": "Create GameModeManager autoload"},
+					"mode_registration": {"status": "done", "name": "Implement mode registration system"}
 				}
 			},
 			"1_2_game_modes": {
-				"status": "working",  # Changed from "open"
+				"status": "done",
 				"name": "Implement Game Modes",
 				"subtasks": {
-					"tri_peaks": {"status": "done", "name": "Refactor existing to TriPeaksMode"},  # Already existed
-					"rush_mode": {"status": "done", "name": "Create RushMode (5 rounds, 1.5x score)"},  # Just created
-					"chill_mode": {"status": "done", "name": "Create ChillMode (no timer, 720s combo)"}  # Just created
+					"tri_peaks": {"status": "done", "name": "Refactor existing to TriPeaksMode"},
+					"rush_mode": {"status": "done", "name": "Create RushMode (5 rounds, 1.5x score)"},
+					"chill_mode": {"status": "done", "name": "Create ChillMode (no timer, 720s combo)"},
+					"test_mode": {"status": "done", "name": "Create TestMode (2 rounds for testing)"}
 				}
 			},
 			"1_3_ui_updates": {
-				"status": "open",
+				"status": "done",
 				"name": "Update UI for Modes",
 				"subtasks": {
-					"mode_select": {"status": "open", "name": "Mode selection in main menu"},
-					"timer_adapt": {"status": "open", "name": "Hide timer in chill mode"},
-					"score_display": {"status": "open", "name": "Show mode multiplier in score"}
+					"mode_select": {"status": "done", "name": "Mode selection in settings"},
+					"timer_adapt": {"status": "done", "name": "Hide timer in chill mode"},
+					"score_display": {"status": "done", "name": "Show mode in score screen"}
 				}
 			}
 		}
@@ -102,24 +139,91 @@ var roadmap = {
 		"status": "open",
 		"name": "Multiplayer System",
 		"tasks": {
-			"4_1_infrastructure": {"status": "open", "name": "Network infrastructure setup"},
-			"4_2_game_modes": {"status": "open", "name": "Multiplayer game modes"},
-			"4_3_matchmaking": {"status": "open", "name": "Matchmaking system"}
+			"4_1_infrastructure": {
+				"status": "open",
+				"name": "Network Infrastructure",
+				"subtasks": {
+					"websocket_server": {"status": "open", "name": "WebSocket server setup"},
+					"client_connection": {"status": "open", "name": "Client connection handling"},
+					"state_sync": {"status": "open", "name": "Game state synchronization"}
+				}
+			},
+			"4_2_game_modes": {
+				"status": "open",
+				"name": "Multiplayer Game Modes",
+				"subtasks": {
+					"vs_mode": {"status": "open", "name": "1v1 versus mode"},
+					"race_mode": {"status": "open", "name": "Race to clear board"},
+					"coop_mode": {"status": "open", "name": "Cooperative mode"}
+				}
+			},
+			"4_3_matchmaking": {
+				"status": "open",
+				"name": "Matchmaking System",
+				"subtasks": {
+					"lobby_system": {"status": "open", "name": "Game lobby creation"},
+					"quick_match": {"status": "open", "name": "Quick match algorithm"},
+					"ranking": {"status": "open", "name": "Player ranking system"}
+				}
+			},
+			"4_4_multiplayer_ui": {
+				"status": "open",
+				"name": "Multiplayer UI",
+				"subtasks": {
+					"end_screen": {"status": "open", "name": "Create EndScreen for multiplayer"},
+					"opponent_display": {"status": "open", "name": "Show opponent progress"},
+					"chat_system": {"status": "open", "name": "In-game chat"}
+				}
+			}
 		}
 	},
-	"phase_5_monetization": {
+	"phase_5_polish": {
+		"status": "open",
+		"name": "Polish & Enhancement",
+		"tasks": {
+			"5_1_animations": {
+				"status": "open",
+				"name": "Enhanced Animations",
+				"subtasks": {
+					"card_animations": {"status": "open", "name": "Smooth card movements"},
+					"combo_effects": {"status": "open", "name": "Combo visual effects"},
+					"victory_animation": {"status": "open", "name": "Board clear celebration"}
+				}
+			},
+			"5_2_audio": {
+				"status": "open",
+				"name": "Audio System",
+				"subtasks": {
+					"sound_effects": {"status": "open", "name": "Card flip, combo sounds"},
+					"music_system": {"status": "open", "name": "Background music tracks"},
+					"audio_settings": {"status": "open", "name": "Volume controls"}
+				}
+			},
+			"5_3_quality_of_life": {
+				"status": "open",
+				"name": "Quality of Life",
+				"subtasks": {
+					"settings_menu": {"status": "open", "name": "Comprehensive settings"},
+					"tutorial": {"status": "open", "name": "Interactive tutorial"},
+					"confirmation_dialogs": {"status": "open", "name": "Exit confirmations"},
+					"undo_system": {"status": "open", "name": "Undo last move"}
+				}
+			}
+		}
+	},
+	"phase_6_monetization": {
 		"status": "open",
 		"name": "Monetization Framework",
 		"tasks": {
-			"5_1_battle_pass": {"status": "open", "name": "Battle pass system"},
-			"5_2_ads": {"status": "open", "name": "Ad integration"},
-			"5_3_premium": {"status": "open", "name": "Premium features"}
+			"6_1_battle_pass": {"status": "open", "name": "Battle pass system"},
+			"6_2_ads": {"status": "open", "name": "Ad integration"},
+			"6_3_premium": {"status": "open", "name": "Premium features"}
 		}
 	}
 }
 
 func _run():
-	print("==============\n")
+	print("\n==============")
 	print("🏰 MAGIC CASTLE SOLITAIRE - ROADMAP STATUS 🏰")
 	print("==============\n")
 	
@@ -148,9 +252,19 @@ func _run():
 		print("")
 	
 	var progress = float(completed_tasks) / float(total_tasks) * 100.0
-	print("==============\n")
+	print("==============")
 	print("📊 Overall Progress: %d/%d tasks (%.1f%%)" % [completed_tasks, total_tasks, progress])
 	print("==============\n")
+	
+	# Show what's next
+	print("🎯 NEXT PRIORITIES:")
+	var priority_count = 0
+	for phase_key in roadmap:
+		var phase = roadmap[phase_key]
+		if phase.status == "open" and priority_count < 3:
+			print("  - " + phase.name)
+			priority_count += 1
+	print("\n==============\n")
 
 func _get_status_icon(status: String) -> String:
 	match status:

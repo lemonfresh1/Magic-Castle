@@ -69,6 +69,10 @@ func start_new_game(mode: String = "single") -> void:
 	
 	print("Current round AFTER reset: %d" % current_round)
 	
+	var game_mode_name = GameModeManager.get_current_mode().mode_name
+	print("Starting game with mode: %s" % game_mode_name)  # ADD THIS DEBUG
+	StatsManager.start_game(game_mode_name)
+	
 	start_round()
 
 func start_round() -> void:
@@ -128,8 +132,9 @@ func check_round_end() -> void:
 	
 	if should_end:
 		print("Round ending: %s" % reason)
+		set_meta("round_end_reason", reason)
 		_delayed_end_round(reason)
-
+	
 func _delayed_end_round(reason: String) -> void:
 	"""End round with a small delay to ensure all systems sync"""
 	# Wait 0.2 seconds for all systems to process
@@ -167,6 +172,21 @@ func end_round() -> void:
 	
 	print("Round %d completed - Score: %d" % [current_round, scores.round_total])
 	SignalBus.round_completed.emit(scores.round_total)
+	
+	var mode = GameModeManager.get_current_mode().mode_name
+	var reason = get_meta("round_end_reason", "Unknown")
+	StatsManager.track_round_end(
+		current_round,
+		board_cleared,
+		scores.round_total,
+		time_remaining,
+		reason,
+		mode
+	)
+	
+	# Track peak clears
+	if ScoreSystem.peaks_cleared_indices.size() > 0:
+		StatsManager.track_peak_clears(ScoreSystem.peaks_cleared_indices.size(), mode)
 	
 	# Show score screen
 	_show_score_screen(scores)
@@ -207,6 +227,11 @@ func _continue_to_next_round() -> void:
 
 func _end_game() -> void:
 	print("Game completed! Final score: %d" % total_score)
+	
+	# Track game end
+	var mode = GameModeManager.get_current_mode().mode_name
+	StatsManager.end_game(mode, total_score, current_round - 1)
+	
 	SignalBus.game_over.emit(total_score)
 
 # === HELPER FUNCTIONS ===

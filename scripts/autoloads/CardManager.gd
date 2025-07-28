@@ -106,6 +106,8 @@ func select_card(card_data: CardData) -> void:
 
 func _process_combo_progression() -> void:
 	current_combo += 1  # Increment FIRST
+	StatsManager.track_combo(current_combo)
+
 	
 	# Unlock slots based on NEW combo value
 	if current_combo == GameConstants.SLOT_2_UNLOCK_COMBO and active_slots == 1:
@@ -148,8 +150,11 @@ func _check_game_end_conditions() -> void:
 # === DRAW PILE ===
 func draw_from_pile() -> bool:
 	if not _can_draw():
-		await _check_game_end_after_draw_fail()  # Add await here
+		await _check_game_end_after_draw_fail()
 		return false
+	
+	# Track card drawn
+	StatsManager.track_card_drawn()
 		
 	var new_card = draw_pile.pop_front()
 	cards_drawn += 1
@@ -228,6 +233,7 @@ func _has_valid_moves_in_data() -> bool:
 
 # === SIGNAL HANDLERS ===
 func _on_card_selected(card: Control) -> void:
+	StatsManager.track_card_clicked()
 	if get_valid_slot_for_card(card.card_data) != -1:
 		select_card(card.card_data)
 		
@@ -250,6 +256,8 @@ func _on_card_selected(card: Control) -> void:
 		SignalBus.card_invalid_selected.emit(card)
 
 func _on_card_invalid_selected(card: Control) -> void:
+	SignalBus.score_changed.emit(GameConstants.INVALID_CLICK_PENALTY, "invalid_click")
+	StatsManager.track_invalid_click()
 	SignalBus.score_changed.emit(GameConstants.INVALID_CLICK_PENALTY, "invalid_click")
 
 func _on_draw_pile_clicked() -> void:
