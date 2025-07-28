@@ -342,3 +342,11 @@ func _return_to_menu() -> void:
 	
 	# Then return to main menu
 	get_tree().change_scene_to_file("res://Magic-Castle/scenes/ui/menus/MainMenu.tscn")
+
+func _unhandled_key_input(event: InputEvent) -> void:
+	# TODO: Remove before release - Press E to instantly end round
+	if event is InputEventKey and event.pressed:
+		if event.keycode == KEY_E:
+			print("DEBUG: Force ending round with E key")
+			_delayed_end_round("DEBUG: Forced end")
+			get_viewport().set_input_as_handled()

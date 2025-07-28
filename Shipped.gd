@@ -1,4 +1,5 @@
 # shipped.gd - Project Roadmap & Progress Tracker
+# CMD+SHIFT+X to run in output
 # Path: res://Magic-Castle/shipped.gd
 # Run this script to see project status: Click "Run" in script editor
 @tool
