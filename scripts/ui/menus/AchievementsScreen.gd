@@ -7,6 +7,8 @@ extends Control
 @onready var stats_container = $Panel/MarginContainer/VBoxContainer/TabContainer/Stats/ScrollContainer/StatsContainer
 @onready var back_button = $Panel/MarginContainer/VBoxContainer/HBoxContainer/BackButton
 @onready var title_label = $Panel/MarginContainer/VBoxContainer/HBoxContainer/Title
+@onready var star_display: Label = $Panel/MarginContainer/VBoxContainer/HBoxContainer/StarDisplay
+
 
 var achievement_item_scene = preload("res://Magic-Castle/scenes/ui/menus/AchievementItem.tscn")
 
@@ -18,7 +20,8 @@ func _ready():
 	
 	if tab_container:
 		tab_container.tab_changed.connect(_on_tab_changed)
-	
+
+	_update_star_display()
 	_populate_achievements()
 	_populate_stats()
 
@@ -29,7 +32,7 @@ func _populate_achievements():
 	for child in achievement_list.get_children():
 		child.queue_free()
 	
-	# Create grid container for 3x3 layout
+	# Create grid container for 3 columns layout
 	var grid = GridContainer.new()
 	grid.columns = 3
 	grid.add_theme_constant_override("h_separation", 20)
@@ -38,11 +41,18 @@ func _populate_achievements():
 	
 	print("Grid created, adding achievements...")
 	
-	# Add all 9 achievements
+	# Add all 18 achievements
 	var achievement_ids = [
-		"first_game", "board_clear", "play_10",
-		"combo_5", "combo_10", "speed_clear", 
-		"all_peaks", "score_10k", "perfect_round"
+		# Starter tier
+		"first_game", "board_clear", "play_10", "combo_5", "speed_clear",
+		# Skill tier
+		"combo_10", "all_peaks", "score_10k", "perfect_round", 
+		"ace_hunter", "king_slayer", "suit_master",
+		# Grind tier
+		"peak_crusher", "card_collector", "tap_master", 
+		"veteran", "perfect_week",
+		# Legendary tier
+		"million_club"
 	]
 	
 	for id in achievement_ids:
@@ -116,6 +126,15 @@ func _populate_stats():
 	_add_stat_row("Games", str(chill.games_played))
 	_add_stat_row("Clear Rate", "%.1f%%" % StatsManager.get_clear_rate("chill"))
 	_add_stat_row("Perfect Rounds", str(chill.perfect_rounds))
+	
+	_add_separator()
+	
+	# Test Mode
+	_add_section_header("Test Mode")
+	var test = StatsManager.get_mode_stats("test")
+	_add_stat_row("Games", str(test.games_played))
+	_add_stat_row("Clear Rate", "%.1f%%" % StatsManager.get_clear_rate("test"))
+	_add_stat_row("Perfect Rounds", str(test.perfect_rounds))
 
 func _add_section_header(text: String):
 	var header = Label.new()
@@ -179,9 +198,35 @@ func _on_tab_changed(tab: int):
 	match tab:
 		0:  # Achievements
 			title_label.text = "Achievements"
+			_update_star_display()  # Add this
 		1:  # Stats
 			title_label.text = "Statistics"
+			_update_star_display()  # Add this
 
 func _on_back_pressed():
 	back_pressed.emit()
 	get_tree().change_scene_to_file("res://Magic-Castle/scenes/ui/menus/MainMenu.tscn")
+
+func _update_star_display():
+	# Create star display if it doesn't exist
+	if not star_display:
+		star_display = Label.new()
+		star_display.name = "StarDisplay"
+		
+		# Find the HBoxContainer that has the title and back button
+		var hbox = $Panel/MarginContainer/VBoxContainer/HBoxContainer
+		if hbox:
+			# Add spacer to push star display to the right
+			var spacer = Control.new()
+			spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			hbox.add_child(spacer)
+			
+			# Add the star display
+			hbox.add_child(star_display)
+	
+	# Update the star count from StarManager
+	if star_display:
+		var total_stars = StarManager.get_balance()
+		star_display.text = "⭐ %d" % total_stars
+		star_display.add_theme_font_size_override("font_size", 20)
+		star_display.add_theme_color_override("font_color", Color.YELLOW)

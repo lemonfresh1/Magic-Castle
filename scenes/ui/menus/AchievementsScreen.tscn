@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://y8rh4vvc74tu" path="res://Magic-Castle/scripts/ui/menus/AchievementsScreen.gd" id="1_6yfjp"]
 
 [node name="AchievementsScreen" type="Control"]
-custom_minimum_size = Vector2(600, 400)
+custom_minimum_size = Vector2(450, 400)
 layout_mode = 3
 anchors_preset = 8
 anchor_left = 0.5

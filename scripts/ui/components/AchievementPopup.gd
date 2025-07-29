@@ -19,11 +19,15 @@ func _ready():
 	set_as_top_level(true)  # Ensure it renders above everything
 	
 	# Position at top-center of screen
-	anchor_left = 0.5
-	anchor_right = 0.5
+	anchor_left = 1
+	anchor_right = 1
 	anchor_top = 0.1
 	anchor_bottom = 0.1
-	pivot_offset = size / 2  # For scaling from center
+	# Offset from right edge
+	position.x = -10  # 10 pixels from right border
+	
+	# Set pivot for scaling animation from right side
+	pivot_offset = Vector2(size.x, size.y / 2)  # Changed to scale from right
 	
 	# Connect to achievement system
 	AchievementManager.achievement_unlocked.connect(_on_achievement_unlocked)

@@ -1,9 +1,10 @@
-# StatsManager.gd - Autoload for tracking game statistics
-# Path: res://Magic-Castle/scripts/managers/StatsManager.gd
+# StatsManager.gd - Enhanced statistics tracking for achievements
+# Path: res://Magic-Castle/scripts/autoloads/StatsManager.gd  
+# Added tracking for aces, kings, total peaks cleared, and more granular stats
 extends Node
 
 const SAVE_PATH = "user://stats.save"
-const STATS_VERSION = 1
+const STATS_VERSION = 2  # Increment for new stats
 
 # Main stats dictionary
 var stats = {
@@ -35,12 +36,20 @@ var current_game_stats = {
 	"invalid_clicks": 0,
 	"highest_combo": 0,
 	"time_started": 0,
-	"perfect_rounds": []  # Array of round numbers with no invalid clicks
+	"perfect_rounds": [],
+	"round_invalid_clicks": 0,
+	"aces_played": 0,      # NEW
+	"kings_played": 0,     # NEW
+	"suit_bonuses": 0      # NEW
 }
 
 func _ready() -> void:
 	print("StatsManager initializing...")
 	load_stats()
+	
+	# Connect to signals for new tracking
+	SignalBus.card_selected.connect(_on_card_selected)
+	
 	print("StatsManager ready")
 
 func _create_mode_stats() -> Dictionary:
@@ -55,22 +64,41 @@ func _create_mode_stats() -> Dictionary:
 		"invalid_clicks": 0,
 		"peak_clears": {"1": 0, "2": 0, "3": 0},
 		"perfect_rounds": 0,
-		"fastest_clear": -1.0,  # seconds, -1 = no clear yet
+		"fastest_clear": -1.0,
 		"most_cards_remaining": 0,
 		"suit_bonuses": 0,
-		"total_score": 0,  # For calculating average
-		"highest_round_reached": 0
+		"total_score": 0,
+		"highest_round_reached": 0,
+		# NEW stats for achievements
+		"aces_played": 0,
+		"kings_played": 0,
+		"total_peaks_cleared": 0  # Sum of all peaks (1+2+3)
 	}
 
-# === SAVE/LOAD ===
+# === NEW TRACKING METHODS ===
+func _on_card_selected(card: Control):
+	if not card or not card.card_data:
+		return
+		
+	# Track aces and kings
+	if card.card_data.rank == 1:  # Ace
+		current_game_stats.aces_played += 1
+	elif card.card_data.rank == 13:  # King
+		current_game_stats.kings_played += 1
+
+func track_suit_bonus(mode: String) -> void:
+	current_game_stats.suit_bonuses += 1
+	if stats.mode_stats.has(mode):
+		stats.mode_stats[mode].suit_bonuses += 1
+	stats.total_stats.suit_bonuses += 1
+
+# === SAVE/LOAD (Updated) ===
 func save_stats() -> void:
 	var save_file = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if save_file:
 		save_file.store_var(stats)
 		save_file.close()
 		print("Stats saved successfully")
-	else:
-		print("Failed to save stats")
 
 func load_stats() -> void:
 	if FileAccess.file_exists(SAVE_PATH):
@@ -79,29 +107,49 @@ func load_stats() -> void:
 			var loaded_stats = save_file.get_var()
 			save_file.close()
 			
-			# Validate and migrate if needed
 			if loaded_stats and loaded_stats.has("version"):
 				stats = loaded_stats
 				_migrate_stats_if_needed()
 				print("Stats loaded successfully")
-			else:
-				print("Invalid stats file, using defaults")
-		else:
-			print("Failed to load stats")
-	else:
-		print("No stats file found, using defaults")
 
 func _migrate_stats_if_needed() -> void:
-	# Future migrations go here
 	if stats.version < STATS_VERSION:
 		print("Migrating stats from version %d to %d" % [stats.version, STATS_VERSION])
+		
+		# Add new fields to existing stats
+		for mode in stats.mode_stats:
+			if not stats.mode_stats[mode].has("aces_played"):
+				stats.mode_stats[mode]["aces_played"] = 0
+			if not stats.mode_stats[mode].has("kings_played"):
+				stats.mode_stats[mode]["kings_played"] = 0
+			if not stats.mode_stats[mode].has("total_peaks_cleared"):
+				# Calculate from existing peak_clears
+				var total = 0
+				var peak_data = stats.mode_stats[mode].get("peak_clears", {})
+				total += peak_data.get("1", 0)
+				total += peak_data.get("2", 0) * 2
+				total += peak_data.get("3", 0) * 3
+				stats.mode_stats[mode]["total_peaks_cleared"] = total
+		
+		# Update total_stats too
+		if not stats.total_stats.has("aces_played"):
+			stats.total_stats["aces_played"] = 0
+		if not stats.total_stats.has("kings_played"):
+			stats.total_stats["kings_played"] = 0
+		if not stats.total_stats.has("total_peaks_cleared"):
+			var total = 0
+			var peak_data = stats.total_stats.get("peak_clears", {})
+			total += peak_data.get("1", 0)
+			total += peak_data.get("2", 0) * 2
+			total += peak_data.get("3", 0) * 3
+			stats.total_stats["total_peaks_cleared"] = total
+		
 		stats.version = STATS_VERSION
 		save_stats()
 
-# === GAME TRACKING ===
+# === GAME TRACKING (Updated) ===
 func start_game(mode: String) -> void:
-	print("StatsManager: Starting game in %s mode" % mode)  # ADD THIS
-
+	print("StatsManager: Starting game in %s mode" % mode)
 	current_game_stats = {
 		"cards_clicked": 0,
 		"cards_drawn": 0,
@@ -109,10 +157,12 @@ func start_game(mode: String) -> void:
 		"highest_combo": 0,
 		"time_started": Time.get_ticks_msec(),
 		"perfect_rounds": [],
-		"round_invalid_clicks": 0  # Track per round
+		"round_invalid_clicks": 0,
+		"aces_played": 0,
+		"kings_played": 0,
+		"suit_bonuses": 0
 	}
 	
-	# Increment games played
 	if stats.mode_stats.has(mode):
 		stats.mode_stats[mode].games_played += 1
 	stats.total_stats.games_played += 1
@@ -120,8 +170,8 @@ func start_game(mode: String) -> void:
 	save_stats()
 
 func end_game(mode: String, final_score: int, rounds_completed: int) -> void:
-	print("StatsManager: Game ended - Mode: %s, Score: %d, Rounds: %d" % [mode, final_score, rounds_completed])  # ADD THIS
-
+	print("StatsManager: Game ended - Mode: %s, Score: %d, Rounds: %d" % [mode, final_score, rounds_completed])
+	
 	# Update mode and total stats with accumulated values
 	if stats.mode_stats.has(mode):
 		var mode_stat = stats.mode_stats[mode]
@@ -129,6 +179,8 @@ func end_game(mode: String, final_score: int, rounds_completed: int) -> void:
 		mode_stat.cards_drawn += current_game_stats.cards_drawn
 		mode_stat.invalid_clicks += current_game_stats.invalid_clicks
 		mode_stat.total_score += final_score
+		mode_stat.aces_played += current_game_stats.aces_played
+		mode_stat.kings_played += current_game_stats.kings_played
 		
 		if rounds_completed > mode_stat.highest_round_reached:
 			mode_stat.highest_round_reached = rounds_completed
@@ -138,6 +190,8 @@ func end_game(mode: String, final_score: int, rounds_completed: int) -> void:
 	stats.total_stats.cards_drawn += current_game_stats.cards_drawn
 	stats.total_stats.invalid_clicks += current_game_stats.invalid_clicks
 	stats.total_stats.total_score += final_score
+	stats.total_stats.aces_played += current_game_stats.aces_played
+	stats.total_stats.kings_played += current_game_stats.kings_played
 	
 	# Check for new highscore
 	if final_score > stats.highscore.score:
@@ -158,6 +212,13 @@ func end_game(mode: String, final_score: int, rounds_completed: int) -> void:
 		}
 	
 	save_stats()
+
+func track_peak_clears(peaks_cleared: int, mode: String) -> void:
+	if stats.mode_stats.has(mode) and peaks_cleared > 0:
+		stats.mode_stats[mode].peak_clears[str(peaks_cleared)] += 1
+		stats.mode_stats[mode].total_peaks_cleared += peaks_cleared
+		stats.total_stats.peak_clears[str(peaks_cleared)] += 1
+		stats.total_stats.total_peaks_cleared += peaks_cleared
 
 func track_round_end(round: int, cleared: bool, score: int, time_left: float, reason: String, mode: String) -> void:
 	# Update round stats
@@ -222,8 +283,7 @@ func track_round_end(round: int, cleared: bool, score: int, time_left: float, re
 	save_stats()
 
 func track_card_clicked() -> void:
-	print("StatsManager: Card clicked! Total: %d" % current_game_stats.cards_clicked)  # ADD THIS
-
+	print("StatsManager: Card clicked! Total: %d" % current_game_stats.cards_clicked)
 	current_game_stats.cards_clicked += 1
 
 func track_card_drawn() -> void:
@@ -236,16 +296,6 @@ func track_invalid_click() -> void:
 func track_combo(combo: int) -> void:
 	if combo > current_game_stats.highest_combo:
 		current_game_stats.highest_combo = combo
-
-func track_peak_clears(peaks_cleared: int, mode: String) -> void:
-	if stats.mode_stats.has(mode) and peaks_cleared > 0:
-		stats.mode_stats[mode].peak_clears[str(peaks_cleared)] += 1
-		stats.total_stats.peak_clears[str(peaks_cleared)] += 1
-
-func track_suit_bonus(mode: String) -> void:
-	if stats.mode_stats.has(mode):
-		stats.mode_stats[mode].suit_bonuses += 1
-	stats.total_stats.suit_bonuses += 1
 
 # === GETTERS ===
 func get_highscore() -> Dictionary:
@@ -322,14 +372,12 @@ func print_stats_summary() -> void:
 	print("Average Score: %.1f" % get_average_score())
 	print("Clear Rate: %.1f%%" % get_clear_rate())
 	print("Perfect Round Rate: %.1f%%" % get_perfect_round_rate())
+	print("Aces Played: %d" % stats.total_stats.aces_played)
+	print("Kings Played: %d" % stats.total_stats.kings_played)
+	print("Total Peaks Cleared: %d" % stats.total_stats.total_peaks_cleared)
 	print("====================\n")
 
 func _unhandled_key_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed:
 		if event.keycode == KEY_S:
 			print_stats_summary()
-			print("Current game stats:")
-			print("  Cards clicked: %d" % current_game_stats.cards_clicked)
-			print("  Cards drawn: %d" % current_game_stats.cards_drawn)
-			print("  Invalid clicks: %d" % current_game_stats.invalid_clicks)
-			print("  Highest combo: %d" % current_game_stats.highest_combo)

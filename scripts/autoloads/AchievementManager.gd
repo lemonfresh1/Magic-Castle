@@ -101,7 +101,7 @@ var achievements = {
 		"stars": 15,
 		"rarity": Rarity.UNCOMMON,
 		"requirement": {"type": "aces_played", "value": 50},
-		"icon": "Card_A.png"
+		"icon": "Cloud.png"
 	},
 	"king_slayer": {
 		"name": "King Slayer",
@@ -109,7 +109,7 @@ var achievements = {
 		"stars": 15,
 		"rarity": Rarity.UNCOMMON,
 		"requirement": {"type": "kings_played", "value": 50},
-		"icon": "Card_K.png"
+		"icon": "Coin.png"
 	},
 	"suit_master": {
 		"name": "Suit Master",
@@ -117,7 +117,7 @@ var achievements = {
 		"stars": 20,
 		"rarity": Rarity.RARE,
 		"requirement": {"type": "suit_bonuses", "value": 100},
-		"icon": "Suits.png"
+		"icon": "Cutlery.png"
 	},
 	
 	# === GRIND TIER (30-50 stars) ===
@@ -127,7 +127,7 @@ var achievements = {
 		"stars": 30,
 		"rarity": Rarity.RARE,
 		"requirement": {"type": "total_peaks", "value": 100},
-		"icon": "Mountain.png"
+		"icon": "CookingPot.png"
 	},
 	"card_collector": {
 		"name": "Card Collector",
@@ -135,7 +135,7 @@ var achievements = {
 		"stars": 35,
 		"rarity": Rarity.RARE,
 		"requirement": {"type": "cards_drawn", "value": 500},
-		"icon": "Deck.png"
+		"icon": "Exit.png"
 	},
 	"tap_master": {
 		"name": "Tap Master",
@@ -143,7 +143,7 @@ var achievements = {
 		"stars": 40,
 		"rarity": Rarity.EPIC,
 		"requirement": {"type": "cards_played", "value": 1000},
-		"icon": "Hand.png"
+		"icon": "Eye.png"
 	},
 	"veteran": {
 		"name": "Veteran",
@@ -151,7 +151,7 @@ var achievements = {
 		"stars": 45,
 		"rarity": Rarity.EPIC,
 		"requirement": {"type": "games_played", "value": 100},
-		"icon": "Medal.png"
+		"icon": "FlowerPot.png"
 	},
 	"perfect_week": {
 		"name": "Perfect Week",
@@ -159,7 +159,7 @@ var achievements = {
 		"stars": 50,
 		"rarity": Rarity.EPIC,
 		"requirement": {"type": "perfect_rounds", "value": 7},
-		"icon": "Calendar.png"
+		"icon": "Info.png"
 	},
 	
 	# === LEGENDARY TIER (100 stars) ===
@@ -169,7 +169,7 @@ var achievements = {
 		"stars": 100,
 		"rarity": Rarity.LEGENDARY,
 		"requirement": {"type": "total_score", "value": 1000000},
-		"icon": "Crown.png"
+		"icon": "Key.png"
 	}
 }
 
@@ -309,13 +309,13 @@ func load_achievements():
 			file.close()
 			
 			if save_data and save_data.has("unlocked"):
-				unlocked_achievements = save_data.unlocked
+				unlocked_achievements.assign(save_data.unlocked)
 				achievement_progress = save_data.get("progress", {})
-				seen_achievements = save_data.get("seen", [])
+				seen_achievements.assign(save_data.get("seen", []))
 				
 				# Migrate if old version
 				if save_data.get("version", 1) < 2:
-					seen_achievements = []  # All unlocked are "new" after update
+					seen_achievements.clear()  # All unlocked are "new" after update
 
 func is_unlocked(id: String) -> bool:
 	return id in unlocked_achievements

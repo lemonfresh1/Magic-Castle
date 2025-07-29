@@ -27,6 +27,7 @@ var card_back_texture = preload("res://Magic-Castle/assets/cards/card_back.png")
 
 func _ready() -> void:
 	# Apply bar colors
+	_style_panel()
 	_style_timer_bar()
 	_style_combo_bar()
 	
@@ -181,3 +182,14 @@ func _on_draw_pile_clicked() -> void:
 	slot_2_countdown.text = str(GameConstants.SLOT_2_UNLOCK_COMBO)
 	slot_3_countdown.text = str(GameConstants.SLOT_3_UNLOCK_COMBO)
 	call_deferred("update_slots")
+
+func _style_panel() -> void:
+	# Get the Panel node (parent of everything)
+	var panel = $Panel
+	if panel:
+		var style = StyleBoxFlat.new()
+		style.bg_color = Color(0.1, 0.1, 0.1, 0.0)  # Nearly transparent
+		style.border_color = Color(0.3, 0.3, 0.3, 0.2)  # Subtle border
+		style.set_border_width_all(2)
+		style.set_corner_radius_all(5)
+		panel.add_theme_stylebox_override("panel", style)
