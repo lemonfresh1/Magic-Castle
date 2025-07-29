@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://b6d85gif4j50f"]
+
+[ext_resource type="Script" uid="uid://bjkjguao1nu0m" path="res://Magic-Castle/scripts/ui/backgrounds/OrganicBackground.gd" id="1_xn1wl"]
+
+[node name="ColorRect" type="ColorRect"]
+script = ExtResource("1_xn1wl")

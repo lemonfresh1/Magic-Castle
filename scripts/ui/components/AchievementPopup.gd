@@ -4,10 +4,9 @@
 extends Control
 
 @onready var panel = $Panel
-@onready var achievement_name = $Panel/MarginContainer/VBoxContainer/HBoxContainer/VBoxContainer/AchievementName
-@onready var description = $Panel/MarginContainer/VBoxContainer/HBoxContainer/VBoxContainer/Description
-@onready var icon = $Panel/MarginContainer/VBoxContainer/HBoxContainer/Icon
-@onready var star_reward = $Panel/MarginContainer/VBoxContainer/HBoxContainer/VBoxContainer/StarReward
+@onready var icon: TextureRect = $Panel/MarginContainer/HBoxContainer/Icon
+@onready var achievement_name: Label = $Panel/MarginContainer/HBoxContainer/AchievementName
+
 
 # Queue for multiple achievements
 var achievement_queue: Array[String] = []
@@ -51,8 +50,6 @@ func _show_next_achievement():
 	
 	# Set content
 	achievement_name.text = achievement.name
-	description.text = achievement.description
-	star_reward.text = "+%d ⭐" % achievement.stars
 	
 	# Set icon
 	var icon_path = "res://Magic-Castle/assets/icons/achievements/" + achievement.icon
