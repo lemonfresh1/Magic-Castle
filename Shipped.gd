@@ -77,69 +77,104 @@ var roadmap = {
 			}
 		}
 	},
-	"phase_2_achievements": {
-		"status": "open",
+	"phase_2_statistics": {
+		"status": "done",
+		"name": "Statistics System",
+		"tasks": {
+			"2_1_stats_manager": {
+				"status": "done",
+				"name": "Create StatsManager",
+				"subtasks": {
+					"manager_autoload": {"status": "done", "name": "Create StatsManager autoload"},
+					"save_load": {"status": "done", "name": "Implement save/load system"},
+					"tracking": {"status": "done", "name": "Track all game statistics"},
+					"integration": {"status": "done", "name": "Hook into game systems"}
+				}
+			},
+			"2_2_stats_display": {
+				"status": "done",
+				"name": "Statistics Display",
+				"subtasks": {
+					"stats_screen": {"status": "done", "name": "Stats tab in achievements screen"},
+					"formatting": {"status": "done", "name": "Number formatting and percentages"},
+					"mode_stats": {"status": "done", "name": "Per-mode statistics"}
+				}
+			}
+		}
+	},
+	"phase_3_achievements": {
+		"status": "working",
 		"name": "Achievements System",
 		"tasks": {
-			"2_1_achievement_manager": {
-				"status": "open",
+			"3_1_achievement_manager": {
+				"status": "done",
 				"name": "Create AchievementManager",
 				"subtasks": {
-					"manager_autoload": {"status": "open", "name": "Create AchievementManager autoload"},
-					"definitions": {"status": "open", "name": "Define achievement resources"},
-					"tracking": {"status": "open", "name": "Implement progress tracking"},
-					"persistence": {"status": "open", "name": "Save/load achievement data"}
+					"manager_autoload": {"status": "done", "name": "Create AchievementManager autoload"},
+					"definitions": {"status": "done", "name": "Define 9 achievements"},
+					"tracking": {"status": "done", "name": "Implement progress tracking"},
+					"persistence": {"status": "done", "name": "Save/load achievement data"}
 				}
 			},
-			"2_2_achievement_ui": {
-				"status": "open",
+			"3_2_achievement_ui": {
+				"status": "working",
 				"name": "Achievement UI Components",
 				"subtasks": {
-					"notification": {"status": "open", "name": "Unlock notification popup"},
-					"panel": {"status": "open", "name": "Achievement gallery panel"},
-					"progress_bars": {"status": "open", "name": "Progress indicators"}
+					"achievement_screen": {"status": "done", "name": "3x3 grid display"},
+					"achievement_items": {"status": "done", "name": "Individual achievement cards"},
+					"progress_bars": {"status": "done", "name": "Progress indicators"},
+					"notification": {"status": "done", "name": "Unlock notification popup"}
 				}
 			},
-			"2_3_integration": {
-				"status": "open",
+			"3_3_integration": {
+				"status": "working",
 				"name": "Achievement Integration",
 				"subtasks": {
-					"game_hooks": {"status": "open", "name": "Hook into game events"},
-					"mode_specific": {"status": "open", "name": "Mode-specific achievements"},
+					"game_hooks": {"status": "done", "name": "Hook into game events"},
+					"unlock_detection": {"status": "done", "name": "Fix timing issues"},
 					"testing": {"status": "open", "name": "Test all achievement triggers"}
 				}
 			}
 		}
 	},
-	"phase_3_statistics": {
+	"phase_4_meta_progression": {
 		"status": "open",
-		"name": "Statistics Database",
+		"name": "Meta Progression System",
 		"tasks": {
-			"3_1_database": {
+			"4_1_star_currency": {
 				"status": "open",
-				"name": "Create DatabaseManager",
+				"name": "Star Currency System",
 				"subtasks": {
-					"manager": {"status": "open", "name": "DatabaseManager autoload"},
-					"schema": {"status": "open", "name": "Define database schema"},
-					"queries": {"status": "open", "name": "Implement CRUD operations"}
+					"currency_manager": {"status": "open", "name": "Create currency manager"},
+					"star_rewards": {"status": "open", "name": "Implement star rewards"},
+					"display": {"status": "open", "name": "Show stars in UI"}
 				}
 			},
-			"3_2_stats_display": {
+			"4_2_unlockables": {
 				"status": "open",
-				"name": "Statistics Display",
+				"name": "Unlockable Content",
 				"subtasks": {
-					"main_widget": {"status": "open", "name": "Main menu stats widget"},
-					"stats_screen": {"status": "open", "name": "Detailed statistics screen"},
-					"post_game": {"status": "open", "name": "Post-game comparisons"}
+					"shop_system": {"status": "open", "name": "Create shop interface"},
+					"board_skins": {"status": "open", "name": "Unlockable backgrounds"},
+					"card_backs": {"status": "open", "name": "Custom card designs"}
+				}
+			},
+			"4_3_daily_missions": {
+				"status": "open",
+				"name": "Daily Missions",
+				"subtasks": {
+					"mission_system": {"status": "open", "name": "Mission generation"},
+					"progress_tracking": {"status": "open", "name": "Track mission progress"},
+					"rewards": {"status": "open", "name": "Mission rewards"}
 				}
 			}
 		}
 	},
-	"phase_4_multiplayer": {
+	"phase_5_multiplayer": {
 		"status": "open",
 		"name": "Multiplayer System",
 		"tasks": {
-			"4_1_infrastructure": {
+			"5_1_infrastructure": {
 				"status": "open",
 				"name": "Network Infrastructure",
 				"subtasks": {
@@ -148,7 +183,7 @@ var roadmap = {
 					"state_sync": {"status": "open", "name": "Game state synchronization"}
 				}
 			},
-			"4_2_game_modes": {
+			"5_2_game_modes": {
 				"status": "open",
 				"name": "Multiplayer Game Modes",
 				"subtasks": {
@@ -157,7 +192,7 @@ var roadmap = {
 					"coop_mode": {"status": "open", "name": "Cooperative mode"}
 				}
 			},
-			"4_3_matchmaking": {
+			"5_3_matchmaking": {
 				"status": "open",
 				"name": "Matchmaking System",
 				"subtasks": {
@@ -165,23 +200,14 @@ var roadmap = {
 					"quick_match": {"status": "open", "name": "Quick match algorithm"},
 					"ranking": {"status": "open", "name": "Player ranking system"}
 				}
-			},
-			"4_4_multiplayer_ui": {
-				"status": "open",
-				"name": "Multiplayer UI",
-				"subtasks": {
-					"end_screen": {"status": "open", "name": "Create EndScreen for multiplayer"},
-					"opponent_display": {"status": "open", "name": "Show opponent progress"},
-					"chat_system": {"status": "open", "name": "In-game chat"}
-				}
 			}
 		}
 	},
-	"phase_5_polish": {
+	"phase_6_polish": {
 		"status": "open",
 		"name": "Polish & Enhancement",
 		"tasks": {
-			"5_1_animations": {
+			"6_1_animations": {
 				"status": "open",
 				"name": "Enhanced Animations",
 				"subtasks": {
@@ -190,7 +216,7 @@ var roadmap = {
 					"victory_animation": {"status": "open", "name": "Board clear celebration"}
 				}
 			},
-			"5_2_audio": {
+			"6_2_audio": {
 				"status": "open",
 				"name": "Audio System",
 				"subtasks": {
@@ -199,25 +225,15 @@ var roadmap = {
 					"audio_settings": {"status": "open", "name": "Volume controls"}
 				}
 			},
-			"5_3_quality_of_life": {
+			"6_3_quality_of_life": {
 				"status": "open",
 				"name": "Quality of Life",
 				"subtasks": {
-					"settings_menu": {"status": "open", "name": "Comprehensive settings"},
 					"tutorial": {"status": "open", "name": "Interactive tutorial"},
 					"confirmation_dialogs": {"status": "open", "name": "Exit confirmations"},
 					"undo_system": {"status": "open", "name": "Undo last move"}
 				}
 			}
-		}
-	},
-	"phase_6_monetization": {
-		"status": "open",
-		"name": "Monetization Framework",
-		"tasks": {
-			"6_1_battle_pass": {"status": "open", "name": "Battle pass system"},
-			"6_2_ads": {"status": "open", "name": "Ad integration"},
-			"6_3_premium": {"status": "open", "name": "Premium features"}
 		}
 	}
 }
@@ -256,14 +272,22 @@ func _run():
 	print("📊 Overall Progress: %d/%d tasks (%.1f%%)" % [completed_tasks, total_tasks, progress])
 	print("==============\n")
 	
-	# Show what's next
-	print("🎯 NEXT PRIORITIES:")
-	var priority_count = 0
+	# Show what's currently being worked on
+	print("🔄 CURRENTLY WORKING ON:")
+	var working_count = 0
 	for phase_key in roadmap:
 		var phase = roadmap[phase_key]
-		if phase.status == "open" and priority_count < 3:
+		if phase.status == "working":
 			print("  - " + phase.name)
-			priority_count += 1
+			for task_key in phase.tasks:
+				var task = phase.tasks[task_key]
+				if task.status == "working":
+					print("    └─ " + task.name)
+			working_count += 1
+	
+	if working_count == 0:
+		print("  Nothing in active development")
+	
 	print("\n==============\n")
 
 func _get_status_icon(status: String) -> String:
@@ -272,14 +296,3 @@ func _get_status_icon(status: String) -> String:
 		"working": return "🔄"
 		"open": return "⬜"
 		_: return "❓"
-
-# Quick status check function
-func get_current_task() -> String:
-	for phase_key in roadmap:
-		var phase = roadmap[phase_key]
-		if phase.status == "working":
-			for task_key in phase.tasks:
-				var task = phase.tasks[task_key]
-				if task.status == "working":
-					return phase.name + " > " + task.name
-	return "No task currently in progress"

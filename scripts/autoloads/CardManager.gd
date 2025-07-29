@@ -1,4 +1,5 @@
 # CardManager.gd - Improved version with separated concerns
+# Path: res://Magic-Castle/scripts/autoloads/CardManager.gd
 extends Node
 
 # === DECK STATE ===
@@ -107,7 +108,7 @@ func select_card(card_data: CardData) -> void:
 func _process_combo_progression() -> void:
 	current_combo += 1  # Increment FIRST
 	StatsManager.track_combo(current_combo)
-
+	AchievementManager.check_achievements()  # Check each time combo updates
 	
 	# Unlock slots based on NEW combo value
 	if current_combo == GameConstants.SLOT_2_UNLOCK_COMBO and active_slots == 1:

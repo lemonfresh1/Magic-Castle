@@ -1,4 +1,5 @@
 #ScoreSystem.gd
+# Path: res://Magic-Castle/scripts/autoloads/ScoreSystem.gd
 extends Node
 
 

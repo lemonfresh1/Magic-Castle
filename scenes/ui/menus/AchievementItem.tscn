@@ -1,0 +1,66 @@
+[gd_scene load_steps=3 format=3 uid="uid://0ddccgvkkcmo"]
+
+[ext_resource type="Script" uid="uid://bdwottn72lx64" path="res://Magic-Castle/scripts/ui/menus/AchievementItem.gd" id="1_qs4db"]
+[ext_resource type="Texture2D" uid="uid://c4en11ap74lae" path="res://Magic-Castle/assets/icons/achievements/Trophy.png" id="2_pqq20"]
+
+[node name="AchievementItem" type="Panel"]
+custom_minimum_size = Vector2(160, 160)
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("1_qs4db")
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="IconContainer" type="Control" parent="MarginContainer/VBoxContainer"]
+custom_minimum_size = Vector2(80, 80)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+
+[node name="Icon" type="TextureRect" parent="MarginContainer/VBoxContainer/IconContainer"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -32.0
+offset_top = -32.0
+offset_right = 32.0
+offset_bottom = 32.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("2_pqq20")
+
+[node name="Name" type="Label" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Player"
+horizontal_alignment = 1
+
+[node name="ProgressBar" type="ProgressBar" parent="MarginContainer/VBoxContainer"]
+custom_minimum_size = Vector2(60, 10)
+layout_mode = 2
+size_flags_horizontal = 4
+show_percentage = false
+
+[node name="StarReward" type="Label" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "⭐ 20"
+horizontal_alignment = 1

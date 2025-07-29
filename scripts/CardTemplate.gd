@@ -1,4 +1,5 @@
 # CardTemplate.gd - Refactored for menu use
+# Path: res://Magic-Castle/scripts/autoloads/
 extends Control
 
 @export var preview_mode: bool = false  # True for menu previews

@@ -1,4 +1,5 @@
 # AudioSystem.gd - Autoload for game audio management
+# Path: res://Magic-Castle/scripts/autoloads/AudioSystem.gd
 extends Node
 
 # === AUDIO PLAYERS ===

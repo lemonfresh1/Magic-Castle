@@ -1,4 +1,5 @@
 # MainMenu.gd
+# Path: res://Magic-Castle/scripts/ui/menus/MainMenu.gd
 extends Control
 
 # UI References
@@ -116,8 +117,7 @@ func _on_settings_pressed() -> void:
 	settings_overlay.visible = true
 
 func _on_achievements_pressed() -> void:
-	menu_container.visible = false
-	achievements_overlay.visible = true
+	get_tree().change_scene_to_file("res://Magic-Castle/scenes/ui/menus/AchievementsScreen.tscn")
 
 func _on_exit_pressed() -> void:
 	get_tree().quit()

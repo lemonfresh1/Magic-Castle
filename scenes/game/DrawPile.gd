@@ -1,4 +1,5 @@
 # DrawPile.gd
+# Path: res://Magic-Castle/scenes/game/DrawPile.gd
 extends Control
 
 @onready var card_back: TextureRect = $CardBack

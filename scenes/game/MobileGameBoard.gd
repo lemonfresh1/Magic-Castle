@@ -1,4 +1,5 @@
 # MobileGameBoard.gd - Mobile-optimized game board
+# Path: res://Magic-Castle/scenes/game/MobileGameBoard.gd
 extends Control
 
 # === SCENE REFERENCES ===

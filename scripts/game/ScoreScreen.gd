@@ -1,4 +1,5 @@
 # ScoreScreen.gd
+# Path: res://Magic-Castle/scripts/game/ScoreScreen.gd
 extends Control
 
 @onready var panel: Panel = $Panel

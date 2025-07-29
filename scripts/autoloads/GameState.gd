@@ -1,4 +1,5 @@
 # GameState.gd - Autoload for game state management
+# Path: res://Magic-Castle/scripts/autoloads/GameState.gd
 extends Node
 
 # === GAME MODE ===
@@ -150,7 +151,19 @@ func end_round() -> void:
 	"""Actually end the current round"""
 	is_round_active = false
 	set_process(false)  # Stop timer processing
+	print("Checking achievements at round end...")
+
+	# Store peak data before it gets reset
+	if ScoreSystem and ScoreSystem.peaks_cleared_indices.size() >= 3:
+		print("All 3 peaks cleared!")
 	
+	# Check speed clear while time_remaining is still valid
+	if board_cleared and round_time_limit > 0:
+		var time_taken = round_time_limit - time_remaining
+		print("Board cleared in %.1f seconds" % time_taken)
+	
+	AchievementManager.check_achievements()
+
 	# Calculate scores through ScoreSystem
 	var scores = ScoreSystem.calculate_round_scores(board_cleared)
 	
@@ -231,7 +244,8 @@ func _end_game() -> void:
 	# Track game end
 	var mode = GameModeManager.get_current_mode().mode_name
 	StatsManager.end_game(mode, total_score, current_round - 1)
-	
+	print("Checking achievements...")
+	AchievementManager.check_achievements()
 	SignalBus.game_over.emit(total_score)
 
 # === HELPER FUNCTIONS ===

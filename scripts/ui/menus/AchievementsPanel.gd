@@ -1,4 +1,5 @@
 # AchievementsPanel.gd
+# res://Magic-Castle/scripts/ui/menus/AchievementsPanel.gd
 extends Control
 
 @onready var back_button: Button = $Panel/MarginContainer/VBoxContainer/Header/BackButton

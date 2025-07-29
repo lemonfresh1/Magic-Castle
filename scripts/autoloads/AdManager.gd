@@ -1,4 +1,5 @@
 # AdManager.gd - Autoload for ad management
+# Path: res://Magic-Castle/scripts/autoloads/AdManager.gd
 extends Node
 
 signal ad_completed
