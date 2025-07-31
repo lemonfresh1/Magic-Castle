@@ -1,4 +1,5 @@
 # CardData.gd - Resource class for individual cards
+# Path: res://Magic-Castle/scripts/game/CardData.gd
 extends Resource
 class_name CardData
 

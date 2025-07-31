@@ -1,4 +1,5 @@
 # BoardPreview.gd
+# Path: res://Magic-Castle/scripts/ui/components/BoardPreview.gd
 extends Panel
 
 var current_skin: String = "green"

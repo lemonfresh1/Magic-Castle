@@ -1,4 +1,5 @@
 # GameConstants.gd - Autoload for game configuration
+# Path: res://Magic-Castle/scripts/autoloads/GameConstants.gd
 extends Node
 
 # === GAME RULES ===

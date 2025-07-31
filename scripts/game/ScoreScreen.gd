@@ -1,4 +1,5 @@
 # ScoreScreen.gd
+# Path: res://Magic-Castle/scripts/game/ScoreScreen.gd
 extends Control
 
 @onready var panel: Panel = $Panel
@@ -129,6 +130,9 @@ func _show_game_over() -> void:
 	# Update UI for game over
 	title_label.text = "Game Complete!"
 	
+	# CRITICAL FIX: Add the current round score to total before displaying
+	var final_total = GameState.total_score + current_round_score
+	
 	# Create round summary
 	var summary_text = "=== ROUND SUMMARY ===\n\n"
 	var best_round = 0
@@ -167,9 +171,12 @@ func _show_game_over() -> void:
 	score_label_clear.visible = false
 	round_score_label.visible = false
 	
-	# Show final score prominently
-	total_score_label.text = "Final Score: %d" % GameState.total_score
+	# Show final score prominently - USE THE CORRECTED TOTAL
+	total_score_label.text = "Final Score: %d" % final_total
 	total_score_label.add_theme_font_size_override("font_size", 40)
+	
+	# Also update GameState so it's correct if needed elsewhere
+	GameState.total_score = final_total
 	
 	continue_button.text = "Return to Menu"
 	continue_button.visible = true
