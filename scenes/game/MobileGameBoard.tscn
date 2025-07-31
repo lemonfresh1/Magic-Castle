@@ -20,6 +20,7 @@ grow_horizontal = 2
 grow_vertical = 2
 
 [node name="LeftDrawZone" type="Control" parent="BoardArea"]
+z_index = -18
 custom_minimum_size = Vector2(80, 0)
 layout_mode = 1
 anchors_preset = 9
@@ -40,6 +41,7 @@ grow_vertical = 2
 pivot_offset = Vector2(80, 20)
 
 [node name="RightDrawZone" type="Control" parent="BoardArea"]
+z_index = -18
 custom_minimum_size = Vector2(80, 0)
 layout_mode = 1
 anchors_preset = 11
