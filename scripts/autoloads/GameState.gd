@@ -53,10 +53,6 @@ func _process(delta: float) -> void:
 
 # === GAME MANAGEMENT ===
 func start_new_game(mode: String = "single") -> void:
-	print("Starting new game - Mode: %s" % mode)
-	print("Current round BEFORE reset: %d" % current_round)
-	print("Current game mode: %s (max rounds: %d)" % [GameModeManager.get_current_mode().mode_name, GameModeManager.get_max_rounds()])
-	
 	# RESET EVERYTHING FIRST
 	game_mode = mode
 	is_multiplayer = (mode == "multi")
@@ -68,11 +64,11 @@ func start_new_game(mode: String = "single") -> void:
 	cards_cleared = 0
 	board_cleared = false
 	
-	print("Current round AFTER reset: %d" % current_round)
-	
 	var game_mode_name = GameModeManager.get_current_mode().mode_name
-	print("Starting game with mode: %s" % game_mode_name)  # ADD THIS DEBUG
+	print("Starting game with mode: %s" % game_mode_name)
 	StatsManager.start_game(game_mode_name)
+	XPManager.rewards_enabled = false
+	StarManager.rewards_enabled = false  # Add similar flag to StarManager
 	
 	start_round()
 

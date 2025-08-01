@@ -176,11 +176,11 @@ var achievements = {
 var unlocked_achievements: Array[String] = []
 var achievement_progress = {}  # id -> float (0.0 to 1.0)
 var seen_achievements: Array[String] = []  # Tracks which are no longer "new"
+var session_unlocked_achievements: Array[String] = []  # Achievements unlocked this session
+
 
 func _ready():
-	print("AchievementManager initializing...")
 	load_achievements()
-	print("AchievementManager ready with %d achievements" % achievements.size())
 
 func check_achievements():
 	var stats = StatsManager.get_total_stats()
@@ -253,6 +253,7 @@ func unlock_achievement(id: String):
 		
 	unlocked_achievements.append(id)
 	achievement_progress[id] = 1.0
+	session_unlocked_achievements.append(id)  # This is already here
 	
 	# It's "new" until player sees it
 	if id not in seen_achievements:
@@ -264,6 +265,11 @@ func unlock_achievement(id: String):
 	
 	var achievement = achievements[id]
 	print("Achievement Unlocked: %s (+%d stars)" % [achievement.name, achievement.stars])
+	
+	# Award XP for achievement - BUT CHECK IF REWARDS ARE ENABLED
+	if XPManager and XPManager.has_method("add_achievement_xp"):
+		if XPManager.rewards_enabled:  # Only if rewards are enabled
+			XPManager.add_achievement_xp(id)
 
 func mark_achievement_seen(id: String):
 	if id not in seen_achievements:
@@ -334,3 +340,8 @@ func reset_all_achievements() -> void:
 	seen_achievements.clear()
 	save_achievements()
 	print("All achievements reset")
+
+func get_and_clear_session_achievements() -> Array[String]:
+	var achievements = session_unlocked_achievements.duplicate()
+	session_unlocked_achievements.clear()
+	return achievements

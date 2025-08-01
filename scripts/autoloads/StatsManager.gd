@@ -283,7 +283,6 @@ func track_round_end(round: int, cleared: bool, score: int, time_left: float, re
 	save_stats()
 
 func track_card_clicked() -> void:
-	print("StatsManager: Card clicked! Total: %d" % current_game_stats.cards_clicked)
 	current_game_stats.cards_clicked += 1
 
 func track_card_drawn() -> void:

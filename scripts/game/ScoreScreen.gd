@@ -118,12 +118,21 @@ func _on_continue_pressed() -> void:
 	# Check if game is over based on current mode's max rounds
 	var max_rounds = GameModeManager.get_max_rounds()
 	if GameState.current_round >= max_rounds:
-		_show_game_over()
-	else:
 		# Hide score screen
 		visible = false
 		
-		# Continue to next round directly through GameState
+		# Show post-game summary
+		var summary_scene = preload("res://Magic-Castle/scenes/ui/game_ui/PostGameSummary.tscn")
+		var summary = summary_scene.instantiate()
+		summary.add_to_group("post_game_summary")
+		get_tree().root.add_child(summary)
+		
+		# Calculate final total including current round
+		var final_total = GameState.total_score + current_round_score
+		summary.show_summary(final_total, GameState.round_stats)
+	else:
+		# Hide score screen and continue to next round
+		visible = false
 		GameState._continue_to_next_round()
 
 func _show_game_over() -> void:

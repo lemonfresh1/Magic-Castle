@@ -1,0 +1,213 @@
+[gd_scene load_steps=5 format=3 uid="uid://bupx7dubvtmh5"]
+
+[ext_resource type="StyleBox" uid="uid://dk212xk0jrtpc" path="res://Magic-Castle/res/PopupPanelLayout.tres" id="1_0x1kt"]
+[ext_resource type="Script" uid="uid://c8ev4gttsxqap" path="res://Magic-Castle/scripts/ui/game_ui/PostGameSummary.gd" id="1_qxkxq"]
+[ext_resource type="StyleBox" uid="uid://cf4gwa8xipnwh" path="res://Magic-Castle/res/XPBarLayout.tres" id="2_qxkxq"]
+[ext_resource type="StyleBox" uid="uid://bdt87hqe856cv" path="res://Magic-Castle/res/XPBarFillLayout.tres" id="3_qxbof"]
+
+[node name="PostGameSummary" type="Control"]
+z_index = 1000
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_qxkxq")
+
+[node name="ColorRect" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.792157)
+
+[node name="Panel" type="Panel" parent="."]
+custom_minimum_size = Vector2(800, 400)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -20.0
+offset_top = -20.0
+offset_right = 20.0
+offset_bottom = 20.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = ExtResource("1_0x1kt")
+
+[node name="MarginContainer" type="MarginContainer" parent="Panel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Panel/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="ButtonContainer" type="HBoxContainer" parent="Panel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 0
+theme_override_constants/separation = 20
+
+[node name="TitleLabel" type="Label" parent="Panel/MarginContainer/VBoxContainer/ButtonContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Progression Overview"
+horizontal_alignment = 1
+
+[node name="ContinueButton" type="Button" parent="Panel/MarginContainer/VBoxContainer/ButtonContainer"]
+custom_minimum_size = Vector2(180, 40)
+layout_mode = 2
+size_flags_horizontal = 10
+size_flags_vertical = 6
+text = "Back to menu"
+
+[node name="RematchButton" type="Button" parent="Panel/MarginContainer/VBoxContainer/ButtonContainer"]
+custom_minimum_size = Vector2(180, 40)
+layout_mode = 2
+size_flags_horizontal = 2
+size_flags_vertical = 6
+text = "Play Again"
+
+[node name="HSeparator" type="HSeparator" parent="Panel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="Progression" type="HBoxContainer" parent="Panel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="XPSection" type="VBoxContainer" parent="Panel/MarginContainer/VBoxContainer/Progression"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.6
+
+[node name="XPGainedLabel" type="Label" parent="Panel/MarginContainer/VBoxContainer/Progression/XPSection"]
+layout_mode = 2
+text = "Experience gained: 500"
+
+[node name="XPBarContainer" type="HBoxContainer" parent="Panel/MarginContainer/VBoxContainer/Progression/XPSection"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Label" type="Label" parent="Panel/MarginContainer/VBoxContainer/Progression/XPSection/XPBarContainer"]
+custom_minimum_size = Vector2(70, 0)
+layout_mode = 2
+text = "Level 5"
+
+[node name="ProgressBar" type="ProgressBar" parent="Panel/MarginContainer/VBoxContainer/Progression/XPSection/XPBarContainer"]
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_styles/background = ExtResource("2_qxkxq")
+theme_override_styles/fill = ExtResource("3_qxbof")
+value = 50.0
+show_percentage = false
+
+[node name="VSeparator2" type="VSeparator" parent="Panel/MarginContainer/VBoxContainer/Progression"]
+layout_mode = 2
+
+[node name="MMRSection" type="VBoxContainer" parent="Panel/MarginContainer/VBoxContainer/Progression"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="MMRGainedLabel" type="Label" parent="Panel/MarginContainer/VBoxContainer/Progression/MMRSection"]
+layout_mode = 2
+text = "MMR change: +25"
+
+[node name="MMRLabel" type="Label" parent="Panel/MarginContainer/VBoxContainer/Progression/MMRSection"]
+custom_minimum_size = Vector2(70, 0)
+layout_mode = 2
+text = "New MMR: 1375"
+
+[node name="VSeparator" type="VSeparator" parent="Panel/MarginContainer/VBoxContainer/Progression"]
+layout_mode = 2
+
+[node name="StarSection" type="VBoxContainer" parent="Panel/MarginContainer/VBoxContainer/Progression"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="StarGainedLabel" type="Label" parent="Panel/MarginContainer/VBoxContainer/Progression/StarSection"]
+layout_mode = 2
+text = "Stars gained: +500"
+
+[node name="StarLabel" type="Label" parent="Panel/MarginContainer/VBoxContainer/Progression/StarSection"]
+custom_minimum_size = Vector2(70, 0)
+layout_mode = 2
+text = "Star Count: 1200"
+
+[node name="HSeparator2" type="HSeparator" parent="Panel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="Events" type="VBoxContainer" parent="Panel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ScrollContainer" type="ScrollContainer" parent="Panel/MarginContainer/VBoxContainer/Events"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="HBoxContainer" type="HBoxContainer" parent="Panel/MarginContainer/VBoxContainer/Events/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="AchievementsContainer" type="VBoxContainer" parent="Panel/MarginContainer/VBoxContainer/Events/ScrollContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 0
+
+[node name="TitleLabel" type="Label" parent="Panel/MarginContainer/VBoxContainer/Events/ScrollContainer/HBoxContainer/AchievementsContainer"]
+layout_mode = 2
+text = "Achievements"
+horizontal_alignment = 1
+
+[node name="VSeparator" type="VSeparator" parent="Panel/MarginContainer/VBoxContainer/Events/ScrollContainer/HBoxContainer"]
+layout_mode = 2
+
+[node name="DailyMissionsContainer" type="VBoxContainer" parent="Panel/MarginContainer/VBoxContainer/Events/ScrollContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 0
+
+[node name="TitleLabel" type="Label" parent="Panel/MarginContainer/VBoxContainer/Events/ScrollContainer/HBoxContainer/DailyMissionsContainer"]
+layout_mode = 2
+text = "Daily Missions"
+horizontal_alignment = 1
+
+[node name="VSeparator2" type="VSeparator" parent="Panel/MarginContainer/VBoxContainer/Events/ScrollContainer/HBoxContainer"]
+layout_mode = 2
+
+[node name="SeasonPassContainer" type="VBoxContainer" parent="Panel/MarginContainer/VBoxContainer/Events/ScrollContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 0
+
+[node name="TitleLabel" type="Label" parent="Panel/MarginContainer/VBoxContainer/Events/ScrollContainer/HBoxContainer/SeasonPassContainer"]
+layout_mode = 2
+text = "Season Pass"
+horizontal_alignment = 1
+
+[node name="VSeparator3" type="VSeparator" parent="Panel/MarginContainer/VBoxContainer/Events/ScrollContainer/HBoxContainer"]
+layout_mode = 2
+
+[node name="HolidayEventContainer" type="VBoxContainer" parent="Panel/MarginContainer/VBoxContainer/Events/ScrollContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 0
+
+[node name="TitleLabel" type="Label" parent="Panel/MarginContainer/VBoxContainer/Events/ScrollContainer/HBoxContainer/HolidayEventContainer"]
+layout_mode = 2
+text = "Holiday Event"
+horizontal_alignment = 1

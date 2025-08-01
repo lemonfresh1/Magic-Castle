@@ -19,6 +19,7 @@ extends Control
 @onready var version_label: Label = $VersionLabel
 @onready var star_display: Label = $StarDisplay
 @onready var debug_panel: Panel = $DebugPanel
+var profile_card: PanelContainer = null
 
 # Debug access
 var version_tap_count: int = 0
@@ -28,6 +29,7 @@ func _ready() -> void:
 	# Set up the gradient background FIRST
 	_setup_menu_background()
 	
+	_setup_profile_card()
 	_connect_buttons()
 	_hide_overlays()
 	_update_ui_state()
@@ -43,13 +45,13 @@ func _ready() -> void:
 		var settings_menu = settings_overlay.get_node("SettingsMenu")
 		settings_menu.settings_closed.connect(_on_settings_closed)
 	else:
-		print("Warning: SettingsMenu not found in SettingsOverlay")
-	
+		pass
+
 	if achievements_overlay and achievements_overlay.has_node("AchievementsPanel"):
 		var achievements_panel = achievements_overlay.get_node("AchievementsPanel")
 		achievements_panel.achievements_closed.connect(_on_achievements_closed)
 	else:
-		print("Warning: AchievementsPanel not found in AchievementsOverlay")
+		pass
 
 func _setup_menu_background() -> void:
 	# Remove any game board backgrounds that might exist
@@ -187,7 +189,6 @@ func _reset_version_taps():
 func _show_debug_panel():
 	if debug_panel and debug_panel.has_method("show_panel"):
 		debug_panel.show_panel()
-		print("Debug panel opened!")
 
 func _connect_buttons() -> void:
 	start_button.pressed.connect(_on_start_pressed)
@@ -248,3 +249,28 @@ func _notification(what):
 	if what == NOTIFICATION_WM_WINDOW_FOCUS_IN:
 		# Refresh UI when window gains focus
 		_update_ui_state()
+
+func _setup_profile_card():
+	if not profile_card:
+		var profile_card_scene = preload("res://Magic-Castle/scenes/ui/components/ProfileCard.tscn")
+		profile_card = profile_card_scene.instantiate()
+		profile_card.name = "ProfileCard"
+		add_child(profile_card)
+	
+	# Position in top-left with proper margins
+	profile_card.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	profile_card.anchor_left = 0.0
+	profile_card.anchor_top = 0.0
+	profile_card.anchor_right = 0.6
+	profile_card.anchor_bottom = 0.15
+	profile_card.position = Vector2(20, 20)  # 20px margin from edges
+	
+	# Connect signals
+	if profile_card.has_signal("section_selected"):
+		profile_card.section_selected.connect(_on_profile_section_selected)
+
+# Add this handler function:
+func _on_profile_section_selected(section: String) -> void:
+	# This will handle the expandable content below the profile card
+	print("Section selected: %s" % section)
+	# Future: Show expandable content based on section

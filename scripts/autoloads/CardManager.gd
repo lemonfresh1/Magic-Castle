@@ -211,7 +211,6 @@ func has_valid_moves() -> bool:
 	# First check if we can draw more cards
 	var draw_limit = GameModeManager.get_draw_pile_limit(GameState.current_round)
 	if cards_drawn < draw_limit and not draw_pile.is_empty():
-		print("Has valid moves: can still draw (drawn %d/%d)" % [cards_drawn, draw_limit])
 		return true
 	
 	# Check only selectable cards on the board
@@ -233,7 +232,6 @@ func has_valid_moves() -> bool:
 					playable_count += 1
 					valid_move_found = true
 	
-	print("Valid moves check: %s (selectable: %d, playable: %d)" % [valid_move_found, selectable_count, playable_count])
 	return valid_move_found
 
 # === DEBUG ===

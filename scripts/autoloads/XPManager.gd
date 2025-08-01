@@ -12,17 +12,100 @@ const SAVE_PATH = "user://xp_data.save"
 # Level progression
 var current_xp: int = 0
 var current_level: int = 1
-var current_prestige: int = 0  # 0=none, 1=bronze, 2=silver, 3=gold, 4=diamond
+var current_prestige: int = 0  # 0=none, 1-5=bronze, 6-10=silver, 11-15=gold, 16-20=diamond
 
-# XP requirements (level 1-50)
-var xp_per_level: Array[int] = []
-const BASE_XP = 100
-const XP_GROWTH = 1.15  # 15% more each level
+# Level Requirements (1-50)
+const LEVEL_XP_REQUIREMENTS = [
+	0, 100, 100, 100, 100, 100, 200, 200, 200, 200,         # 1-10
+	200, 400, 400, 400, 400, 400, 600, 600, 600, 600,     # 11-20
+	600, 800, 800, 800, 800, 800, 1000, 1000, 1000, 1000, # 21-30
+	1000, 1200, 1200, 1200, 1200, 1200, 1500, 1500, 1500, 1500, # 31-40
+	1500, 2000, 2000, 2000, 2000, 2000, 2500, 2500, 2500, 2500, # 41-50
+	2500 # 50 (for prestige)
+]
+
+# Prestige Tiers
+const PRESTIGE_NAMES = [
+	"", # No prestige
+	"Bronze I", "Bronze II", "Bronze III", "Bronze IV", "Bronze V",
+	"Silver I", "Silver II", "Silver III", "Silver IV", "Silver V",
+	"Gold I", "Gold II", "Gold III", "Gold IV", "Gold V",
+	"Diamond I", "Diamond II", "Diamond III", "Diamond IV", "Diamond V"
+]
+
+# Level rewards (stars, skins, items, etc)
+# Parameters you can use:
+# "stars": 50 - Currency reward
+# "unlock": "feature_name" - Unlocks a game feature
+# "skin": "skin_id" - Unlocks a cosmetic skin
+# "title": "Cool Player" - Unlocks a player title
+# "emoji": "fire" - Unlocks an emoji for multiplayer
+# "frame": "gold_frame" - Unlocks a profile frame
+# Example: 15: {"stars": 75, "unlock": "clans", "skin": "card_back_clan", "title": "Clan Member"},
+const LEVEL_REWARDS = {
+	1: {"stars": 10},  # Starting bonus
+	2: {"stars": 50},
+	3: {"stars": 50, "unlock": "multiplayer"},
+	4: {"stars": 50},
+	5: {"stars": 50, "unlock": "daily_missions"},
+	6: {"stars": 50, "unlock": "season_pass"},
+	7: {"stars": 50, "unlock": "rush_mode"},
+	8: {"stars": 50},
+	9: {"stars": 50},
+	10: {"stars": 50},
+	# Add skins/titles for milestone levels like: 10: {"stars": 50, "skin": "card_back_bronze", "title": "Rising Star"},
+	11: {"stars": 75},
+	12: {"stars": 75},
+	13: {"stars": 75},
+	14: {"stars": 75},
+	15: {"stars": 75, "unlock": "clans"},
+	16: {"stars": 75},
+	17: {"stars": 75},
+	18: {"stars": 75},
+	19: {"stars": 75},
+	20: {"stars": 75, "unlock": "tournaments"},
+	# Consider adding profile frames at 20: {"stars": 75, "unlock": "tournaments", "frame": "tournament_frame"},
+	21: {"stars": 100},
+	22: {"stars": 100},
+	23: {"stars": 100},
+	24: {"stars": 100},
+	25: {"stars": 100},
+	# Good spot for an emoji: 25: {"stars": 100, "emoji": "crown", "title": "Veteran"},
+	26: {"stars": 100},
+	27: {"stars": 100},
+	28: {"stars": 100},
+	29: {"stars": 100},
+	30: {"stars": 100},
+	# Major milestone rewards: 30: {"stars": 100, "skin": "card_back_gold", "frame": "gold_frame"},
+	31: {"stars": 100},
+	32: {"stars": 100},
+	33: {"stars": 100},
+	34: {"stars": 100},
+	35: {"stars": 100},
+	36: {"stars": 100},
+	37: {"stars": 100},
+	38: {"stars": 100},
+	39: {"stars": 100},
+	40: {"stars": 100},
+	# Epic rewards at 40: {"stars": 100, "skin": "card_back_diamond", "title": "Master"},
+	41: {"stars": 100},
+	42: {"stars": 100},
+	43: {"stars": 100},
+	44: {"stars": 100},
+	45: {"stars": 100},
+	46: {"stars": 100},
+	47: {"stars": 100},
+	48: {"stars": 100},
+	49: {"stars": 100},
+	50: {"stars": 100, "unlock": "prestige_system"},
+	# Ultimate level 50: {"stars": 100, "unlock": "prestige_system", "skin": "card_back_prestige", "title": "Legend", "frame": "legendary_frame"},
+}
 
 # Daily XP tracking
 var daily_games_played: int = 0
 var daily_reset_timestamp: int = 0
 var xp_multiplier: float = 1.0  # Soft cap system
+var rewards_enabled: bool = true
 
 # XP sources
 const XP_PER_ROUND = 10
@@ -32,24 +115,22 @@ const XP_ACHIEVEMENT_BASE = 100
 
 func _ready():
 	print("XPManager initializing...")
-	_generate_xp_table()
 	load_xp_data()
 	_check_daily_reset()
 	print("XPManager ready - Level %d (Prestige %d)" % [current_level, current_prestige])
 
-func _generate_xp_table():
-	xp_per_level.clear()
-	xp_per_level.append(0)  # Level 0 doesn't exist
-	
-	for level in range(1, 51):
-		var xp_required = int(BASE_XP * pow(XP_GROWTH, level - 1))
-		xp_per_level.append(xp_required)
-
 # === XP EARNING ===
 func add_xp(amount: int, source: String = "gameplay"):
+	# Skip if rewards are disabled (during gameplay)
+	if not rewards_enabled:
+		print("XP: Blocked %d XP from %s (rewards disabled)" % [amount, source])
+		return
+		
 	# Apply soft cap multiplier
 	var actual_amount = int(amount * xp_multiplier)
-	
+
+	print("XP: Adding %d XP from %s (multiplier: %.2f)" % [actual_amount, source, xp_multiplier])
+
 	current_xp += actual_amount
 	xp_gained.emit(actual_amount, source)
 	
@@ -100,28 +181,33 @@ func add_achievement_xp(achievement_id: String):
 			xp *= 5
 		AchievementManager.Rarity.LEGENDARY:
 			xp *= 10
-	
+
+	print("Achievement XP: %s (rarity %d) = %d XP" % [achievement_id, rarity, xp])
+
 	add_xp(xp, "achievement_%s" % achievement_id)
 
 # === LEVEL PROGRESSION ===
 func _level_up():
 	current_xp -= get_xp_for_next_level()
+	var old_level = current_level
 	current_level += 1
 	
-	# Calculate rewards
-	var rewards = {
-		"stars": 10 + (current_level / 5) * 5,  # 10, 15, 20, 25...
-		"unlock": _get_level_unlock(current_level)
-	}
+	# Get rewards from table
+	var rewards = LEVEL_REWARDS.get(current_level, {"stars": 50})
 	
-	# Add stars
-	StarManager.add_stars(rewards.stars, "level_up_%d" % current_level)
+	# CHANGE: Only add stars if rewards are enabled (not during PostGameSummary calculation)
+	if rewards.has("stars") and rewards_enabled:
+		StarManager.add_stars(rewards.stars, "level_up_%d" % current_level)
 	
 	level_up.emit(current_level, rewards)
-	print("LEVEL UP! Now level %d. Earned %d stars!" % [current_level, rewards.stars])
+	print("LEVEL UP! Now level %d. Earned %d stars!" % [current_level, rewards.get("stars", 0)])
+	
+	# Only show celebration if rewards are enabled (in PostGameSummary)
+	if rewards_enabled:
+		_show_level_up_celebration(old_level, current_level, rewards)
 
 func _prestige_up():
-	if current_prestige >= 4:  # Max prestige
+	if current_prestige >= 20:  # Max prestige (Diamond V)
 		return
 	
 	current_level = 50  # Stay at 50
@@ -129,11 +215,12 @@ func _prestige_up():
 	current_prestige += 1
 	
 	# Big star reward for prestige
-	var prestige_stars = 100 * current_prestige
+	var prestige_tier = (current_prestige - 1) / 5 + 1  # 1=Bronze, 2=Silver, etc
+	var prestige_stars = 100 * prestige_tier
 	StarManager.add_stars(prestige_stars, "prestige_%d" % current_prestige)
 	
 	prestige_up.emit(current_prestige)
-	print("PRESTIGE UP! Now %s prestige!" % get_prestige_name())
+	print("PRESTIGE UP! Now %s!" % get_prestige_name())
 
 # === DAILY SYSTEM ===
 func _check_daily_reset():
@@ -171,28 +258,29 @@ func get_display_level() -> String:
 	return str(current_level)
 
 func get_prestige_name() -> String:
-	match current_prestige:
-		1: return "Bronze"
-		2: return "Silver"
-		3: return "Gold"
-		4: return "Diamond"
-		_: return ""
+	if current_prestige < PRESTIGE_NAMES.size():
+		return PRESTIGE_NAMES[current_prestige]
+	return ""
 
 func get_prestige_color() -> Color:
-	match current_prestige:
-		1: return Color(0.8, 0.5, 0.3)  # Bronze
-		2: return Color(0.75, 0.75, 0.75)  # Silver
-		3: return Color(1.0, 0.84, 0)  # Gold
-		4: return Color(0.7, 0.9, 1.0)  # Diamond
+	if current_prestige == 0:
+		return Color.WHITE
+	
+	var tier = (current_prestige - 1) / 5  # 0=Bronze, 1=Silver, 2=Gold, 3=Diamond
+	match tier:
+		0: return Color(0.8, 0.5, 0.3)      # Bronze
+		1: return Color(0.75, 0.75, 0.75)   # Silver
+		2: return Color(1.0, 0.84, 0)       # Gold
+		3: return Color(0.7, 0.9, 1.0)      # Diamond
 		_: return Color.WHITE
 
 func get_xp_for_next_level() -> int:
 	if current_level >= 50:
-		# Prestige XP requirement
+		# Prestige XP requirement (10k per prestige level)
 		return 10000 * (current_prestige + 1)
 	
-	if current_level < xp_per_level.size():
-		return xp_per_level[current_level]
+	if current_level < LEVEL_XP_REQUIREMENTS.size():
+		return LEVEL_XP_REQUIREMENTS[current_level]
 	return 999999
 
 func get_xp_progress() -> float:
@@ -205,25 +293,25 @@ func get_xp_progress() -> float:
 func _get_level_unlock(level: int) -> String:
 	# Define what unlocks at each level
 	match level:
-		5: return "rush_mode"
-		10: return "chill_mode"
-		15: return "custom_games"
-		20: return "leaderboards"
-		25: return "multiplayer"
-		30: return "tournaments"
-		40: return "season_pass_discount"
+		3: return "multiplayer"
+		5: return "daily_missions"
+		6: return "season_pass"
+		7: return "rush_mode"
+		15: return "clans"
+		20: return "tournaments"
 		50: return "prestige_system"
 		_: return ""
 
 func is_feature_unlocked(feature: String) -> bool:
 	match feature:
-		"rush_mode": return current_level >= 5
-		"chill_mode": return current_level >= 10
-		"custom_games": return current_level >= 15
-		"leaderboards": return current_level >= 20
-		"multiplayer": return current_level >= 25
-		"tournaments": return current_level >= 30
-		_: return true
+		"multiplayer": return current_level >= 3
+		"daily_missions": return current_level >= 5
+		"season_pass": return current_level >= 6
+		"rush_mode": return current_level >= 7
+		"clans": return current_level >= 15
+		"tournaments": return current_level >= 20
+		"prestige_system": return current_level >= 50
+		_: return true  # Everything else is unlocked by default
 
 # === PERSISTENCE ===
 func save_xp_data():
@@ -272,3 +360,20 @@ func reset_xp():
 	current_prestige = 0
 	daily_games_played = 0
 	save_xp_data()
+
+func _show_level_up_celebration(old_level: int, new_level: int, rewards: Dictionary) -> void:
+	# Don't show during game initialization
+	if not get_tree() or not get_tree().root:
+		return
+		
+	# Check if celebration already exists to avoid duplicates
+	var existing = get_tree().root.get_node_or_null("LevelUpCelebration")
+	if existing:
+		existing.queue_free()
+	
+	# Create and show new celebration
+	var celebration_scene = preload("res://Magic-Castle/scenes/ui/effects/LevelUpCelebration.tscn")
+	var celebration = celebration_scene.instantiate()
+	celebration.name = "LevelUpCelebration"
+	get_tree().root.add_child(celebration)
+	celebration.show_level_up(old_level, new_level, rewards)

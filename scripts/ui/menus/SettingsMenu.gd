@@ -222,25 +222,15 @@ func _on_card_skin_right() -> void:
 	_update_card_skin_display()
 
 func _on_high_contrast_toggled(pressed: bool) -> void:
-	print("=== HIGH CONTRAST DEBUG ===")
-	print("Toggled to: %s" % pressed)
-	print("SettingsSystem.high_contrast before: %s" % SettingsSystem.high_contrast)
-	print("Current skin: %s" % available_card_skins[current_card_skin_index].name)
-	
 	SettingsSystem.high_contrast = pressed
 	SettingsSystem.save_settings()
 	
-	print("SettingsSystem.high_contrast after: %s" % SettingsSystem.high_contrast)
-	print("Current skin supports contrast: %s" % available_card_skins[current_card_skin_index].has_contrast)
-	
 	# Update preview cards
 	if card_preview_container:
-		print("Updating %d preview cards" % card_preview_container.get_child_count())
 		for card in card_preview_container.get_children():
 			if card.has_method("set_skin"):
 				card.is_high_contrast = pressed
 				card._update_display()
-				print("  - Updated card: rank=%d, suit=%d" % [card.current_rank, card.current_suit])
 
 # === BOARD SKIN ===
 func _update_board_skin_display() -> void:
@@ -312,11 +302,8 @@ func _on_back_pressed() -> void:
 
 func _create_card_previews() -> void:
 	if not card_preview_container:
-		print("ERROR: card_preview_container is null!")
 		return
-	
-	print("Creating card previews...")
-	
+		
 	# Clear existing
 	for child in card_preview_container.get_children():
 		child.queue_free()
@@ -342,11 +329,8 @@ func _create_card_previews() -> void:
 	
 func _create_board_preview() -> void:
 	if not board_preview_container:
-		print("ERROR: board_preview_container is null!")
 		return
-	
-	print("Creating board preview...")
-	
+		
 	# Clear existing
 	for child in board_preview_container.get_children():
 		child.queue_free()

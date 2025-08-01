@@ -22,7 +22,9 @@ var editable_stats = [
 	{"id": "suit_bonuses", "name": "Suit Bonuses", "max": 1000},
 	{"id": "total_peaks_cleared", "name": "Total Peaks", "max": 1000},
 	{"id": "perfect_rounds", "name": "Perfect Rounds", "max": 100},
-	{"id": "total_score", "name": "Total Score", "max": 10000000}
+	{"id": "total_score", "name": "Total Score", "max": 10000000},
+	{"id": "current_xp", "name": "Current XP", "max": 50000},
+	{"id": "current_level", "name": "Current Level", "max": 50}
 ]
 
 func _ready():
@@ -165,8 +167,11 @@ func _create_stat_editor(stat_data: Dictionary):
 	stats_container.add_child(container)
 
 func _create_action_buttons():
+
+	_add_xp_controls()
+
 	_add_separator()
-	
+
 	# Quick actions section
 	var actions_label = Label.new()
 	actions_label.text = "Quick Actions"
@@ -200,26 +205,50 @@ func _create_action_buttons():
 	reset_label.add_theme_font_size_override("font_size", 16)
 	reset_label.add_theme_color_override("font_color", Color(1.0, 0.5, 0.5))
 	stats_container.add_child(reset_label)
-	
-	# Reset stats button
+
+	# MASTER RESET ALL BUTTON - Very red and prominent
+	var reset_all_btn = Button.new()
+	reset_all_btn.text = "⚠️ RESET ALL ⚠️"
+	reset_all_btn.add_theme_font_size_override("font_size", 18)
+	reset_all_btn.modulate = Color(1.0, 0.3, 0.3)  # Very red
+	reset_all_btn.pressed.connect(_reset_all_with_confirm)
+	stats_container.add_child(reset_all_btn)
+
+	# Add some spacing
+	var spacer_reset = Control.new()
+	spacer_reset.custom_minimum_size.y = 10
+	stats_container.add_child(spacer_reset)
+
+	# Individual reset buttons (less prominent now)
 	var reset_stats_btn = Button.new()
 	reset_stats_btn.text = "Reset All Stats"
 	reset_stats_btn.modulate = Color(1, 0.8, 0.8)
 	reset_stats_btn.pressed.connect(_reset_stats_with_confirm)
 	stats_container.add_child(reset_stats_btn)
-	
-	# Reset achievements button
+
 	var reset_achievements_btn = Button.new()
 	reset_achievements_btn.text = "Reset All Achievements"
 	reset_achievements_btn.modulate = Color(1, 0.8, 0.8)
 	reset_achievements_btn.pressed.connect(_reset_achievements_with_confirm)
 	stats_container.add_child(reset_achievements_btn)
-	
+
 	var reset_stars_btn = Button.new()
 	reset_stars_btn.text = "Reset Stars to 0"
 	reset_stars_btn.modulate = Color(1, 0.8, 0.8)
 	reset_stars_btn.pressed.connect(_reset_stars_with_confirm)
 	stats_container.add_child(reset_stars_btn)
+
+	var reset_xp_btn = Button.new()
+	reset_xp_btn.text = "Reset XP & Level"
+	reset_xp_btn.modulate = Color(1, 0.8, 0.8)
+	reset_xp_btn.pressed.connect(_reset_xp_with_confirm)
+	stats_container.add_child(reset_xp_btn)
+
+	var reset_missions_btn = Button.new()
+	reset_missions_btn.text = "Reset All Missions"
+	reset_missions_btn.modulate = Color(1, 0.8, 0.8)
+	reset_missions_btn.pressed.connect(_reset_missions_with_confirm)
+	stats_container.add_child(reset_missions_btn)
 	
 	_add_separator()
 	
@@ -251,9 +280,14 @@ func _get_stat_value(stat_id: String) -> int:
 			return StatsManager.get_longest_combo().combo
 		"total_peaks_cleared":
 			return stats.get("total_peaks_cleared", 0)
+		"current_xp":
+			return XPManager.current_xp if XPManager else 0
+		"current_level":
+			return XPManager.current_level if XPManager else 1
 		_:
 			return stats.get(stat_id, 0)
 
+# Modify _on_stat_changed to handle XP:
 func _on_stat_changed(stat_id: String, value: float):
 	var int_value = int(value)
 	
@@ -272,6 +306,13 @@ func _on_stat_changed(stat_id: String, value: float):
 			StatsManager.stats.highscore.score = int_value
 		"longest_combo":
 			StatsManager.stats.longest_combo.combo = int_value
+		"current_xp":
+			if XPManager:
+				XPManager.current_xp = int_value
+				XPManager.save_xp_data()
+		"current_level":
+			if XPManager and XPManager.has_method("set_debug_level"):
+				XPManager.set_debug_level(int_value)
 		_:
 			if stats.has(stat_id):
 				stats[stat_id] = int_value
@@ -365,3 +406,161 @@ func _reset_stars():
 		print("Stars reset successfully!")
 	else:
 		print("StarManager not available or missing reset_stars method")
+
+func _add_xp_controls():
+	# XP Actions section
+	var xp_label = Label.new()
+	xp_label.text = "XP Controls"
+	xp_label.add_theme_font_size_override("font_size", 16)
+	xp_label.add_theme_color_override("font_color", Color(0.8, 0.8, 1.0))
+	stats_container.add_child(xp_label)
+	
+	# Add XP input
+	var xp_input_container = HBoxContainer.new()
+	
+	var xp_input_label = Label.new()
+	xp_input_label.text = "Add XP:"
+	xp_input_label.custom_minimum_size.x = 80
+	xp_input_container.add_child(xp_input_label)
+	
+	var xp_input = LineEdit.new()
+	xp_input.name = "XPInput"
+	xp_input.placeholder_text = "Amount"
+	xp_input.custom_minimum_size.x = 100
+	xp_input.text = "100"
+	xp_input_container.add_child(xp_input)
+	
+	var add_xp_btn = Button.new()
+	add_xp_btn.text = "Add"
+	add_xp_btn.pressed.connect(func(): _add_custom_xp(xp_input.text))
+	xp_input_container.add_child(add_xp_btn)
+	
+	stats_container.add_child(xp_input_container)
+	
+	# Level up button
+	var level_up_btn = Button.new()
+	level_up_btn.text = "Level Up (Add XP for Next Level)"
+	level_up_btn.pressed.connect(_level_up_debug)
+	stats_container.add_child(level_up_btn)
+	
+	# Give 1000 XP button
+	var give_xp_btn = Button.new()
+	give_xp_btn.text = "Give 1000 XP"
+	give_xp_btn.pressed.connect(func(): _add_custom_xp("1000"))
+	stats_container.add_child(give_xp_btn)
+
+func _add_custom_xp(amount_text: String):
+	var amount = amount_text.to_int()
+	if amount > 0 and XPManager and XPManager.has_method("add_debug_xp"):
+		XPManager.add_debug_xp(amount)
+		print("Added %d XP!" % amount)
+		# Update UI
+		if stat_editors.has("current_xp"):
+			stat_editors["current_xp"].slider.value = XPManager.current_xp
+			stat_editors["current_xp"].label.text = str(XPManager.current_xp)
+		if stat_editors.has("current_level"):
+			stat_editors["current_level"].slider.value = XPManager.current_level
+			stat_editors["current_level"].label.text = str(XPManager.current_level)
+
+func _level_up_debug():
+	if XPManager:
+		var needed = XPManager.get_xp_for_next_level() - XPManager.current_xp
+		if needed > 0:
+			XPManager.add_debug_xp(needed)
+			print("Added %d XP to level up!" % needed)
+		else:
+			print("Already at max XP for current level")
+
+func _reset_xp_with_confirm():
+	var dialog = ConfirmationDialog.new()
+	dialog.dialog_text = "Are you sure you want to reset XP and Level?\nThis cannot be undone!"
+	dialog.confirmed.connect(_reset_xp)
+	get_tree().root.add_child(dialog)
+	dialog.popup_centered()
+
+func _reset_xp():
+	if XPManager and XPManager.has_method("reset_xp"):
+		XPManager.reset_xp()
+		# Update UI
+		if stat_editors.has("current_xp"):
+			stat_editors["current_xp"].slider.value = 0
+			stat_editors["current_xp"].label.text = "0"
+		if stat_editors.has("current_level"):
+			stat_editors["current_level"].slider.value = 1
+			stat_editors["current_level"].label.text = "1"
+		print("XP and Level reset!")
+
+func _reset_missions_with_confirm():
+	var dialog = ConfirmationDialog.new()
+	dialog.dialog_text = "Are you sure you want to reset ALL missions?\nThis cannot be undone!"
+	dialog.confirmed.connect(_reset_missions)
+	get_tree().root.add_child(dialog)
+	dialog.popup_centered()
+
+func _reset_missions():
+	if MissionManager and MissionManager.has_method("reset_all_missions"):
+		MissionManager.reset_all_missions()
+		print("All missions reset!")
+	else:
+		print("MissionManager not available or missing reset_all_missions method")
+		
+func _complete_all_missions():
+	if MissionManager:
+		# Complete all daily missions
+		for mission_id in MissionManager.daily_missions:
+			MissionManager.debug_complete_mission(mission_id)
+		# Complete all season missions
+		for mission_id in MissionManager.season_missions:
+			MissionManager.debug_complete_mission(mission_id)
+		# Complete all event missions
+		for mission_id in MissionManager.event_missions:
+			MissionManager.debug_complete_mission(mission_id)
+		print("All missions completed!")
+
+func _reset_all_with_confirm():
+	var dialog = ConfirmationDialog.new()
+	dialog.dialog_text = "⚠️ WARNING ⚠️\n\nThis will reset:\n• All Statistics\n• All Achievements\n• All Stars\n• All XP & Levels\n• All Missions\n\nThis CANNOT be undone!\n\nAre you absolutely sure?"
+	dialog.confirmed.connect(_reset_all)
+	dialog.get_ok_button().text = "Yes, Reset Everything"
+	dialog.get_ok_button().modulate = Color(1.0, 0.5, 0.5)
+	get_tree().root.add_child(dialog)
+	dialog.popup_centered(Vector2(400, 300))
+
+func _reset_all():
+	print("=== RESETTING EVERYTHING ===")
+	
+	# Reset stats
+	if StatsManager:
+		StatsManager.reset_all_stats()
+		print("✓ Stats reset")
+	
+	# Reset achievements
+	if AchievementManager:
+		AchievementManager.reset_all_achievements()
+		print("✓ Achievements reset")
+	
+	# Reset stars
+	if StarManager and StarManager.has_method("reset_stars"):
+		StarManager.reset_stars()
+		print("✓ Stars reset")
+	
+	# Reset XP
+	if XPManager and XPManager.has_method("reset_xp"):
+		XPManager.reset_xp()
+		print("✓ XP & Level reset")
+	
+	# Reset missions
+	if MissionManager and MissionManager.has_method("reset_all_missions"):
+		MissionManager.reset_all_missions()
+		print("✓ Missions reset")
+	
+	print("=== ALL SYSTEMS RESET ===")
+	
+	# Update all UI elements
+	for stat_data in editable_stats:
+		var value = _get_stat_value(stat_data.id)
+		if stat_editors.has(stat_data.id):
+			stat_editors[stat_data.id].slider.value = value
+			stat_editors[stat_data.id].label.text = str(value)
+	
+	print("Debug panel UI updated")

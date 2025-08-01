@@ -12,6 +12,8 @@ const SAVE_PATH = "user://stars.save"
 var total_stars: int = 0
 var lifetime_earned: int = 0
 var lifetime_spent: int = 0
+var rewards_enabled: bool = true
+
 
 # Transaction history (last 50)
 var transaction_history: Array = []
@@ -27,7 +29,9 @@ func _ready():
 	print("StarManager ready - Balance: %d stars" % total_stars)
 
 # === EARNING STARS ===
-func add_stars(amount: int, source: String = "unknown") -> void:
+func add_stars(amount: int, source: String = "") -> void:
+	if not rewards_enabled and source != "post_game_total":
+		return
 	if amount <= 0:
 		return
 	
