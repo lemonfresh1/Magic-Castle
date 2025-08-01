@@ -42,9 +42,6 @@ func set_skin(skin_name: String, high_contrast: bool = false) -> void:
 	is_high_contrast = high_contrast
 	_update_display()  # This should trigger the visual update
 	
-	# Debug
-	print("Card preview updated - skin: %s, high_contrast: %s" % [skin_name, high_contrast])
-
 func _update_display() -> void:
 	# Update rank label
 	var rank_text = ""

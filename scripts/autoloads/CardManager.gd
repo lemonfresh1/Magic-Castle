@@ -1,269 +1,266 @@
-# CardManager.gd - Improved version with separated concerns
+# CardManager.gd - Autoload for card and deck management
+# Path: res://Magic-Castle/scripts/autoloads/CardManager.gd
+# Core card management - tracking for achievement system
 extends Node
 
 # === DECK STATE ===
 var full_deck: Array[CardData] = []
-var current_deck: Array[CardData] = []
-var draw_pile: Array[CardData] = []
 var board_cards: Array[CardData] = []
-
-# === SLOT STATE ===
+var draw_pile: Array[CardData] = []
 var slot_cards: Array[CardData] = [null, null, null]
-var active_slots: int = 1
 
 # === GAME STATE ===
+var game_board: Control = null
+var active_slots: int = 1
 var current_combo: int = 0
 var cards_drawn: int = 0
-var game_board: Node = null
-	
+
+# === SIGNALS (if not using SignalBus) ===
+# signal card_moved_to_slot(card: CardData, slot: int)
+# signal slot_unlocked(slot: int)
 
 func _ready() -> void:
-	print("CardManager initialized")
-	_create_full_deck()
-	_connect_signals()
+	print("CardManager initializing...")
+	_create_standard_deck()
+	SignalBus.round_started.connect(_on_round_started)
+	SignalBus.card_selected.connect(_on_card_selected)
+	SignalBus.draw_pile_clicked.connect(_on_draw_pile_clicked)
+	print("CardManager ready with %d cards" % full_deck.size())
 
-# === INITIALIZATION ===
-func _create_full_deck() -> void:
+func _create_standard_deck() -> void:
 	full_deck.clear()
 	for suit in range(4):
 		for rank in range(1, 14):
-			var card = CardData.new()
-			card.suit = suit
-			card.rank = rank
+			var card = CardData.new(suit, rank)
 			full_deck.append(card)
-	print("Created full deck with %d cards" % full_deck.size())
 
-func _connect_signals() -> void:
-	SignalBus.card_selected.connect(_on_card_selected)
-	SignalBus.card_invalid_selected.connect(_on_card_invalid_selected)
-	SignalBus.draw_pile_clicked.connect(_on_draw_pile_clicked)
-	SignalBus.round_started.connect(_on_round_started)
-
-func set_game_board(board: Node) -> void:
+func set_game_board(board: Control) -> void:
 	game_board = board
 
-# === DECK MANAGEMENT ===
-func shuffle_deck(seed_value: int) -> void:
-	var rng = RandomNumberGenerator.new()
-	rng.seed = seed_value
-	current_deck = full_deck.duplicate()
-	
-	# Fisher-Yates shuffle
-	for i in range(current_deck.size() - 1, 0, -1):
-		var j = rng.randi() % (i + 1)
-		var temp = current_deck[i]
-		current_deck[i] = current_deck[j]
-		current_deck[j] = temp
-	
-	print("Deck shuffled with seed: %d" % seed_value)
-
-func deal_new_round() -> void:
-	print("Dealing new round from %d cards" % current_deck.size())
-	
-	# Split deck
-	board_cards = current_deck.slice(0, GameConstants.BOARD_CARDS)
-	draw_pile = current_deck.slice(GameConstants.BOARD_CARDS, GameConstants.TOTAL_CARDS)
-	
-	# Initialize slots
-	_reset_slots()
+# === ROUND MANAGEMENT ===
+func _on_round_started(round: int) -> void:
+	print("CardManager: Starting round %d" % round)
+	_reset_round_state()
+	_shuffle_deck(GameState.deck_seed)
+	_deal_cards()
 	_draw_initial_card()
-	
-	current_combo = 0
-	print("Board: %d cards, Draw pile: %d cards" % [board_cards.size(), draw_pile.size()])
 
-func _reset_slots() -> void:
+func _reset_round_state() -> void:
+	board_cards.clear()
+	draw_pile.clear()
 	slot_cards = [null, null, null]
 	active_slots = 1
+	current_combo = 0
+	cards_drawn = 0
+
+func _shuffle_deck(seed_value: int) -> void:
+	var rng = RandomNumberGenerator.new()
+	rng.seed = seed_value
+	
+	# Fisher-Yates shuffle
+	var deck_copy = full_deck.duplicate()
+	for i in range(deck_copy.size() - 1, 0, -1):
+		var j = rng.randi_range(0, i)
+		var temp = deck_copy[i]
+		deck_copy[i] = deck_copy[j]
+		deck_copy[j] = temp
+	
+	full_deck = deck_copy
+
+func _deal_cards() -> void:
+	# Deal 28 cards to board
+	for i in range(28):
+		board_cards.append(full_deck[i])
+	
+	# Remaining 24 cards go to draw pile
+	for i in range(28, 52):
+		draw_pile.append(full_deck[i])
+	
+	print("Dealt %d board cards, %d draw pile" % [board_cards.size(), draw_pile.size()])
 
 func _draw_initial_card() -> void:
-	if not draw_pile.is_empty():
+	if draw_pile.size() > 0:
 		slot_cards[0] = draw_pile.pop_front()
-		cards_drawn = 1
-		print("Starting card: %s" % slot_cards[0].get_display_value())
-
-# === SLOT VALIDATION ===
-func get_valid_slot_for_card(card_data: CardData) -> int:
-	
-	# Check each active slot in order
-	for i in range(active_slots):
-		if slot_cards[i]:
-			var is_valid = card_data.is_valid_next_card(slot_cards[i])
-			if is_valid:
-				return i
-		else:
-			pass	
-	return -1
+		cards_drawn += 1
 
 # === CARD SELECTION ===
-func select_card(card_data: CardData) -> void:
-	var valid_slot = get_valid_slot_for_card(card_data)
-	if valid_slot == -1:
+func _on_card_selected(card: Control) -> void:
+	if not card or not card.card_data:
 		return
 	
-	_process_combo_progression()
-	_place_card_in_slot(card_data, valid_slot)
-	_update_game_state(card_data)
-
-func _process_combo_progression() -> void:
-	current_combo += 1  # Increment FIRST
+	# Find which slot this card can go to
+	var target_slot = get_valid_slot_for_card(card.card_data)
+	if target_slot == -1:
+		return
 	
-	# Unlock slots based on NEW combo value
-	if current_combo == GameConstants.SLOT_2_UNLOCK_COMBO and active_slots == 1:
-		_unlock_slot(2)
-	elif current_combo == GameConstants.SLOT_3_UNLOCK_COMBO and active_slots == 2:
-		_unlock_slot(3)
+	# Move card to slot
+	slot_cards[target_slot] = card.card_data
 	
+	# Update combo
+	current_combo += 1
 	SignalBus.combo_updated.emit(current_combo)
-
-func _unlock_slot(slot_number: int) -> void:
-	# Check BOTH conditions - physical cards AND draw limit
-	if draw_pile.is_empty():
+	
+	# Check for slot unlocks (this might draw cards if under limit)
+	_check_slot_unlocks()
+	
+	# Track stats
+	StatsManager.track_card_clicked()
+	StatsManager.track_combo(current_combo)
+	
+	# Update board state
+	GameState.cards_cleared += 1
+	
+	# Check if board is cleared
+	if GameState.cards_cleared >= GameConstants.BOARD_CARDS:
+		GameState.board_cleared = true
+		print("Board cleared!")
+		await get_tree().create_timer(1.0).timeout
+		GameState.check_round_end()
 		return
 	
-	# ALSO check if we've reached the draw limit
-	if cards_drawn >= GameConstants.get_draw_pile_limit(GameState.current_round):
-		return
+	# Otherwise check for valid moves after cards update
+	await get_tree().create_timer(0.5).timeout
 	
-	var slot_index = slot_number - 1
-	slot_cards[slot_index] = draw_pile.pop_front()
-	cards_drawn += 1  # INCREMENT cards_drawn when unlocking a slot!
-	active_slots = slot_number
-
-func _place_card_in_slot(card_data: CardData, slot_index: int) -> void:
-	slot_cards[slot_index] = card_data
-
-func _update_game_state(card_data: CardData) -> void:
-	# Remove from board data
-	var index = board_cards.find(card_data)
-	if index != -1:
-		board_cards.remove_at(index)
-		GameState.cards_cleared += 1
-
-func _check_game_end_conditions() -> void:
-	if GameState.cards_cleared == GameConstants.BOARD_CARDS:
+	# Force board update
+	if game_board:
+		game_board.update_all_cards()
+		await get_tree().process_frame
+	
+	if not has_valid_moves():
+		print("No valid moves after card selection - ending round")
+		await get_tree().create_timer(1.0).timeout
 		GameState.check_round_end()
-	elif not has_valid_moves():
-		GameState.check_round_end()
+
+func get_valid_slot_for_card(card_data: CardData) -> int:
+	# Check each active slot for valid placement
+	for i in range(active_slots):
+		if slot_cards[i] and card_data.is_valid_next_card(slot_cards[i]):
+			return i
+	return -1
+
+func _check_slot_unlocks() -> void:
+	# Check if we should unlock more slots based on combo
+	if active_slots < 2 and GameModeManager.should_unlock_slot(current_combo, 2):
+		active_slots = 2
+		print("Unlocked slot 2 at combo %d" % current_combo)
+		
+		# Check draw limit before auto-drawing
+		var draw_limit = GameModeManager.get_draw_pile_limit(GameState.current_round)
+		if draw_pile.size() > 0 and slot_cards[1] == null and cards_drawn < draw_limit:
+			slot_cards[1] = draw_pile.pop_front()
+			cards_drawn += 1  # This DOES count against the limit!
+			print("Auto-drew card to slot 2 (cards_drawn: %d/%d)" % [cards_drawn, draw_limit])
+		
+		# Update UI
+		if game_board and game_board.mobile_top_bar:
+			game_board.mobile_top_bar.call_deferred("update_slots")
+		
+	if active_slots < 3 and GameModeManager.should_unlock_slot(current_combo, 3):
+		active_slots = 3
+		print("Unlocked slot 3 at combo %d" % current_combo)
+		
+		# Check draw limit before auto-drawing
+		var draw_limit = GameModeManager.get_draw_pile_limit(GameState.current_round)
+		if draw_pile.size() > 0 and slot_cards[2] == null and cards_drawn < draw_limit:
+			slot_cards[2] = draw_pile.pop_front()
+			cards_drawn += 1  # This DOES count against the limit!
+			print("Auto-drew card to slot 3 (cards_drawn: %d/%d)" % [cards_drawn, draw_limit])
+		
+		# Update UI
+		if game_board and game_board.mobile_top_bar:
+			game_board.mobile_top_bar.call_deferred("update_slots")
 
 # === DRAW PILE ===
-func draw_from_pile() -> bool:
-	if not _can_draw():
-		await _check_game_end_after_draw_fail()  # Add await here
-		return false
-		
-	var new_card = draw_pile.pop_front()
-	cards_drawn += 1
+func _on_draw_pile_clicked() -> void:
+	# Check if we can draw
+	var draw_limit = GameModeManager.get_draw_pile_limit(GameState.current_round)
+	if cards_drawn >= draw_limit or draw_pile.is_empty():
+		print("Cannot draw: limit=%d, drawn=%d, pile=%d" % [draw_limit, cards_drawn, draw_pile.size()])
+		return
 	
-	# Reset combo FIRST
-	_reset_combo()
-	
-	# THEN reset slots (now combo is 0, so no extra slots will unlock)
-	_reset_slots_after_draw(new_card)
-
-	# Force update of board cards
-	if game_board:
-		await get_tree().process_frame
-		game_board.update_all_cards()
-	
-	# Only check for game end after cards are updated
-	await get_tree().process_frame
-	if not has_valid_moves():
-		GameState.check_round_end()
-	
-	return true
-
-func _can_draw() -> bool:
-	return not draw_pile.is_empty() and cards_drawn < GameConstants.get_draw_pile_limit(GameState.current_round)
-
-func _reset_slots_after_draw(new_card: CardData) -> void:
-	# Drawing ALWAYS resets to just 1 slot, no matter what combo you had
-	slot_cards = [new_card, null, null]
+	# Reset slots when drawing
+	slot_cards[1] = null
+	slot_cards[2] = null
 	active_slots = 1
-
-func _reset_combo() -> void:
+	
+	# Draw new card to slot 1
+	if draw_pile.size() > 0:
+		slot_cards[0] = draw_pile.pop_front()
+		cards_drawn += 1
+		print("Drew card to slot 1 (cards_drawn: %d/%d)" % [cards_drawn, draw_limit])
+	
+	# Reset combo on draw
 	current_combo = 0
 	SignalBus.combo_updated.emit(0)
 	
-	# Also stop the combo timer in ScoreSystem
-	if ScoreSystem.combo_timer:
-		ScoreSystem.combo_timer.stop()
-
-func _check_game_end_after_draw_fail() -> void:
-	# Update board first if available
-	if game_board:
-		game_board.update_all_cards()
-		# Need to wait for update to complete
-		await get_tree().process_frame
+	# Track stats
+	StatsManager.track_card_drawn()
 	
+	# Update UI
+	if game_board and game_board.mobile_top_bar:
+		game_board.mobile_top_bar.call_deferred("update_slots")
+	
+	# Check for valid moves after drawing
+	await get_tree().create_timer(0.5).timeout
 	if not has_valid_moves():
+		print("No valid moves after draw - ending round")
 		GameState.check_round_end()
 
-# === MOVE VALIDATION ===
+# === VALIDATION ===
 func has_valid_moves() -> bool:
-	# Can we draw more cards?
-	if _can_draw():
+	# First check if we can draw more cards
+	var draw_limit = GameModeManager.get_draw_pile_limit(GameState.current_round)
+	if cards_drawn < draw_limit and not draw_pile.is_empty():
 		return true
 	
-	# Check visual board if available
-	if game_board:
-		var selectable_count = _count_selectable_visual_cards()
-		return selectable_count > 0
+	# Check only selectable cards on the board
+	if not game_board:
+		return false
 	
-	# Fallback: check data array
-	var has_moves = _has_valid_moves_in_data()
-	return has_moves
-
-func _count_selectable_visual_cards() -> int:
-	var count = 0
+	# Count cards that are both visible AND can be played
+	var valid_move_found = false
+	var selectable_count = 0
+	var playable_count = 0
+	
 	for card_node in game_board.board_card_nodes:
-		if card_node and card_node.is_on_board and card_node.is_selectable:
-			count += 1
-	return count
-
-func _has_valid_moves_in_data() -> bool:
-	for card_data in board_cards:
-		if get_valid_slot_for_card(card_data) != -1:
-			return true
-	return false
-
-# === SIGNAL HANDLERS ===
-func _on_card_selected(card: Control) -> void:
-	if get_valid_slot_for_card(card.card_data) != -1:
-		select_card(card.card_data)
-		
-		# ALWAYS check if board is cleared first!
-		if GameState.cards_cleared >= GameConstants.BOARD_CARDS:
-			GameState.board_cleared = true
-			GameState.check_round_end()
-			return
-		
-		# Otherwise, check for no moves
-		await get_tree().create_timer(0.3).timeout
-		
-		if game_board:
-			game_board.update_all_cards()
-			await get_tree().process_frame
-		
-		if not has_valid_moves():
-			GameState.check_round_end()
-	else:
-		SignalBus.card_invalid_selected.emit(card)
-
-func _on_card_invalid_selected(card: Control) -> void:
-	SignalBus.score_changed.emit(GameConstants.INVALID_CLICK_PENALTY, "invalid_click")
-
-func _on_draw_pile_clicked() -> void:
-	var success = await draw_from_pile()
-	# Force board update even if draw failed
-	if game_board:
-		await get_tree().process_frame
-		game_board.update_all_cards()
+		if card_node and card_node.is_on_board:
+			if card_node.is_selectable:
+				selectable_count += 1
+				# This card is selectable, now check if it can be played
+				var target_slot = get_valid_slot_for_card(card_node.card_data)
+				if target_slot != -1:
+					playable_count += 1
+					valid_move_found = true
 	
-	# Then check for valid moves
-	await get_tree().create_timer(0.1).timeout
-	if not has_valid_moves():
-		GameState.check_round_end()
+	return valid_move_found
 
-func _on_round_started(round_number: int) -> void:
-	shuffle_deck(GameState.deck_seed)
-	deal_new_round()
+# === DEBUG ===
+func get_debug_info() -> Dictionary:
+	return {
+		"board_cards": board_cards.size(),
+		"draw_pile": draw_pile.size(),
+		"cards_drawn": cards_drawn,
+		"active_slots": active_slots,
+		"current_combo": current_combo,
+		"slot_1": slot_cards[0].get_display_value() if slot_cards[0] else "empty",
+		"slot_2": slot_cards[1].get_display_value() if slot_cards[1] else "empty",
+		"slot_3": slot_cards[2].get_display_value() if slot_cards[2] else "empty"
+	}
+
+func print_deck_state() -> void:
+	print("=== DECK STATE ===")
+	print("Board cards: %d" % board_cards.size())
+	print("Draw pile: %d" % draw_pile.size())
+	print("Cards drawn: %d" % cards_drawn)
+	print("Active slots: %d" % active_slots)
+	print("Slots: [%s, %s, %s]" % [
+		slot_cards[0].get_display_value() if slot_cards[0] else "empty",
+		slot_cards[1].get_display_value() if slot_cards[1] else "empty",
+		slot_cards[2].get_display_value() if slot_cards[2] else "empty"
+	])
+	print("==================")
+
+func _unhandled_key_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed:
+		if event.keycode == KEY_D:
+			print_deck_state()

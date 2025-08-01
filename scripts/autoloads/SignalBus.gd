@@ -1,4 +1,5 @@
 # SignalBus.gd - Autoload for centralized game signals
+# Path: res://Magic-Castle/scripts/autoloads/SignalBus.gd
 extends Node
 
 # === CARD GAMEPLAY SIGNALS ===

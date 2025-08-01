@@ -1,6 +1,6 @@
 [gd_scene load_steps=3 format=3 uid="uid://dmh21suf681mq"]
 
-[ext_resource type="Script" uid="uid://b63ooqm8yc1tw" path="res://Magic-Castle/scenes/ui/game_ui/ScoreScreen.gd" id="1_1uoxv"]
+[ext_resource type="Script" uid="uid://b63ooqm8yc1tw" path="res://Magic-Castle/scripts/game/ScoreScreen.gd" id="1_1uoxv"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_qqhui"]
 bg_color = Color(0, 0, 0, 0.658824)

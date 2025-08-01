@@ -1,4 +1,5 @@
 # MenuTransition.gd - Autoload for smooth menu transitions
+# Path: res://Magic-Castle/scripts/autoloads/MenuTransition.gd
 extends Node
 
 var transition_scene = preload("res://Magic-Castle/scenes/ui/components/TransitionScreen.tscn")

@@ -1,0 +1,161 @@
+[gd_scene load_steps=2 format=3 uid="uid://dvs6npf4n8lvc"]
+
+[ext_resource type="Script" uid="uid://y8rh4vvc74tu" path="res://Magic-Castle/scripts/ui/menus/AchievementsScreen.gd" id="1_6yfjp"]
+
+[node name="AchievementsScreen" type="Control"]
+custom_minimum_size = Vector2(450, 400)
+layout_mode = 3
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -200.0
+offset_right = 200.0
+offset_bottom = 200.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 4
+script = ExtResource("1_6yfjp")
+
+[node name="Panel" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="Panel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Panel/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="HBoxContainer" type="HBoxContainer" parent="Panel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="BackButton" type="Button" parent="Panel/MarginContainer/VBoxContainer/HBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "<"
+
+[node name="Title" type="Label" parent="Panel/MarginContainer/VBoxContainer/HBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Progress"
+
+[node name="StarDisplay" type="Label" parent="Panel/MarginContainer/VBoxContainer/HBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "⭐ 125"
+
+[node name="HSeparator" type="HSeparator" parent="Panel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="TabContainer" type="TabContainer" parent="Panel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+current_tab = 0
+
+[node name="Achievements" type="TabBar" parent="Panel/MarginContainer/VBoxContainer/TabContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+metadata/_tab_index = 0
+
+[node name="ScrollContainer" type="ScrollContainer" parent="Panel/MarginContainer/VBoxContainer/TabContainer/Achievements"]
+custom_minimum_size = Vector2(0, 270)
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+grow_horizontal = 2
+
+[node name="AchievementList" type="HBoxContainer" parent="Panel/MarginContainer/VBoxContainer/TabContainer/Achievements/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 0
+
+[node name="Stats" type="TabBar" parent="Panel/MarginContainer/VBoxContainer/TabContainer"]
+visible = false
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+metadata/_tab_index = 1
+
+[node name="ScrollContainer" type="ScrollContainer" parent="Panel/MarginContainer/VBoxContainer/TabContainer/Stats"]
+custom_minimum_size = Vector2(0, 270)
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+grow_horizontal = 2
+
+[node name="StatsContainer" type="VBoxContainer" parent="Panel/MarginContainer/VBoxContainer/TabContainer/Stats/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="OverallStats" type="VBoxContainer" parent="Panel/MarginContainer/VBoxContainer/TabContainer/Stats/ScrollContainer/StatsContainer"]
+layout_mode = 2
+
+[node name="SectionTitle" type="Label" parent="Panel/MarginContainer/VBoxContainer/TabContainer/Stats/ScrollContainer/StatsContainer/OverallStats"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Overall"
+
+[node name="HSeparator" type="HSeparator" parent="Panel/MarginContainer/VBoxContainer/TabContainer/Stats/ScrollContainer/StatsContainer"]
+layout_mode = 2
+
+[node name="RecordSection" type="VBoxContainer" parent="Panel/MarginContainer/VBoxContainer/TabContainer/Stats/ScrollContainer/StatsContainer"]
+layout_mode = 2
+
+[node name="SectionTitle" type="Label" parent="Panel/MarginContainer/VBoxContainer/TabContainer/Stats/ScrollContainer/StatsContainer/RecordSection"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Records"
+
+[node name="HSeparator2" type="HSeparator" parent="Panel/MarginContainer/VBoxContainer/TabContainer/Stats/ScrollContainer/StatsContainer"]
+layout_mode = 2
+
+[node name="ModeStats" type="VBoxContainer" parent="Panel/MarginContainer/VBoxContainer/TabContainer/Stats/ScrollContainer/StatsContainer"]
+layout_mode = 2
+
+[node name="SectionTitle" type="Label" parent="Panel/MarginContainer/VBoxContainer/TabContainer/Stats/ScrollContainer/StatsContainer/ModeStats"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "By Game Mode"
+
+[node name="ModeTabContainer" type="TabContainer" parent="Panel/MarginContainer/VBoxContainer/TabContainer/Stats/ScrollContainer/StatsContainer/ModeStats"]
+layout_mode = 2
+current_tab = 0
+
+[node name="Tri-Peaks" type="TabBar" parent="Panel/MarginContainer/VBoxContainer/TabContainer/Stats/ScrollContainer/StatsContainer/ModeStats/ModeTabContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+metadata/_tab_index = 0
+
+[node name="Rush" type="TabBar" parent="Panel/MarginContainer/VBoxContainer/TabContainer/Stats/ScrollContainer/StatsContainer/ModeStats/ModeTabContainer"]
+visible = false
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+metadata/_tab_index = 1
+
+[node name="Chill" type="TabBar" parent="Panel/MarginContainer/VBoxContainer/TabContainer/Stats/ScrollContainer/StatsContainer/ModeStats/ModeTabContainer"]
+visible = false
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+metadata/_tab_index = 2
+
+[node name="Test" type="TabBar" parent="Panel/MarginContainer/VBoxContainer/TabContainer/Stats/ScrollContainer/StatsContainer/ModeStats/ModeTabContainer"]
+visible = false
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+metadata/_tab_index = 3

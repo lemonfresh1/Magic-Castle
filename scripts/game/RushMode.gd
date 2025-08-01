@@ -1,4 +1,5 @@
 # RushMode.gd - Fast-paced 5-round mode
+# Path: res://Magic-Castle/scripts/game/RushMode.gd
 class_name RushMode
 extends GameModeBase
 

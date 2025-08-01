@@ -92,14 +92,16 @@ func is_sound_enabled() -> bool:
 	return sound_enabled
 
 func set_sfx_volume(volume: float) -> void:
-	sfx_volume = clamp(volume, 0.0, 1.0)
-	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("SFX"), linear_to_db(sfx_volume))
-	save_settings()
+	sfx_volume = volume
+	var bus_idx = AudioServer.get_bus_index("SFX")
+	if bus_idx >= 0:  # Add this check
+		AudioServer.set_bus_volume_db(bus_idx, linear_to_db(volume))
 
 func set_music_volume(volume: float) -> void:
-	music_volume = clamp(volume, 0.0, 1.0)
-	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("Music"), linear_to_db(music_volume))
-	save_settings()
+	music_volume = volume
+	var bus_idx = AudioServer.get_bus_index("Music")
+	if bus_idx >= 0:  # Add this check
+		AudioServer.set_bus_volume_db(bus_idx, linear_to_db(volume))
 
 # === SKIN SYSTEM ===
 func set_card_skin(skin_name: String) -> void:
@@ -259,3 +261,4 @@ func get_scaled_size(base_size: Vector2) -> Vector2:
 
 func get_scaled_font_size(base_size: int) -> int:
 	return int(base_size * ui_scale_factor)
+	

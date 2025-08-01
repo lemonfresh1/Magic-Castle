@@ -1,4 +1,5 @@
 # MobileGameBoard.gd - Mobile-optimized game board
+# Path: res://Magic-Castle/scenes/game/MobileGameBoard.gd
 extends Control
 
 # === SCENE REFERENCES ===
@@ -31,6 +32,10 @@ func _ready() -> void:
 	GameState.start_new_game("single")
 	_apply_board_skin()
 	SignalBus.board_skin_changed.connect(_apply_board_skin)
+	board_area.clip_contents = false
+	cards_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+
 
 func _setup_mobile_layout() -> void:
 	# Create and add mobile top bar
@@ -76,38 +81,54 @@ func _setup_draw_zones() -> void:
 	right_draw_zone.visible = SettingsSystem.is_right_draw_enabled()
 
 	# Ensure zones can receive mouse input
-	left_draw_zone.mouse_filter = Control.MOUSE_FILTER_PASS  # ADD THIS
-	right_draw_zone.mouse_filter = Control.MOUSE_FILTER_PASS  # ADD THIS
+	left_draw_zone.mouse_filter = Control.MOUSE_FILTER_PASS
+	right_draw_zone.mouse_filter = Control.MOUSE_FILTER_PASS
 	
 	if left_draw_zone.visible:
+		# Set size explicitly, not just minimum size
 		left_draw_zone.custom_minimum_size.x = DRAW_ZONE_WIDTH
+		left_draw_zone.size.x = DRAW_ZONE_WIDTH  # ADD THIS
+		
+		# Make sure it's anchored properly
+		left_draw_zone.set_anchors_and_offsets_preset(Control.PRESET_LEFT_WIDE)  # ADD THIS
+		left_draw_zone.size.x = DRAW_ZONE_WIDTH  # Set again after anchoring
+		
 		if not left_draw_zone.gui_input.is_connected(_on_left_draw_zone_input):
 			left_draw_zone.gui_input.connect(_on_left_draw_zone_input)
 		_setup_draw_zone_visual(left_draw_zone, "⬅ TAP TO DRAW")
 	
-	if right_draw_zone.visible:
-		right_draw_zone.custom_minimum_size.x = DRAW_ZONE_WIDTH
-		if not right_draw_zone.gui_input.is_connected(_on_right_draw_zone_input):
-			right_draw_zone.gui_input.connect(_on_right_draw_zone_input)
-		_setup_draw_zone_visual(right_draw_zone, "TAP TO DRAW ➡")
-	
-	_adjust_board_layout()
 
 func _setup_draw_zone_visual(zone: Control, text: String) -> void:
-	# Add visual background
-	var background = ColorRect.new()
-	background.color = Color(0.2, 0.4, 0.6, 0.3)
+	# Clear existing children first
+	for child in zone.get_children():
+		child.queue_free()
+	
+	# Add transparent background with border
+	var background = Panel.new()
 	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	background.mouse_filter = Control.MOUSE_FILTER_IGNORE  # ADD THIS
+	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	
+	# Create transparent style with border
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.2, 0.4, 0.6, 0.05)  # Nearly transparent
+	style.border_color = Color(0.3, 0.5, 0.7, 0.6)  # Visible border
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(8)
+	background.add_theme_stylebox_override("panel", style)
+	
 	zone.add_child(background)
 	
-	# Add instructional label
+	# Add instructional label with better styling
 	var label = Label.new()
 	label.text = text
 	label.rotation = PI / 2
-	label.add_theme_font_size_override("font_size", SettingsSystem.get_scaled_font_size(10))
-	label.anchors_preset = Control.PRESET_CENTER
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE  # ADD THIS
+	label.add_theme_font_size_override("font_size", SettingsSystem.get_scaled_font_size(12))
+	label.add_theme_color_override("font_color", Color(0.7, 0.8, 0.9, 0.8))
+	label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.5))
+	label.add_theme_constant_override("shadow_offset_x", 2)
+	label.add_theme_constant_override("shadow_offset_y", 2)
+	label.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	zone.add_child(label)
 
 func _adjust_board_layout() -> void:

@@ -1,0 +1,136 @@
+[gd_scene load_steps=4 format=3 uid="uid://0ddccgvkkcmo"]
+
+[ext_resource type="Script" uid="uid://bdwottn72lx64" path="res://Magic-Castle/scripts/ui/menus/AchievementItem.gd" id="1_qs4db"]
+[ext_resource type="Texture2D" uid="uid://c4en11ap74lae" path="res://Magic-Castle/assets/icons/achievements/Trophy.png" id="2_pqq20"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_d12rw"]
+bg_color = Color(0.0904823, 0.0904824, 0.0904823, 1)
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_width_bottom = 5
+border_color = Color(0.992157, 0.694118, 0, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="AchievementItem" type="Panel"]
+custom_minimum_size = Vector2(110, 110)
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("1_qs4db")
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+custom_minimum_size = Vector2(100, 100)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -50.0
+offset_top = -58.5
+offset_right = 50.0
+offset_bottom = 58.5
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="IconContainer" type="Control" parent="MarginContainer/VBoxContainer"]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+
+[node name="Icon" type="TextureRect" parent="MarginContainer/VBoxContainer/IconContainer"]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -16.0
+offset_top = -16.0
+offset_right = 16.0
+offset_bottom = 16.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("2_pqq20")
+
+[node name="Name" type="Label" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Player"
+horizontal_alignment = 1
+
+[node name="ProgressBar" type="ProgressBar" parent="MarginContainer/VBoxContainer"]
+custom_minimum_size = Vector2(60, 10)
+layout_mode = 2
+size_flags_horizontal = 4
+show_percentage = false
+
+[node name="StarReward" type="Label" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "⭐ 20"
+horizontal_alignment = 1
+
+[node name="NewBadge" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -26.0
+offset_right = 26.0
+offset_bottom = 34.0
+grow_horizontal = 2
+theme_override_colors/font_color = Color(1, 0, 0, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
+theme_override_colors/font_outline_color = Color(0.975736, 0.975736, 0.975736, 1)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
+theme_override_constants/outline_size = 7
+theme_override_constants/shadow_outline_size = 2
+theme_override_font_sizes/font_size = 24
+text = "New"
+
+[node name="DescriptionPopup" type="Panel" parent="."]
+visible = false
+custom_minimum_size = Vector2(100, 40)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -50.0
+offset_top = -20.0
+offset_right = 50.0
+offset_bottom = 20.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="DescriptionPopup"]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+theme_override_constants/margin_left = 5
+theme_override_constants/margin_top = 5
+theme_override_constants/margin_right = 5
+theme_override_constants/margin_bottom = 5
+
+[node name="Description" type="Label" parent="DescriptionPopup/MarginContainer"]
+z_index = 10
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_d12rw")
+text = "test"

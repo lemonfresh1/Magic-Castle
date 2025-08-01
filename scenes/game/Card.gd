@@ -1,4 +1,5 @@
 #Card.gd
+# Path: res://Magic-Castle/scenes/game/Card.gd
 extends Control
 
 @onready var card_sprite: TextureRect = $CardSprite
