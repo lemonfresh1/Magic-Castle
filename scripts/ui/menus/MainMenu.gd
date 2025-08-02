@@ -1,15 +1,12 @@
 # MainMenu.gd - Main menu with hidden debug panel access
 # Path: res://Magic-Castle/scripts/ui/menus/MainMenu.gd
-# Added version label with triple-tap debug panel, star display
+# Updated with ButtonLayout instances and new UI elements
 extends Control
 
-# UI References
-@onready var menu_container: VBoxContainer = $MenuContainer
-@onready var start_button: Button = $MenuContainer/StartButton
-@onready var multiplayer_button: Button = $MenuContainer/MultiplayerButton
-@onready var settings_button: Button = $MenuContainer/SettingsButton
-@onready var achievements_button: Button = $MenuContainer/AchievementsButton
-@onready var exit_button: Button = $MenuContainer/ExitButton
+# Preload scenes
+const ButtonLayoutScene = preload("res://Magic-Castle/scenes/ui/components/ButtonLayout.tscn")
+const CogBoxScene = preload("res://Magic-Castle/scenes/ui/components/CogBox.tscn")
+const StarBoxScene = preload("res://Magic-Castle/scenes/ui/components/StarBox.tscn")
 
 # Overlay References
 @onready var settings_overlay: Control = $SettingsOverlay
@@ -17,28 +14,95 @@ extends Control
 
 # New elements
 @onready var version_label: Label = $VersionLabel
-@onready var star_display: Label = $StarDisplay
 @onready var debug_panel: Panel = $DebugPanel
 var profile_card: PanelContainer = null
+
+# Button instances
+var play_button: Button
+var shop_button: Button
+var daily_mission_button: Button
+var season_pass_button: Button
+var holiday_button: Button
+var cog_button: Button
+var star_box: PanelContainer
 
 # Debug access
 var version_tap_count: int = 0
 var version_tap_timer: Timer
+
+# Button configurations
+var button_configs = [
+	{"name": "Play", "position": Vector2(930, 110), "has_progress": false, "theme": "Play", "icon": "res://Magic-Castle/assets/ui/menu/play.png"},
+	{"name": "Shop", "position": Vector2(930, 195), "has_progress": false, "theme": "Shop", "icon": "res://Magic-Castle/assets/ui/menu/play.png"},
+	{"name": "Missions", "position": Vector2(930, 280), "has_progress": true, "theme": "Missions", "icon": "res://Magic-Castle/assets/ui/menu/play.png"},
+	{"name": "Season Pass", "position": Vector2(930, 365), "has_progress": true, "theme": "Season Pass", "icon": "res://Magic-Castle/assets/ui/menu/play.png"},
+	{"name": "Holiday", "position": Vector2(930, 450), "has_progress": true, "theme": "Holiday", "icon": "res://Magic-Castle/assets/ui/menu/play.png"}
+]
+
+# Color themes for each button type
+var button_themes = {
+	"Play": {
+		"shadow": Color(0.1, 0.3, 0.1),        # Dark green
+		"main_bg": Color(0.2, 0.5, 0.2),      # Green
+		"main_border": Color(0.3, 0.7, 0.3),   # Bright green
+		"icon_bg": Color.TRANSPARENT,         # Transparent for Play
+		"icon_border": Color.TRANSPARENT,     # Transparent for Play
+		"progress_bg": Color(0.4, 0.7, 0.4),   # Light green (not used)
+		"progress_fill": Color(0.5, 0.9, 0.5), # Bright green (not used)
+		"transparent_icon": true               # Flag for special handling
+	},
+	"Shop": {
+		"shadow": Color(0.4, 0.3, 0.1),        # Dark gold/brown
+		"main_bg": Color(0.6, 0.5, 0.2),      # Gold
+		"main_border": Color(0.8, 0.6, 0.2),   # Bright gold
+		"icon_bg": Color(0.7, 0.6, 0.3),      # Light gold
+		"icon_border": Color(0.3, 0.2, 0.05),  # Dark brown
+		"progress_bg": Color(0.8, 0.7, 0.4),   # Very light gold
+		"progress_fill": Color(0.9, 0.7, 0.2), # Bright gold
+		"transparent_icon": false
+	},
+	"Missions": {
+		"shadow": Color(0.1, 0.2, 0.4),        # Dark blue
+		"main_bg": Color(0.2, 0.4, 0.6),      # Blue
+		"main_border": Color(0.3, 0.5, 0.8),   # Bright blue
+		"icon_bg": Color.TRANSPARENT,         # Transparent for Missions
+		"icon_border": Color.TRANSPARENT,     # Transparent for Missions
+		"progress_bg": Color(0.4, 0.6, 0.8),   # Very light blue
+		"progress_fill": Color(0.4, 0.6, 0.9), # Bright light blue
+		"transparent_icon": true
+	},
+	"Season Pass": {
+		"shadow": Color(0.3, 0.1, 0.3),        # Dark purple
+		"main_bg": Color(0.5, 0.2, 0.5),      # Purple
+		"main_border": Color(0.7, 0.3, 0.7),   # Bright purple
+		"icon_bg": Color(0.6, 0.3, 0.6),      # Light purple
+		"icon_border": Color(0.2, 0.05, 0.2),  # Very dark purple
+		"progress_bg": Color(0.7, 0.4, 0.7),   # Very light purple
+		"progress_fill": Color(0.8, 0.4, 0.8), # Bright light purple
+		"transparent_icon": false
+	},
+	"Holiday": {
+		"shadow": Color(0.5, 0.1, 0.1),        # Dark red
+		"main_bg": Color(0.7, 0.2, 0.2),      # Red
+		"main_border": Color(0.9, 0.3, 0.3),   # Bright red
+		"icon_bg": Color(0.8, 0.3, 0.3),      # Light red
+		"icon_border": Color(0.4, 0.05, 0.05), # Very dark red
+		"progress_bg": Color(0.9, 0.4, 0.4),   # Very light red
+		"progress_fill": Color(0.2, 0.6, 0.2), # Green (festive contrast)
+		"transparent_icon": false
+	}
+}
 
 func _ready() -> void:
 	# Set up the gradient background FIRST
 	_setup_menu_background()
 	
 	_setup_profile_card()
-	_connect_buttons()
+	_create_buttons()
+	_create_ui_elements()
 	_hide_overlays()
-	_update_ui_state()
 	_setup_version_label()
-	_setup_star_display()
 	_setup_debug_panel()
-	
-	# Connect to star changes
-	StarManager.stars_changed.connect(_on_stars_changed)
 	
 	# Safely connect overlay signals
 	if settings_overlay and settings_overlay.has_node("SettingsMenu"):
@@ -52,6 +116,178 @@ func _ready() -> void:
 		achievements_panel.achievements_closed.connect(_on_achievements_closed)
 	else:
 		pass
+
+func _apply_button_theme(button_instance: Button, config: Dictionary) -> void:
+	var theme_name = config.theme
+	if not theme_name or not button_themes.has(theme_name):
+		return
+	
+	var theme = button_themes[theme_name]
+	
+	# Get all the panels and elements
+	var shadow_panel = button_instance.get_node("ShadowPanelContainer")
+	var main_panel = button_instance.get_node("ShadowPanelContainer/MainPanelContainer")
+	var icon_container = button_instance.get_node("ShadowPanelContainer/MainPanelContainer/MarginContainer/HBoxContainer/IconContainer")
+	var icon_margin = button_instance.get_node("ShadowPanelContainer/MainPanelContainer/MarginContainer/HBoxContainer/IconContainer/MarginContainer")
+	var icon_texture = button_instance.get_node("ShadowPanelContainer/MainPanelContainer/MarginContainer/HBoxContainer/IconContainer/MarginContainer/Icon")
+	var progress_bar = button_instance.get_node("ShadowPanelContainer/MainPanelContainer/MarginContainer/HBoxContainer/LabelContainer/ProgressBar")
+	
+	# Apply shadow panel style
+	if shadow_panel and shadow_panel.has_theme_stylebox_override("panel"):
+		var shadow_style = shadow_panel.get_theme_stylebox("panel").duplicate()
+		shadow_style.bg_color = theme.shadow
+		shadow_panel.add_theme_stylebox_override("panel", shadow_style)
+	
+	# Apply main panel style
+	if main_panel and main_panel.has_theme_stylebox_override("panel"):
+		var main_style = main_panel.get_theme_stylebox("panel").duplicate()
+		main_style.bg_color = theme.main_bg
+		main_style.border_color = theme.main_border
+		main_panel.add_theme_stylebox_override("panel", main_style)
+	
+	# Handle icon container based on transparent_icon flag
+	if icon_container and icon_container.has_theme_stylebox_override("panel"):
+		var icon_style = icon_container.get_theme_stylebox("panel").duplicate()
+		
+		if theme.transparent_icon:
+			# For Play and Missions - transparent background
+			icon_style.bg_color = Color.TRANSPARENT
+			icon_style.border_color = Color.TRANSPARENT
+			icon_style.border_width_top = 0
+			icon_style.border_width_bottom = 0
+			icon_style.border_width_left = 0
+			icon_style.border_width_right = 0
+			
+			# Set margins to 0
+			if icon_margin:
+				icon_margin.add_theme_constant_override("margin_top", 3)
+				icon_margin.add_theme_constant_override("margin_bottom", 3)
+				icon_margin.add_theme_constant_override("margin_left", 6)
+				icon_margin.add_theme_constant_override("margin_right", 0)
+		else:
+			# For Shop, Season Pass, Holiday - colored background
+			icon_style.bg_color = theme.icon_bg
+			icon_style.border_color = theme.icon_border
+		
+		icon_container.add_theme_stylebox_override("panel", icon_style)
+	
+	# Set the icon texture and size
+	if icon_texture:
+		
+		# Load and set the texture
+		if config.has("icon") and config.icon:
+			var texture = load(config.icon)
+			if texture:
+				icon_texture.texture = texture
+				icon_texture.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+				icon_texture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	
+	# Apply progress bar styles
+	if progress_bar and progress_bar.visible:
+		var base_style = progress_bar.get_theme_stylebox("background").duplicate()
+		base_style.bg_color = theme.progress_bg
+		progress_bar.add_theme_stylebox_override("background", base_style)
+		
+		var fill_style = progress_bar.get_theme_stylebox("fill").duplicate()
+		fill_style.bg_color = theme.progress_fill
+		progress_bar.add_theme_stylebox_override("fill", fill_style)
+
+func _create_buttons() -> void:
+	for i in range(button_configs.size()):
+		var config = button_configs[i]
+		var button_instance = ButtonLayoutScene.instantiate() as Button
+		
+		add_child(button_instance)
+		
+		# Set position
+		button_instance.position = config.position
+		
+		# Get nodes
+		var button_label = button_instance.get_node("ShadowPanelContainer/MainPanelContainer/MarginContainer/HBoxContainer/LabelContainer/ButtonLabel")
+		var progress_bar = button_instance.get_node("ShadowPanelContainer/MainPanelContainer/MarginContainer/HBoxContainer/LabelContainer/ProgressBar")
+		
+		if button_label:
+			button_label.text = config.name
+		else:
+			continue
+		
+		# Apply theme to all buttons
+		_apply_button_theme(button_instance, config)
+		
+		# Handle each button specifics
+		match config.name:
+			"Play":
+				button_label.add_theme_font_size_override("font_size", 36)
+				play_button = button_instance
+				if progress_bar:
+					progress_bar.visible = false
+			"Shop":
+				button_label.add_theme_font_size_override("font_size", 36)
+				shop_button = button_instance
+				if progress_bar:
+					progress_bar.visible = false
+			"Missions":
+				daily_mission_button = button_instance
+			"Season Pass":
+				season_pass_button = button_instance
+			"Holiday":
+				holiday_button = button_instance
+
+		for button in [play_button, shop_button, daily_mission_button, season_pass_button, holiday_button]:
+			if button:
+				move_child(button, get_child_count() - 1)
+		# Connect button signal - FIXED VERSION
+		button_instance.pressed.connect(_on_button_pressed.bind(config.name))
+
+func _create_ui_elements() -> void:
+	# Create CogBox
+	var cog_box = CogBoxScene.instantiate()
+	add_child(cog_box)
+	cog_box.position = Vector2(1130.0, 30.0)
+	cog_button = cog_box
+	
+	# Connect cog button - it should be a Button
+	if cog_box is Button:
+		cog_box.pressed.connect(_on_cog_pressed)
+	
+	# Create StarBox
+	star_box = StarBoxScene.instantiate()
+	add_child(star_box)
+	star_box.position = Vector2(1000.0, 30.0)
+
+func _on_button_pressed(button_name: String) -> void:
+	match button_name:
+		"Play":
+			_on_play_pressed()
+		"Shop":
+			_on_shop_pressed()
+		"Missions":
+			_on_daily_mission_pressed()
+		"Season Pass":
+			_on_season_pass_pressed()
+		"Holiday":
+			_on_holiday_pressed()
+
+func _on_play_pressed() -> void:
+	GameState.reset_game_completely()
+	GameModeManager._load_current_mode()
+	get_tree().change_scene_to_file("res://Magic-Castle/scenes/game/MobileGameBoard.tscn")
+
+func _on_shop_pressed() -> void:
+	# TODO: Open shop
+	pass
+
+func _on_daily_mission_pressed() -> void:
+	# TODO: Open daily missions
+	pass
+
+func _on_season_pass_pressed() -> void:
+	# TODO: Open season pass
+	pass
+
+func _on_holiday_pressed() -> void:
+	# TODO: Open holiday event
+	pass
 
 func _setup_menu_background() -> void:
 	# Remove any game board backgrounds that might exist
@@ -102,6 +338,9 @@ func _setup_menu_background() -> void:
 	# Also set the clear color as fallback
 	RenderingServer.set_default_clear_color(Color(0.15, 0.3, 0.2))
 
+	bg_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+
 func _setup_version_label():
 	if not version_label:
 		version_label = Label.new()
@@ -110,15 +349,12 @@ func _setup_version_label():
 	
 	# Position in bottom-left with proper margins
 	version_label.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	version_label.anchor_left = 0.0
-	version_label.anchor_top = 1.0
-	version_label.anchor_right = 0.0
-	version_label.anchor_bottom = 1.0
+	version_label.position = Vector2(20, 500)  # Adjust based on your screen height
 	
 	# Set text
 	version_label.text = "v0.3.0"
-	version_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6, 0.8))  # More visible
-	version_label.add_theme_font_size_override("font_size", 14)  # Slightly bigger
+	version_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6, 0.8))
+	version_label.add_theme_font_size_override("font_size", 14)
 	
 	# Make clickable
 	version_label.mouse_filter = Control.MOUSE_FILTER_PASS
@@ -132,26 +368,6 @@ func _setup_version_label():
 		version_tap_timer.timeout.connect(_reset_version_taps)
 		add_child(version_tap_timer)
 
-func _setup_star_display():
-	if not star_display:
-		star_display = Label.new()
-		star_display.name = "StarDisplay"
-		add_child(star_display)
-	
-	# Position in top-right with proper margins
-	star_display.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	star_display.anchor_left = 1.0
-	star_display.anchor_top = 0.0
-	star_display.anchor_right = 1.0
-	star_display.anchor_bottom = 0.0
-	
-	# Update star count
-	_update_star_display()
-	
-	# Style
-	star_display.add_theme_font_size_override("font_size", 24)
-	star_display.add_theme_color_override("font_color", Color(1.0, 0.9, 0.0))  # Brighter yellow
-
 func _setup_debug_panel():
 	# Create if doesn't exist
 	if not debug_panel:
@@ -159,20 +375,6 @@ func _setup_debug_panel():
 		debug_panel = debug_scene.instantiate()
 		add_child(debug_panel)
 		move_child(debug_panel, get_child_count() - 1)  # On top
-
-func _update_star_display():
-	if star_display:
-		var total_stars = StarManager.get_balance()
-		star_display.text = "⭐ %d" % total_stars
-
-func _on_stars_changed(new_total: int, change: int):
-	_update_star_display()
-	
-	# Animate star change
-	if star_display and change != 0:
-		var tween = create_tween()
-		tween.tween_property(star_display, "scale", Vector2(1.2, 1.2), 0.1)
-		tween.tween_property(star_display, "scale", Vector2.ONE, 0.1)
 
 func _on_version_label_input(event: InputEvent):
 	if event is InputEventMouseButton and event.pressed:
@@ -190,65 +392,29 @@ func _show_debug_panel():
 	if debug_panel and debug_panel.has_method("show_panel"):
 		debug_panel.show_panel()
 
-func _connect_buttons() -> void:
-	start_button.pressed.connect(_on_start_pressed)
-	multiplayer_button.pressed.connect(_on_multiplayer_pressed)
-	settings_button.pressed.connect(_on_settings_pressed)
-	achievements_button.pressed.connect(_on_achievements_pressed)
-	exit_button.pressed.connect(_on_exit_pressed)
-
 func _hide_overlays() -> void:
 	if settings_overlay:
 		settings_overlay.visible = false
 	if achievements_overlay:
 		achievements_overlay.visible = false
 
-func _update_ui_state() -> void:
-	# Update UI based on current game mode
-	var current_mode = GameModeManager.get_current_mode()
-	if current_mode:
-		start_button.text = "Start %s" % current_mode.display_name
-	
-	# Update star display
-	_update_star_display()
+func _on_cog_pressed() -> void:
+	if settings_overlay:
+		settings_overlay.visible = true
+		# Hide the new buttons
+		for button in [play_button, shop_button, daily_mission_button, season_pass_button, holiday_button]:
+			if button:
+				button.visible = false
 
-func _on_start_pressed() -> void:
-	GameState.reset_game_completely()
-	GameModeManager._load_current_mode()
-	get_tree().change_scene_to_file("res://Magic-Castle/scenes/game/MobileGameBoard.tscn")
-
-func _on_multiplayer_pressed() -> void:
-	# Placeholder - just show a message
-	print("Multiplayer coming soon!")
-	# Could show a "Coming Soon" popup
-
-func _on_settings_pressed() -> void:
-	menu_container.visible = false
-	settings_overlay.visible = true
-
-func _on_achievements_pressed() -> void:
-	get_tree().change_scene_to_file("res://Magic-Castle/scenes/ui/menus/AchievementsScreen.tscn")
-
-func _on_exit_pressed() -> void:
-	get_tree().quit()
-
-# Called when settings are closed
 func _on_settings_closed() -> void:
 	settings_overlay.visible = false
-	menu_container.visible = true
-	_update_ui_state()
+	# Show the new buttons again
+	for button in [play_button, shop_button, daily_mission_button, season_pass_button, holiday_button]:
+		if button:
+			button.visible = true
 
-# Called when achievements are closed
 func _on_achievements_closed() -> void:
 	achievements_overlay.visible = false
-	menu_container.visible = true
-	_update_ui_state()
-
-# Called when returning from a game
-func _notification(what):
-	if what == NOTIFICATION_WM_WINDOW_FOCUS_IN:
-		# Refresh UI when window gains focus
-		_update_ui_state()
 
 func _setup_profile_card():
 	if not profile_card:
@@ -257,20 +423,23 @@ func _setup_profile_card():
 		profile_card.name = "ProfileCard"
 		add_child(profile_card)
 	
-	# Position in top-left with proper margins
-	profile_card.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	# Set custom anchors and margins
 	profile_card.anchor_left = 0.0
 	profile_card.anchor_top = 0.0
-	profile_card.anchor_right = 0.6
-	profile_card.anchor_bottom = 0.15
-	profile_card.position = Vector2(20, 20)  # 20px margin from edges
+	profile_card.anchor_right = 0.65
+	profile_card.anchor_bottom = 0.0
+
+	# Set margins
+	profile_card.offset_left = 20
+	profile_card.offset_top = 20
+	profile_card.offset_right = -20  # Negative to maintain margin from right anchor
+	profile_card.offset_bottom = 0  # Height controlled by the ProfileCard's content
 	
 	# Connect signals
 	if profile_card.has_signal("section_selected"):
 		profile_card.section_selected.connect(_on_profile_section_selected)
 
-# Add this handler function:
 func _on_profile_section_selected(section: String) -> void:
 	# This will handle the expandable content below the profile card
-	print("Section selected: %s" % section)
 	# Future: Show expandable content based on section
+	pass

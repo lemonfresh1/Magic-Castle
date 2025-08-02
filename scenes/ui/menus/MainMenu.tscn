@@ -20,47 +20,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-
-[node name="MenuContainer" type="VBoxContainer" parent="."]
-layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = 292.0
-offset_top = -199.0
-offset_right = 409.0
-offset_bottom = 3.0
-grow_horizontal = 2
-grow_vertical = 2
-
-[node name="Title" type="Label" parent="MenuContainer"]
-layout_mode = 2
-text = "Magic Castle"
-
-[node name="Spacer" type="Control" parent="MenuContainer"]
-layout_mode = 2
-
-[node name="StartButton" type="Button" parent="MenuContainer"]
-layout_mode = 2
-text = "Start"
-
-[node name="MultiplayerButton" type="Button" parent="MenuContainer"]
-layout_mode = 2
-text = "Multiplayer"
-
-[node name="SettingsButton" type="Button" parent="MenuContainer"]
-layout_mode = 2
-text = "Settings"
-
-[node name="AchievementsButton" type="Button" parent="MenuContainer"]
-layout_mode = 2
-text = "Achievements"
-
-[node name="ExitButton" type="Button" parent="MenuContainer"]
-layout_mode = 2
-text = "Exit"
+mouse_filter = 2
 
 [node name="SettingsOverlay" type="Control" parent="."]
 visible = false
@@ -92,18 +52,8 @@ anchor_bottom = 1.0
 offset_top = -23.0
 offset_right = 100.0
 grow_vertical = 0
+theme_override_colors/font_color = Color(0, 0, 0, 1)
 text = "VERSION 123"
-
-[node name="StarDisplay" type="Label" parent="."]
-z_index = 4096
-layout_mode = 1
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -80.0
-offset_bottom = 23.0
-grow_horizontal = 0
-text = "STARS 100"
 
 [node name="DebugPanel" parent="." instance=ExtResource("3_dlttm")]
 visible = false

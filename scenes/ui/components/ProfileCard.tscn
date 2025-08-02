@@ -1,33 +1,69 @@
-[gd_scene load_steps=6 format=3 uid="uid://cehxkkjavpxx1"]
+[gd_scene load_steps=15 format=3 uid="uid://cehxkkjavpxx1"]
 
 [ext_resource type="Script" uid="uid://fdvtpt0612fw" path="res://Magic-Castle/scripts/ui/components/ProfileCard.gd" id="1_e57sa"]
-[ext_resource type="StyleBox" uid="uid://cf4gwa8xipnwh" path="res://Magic-Castle/res/XPBarLayout.tres" id="2_ov4bw"]
-[ext_resource type="StyleBox" uid="uid://bdt87hqe856cv" path="res://Magic-Castle/res/XPBarFillLayout.tres" id="3_hciog"]
+[ext_resource type="Texture2D" uid="uid://k00mr3ektrsb" path="res://Magic-Castle/assets/ui/menu/profile.png" id="2_c5b4a"]
+[ext_resource type="Texture2D" uid="uid://wet5jqnbr8qe" path="res://Magic-Castle/assets/ui/menu/mail.png" id="3_tmwhq"]
+[ext_resource type="Texture2D" uid="uid://b2ikg68uqkc8f" path="res://Magic-Castle/assets/ui/menu/achievement.png" id="4_ergxw"]
+[ext_resource type="Texture2D" uid="uid://mgmt0vsn4p4h" path="res://Magic-Castle/assets/ui/menu/stats.png" id="5_r3ea7"]
+[ext_resource type="Texture2D" uid="uid://cqrg2ffmcxjxh" path="res://Magic-Castle/assets/ui/menu/friends.png" id="6_8hi6o"]
+[ext_resource type="Texture2D" uid="uid://b4um6yu8erwcf" path="res://Magic-Castle/assets/ui/menu/clan.png" id="6_ergxw"]
+[ext_resource type="Texture2D" uid="uid://ba71mi2y0y8s6" path="res://Magic-Castle/assets/ui/menu/referral.png" id="7_w6gdq"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_c3481"]
-border_width_left = 3
-border_width_top = 3
-border_width_right = 3
-border_width_bottom = 3
-corner_radius_top_left = 20
-corner_radius_top_right = 20
-corner_radius_bottom_right = 20
-corner_radius_bottom_left = 20
+bg_color = Color(1, 1, 1, 0.847059)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1, 1, 1, 0.862745)
+corner_radius_top_left = 37
+corner_radius_top_right = 37
+corner_radius_bottom_right = 37
+corner_radius_bottom_left = 37
+shadow_color = Color(0.444843, 0.444843, 0.444843, 0.6)
+shadow_size = 5
+shadow_offset = Vector2(0, 3)
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_e57sa"]
-border_width_left = 3
-border_width_top = 3
-border_width_right = 3
-border_width_bottom = 3
-border_color = Color(0.804451, 0.571316, 0.0473443, 1)
-corner_radius_top_left = 25
-corner_radius_top_right = 25
-corner_radius_bottom_right = 25
-corner_radius_bottom_left = 25
-shadow_color = Color(0.490144, 0.360489, 0, 0.6)
-shadow_size = 2
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_vv7t0"]
+bg_color = Color(1, 1, 1, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1, 0.753948, 0.268631, 1)
+corner_radius_top_left = 45
+corner_radius_top_right = 45
+corner_radius_bottom_right = 45
+corner_radius_bottom_left = 45
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_w6gdq"]
+bg_color = Color(0.6, 0.6, 0.6, 0)
+border_color = Color(0.8, 0.8, 0.8, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_8hi6o"]
+bg_color = Color(0.6, 0.6, 0.6, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ergxw"]
+bg_color = Color(0.270588, 0, 1, 1)
+border_color = Color(0.8, 0.8, 0.8, 0)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+expand_margin_left = 5.0
+expand_margin_top = 5.0
+expand_margin_right = 5.0
+expand_margin_bottom = 5.0
+shadow_color = Color(0.282353, 0, 0.545098, 0.584314)
+shadow_size = 1
+shadow_offset = Vector2(0, 2)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_r3ea7"]
+bg_color = Color(0.6, 0.6, 0.6, 0)
 
 [node name="ProfileCard" type="PanelContainer"]
+offset_right = 412.0
+offset_bottom = 62.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_c3481")
 script = ExtResource("1_e57sa")
 
@@ -38,84 +74,178 @@ theme_override_constants/margin_top = 5
 theme_override_constants/margin_right = 10
 theme_override_constants/margin_bottom = 5
 
-[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer"]
+[node name="HeaderContainer" type="HBoxContainer" parent="MarginContainer"]
 layout_mode = 2
-theme_override_constants/separation = 4
+size_flags_vertical = 6
 
-[node name="HeaderContainer" type="HBoxContainer" parent="MarginContainer/VBoxContainer"]
+[node name="PanelContainer" type="PanelContainer" parent="MarginContainer/HeaderContainer"]
+custom_minimum_size = Vector2(48, 48)
 layout_mode = 2
-size_flags_vertical = 3
-
-[node name="ClanLabel" type="Label" parent="MarginContainer/VBoxContainer/HeaderContainer"]
-layout_mode = 2
-text = "[SXTN]"
-
-[node name="NameLabel" type="Label" parent="MarginContainer/VBoxContainer/HeaderContainer"]
-layout_mode = 2
-text = "Stefan"
-
-[node name="LevelLabel" type="Label" parent="MarginContainer/VBoxContainer/HeaderContainer"]
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Lv. 25"
-horizontal_alignment = 2
-
-[node name="XPProgressBar" type="ProgressBar" parent="MarginContainer/VBoxContainer/HeaderContainer"]
-custom_minimum_size = Vector2(50, 20)
-layout_mode = 2
-size_flags_horizontal = 3
 size_flags_vertical = 4
-size_flags_stretch_ratio = 3.0
-theme_override_styles/background = ExtResource("2_ov4bw")
-theme_override_styles/fill = ExtResource("3_hciog")
-value = 20.0
-show_percentage = false
+theme_override_styles/panel = SubResource("StyleBoxFlat_vv7t0")
 
-[node name="XPRequiredLabel" type="Label" parent="MarginContainer/VBoxContainer/HeaderContainer"]
+[node name="LevelLabel" type="Label" parent="MarginContainer/HeaderContainer/PanelContainer"]
 layout_mode = 2
-text = "800/1200"
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.652261, 0.293654, 1, 1)
+theme_override_font_sizes/font_size = 24
+text = "25"
+horizontal_alignment = 1
+vertical_alignment = 1
 
-[node name="ButtonContainer" type="PanelContainer" parent="MarginContainer/VBoxContainer"]
+[node name="ClanLabel" type="Label" parent="MarginContainer/HeaderContainer"]
 layout_mode = 2
-size_flags_vertical = 3
-theme_override_styles/panel = SubResource("StyleBoxFlat_e57sa")
+size_flags_horizontal = 0
+theme_override_colors/font_color = Color(0.270222, 0.270222, 0.270222, 1)
+theme_override_font_sizes/font_size = 24
+text = "[SXTN]"
+horizontal_alignment = 1
 
-[node name="HBoxContainer" type="HBoxContainer" parent="MarginContainer/VBoxContainer/ButtonContainer"]
+[node name="PlayerNameLabel" type="Label" parent="MarginContainer/HeaderContainer"]
 layout_mode = 2
-size_flags_horizontal = 4
-theme_override_constants/separation = 2
+size_flags_horizontal = 0
+theme_override_colors/font_color = Color(0.270222, 0.270222, 0.270222, 1)
+theme_override_font_sizes/font_size = 24
+text = "Stefan"
+horizontal_alignment = 1
 
-[node name="ProfileButton" type="Button" parent="MarginContainer/VBoxContainer/ButtonContainer/HBoxContainer"]
+[node name="VSeparator" type="VSeparator" parent="MarginContainer/HeaderContainer"]
+modulate = Color(1, 1, 1, 0)
+custom_minimum_size = Vector2(30, 0)
 layout_mode = 2
-size_flags_horizontal = 4
-text = "P"
 
-[node name="InboxButton" type="Button" parent="MarginContainer/VBoxContainer/ButtonContainer/HBoxContainer"]
+[node name="ButtonContainer" type="PanelContainer" parent="MarginContainer/HeaderContainer"]
+self_modulate = Color(1, 1, 1, 0)
 layout_mode = 2
-size_flags_horizontal = 4
-text = "I"
+size_flags_horizontal = 2
 
-[node name="AchievementsButton" type="Button" parent="MarginContainer/VBoxContainer/ButtonContainer/HBoxContainer"]
+[node name="HBoxContainer" type="HBoxContainer" parent="MarginContainer/HeaderContainer/ButtonContainer"]
 layout_mode = 2
-size_flags_horizontal = 4
-text = "A"
+size_flags_horizontal = 0
+theme_override_constants/separation = 15
 
-[node name="StatsButton" type="Button" parent="MarginContainer/VBoxContainer/ButtonContainer/HBoxContainer"]
-layout_mode = 2
-size_flags_horizontal = 4
-text = "S"
-
-[node name="ClanButton" type="Button" parent="MarginContainer/VBoxContainer/ButtonContainer/HBoxContainer"]
-layout_mode = 2
-size_flags_horizontal = 4
-text = "C"
-
-[node name="FollowersButton" type="Button" parent="MarginContainer/VBoxContainer/ButtonContainer/HBoxContainer"]
+[node name="ProfileButton" type="Button" parent="MarginContainer/HeaderContainer/ButtonContainer/HBoxContainer"]
+custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
 size_flags_horizontal = 4
-text = "F"
+size_flags_vertical = 4
+focus_mode = 0
+theme_override_colors/icon_hover_color = Color(0.219608, 0.219608, 0.219608, 1)
+theme_override_colors/icon_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/icon_normal_color = Color(0.219608, 0.219608, 0.219608, 1)
+theme_override_styles/focus = SubResource("StyleBoxFlat_w6gdq")
+theme_override_styles/hover = SubResource("StyleBoxFlat_8hi6o")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_ergxw")
+theme_override_styles/normal = SubResource("StyleBoxFlat_r3ea7")
+toggle_mode = true
+icon = ExtResource("2_c5b4a")
+icon_alignment = 1
+expand_icon = true
 
-[node name="ReferralButton" type="Button" parent="MarginContainer/VBoxContainer/ButtonContainer/HBoxContainer"]
+[node name="InboxButton" type="Button" parent="MarginContainer/HeaderContainer/ButtonContainer/HBoxContainer"]
+custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
 size_flags_horizontal = 4
-text = "R"
+size_flags_vertical = 4
+focus_mode = 0
+theme_override_colors/icon_hover_color = Color(0.219608, 0.219608, 0.219608, 1)
+theme_override_colors/icon_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/icon_normal_color = Color(0.219608, 0.219608, 0.219608, 1)
+theme_override_styles/focus = SubResource("StyleBoxFlat_w6gdq")
+theme_override_styles/hover = SubResource("StyleBoxFlat_8hi6o")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_ergxw")
+theme_override_styles/normal = SubResource("StyleBoxFlat_r3ea7")
+toggle_mode = true
+icon = ExtResource("3_tmwhq")
+icon_alignment = 1
+expand_icon = true
+
+[node name="AchievementsButton" type="Button" parent="MarginContainer/HeaderContainer/ButtonContainer/HBoxContainer"]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+focus_mode = 0
+theme_override_colors/icon_hover_color = Color(0.219608, 0.219608, 0.219608, 1)
+theme_override_colors/icon_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/icon_normal_color = Color(0.219608, 0.219608, 0.219608, 1)
+theme_override_styles/focus = SubResource("StyleBoxFlat_w6gdq")
+theme_override_styles/hover = SubResource("StyleBoxFlat_8hi6o")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_ergxw")
+theme_override_styles/normal = SubResource("StyleBoxFlat_r3ea7")
+toggle_mode = true
+icon = ExtResource("4_ergxw")
+icon_alignment = 1
+expand_icon = true
+
+[node name="StatsButton" type="Button" parent="MarginContainer/HeaderContainer/ButtonContainer/HBoxContainer"]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+focus_mode = 0
+theme_override_colors/icon_hover_color = Color(0.219608, 0.219608, 0.219608, 1)
+theme_override_colors/icon_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/icon_normal_color = Color(0.219608, 0.219608, 0.219608, 1)
+theme_override_styles/focus = SubResource("StyleBoxFlat_w6gdq")
+theme_override_styles/hover = SubResource("StyleBoxFlat_8hi6o")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_ergxw")
+theme_override_styles/normal = SubResource("StyleBoxFlat_r3ea7")
+toggle_mode = true
+icon = ExtResource("5_r3ea7")
+icon_alignment = 1
+expand_icon = true
+
+[node name="ClanButton" type="Button" parent="MarginContainer/HeaderContainer/ButtonContainer/HBoxContainer"]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+focus_mode = 0
+theme_override_colors/icon_hover_color = Color(0.219608, 0.219608, 0.219608, 1)
+theme_override_colors/icon_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/icon_normal_color = Color(0.219608, 0.219608, 0.219608, 1)
+theme_override_styles/focus = SubResource("StyleBoxFlat_w6gdq")
+theme_override_styles/hover = SubResource("StyleBoxFlat_8hi6o")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_ergxw")
+theme_override_styles/normal = SubResource("StyleBoxFlat_r3ea7")
+toggle_mode = true
+icon = ExtResource("6_ergxw")
+icon_alignment = 1
+expand_icon = true
+
+[node name="FollowersButton" type="Button" parent="MarginContainer/HeaderContainer/ButtonContainer/HBoxContainer"]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+focus_mode = 0
+theme_override_colors/icon_hover_color = Color(0.219608, 0.219608, 0.219608, 1)
+theme_override_colors/icon_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/icon_normal_color = Color(0.219608, 0.219608, 0.219608, 1)
+theme_override_styles/focus = SubResource("StyleBoxFlat_w6gdq")
+theme_override_styles/hover = SubResource("StyleBoxFlat_8hi6o")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_ergxw")
+theme_override_styles/normal = SubResource("StyleBoxFlat_r3ea7")
+toggle_mode = true
+icon = ExtResource("6_8hi6o")
+icon_alignment = 1
+expand_icon = true
+
+[node name="ReferralButton" type="Button" parent="MarginContainer/HeaderContainer/ButtonContainer/HBoxContainer"]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+focus_mode = 0
+theme_override_colors/icon_hover_color = Color(0.219608, 0.219608, 0.219608, 1)
+theme_override_colors/icon_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/icon_normal_color = Color(0.219608, 0.219608, 0.219608, 1)
+theme_override_styles/focus = SubResource("StyleBoxFlat_w6gdq")
+theme_override_styles/hover = SubResource("StyleBoxFlat_8hi6o")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_ergxw")
+theme_override_styles/normal = SubResource("StyleBoxFlat_r3ea7")
+toggle_mode = true
+icon = ExtResource("7_w6gdq")
+icon_alignment = 1
+expand_icon = true

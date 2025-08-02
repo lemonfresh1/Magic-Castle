@@ -231,15 +231,15 @@ func _update_progression_display() -> void:
 		mmr_separator.visible = false
 	
 	# Stars Section
+	var total_stars = starting_stars + stars_gained
 	if stars_gained > 0:
 		star_gained_label.text = "Stars gained: +%d" % stars_gained
-		star_label.text = "Star Count: %d" % stars_gained
+		star_label.text = "Star Count: %d" % total_stars
 		star_section.visible = true
 		star_separator.visible = true
 	else:
 		star_section.visible = false
 		star_separator.visible = false
-	print("STAR LABEL: Setting to %d (gained) instead of %d (total)" % [stars_gained, starting_stars + stars_gained])
 
 
 func _update_events_display() -> void:

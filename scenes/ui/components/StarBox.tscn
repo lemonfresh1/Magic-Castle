@@ -1,0 +1,52 @@
+[gd_scene load_steps=3 format=3 uid="uid://bseaqtjmtu704"]
+
+[ext_resource type="Script" uid="uid://d3skaj7rr36c1" path="res://Magic-Castle/scripts/ui/components/StarBox.gd" id="1_0r7fs"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_c3481"]
+bg_color = Color(1, 1, 1, 0.847059)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1, 1, 1, 0.862745)
+corner_radius_top_left = 37
+corner_radius_top_right = 37
+corner_radius_bottom_right = 37
+corner_radius_bottom_left = 37
+shadow_color = Color(0.444843, 0.444843, 0.444843, 0.6)
+shadow_size = 5
+shadow_offset = Vector2(0, 3)
+
+[node name="StarBox" type="PanelContainer"]
+offset_right = 123.0
+offset_bottom = 46.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_c3481")
+script = ExtResource("1_0r7fs")
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 5
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 5
+
+[node name="HeaderContainer" type="HBoxContainer" parent="MarginContainer"]
+layout_mode = 2
+size_flags_vertical = 6
+
+[node name="LevelLabel" type="Label" parent="MarginContainer/HeaderContainer"]
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 8
+theme_override_font_sizes/font_size = 20
+text = "⭐"
+horizontal_alignment = 1
+
+[node name="StarDisplay" type="Label" parent="MarginContainer/HeaderContainer"]
+layout_mode = 2
+size_flags_horizontal = 10
+size_flags_vertical = 8
+theme_override_colors/font_color = Color(0.270222, 0.270222, 0.270222, 1)
+theme_override_font_sizes/font_size = 24
+text = "Stefan"
+horizontal_alignment = 1
