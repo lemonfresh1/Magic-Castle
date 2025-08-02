@@ -7,6 +7,7 @@ extends Control
 const ButtonLayoutScene = preload("res://Magic-Castle/scenes/ui/components/ButtonLayout.tscn")
 const CogBoxScene = preload("res://Magic-Castle/scenes/ui/components/CogBox.tscn")
 const StarBoxScene = preload("res://Magic-Castle/scenes/ui/components/StarBox.tscn")
+const ShopUIScene = preload("res://Magic-Castle/scenes/ui/shop/ShopUI.tscn")
 
 # Overlay References
 @onready var settings_overlay: Control = $SettingsOverlay
@@ -16,6 +17,57 @@ const StarBoxScene = preload("res://Magic-Castle/scenes/ui/components/StarBox.ts
 @onready var version_label: Label = $VersionLabel
 @onready var debug_panel: Panel = $DebugPanel
 var profile_card: PanelContainer = null
+
+# Dictionary to store all menu panel instances
+var menu_instances = {}
+
+# Configuration for all menu panels
+var menu_configs = {
+	"shop": {
+		"scene": "res://Magic-Castle/scenes/ui/shop/ShopUI.tscn",
+		"script": "res://Magic-Castle/scripts/ui/shop/ShopUI.gd",
+		"signals": {
+			"shop_closed": "_on_shop_closed",
+			"item_purchased": "_on_shop_item_purchased"
+		},
+		"show_method": "show_shop"
+	},
+	"inventory": {
+		"scene": "res://Magic-Castle/scenes/ui/inventory/InventoryUI.tscn",
+		"script": "res://Magic-Castle/scripts/ui/inventory/InventoryUI.gd",
+		"signals": {
+			"inventory_closed": "_on_inventory_closed"
+		},
+		"show_method": "show_inventory"
+	},
+	"missions": {
+		"scene": "res://Magic-Castle/scenes/ui/missions/MissionUI.tscn",
+		"script": "res://Magic-Castle/scripts/ui/missions/MissionUI.gd", 
+		"signals": {
+			"mission_completed": "_on_mission_completed",
+			"missions_closed": "_on_missions_closed"
+		},
+		"show_method": "refresh_missions"
+	},
+	"season_pass": {
+		"scene": "res://Magic-Castle/scenes/ui/season/SeasonPassUI.tscn",
+		"script": "res://Magic-Castle/scripts/ui/season/SeasonPassUI.gd",
+		"signals": {
+			"tier_claimed": "_on_tier_claimed",
+			"season_pass_closed": "_on_season_pass_closed"
+		},
+		"show_method": "show_season_pass"
+	},
+	"holiday": {
+		"scene": "res://Magic-Castle/scenes/ui/holiday/HolidayUI.tscn", 
+		"script": "res://Magic-Castle/scripts/ui/holiday/HolidayUI.gd",
+		"signals": {
+			"event_completed": "_on_holiday_event_completed",
+			"holiday_closed": "_on_holiday_closed"
+		},
+		"show_method": "show_holiday_event"
+	}
+}
 
 # Button instances
 var play_button: Button
@@ -268,25 +320,58 @@ func _on_button_pressed(button_name: String) -> void:
 		"Holiday":
 			_on_holiday_pressed()
 
+func _hide_menu_buttons():
+	for button in [play_button, shop_button, daily_mission_button, season_pass_button, holiday_button]:
+		if button:
+			button.visible = false
+
+func _show_menu_buttons():
+	for button in [play_button, shop_button, daily_mission_button, season_pass_button, holiday_button]:
+		if button:
+			button.visible = true
+
 func _on_play_pressed() -> void:
 	GameState.reset_game_completely()
 	GameModeManager._load_current_mode()
 	get_tree().change_scene_to_file("res://Magic-Castle/scenes/game/MobileGameBoard.tscn")
 
 func _on_shop_pressed() -> void:
-	# TODO: Open shop
-	pass
+	_toggle_menu_panel("shop")
 
 func _on_daily_mission_pressed() -> void:
-	# TODO: Open daily missions
-	pass
+	_toggle_menu_panel("missions")
 
 func _on_season_pass_pressed() -> void:
-	# TODO: Open season pass
-	pass
+	_toggle_menu_panel("season_pass")
 
 func _on_holiday_pressed() -> void:
-	# TODO: Open holiday event
+	_toggle_menu_panel("holiday")
+
+# Your existing callback functions stay the same:
+func _on_shop_closed():
+	# This stays as is
+	pass
+
+func _on_shop_item_purchased(item_id: String):
+	print("Item purchased from shop: ", item_id)
+
+# Add placeholders for future callbacks:
+func _on_mission_completed(mission_id: String):
+	print("Mission completed: ", mission_id)
+
+func _on_missions_closed():
+	pass
+
+func _on_tier_claimed(tier: int):
+	print("Season pass tier claimed: ", tier)
+
+func _on_season_pass_closed():
+	pass
+
+func _on_holiday_event_completed(event_id: String):
+	print("Holiday event completed: ", event_id)
+
+func _on_holiday_closed():
 	pass
 
 func _setup_menu_background() -> void:
@@ -440,6 +525,65 @@ func _setup_profile_card():
 		profile_card.section_selected.connect(_on_profile_section_selected)
 
 func _on_profile_section_selected(section: String) -> void:
-	# This will handle the expandable content below the profile card
-	# Future: Show expandable content based on section
+	match section:
+		"inventory":
+			_toggle_menu_panel("inventory")
+
+func _create_menu_panel(scene_path: String, script_path: String = "") -> PanelContainer:
+	var scene = load(scene_path)
+	var instance = scene.instantiate() as PanelContainer
+	add_child(instance)
+	
+	# Apply standard positioning (same as profile card)
+	instance.anchor_left = 0.0
+	instance.anchor_top = 0.0
+	instance.anchor_right = 0.65
+	instance.anchor_bottom = 0.0
+	
+	# Standard margins
+	instance.offset_left = 20
+	instance.offset_top = 90
+	instance.offset_right = -20
+	instance.offset_bottom = 0
+	
+	# Always on top
+	move_child(instance, get_child_count() - 1)
+	
+	# Attach script if provided
+	if script_path != "":
+		var script = load(script_path)
+		instance.set_script(script)
+		instance._ready()
+	
+	return instance
+
+# Add this generic toggle function
+func _toggle_menu_panel(menu_name: String) -> void:
+	if not menu_configs.has(menu_name):
+		print("Unknown menu: ", menu_name)
+		return
+		
+	var config = menu_configs[menu_name]
+	
+	if not menu_instances.has(menu_name) or not menu_instances[menu_name]:
+		# Create new instance
+		var instance = _create_menu_panel(config.scene, config.script)
+		menu_instances[menu_name] = instance
+		
+		# Connect signals
+		for signal_name in config.get("signals", {}):
+			if instance.has_signal(signal_name):
+				var method_name = config.signals[signal_name]
+				if has_method(method_name):
+					instance.connect(signal_name, Callable(self, method_name))
+	else:
+		# Toggle existing instance
+		var instance = menu_instances[menu_name]
+		instance.visible = !instance.visible
+		
+		# Call show method if visible
+		if instance.visible and config.has("show_method") and instance.has_method(config.show_method):
+			instance.call(config.show_method)
+
+func _on_inventory_closed():
 	pass

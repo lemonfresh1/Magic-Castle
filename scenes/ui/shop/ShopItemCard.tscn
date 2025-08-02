@@ -1,0 +1,120 @@
+[gd_scene load_steps=4 format=3 uid="uid://bs8o8vtd1dnga"]
+
+[ext_resource type="StyleBox" uid="uid://bsrpgd3orlj87" path="res://Magic-Castle/res/PanelStandardLayout.tres" id="1_qmuhx"]
+[ext_resource type="Script" uid="uid://dxtm70nai65wt" path="res://Magic-Castle/scripts/ui/shop/ShopItemCard.gd" id="2_rcegn"]
+[ext_resource type="Texture2D" uid="uid://cqa0do7fwvyaf" path="res://Magic-Castle/assets/placeholder/star.png" id="3_pf0nn"]
+
+[node name="ShopItemCard" type="PanelContainer"]
+custom_minimum_size = Vector2(120, 150)
+offset_right = 120.0
+offset_bottom = 145.0
+mouse_filter = 1
+theme_override_styles/panel = ExtResource("1_qmuhx")
+script = ExtResource("2_rcegn")
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer"]
+layout_mode = 2
+
+[node name="IconContainer" type="PanelContainer" parent="MarginContainer/VBoxContainer"]
+self_modulate = Color(1, 1, 1, 0)
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+mouse_filter = 1
+
+[node name="IconTexture" type="TextureRect" parent="MarginContainer/VBoxContainer/IconContainer"]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+expand_mode = 3
+stretch_mode = 5
+
+[node name="LockOverlay" type="Control" parent="MarginContainer/VBoxContainer/IconContainer"]
+visible = false
+layout_mode = 2
+mouse_filter = 1
+
+[node name="LockIcon" type="TextureRect" parent="MarginContainer/VBoxContainer/IconContainer/LockOverlay"]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="LockLabel" type="Label" parent="MarginContainer/VBoxContainer/IconContainer/LockOverlay"]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 23.0
+
+[node name="OwnedOverlay" type="Control" parent="MarginContainer/VBoxContainer/IconContainer"]
+visible = false
+layout_mode = 2
+mouse_filter = 1
+
+[node name="Checkmark" type="TextureRect" parent="MarginContainer/VBoxContainer/IconContainer/OwnedOverlay"]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="NewBadge" type="PanelContainer" parent="MarginContainer/VBoxContainer/IconContainer"]
+self_modulate = Color(1, 1, 1, 0)
+layout_mode = 2
+mouse_filter = 1
+
+[node name="Label" type="Label" parent="MarginContainer/VBoxContainer/IconContainer/NewBadge"]
+layout_mode = 2
+size_flags_horizontal = 8
+size_flags_vertical = 0
+mouse_filter = 1
+theme_override_colors/font_color = Color(0, 0.8, 0, 1)
+theme_override_font_sizes/font_size = 14
+text = "New"
+
+[node name="SaleBadge" type="PanelContainer" parent="MarginContainer/VBoxContainer/IconContainer"]
+self_modulate = Color(1, 1, 1, 0)
+layout_mode = 2
+mouse_filter = 1
+
+[node name="Label" type="Label" parent="MarginContainer/VBoxContainer/IconContainer/SaleBadge"]
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 0
+mouse_filter = 1
+theme_override_colors/font_color = Color(1, 0, 0, 1)
+theme_override_font_sizes/font_size = 14
+text = "Sale"
+
+[node name="ItemName" type="Label" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+mouse_filter = 1
+theme_override_colors/font_color = Color(0.270588, 0.270588, 0.270588, 1)
+theme_override_font_sizes/font_size = 18
+text = "Name"
+horizontal_alignment = 1
+
+[node name="PriceContainer" type="HBoxContainer" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+
+[node name="OriginalPrice" type="Label" parent="MarginContainer/VBoxContainer/PriceContainer"]
+layout_mode = 2
+mouse_filter = 1
+theme_override_colors/font_color = Color(0.136826, 0.136826, 0.136826, 1)
+text = "120"
+
+[node name="CurrentPrice" type="Label" parent="MarginContainer/VBoxContainer/PriceContainer"]
+layout_mode = 2
+mouse_filter = 1
+theme_override_colors/font_color = Color(0.136826, 0.136826, 0.136826, 1)
+text = "89"
+
+[node name="StarIcon" type="TextureRect" parent="MarginContainer/VBoxContainer/PriceContainer"]
+layout_mode = 2
+texture = ExtResource("3_pf0nn")
+expand_mode = 3
+stretch_mode = 5

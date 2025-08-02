@@ -13,13 +13,13 @@ signal section_selected(section_name: String)
 
 # Button references
 @onready var profile_button: Button = $MarginContainer/HeaderContainer/ButtonContainer/HBoxContainer/ProfileButton
+@onready var inventory_button: Button = $MarginContainer/HeaderContainer/ButtonContainer/HBoxContainer/InventoryButton
 @onready var inbox_button: Button = $MarginContainer/HeaderContainer/ButtonContainer/HBoxContainer/InboxButton
 @onready var achievements_button: Button = $MarginContainer/HeaderContainer/ButtonContainer/HBoxContainer/AchievementsButton
 @onready var stats_button: Button = $MarginContainer/HeaderContainer/ButtonContainer/HBoxContainer/StatsButton
 @onready var clan_button: Button = $MarginContainer/HeaderContainer/ButtonContainer/HBoxContainer/ClanButton
 @onready var followers_button: Button = $MarginContainer/HeaderContainer/ButtonContainer/HBoxContainer/FollowersButton
 @onready var referral_button: Button = $MarginContainer/HeaderContainer/ButtonContainer/HBoxContainer/ReferralButton
-
 
 func _ready() -> void:
 	# Connect to XPManager signals
@@ -39,7 +39,7 @@ func _update_display() -> void:
 	if SettingsSystem:
 		player_name_label.text = SettingsSystem.player_name
 	else:
-		player_name_label.text = "Player"
+		player_name_label.text = "Stefan"
 	
 	# Update level text
 	level_label.text = "%s" % XPManager.get_display_level()
@@ -51,6 +51,7 @@ func _update_display() -> void:
 
 func _connect_buttons() -> void:
 	profile_button.pressed.connect(func(): _on_button_pressed("profile"))
+	inventory_button.pressed.connect(func(): _on_button_pressed("inventory"))
 	inbox_button.pressed.connect(func(): _on_button_pressed("inbox"))
 	achievements_button.pressed.connect(func(): _on_button_pressed("achievements"))
 	stats_button.pressed.connect(func(): _on_button_pressed("stats"))
@@ -67,6 +68,9 @@ func _on_button_pressed(section: String) -> void:
 			get_tree().change_scene_to_file("res://Magic-Castle/scenes/ui/menus/MenuProfile.tscn")
 		"achievements":
 			get_tree().change_scene_to_file("res://Magic-Castle/scenes/ui/menus/AchievementsScreen.tscn")
+		"inventory":
+			# Don't change scene, just emit signal for MainMenu to handle
+			pass
 		# Other sections will emit signal for expandable content later
 
 func _on_level_up(new_level: int, rewards: Dictionary) -> void:
