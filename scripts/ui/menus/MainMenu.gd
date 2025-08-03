@@ -40,6 +40,62 @@ var menu_configs = {
 		},
 		"show_method": "show_inventory"
 	},
+	"profile": {
+		"scene": "res://Magic-Castle/scenes/ui/profile/ProfileUI.tscn",
+		"script": "res://Magic-Castle/scripts/ui/profile/ProfileUI.gd",
+		"signals": {
+			"profile_closed": "_on_profile_closed"
+		},
+		"show_method": "show_profile"
+	},
+	"achievements": {
+		"scene": "res://Magic-Castle/scenes/ui/achievements/AchievementsUI.tscn",
+		"script": "res://Magic-Castle/scripts/ui/achievements/AchievementsUI.gd",
+		"signals": {
+			"achievements_closed": "_on_achievements_closed"
+		},
+		"show_method": "show_achievements"
+	},
+	"inbox": {
+		"scene": "res://Magic-Castle/scenes/ui/inbox/InboxUI.tscn",
+		"script": "res://Magic-Castle/scripts/ui/inbox/InboxUI.gd",
+		"signals": {
+			"inbox_closed": "_on_inbox_closed"
+		},
+		"show_method": "show_inbox"
+	},
+	"stats": {
+		"scene": "res://Magic-Castle/scenes/ui/stats/StatsUI.tscn",
+		"script": "res://Magic-Castle/scripts/ui/stats/StatsUI.gd",
+		"signals": {
+			"stats_closed": "_on_stats_closed"
+		},
+		"show_method": "show_stats"
+	},
+	"clan": {
+		"scene": "res://Magic-Castle/scenes/ui/clan/ClanUI.tscn",
+		"script": "res://Magic-Castle/scripts/ui/clan/ClanUI.gd",
+		"signals": {
+			"clan_closed": "_on_clan_closed"
+		},
+		"show_method": "show_clan"
+	},
+	"followers": {
+		"scene": "res://Magic-Castle/scenes/ui/followers/FollowersUI.tscn",
+		"script": "res://Magic-Castle/scripts/ui/followers/FollowersUI.gd",
+		"signals": {
+			"followers_closed": "_on_followers_closed"
+		},
+		"show_method": "show_followers"
+	},
+	"referral": {
+		"scene": "res://Magic-Castle/scenes/ui/referral/ReferralUI.tscn",
+		"script": "res://Magic-Castle/scripts/ui/referral/ReferralUI.gd",
+		"signals": {
+			"referral_closed": "_on_referral_closed"
+		},
+		"show_method": "show_referral"
+	},
 	"missions": {
 		"scene": "res://Magic-Castle/scenes/ui/missions/MissionUI.tscn",
 		"script": "res://Magic-Castle/scripts/ui/missions/MissionUI.gd", 
@@ -50,8 +106,8 @@ var menu_configs = {
 		"show_method": "refresh_missions"
 	},
 	"season_pass": {
-		"scene": "res://Magic-Castle/scenes/ui/season/SeasonPassUI.tscn",
-		"script": "res://Magic-Castle/scripts/ui/season/SeasonPassUI.gd",
+		"scene": "res://Magic-Castle/scenes/ui/seasonpass/SeasonPassUI.tscn",
+		"script": "res://Magic-Castle/scripts/ui/seasonpass/SeasonPassUI.gd",
 		"signals": {
 			"tier_claimed": "_on_tier_claimed",
 			"season_pass_closed": "_on_season_pass_closed"
@@ -66,7 +122,15 @@ var menu_configs = {
 			"holiday_closed": "_on_holiday_closed"
 		},
 		"show_method": "show_holiday_event"
-	}
+	},
+	"settings": {
+	"scene": "res://Magic-Castle/scenes/ui/settings/SettingsUI.tscn",
+	"script": "",  # Empty string - scene already has script
+	"signals": {
+		"settings_closed": "_on_settings_closed"
+	},
+	"show_method": "show_settings"
+}
 }
 
 # Button instances
@@ -146,7 +210,10 @@ var button_themes = {
 }
 
 func _ready() -> void:
-	# Set up the gradient background FIRST
+	if not get_node_or_null("/root/UIManager"):
+		print("MainMenu: Waiting for UIManager...")
+		await get_tree().process_frame
+
 	_setup_menu_background()
 	
 	_setup_profile_card()
@@ -155,6 +222,7 @@ func _ready() -> void:
 	_hide_overlays()
 	_setup_version_label()
 	_setup_debug_panel()
+	_connect_ui_manager()
 	
 	# Safely connect overlay signals
 	if settings_overlay and settings_overlay.has_node("SettingsMenu"):
@@ -336,16 +404,16 @@ func _on_play_pressed() -> void:
 	get_tree().change_scene_to_file("res://Magic-Castle/scenes/game/MobileGameBoard.tscn")
 
 func _on_shop_pressed() -> void:
-	_toggle_menu_panel("shop")
+	_toggle_menu_panel("shop", shop_button)
 
 func _on_daily_mission_pressed() -> void:
-	_toggle_menu_panel("missions")
+	_toggle_menu_panel("missions", daily_mission_button)
 
 func _on_season_pass_pressed() -> void:
-	_toggle_menu_panel("season_pass")
+	_toggle_menu_panel("season_pass", season_pass_button)
 
 func _on_holiday_pressed() -> void:
-	_toggle_menu_panel("holiday")
+	_toggle_menu_panel("holiday", holiday_button)
 
 # Your existing callback functions stay the same:
 func _on_shop_closed():
@@ -484,19 +552,10 @@ func _hide_overlays() -> void:
 		achievements_overlay.visible = false
 
 func _on_cog_pressed() -> void:
-	if settings_overlay:
-		settings_overlay.visible = true
-		# Hide the new buttons
-		for button in [play_button, shop_button, daily_mission_button, season_pass_button, holiday_button]:
-			if button:
-				button.visible = false
+	_toggle_menu_panel("settings", cog_button)
 
-func _on_settings_closed() -> void:
-	settings_overlay.visible = false
-	# Show the new buttons again
-	for button in [play_button, shop_button, daily_mission_button, season_pass_button, holiday_button]:
-		if button:
-			button.visible = true
+func _on_settings_closed():
+	pass
 
 func _on_achievements_closed() -> void:
 	achievements_overlay.visible = false
@@ -525,9 +584,29 @@ func _setup_profile_card():
 		profile_card.section_selected.connect(_on_profile_section_selected)
 
 func _on_profile_section_selected(section: String) -> void:
-	match section:
-		"inventory":
-			_toggle_menu_panel("inventory")
+	# Get the button that was pressed from ProfileCard
+	var button = null
+	if profile_card:
+		match section:
+			"profile":
+				button = profile_card.profile_button
+			"inventory":
+				button = profile_card.inventory_button
+			"inbox":
+				button = profile_card.inbox_button
+			"achievements":
+				button = profile_card.achievements_button
+			"stats":
+				button = profile_card.stats_button
+			"clan":
+				button = profile_card.clan_button
+			"followers":
+				button = profile_card.followers_button
+			"referral":
+				button = profile_card.referral_button
+	
+	# All sections now use the same panel system
+	_toggle_menu_panel(section, button)
 
 func _create_menu_panel(scene_path: String, script_path: String = "") -> PanelContainer:
 	var scene = load(scene_path)
@@ -558,16 +637,23 @@ func _create_menu_panel(scene_path: String, script_path: String = "") -> PanelCo
 	return instance
 
 # Add this generic toggle function
-func _toggle_menu_panel(menu_name: String) -> void:
+func _toggle_menu_panel(menu_name: String, button: BaseButton = null) -> void:
+	var ui_manager = get_node_or_null("/root/UIManager")
+	if not ui_manager:
+		print("UIManager not found!")
+		return
+		
 	if not menu_configs.has(menu_name):
 		print("Unknown menu: ", menu_name)
 		return
 		
 	var config = menu_configs[menu_name]
 	
+	# Get or create instance
+	var instance = null
 	if not menu_instances.has(menu_name) or not menu_instances[menu_name]:
 		# Create new instance
-		var instance = _create_menu_panel(config.scene, config.script)
+		instance = _create_menu_panel(config.scene, config.script)
 		menu_instances[menu_name] = instance
 		
 		# Connect signals
@@ -577,13 +663,44 @@ func _toggle_menu_panel(menu_name: String) -> void:
 				if has_method(method_name):
 					instance.connect(signal_name, Callable(self, method_name))
 	else:
-		# Toggle existing instance
-		var instance = menu_instances[menu_name]
-		instance.visible = !instance.visible
-		
-		# Call show method if visible
-		if instance.visible and config.has("show_method") and instance.has_method(config.show_method):
-			instance.call(config.show_method)
+		instance = menu_instances[menu_name]
+	
+	# Use UIManager to handle the panel
+	ui_manager.open_panel(instance, menu_name, button)
 
 func _on_inventory_closed():
+	pass
+	
+func _connect_ui_manager():
+	var ui_manager = get_node_or_null("/root/UIManager")
+	if ui_manager:
+		if not ui_manager.ui_panel_opened.is_connected(_on_ui_panel_opened):
+			ui_manager.ui_panel_opened.connect(_on_ui_panel_opened)
+		if not ui_manager.ui_panel_closed.is_connected(_on_ui_panel_closed):
+			ui_manager.ui_panel_closed.connect(_on_ui_panel_closed)
+	else:
+		print("UIManager not available for connection!")
+
+func _on_ui_panel_opened(panel_name: String):
+	pass
+
+func _on_ui_panel_closed(panel_name: String):
+	pass
+
+func _on_profile_closed():
+	pass
+
+func _on_inbox_closed():
+	pass
+
+func _on_stats_closed():
+	pass
+
+func _on_clan_closed():
+	pass
+
+func _on_followers_closed():
+	pass
+
+func _on_referral_closed():
 	pass

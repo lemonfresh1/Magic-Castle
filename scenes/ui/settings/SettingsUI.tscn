@@ -1,0 +1,313 @@
+[gd_scene load_steps=10 format=3 uid="uid://cx24ofo1oldir"]
+
+[ext_resource type="Script" uid="uid://cvoaekai3yeek" path="res://Magic-Castle/scripts/ui/settings/SettingsUI.gd" id="1_5mgiy"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_c3481"]
+bg_color = Color(1, 1, 1, 0.847059)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1, 1, 1, 0.862745)
+corner_radius_top_left = 37
+corner_radius_top_right = 37
+corner_radius_bottom_right = 37
+corner_radius_bottom_left = 37
+shadow_color = Color(0.444843, 0.444843, 0.444843, 0.6)
+shadow_size = 5
+shadow_offset = Vector2(0, 3)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_0keu4"]
+content_margin_left = 15.0
+content_margin_right = 15.0
+border_width_left = 5
+border_width_right = 5
+border_color = Color(0.8, 0.8, 0.8, 0)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_g7e07"]
+bg_color = Color(0.6, 0.6, 0.6, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_5kd37"]
+bg_color = Color(0.6, 0.6, 0.6, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tn04k"]
+content_margin_left = 15.0
+content_margin_right = 15.0
+bg_color = Color(0.270588, 0, 1, 1)
+border_width_left = 5
+border_width_right = 5
+border_color = Color(0.8, 0.8, 0.8, 0)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+shadow_color = Color(0.282353, 0, 0.545098, 0.584314)
+shadow_offset = Vector2(0, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_wm5tf"]
+content_margin_left = 15.0
+content_margin_right = 15.0
+bg_color = Color(0.819608, 0.85098, 1, 0.831373)
+border_width_left = 5
+border_width_right = 5
+border_color = Color(0.8, 0.8, 0.8, 0)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_0y0w8"]
+content_margin_left = 15.0
+content_margin_right = 15.0
+bg_color = Color(0.819256, 0.850355, 1, 0.831373)
+border_width_left = 5
+border_width_right = 5
+border_color = Color(1, 1, 1, 0)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xnrfp"]
+bg_color = Color(1, 1, 1, 0.847059)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.377919, 0.377919, 0.377919, 1)
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[node name="SettingsUI" type="PanelContainer"]
+offset_right = 500.0
+offset_bottom = 300.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_c3481")
+script = ExtResource("1_5mgiy")
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="TabContainer" type="TabContainer" parent="MarginContainer"]
+layout_mode = 2
+theme_override_colors/font_disabled_color = Color(0.985319, 0.284059, 0.233339, 1)
+theme_override_colors/font_unselected_color = Color(0.270588, 0.270588, 0.270588, 1)
+theme_override_colors/font_hovered_color = Color(0.270588, 0.270588, 0.270588, 1)
+theme_override_colors/font_selected_color = Color(1, 1, 1, 1)
+theme_override_styles/tab_disabled = SubResource("StyleBoxFlat_0keu4")
+theme_override_styles/tabbar_background = SubResource("StyleBoxFlat_g7e07")
+theme_override_styles/panel = SubResource("StyleBoxFlat_5kd37")
+theme_override_styles/tab_selected = SubResource("StyleBoxFlat_tn04k")
+theme_override_styles/tab_hovered = SubResource("StyleBoxFlat_wm5tf")
+theme_override_styles/tab_unselected = SubResource("StyleBoxFlat_0y0w8")
+current_tab = 0
+tab_focus_mode = 0
+
+[node name="Game" type="PanelContainer" parent="MarginContainer/TabContainer"]
+self_modulate = Color(1, 1, 1, 0)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_xnrfp")
+metadata/_tab_index = 0
+
+[node name="MarginContainer" type="MarginContainer" parent="MarginContainer/TabContainer/Game"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 10
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer/TabContainer/Game/MarginContainer"]
+layout_mode = 2
+
+[node name="ScrollContainer" type="ScrollContainer" parent="MarginContainer/TabContainer/Game/MarginContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer/TabContainer/Game/MarginContainer/VBoxContainer/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="game_mode_section" type="VBoxContainer" parent="MarginContainer/TabContainer/Game/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="game_mode_title" type="Label" parent="MarginContainer/TabContainer/Game/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/game_mode_section"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.257476, 0.257476, 0.257476, 1)
+text = "Game Mode"
+
+[node name="game_mode_title2" type="HSeparator" parent="MarginContainer/TabContainer/Game/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/game_mode_section"]
+layout_mode = 2
+
+[node name="game_mode_selector" type="VBoxContainer" parent="MarginContainer/TabContainer/Game/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/game_mode_section"]
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_constants/separation = 5
+
+[node name="game_mode_controls" type="HBoxContainer" parent="MarginContainer/TabContainer/Game/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/game_mode_section/game_mode_selector"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="game_mode_left_button" type="Button" parent="MarginContainer/TabContainer/Game/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/game_mode_section/game_mode_selector/game_mode_controls"]
+layout_mode = 2
+text = "<"
+
+[node name="game_mode_label" type="Label" parent="MarginContainer/TabContainer/Game/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/game_mode_section/game_mode_selector/game_mode_controls"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.257476, 0.257476, 0.257476, 1)
+horizontal_alignment = 1
+
+[node name="game_mode_right_button" type="Button" parent="MarginContainer/TabContainer/Game/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/game_mode_section/game_mode_selector/game_mode_controls"]
+layout_mode = 2
+text = ">"
+
+[node name="game_mode_description" type="Label" parent="MarginContainer/TabContainer/Game/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/game_mode_section/game_mode_selector"]
+custom_minimum_size = Vector2(20, 30)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.257476, 0.257476, 0.257476, 1)
+text = "asdasd"
+
+[node name="card_section" type="VBoxContainer" parent="MarginContainer/TabContainer/Game/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 8
+theme_override_constants/separation = 5
+
+[node name="card_title" type="Label" parent="MarginContainer/TabContainer/Game/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/card_section"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.257476, 0.257476, 0.257476, 1)
+text = "Card Skin"
+
+[node name="card_separator" type="HSeparator" parent="MarginContainer/TabContainer/Game/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/card_section"]
+layout_mode = 2
+
+[node name="card_selector" type="VBoxContainer" parent="MarginContainer/TabContainer/Game/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/card_section"]
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 3
+theme_override_constants/separation = 5
+
+[node name="card_controls" type="HBoxContainer" parent="MarginContainer/TabContainer/Game/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/card_section/card_selector"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="card_left_button" type="Button" parent="MarginContainer/TabContainer/Game/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/card_section/card_selector/card_controls"]
+layout_mode = 2
+text = "<"
+
+[node name="card_preview_container" type="HBoxContainer" parent="MarginContainer/TabContainer/Game/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/card_section/card_selector/card_controls"]
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_constants/separation = 5
+
+[node name="card_right_button" type="Button" parent="MarginContainer/TabContainer/Game/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/card_section/card_selector/card_controls"]
+layout_mode = 2
+text = ">"
+
+[node name="card_skin_name" type="Label" parent="MarginContainer/TabContainer/Game/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/card_section/card_selector"]
+custom_minimum_size = Vector2(20, 30)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.257476, 0.257476, 0.257476, 1)
+text = "asd"
+
+[node name="card_high_contrast_check" type="CheckButton" parent="MarginContainer/TabContainer/Game/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/card_section/card_selector"]
+layout_mode = 2
+theme_override_colors/font_disabled_color = Color(0, 0, 0, 1)
+theme_override_colors/font_hover_pressed_color = Color(0, 0, 0, 1)
+theme_override_colors/font_hover_color = Color(0, 0, 0, 1)
+theme_override_colors/icon_disabled_color = Color(0, 0, 0, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_focus_color = Color(0, 0, 0, 1)
+theme_override_colors/font_pressed_color = Color(0, 0, 0, 1)
+text = "HCC"
+
+[node name="board_section" type="VBoxContainer" parent="MarginContainer/TabContainer/Game/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 8
+theme_override_constants/separation = 5
+
+[node name="board_title" type="Label" parent="MarginContainer/TabContainer/Game/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/board_section"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.257476, 0.257476, 0.257476, 1)
+text = "Board Skin"
+
+[node name="board_separator" type="HSeparator" parent="MarginContainer/TabContainer/Game/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/board_section"]
+layout_mode = 2
+
+[node name="board_selector" type="VBoxContainer" parent="MarginContainer/TabContainer/Game/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/board_section"]
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_constants/separation = 5
+
+[node name="board_controls" type="HBoxContainer" parent="MarginContainer/TabContainer/Game/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/board_section/board_selector"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="board_left_button" type="Button" parent="MarginContainer/TabContainer/Game/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/board_section/board_selector/board_controls"]
+layout_mode = 2
+text = "<"
+
+[node name="board_preview_container" type="HBoxContainer" parent="MarginContainer/TabContainer/Game/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/board_section/board_selector/board_controls"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="board_right_button" type="Button" parent="MarginContainer/TabContainer/Game/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/board_section/board_selector/board_controls"]
+layout_mode = 2
+text = ">"
+
+[node name="board_skin_name" type="Label" parent="MarginContainer/TabContainer/Game/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/board_section/board_selector"]
+custom_minimum_size = Vector2(20, 30)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.257476, 0.257476, 0.257476, 1)
+text = "asd"
+
+[node name="Audio" type="PanelContainer" parent="MarginContainer/TabContainer"]
+visible = false
+self_modulate = Color(1, 1, 1, 0)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_xnrfp")
+metadata/_tab_index = 1
+
+[node name="MarginContainer" type="MarginContainer" parent="MarginContainer/TabContainer/Audio"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 10
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer/TabContainer/Audio/MarginContainer"]
+layout_mode = 2
+
+[node name="ScrollContainer" type="ScrollContainer" parent="MarginContainer/TabContainer/Audio/MarginContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Input" type="PanelContainer" parent="MarginContainer/TabContainer"]
+visible = false
+self_modulate = Color(1, 1, 1, 0)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_xnrfp")
+metadata/_tab_index = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="MarginContainer/TabContainer/Input"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 10
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer/TabContainer/Input/MarginContainer"]
+layout_mode = 2
+
+[node name="ScrollContainer" type="ScrollContainer" parent="MarginContainer/TabContainer/Input/MarginContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3

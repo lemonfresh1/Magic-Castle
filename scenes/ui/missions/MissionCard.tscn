@@ -1,0 +1,76 @@
+[gd_scene load_steps=5 format=3 uid="uid://dkmygtqqnryn8"]
+
+[ext_resource type="StyleBox" uid="uid://bsrpgd3orlj87" path="res://Magic-Castle/res/PanelStandardLayout.tres" id="1_m2oud"]
+[ext_resource type="Script" uid="uid://crk860bjh0ng6" path="res://Magic-Castle/scripts/ui/missions/MissionCard.gd" id="2_6qnpd"]
+[ext_resource type="StyleBox" uid="uid://cf4gwa8xipnwh" path="res://Magic-Castle/res/XPBarLayout.tres" id="3_xcphm"]
+[ext_resource type="StyleBox" uid="uid://bdt87hqe856cv" path="res://Magic-Castle/res/XPBarFillLayout.tres" id="4_fak5g"]
+
+[node name="MissionCard" type="PanelContainer"]
+custom_minimum_size = Vector2(300, 80)
+offset_right = 300.0
+offset_bottom = 82.0
+mouse_filter = 1
+theme_override_styles/panel = ExtResource("1_m2oud")
+script = ExtResource("2_6qnpd")
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 14
+
+[node name="HBoxContainer" type="HBoxContainer" parent="MarginContainer"]
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Details" type="HBoxContainer" parent="MarginContainer/HBoxContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="Name" type="Label" parent="MarginContainer/HBoxContainer/VBoxContainer/Details"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+text = "Player"
+
+[node name="Goal" type="Label" parent="MarginContainer/HBoxContainer/VBoxContainer/Details"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.257476, 0.257476, 0.257476, 1)
+text = "Complete 3 rounds"
+
+[node name="Progress" type="HBoxContainer" parent="MarginContainer/HBoxContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="ProgressBar" type="ProgressBar" parent="MarginContainer/HBoxContainer/VBoxContainer/Progress"]
+custom_minimum_size = Vector2(200, 25)
+layout_mode = 2
+theme_override_styles/background = ExtResource("3_xcphm")
+theme_override_styles/fill = ExtResource("4_fak5g")
+max_value = 3.0
+value = 2.0
+show_percentage = false
+
+[node name="ProgressLabel" type="Label" parent="MarginContainer/HBoxContainer/VBoxContainer/Progress/ProgressBar"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -12.5
+offset_top = -11.5
+offset_right = 12.5
+offset_bottom = 11.5
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.257476, 0.257476, 0.257476, 1)
+text = "2/3"
+
+[node name="Rewards" type="Label" parent="MarginContainer/HBoxContainer/VBoxContainer/Progress"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.257476, 0.257476, 0.257476, 1)
+text = "25"
+horizontal_alignment = 2

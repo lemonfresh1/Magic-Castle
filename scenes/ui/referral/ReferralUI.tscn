@@ -1,0 +1,176 @@
+[gd_scene load_steps=13 format=3 uid="uid://mgweqmmhmqaf"]
+
+[ext_resource type="Script" uid="uid://bmyo028e0emmp" path="res://Magic-Castle/scripts/ui/referral/ReferralUI.gd" id="1_6ryme"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_c3481"]
+bg_color = Color(1, 1, 1, 0.847059)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1, 1, 1, 0.862745)
+corner_radius_top_left = 37
+corner_radius_top_right = 37
+corner_radius_bottom_right = 37
+corner_radius_bottom_left = 37
+shadow_color = Color(0.444843, 0.444843, 0.444843, 0.6)
+shadow_size = 5
+shadow_offset = Vector2(0, 3)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_0keu4"]
+content_margin_left = 15.0
+content_margin_right = 15.0
+border_width_left = 5
+border_width_right = 5
+border_color = Color(0.8, 0.8, 0.8, 0)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_g7e07"]
+bg_color = Color(0.6, 0.6, 0.6, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_5kd37"]
+bg_color = Color(0.6, 0.6, 0.6, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tn04k"]
+content_margin_left = 15.0
+content_margin_right = 15.0
+bg_color = Color(0.270588, 0, 1, 1)
+border_width_left = 5
+border_width_right = 5
+border_color = Color(0.8, 0.8, 0.8, 0)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+shadow_color = Color(0.282353, 0, 0.545098, 0.584314)
+shadow_offset = Vector2(0, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_wm5tf"]
+content_margin_left = 15.0
+content_margin_right = 15.0
+bg_color = Color(0.819608, 0.85098, 1, 0.831373)
+border_width_left = 5
+border_width_right = 5
+border_color = Color(0.8, 0.8, 0.8, 0)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_0y0w8"]
+content_margin_left = 15.0
+content_margin_right = 15.0
+bg_color = Color(0.819256, 0.850355, 1, 0.831373)
+border_width_left = 5
+border_width_right = 5
+border_color = Color(1, 1, 1, 0)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xnrfp"]
+bg_color = Color(1, 1, 1, 0.847059)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.377919, 0.377919, 0.377919, 1)
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_115bk"]
+content_margin_left = 20.0
+content_margin_right = 20.0
+bg_color = Color(0.564706, 0.52549, 1, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_n8fhq"]
+content_margin_left = 20.0
+content_margin_right = 20.0
+bg_color = Color(0.644487, 0.52945, 1, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_em1yx"]
+content_margin_left = 20.0
+content_margin_right = 20.0
+bg_color = Color(0.563471, 0.523567, 1, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[node name="ReferralUI" type="PanelContainer"]
+offset_right = 176.0
+offset_bottom = 122.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_c3481")
+script = ExtResource("1_6ryme")
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="TabContainer" type="TabContainer" parent="MarginContainer"]
+layout_mode = 2
+theme_override_colors/font_disabled_color = Color(0.985319, 0.284059, 0.233339, 1)
+theme_override_colors/font_unselected_color = Color(0.270588, 0.270588, 0.270588, 1)
+theme_override_colors/font_hovered_color = Color(0.270588, 0.270588, 0.270588, 1)
+theme_override_colors/font_selected_color = Color(1, 1, 1, 1)
+theme_override_styles/tab_disabled = SubResource("StyleBoxFlat_0keu4")
+theme_override_styles/tabbar_background = SubResource("StyleBoxFlat_g7e07")
+theme_override_styles/panel = SubResource("StyleBoxFlat_5kd37")
+theme_override_styles/tab_selected = SubResource("StyleBoxFlat_tn04k")
+theme_override_styles/tab_hovered = SubResource("StyleBoxFlat_wm5tf")
+theme_override_styles/tab_unselected = SubResource("StyleBoxFlat_0y0w8")
+current_tab = 0
+tab_focus_mode = 0
+
+[node name="All" type="PanelContainer" parent="MarginContainer/TabContainer"]
+self_modulate = Color(1, 1, 1, 0)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_xnrfp")
+metadata/_tab_index = 0
+
+[node name="MarginContainer" type="MarginContainer" parent="MarginContainer/TabContainer/All"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 10
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer/TabContainer/All/MarginContainer"]
+layout_mode = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="MarginContainer/TabContainer/All/MarginContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="FilterButton" type="OptionButton" parent="MarginContainer/TabContainer/All/MarginContainer/VBoxContainer/HBoxContainer"]
+layout_mode = 2
+theme_override_styles/hover = SubResource("StyleBoxFlat_115bk")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_n8fhq")
+theme_override_styles/normal = SubResource("StyleBoxFlat_em1yx")
+selected = 0
+item_count = 3
+popup/item_0/text = "All"
+popup/item_0/id = 0
+popup/item_1/text = "Equipped"
+popup/item_1/id = 1
+popup/item_2/text = "By Rarity"
+popup/item_2/id = 3
+
+[node name="ScrollContainer" type="ScrollContainer" parent="MarginContainer/TabContainer/All/MarginContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3

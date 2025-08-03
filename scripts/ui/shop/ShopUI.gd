@@ -1,10 +1,11 @@
-# InventoryUI.gd - Inventory interface showing owned items
-# Location: res://Magic-Castle/scripts/ui/inventory/InventoryUI.gd
-# Last Updated: Created inventory system based on shop UI [Date]
+# ShopUI.gd - Main shop interface controller using MenuBox template
+# Location: res://Magic-Castle/scripts/ui/shop/ShopUI.gd
+# Last Updated: Complete script with price visibility fixes [Date]
 
 extends PanelContainer
 
-signal inventory_closed
+signal shop_closed
+signal item_purchased(item_id: String)
 
 @onready var tab_container: TabContainer = $MarginContainer/TabContainer
 @onready var shop_item_card_scene = preload("res://Magic-Castle/scenes/ui/shop/ShopItemCard.tscn")
@@ -13,33 +14,54 @@ signal inventory_closed
 var tabs = {}
 var current_filter = "all"
 var current_sort = "default"
-var item_cards = []
+var item_cards = []  # Keep track of all item cards for filtering
+var _is_populated = false
 
-# Filter options for inventory
+# Filter options (matching what's in the scene)
 const FILTER_OPTIONS = [
 	{"id": "all", "name": "All"},
-	{"id": "equipped", "name": "Equipped"}
+	{"id": "can_afford", "name": "Can Afford"},
+	{"id": "owned", "name": "Owned"},
+	{"id": "not_owned", "name": "Not Owned"},
+	{"id": "on_sale", "name": "On Sale"}
 ]
 
-# Sort options for inventory
+# Sort options (matching what's in the scene)
 const SORT_OPTIONS = [
-	{"id": "name", "name": "A-Z"},
-	{"id": "rarity_low", "name": "Rarity: Low to High"},
-	{"id": "rarity_high", "name": "Rarity: High to Low"},
-	{"id": "type", "name": "By Type"}  # Only for "All" tab
+	{"id": "default", "name": "Default"},
+	{"id": "price_low", "name": "Price: Low to High"},
+	{"id": "price_high", "name": "Price: High to Low"},
+	{"id": "rarity", "name": "Rarity"},
+	{"id": "name", "name": "A-Z"}
 ]
 
 func _ready():
+	# Only call once
 	if not is_node_ready():
 		return
+	
+	# Make sure tab container expands
+	if tab_container:
+		tab_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		tab_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		print("ShopUI: TabContainer size: ", tab_container.size)
+		print("ShopUI: TabContainer visible: ", tab_container.visible)
 		
 	_setup_tabs()
-	_populate_inventory()
+	_populate_shop()
 	_apply_option_button_styling()
+	
+	# Connect to ShopManager signals
+	if ShopManager:
+		if not ShopManager.item_purchased.is_connected(_on_item_purchased):
+			ShopManager.item_purchased.connect(_on_item_purchased)
+		if not ShopManager.shop_refreshed.is_connected(_on_shop_refreshed):
+			ShopManager.shop_refreshed.connect(_on_shop_refreshed)
 
 func _setup_tabs():
-	# Map existing tabs by their names (no Highlights in inventory)
+	# Map existing tabs by their names
 	tabs = {
+		"highlights": tab_container.get_node_or_null("Highlights"),
 		"all": tab_container.get_node_or_null("All"),
 		"card_skins": tab_container.get_node_or_null("Cards"),
 		"board_skins": tab_container.get_node_or_null("Boards"),
@@ -73,33 +95,19 @@ func _setup_tabs():
 		var filter_button = tab.find_child("FilterButton", true, false)
 		var sort_button = tab.find_child("SortButton", true, false)
 		
-		# Update filter options for inventory
-		if filter_button:
-			filter_button.clear()
-			for option in FILTER_OPTIONS:
-				filter_button.add_item(option.name)
-			if not filter_button.item_selected.is_connected(_on_filter_changed):
-				filter_button.item_selected.connect(_on_filter_changed.bind(category_id))
+		if filter_button and not filter_button.item_selected.is_connected(_on_filter_changed):
+			filter_button.item_selected.connect(_on_filter_changed.bind(category_id))
 		
-		# Update sort options
-		if sort_button:
-			sort_button.clear()
-			var sort_opts = SORT_OPTIONS.duplicate()
-			# Remove "By Type" option for non-All tabs
-			if category_id != "all":
-				sort_opts = sort_opts.filter(func(opt): return opt.id != "type")
-			
-			for option in sort_opts:
-				sort_button.add_item(option.name)
-			if not sort_button.item_selected.is_connected(_on_sort_changed):
-				sort_button.item_selected.connect(_on_sort_changed.bind(category_id))
+		if sort_button and not sort_button.item_selected.is_connected(_on_sort_changed):
+			sort_button.item_selected.connect(_on_sort_changed.bind(category_id))
 		
-		# Set scroll container to transparent
+		# Set scroll container to expand
 		var scroll_container = tab.find_child("ScrollContainer", true, false)
 		if scroll_container:
-			scroll_container.self_modulate.a = 0
+			# scroll_container.self_modulate.a = 0  # Temporarily commented out
 			scroll_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
-			scroll_container.custom_minimum_size = Vector2(0, 300)
+			scroll_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			scroll_container.custom_minimum_size = Vector2(600, 300)  # Set minimum size
 
 func _apply_option_button_styling():
 	# Apply custom styling to all OptionButtons
@@ -139,20 +147,30 @@ func _style_option_button(button: OptionButton):
 	hover_style.corner_radius_bottom_right = 8
 	popup.add_theme_stylebox_override("hover", hover_style)
 
-func _populate_inventory():
-	# Populate each tab with owned items only
+func _populate_shop():
+	print("ShopUI: Starting to populate shop")
+	
+	# Populate each tab with relevant items
 	for category_id in tabs:
-		if category_id == "sounds":
+		if category_id == "sounds":  # Skip future category
 			continue
 			
-		var items = _get_owned_items_for_category(category_id)
+		var items = _get_items_for_category(category_id)
+		print("ShopUI: Category %s has %d items" % [category_id, items.size()])
+		
 		var tab = tabs[category_id]
 		if not tab:
+			print("ShopUI: Tab not found for category: ", category_id)
 			continue
-			
+		
 		var scroll_container = tab.find_child("ScrollContainer", true, false)
 		
 		if scroll_container:
+			print("ShopUI: Found ScrollContainer for ", category_id)
+			print("  - ScrollContainer visible: ", scroll_container.visible)
+			print("  - ScrollContainer size: ", scroll_container.size)
+			print("  - ScrollContainer modulate: ", scroll_container.modulate)
+			
 			# Create grid if it doesn't exist
 			var grid = scroll_container.get_child(0) if scroll_container.get_child_count() > 0 else null
 			if not grid:
@@ -161,137 +179,118 @@ func _populate_inventory():
 				grid.columns = 4
 				grid.add_theme_constant_override("h_separation", 10)
 				grid.add_theme_constant_override("v_separation", 10)
-				grid.self_modulate.a = 0
+				grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				grid.size_flags_vertical = Control.SIZE_EXPAND_FILL
+				# grid.self_modulate.a = 0  # Temporarily commented out to test visibility
 				scroll_container.add_child(grid)
+				print("ShopUI: Created new grid for ", category_id)
+			
+			print("  - Grid visible: ", grid.visible)
+			print("  - Grid size: ", grid.size)
 			
 			_populate_grid(grid, items, category_id)
+		else:
+			print("ShopUI: ScrollContainer not found for ", category_id)
+	
+	_is_populated = true
 
-func _get_owned_items_for_category(category_id: String) -> Array:
-	var all_items = []
-	
+func _get_items_for_category(category_id: String) -> Array:
 	match category_id:
+		"highlights":
+			return ShopManager.get_featured_items()
 		"all":
-			all_items = ShopManager.get_all_items()
+			return ShopManager.get_all_items()
 		_:
-			all_items = ShopManager.get_items_by_category(category_id)
-	
-	# Filter to only owned items
-	return all_items.filter(func(item): return ShopManager.is_item_owned(item.id))
+			return ShopManager.get_items_by_category(category_id)
 
 func _populate_grid(grid: GridContainer, items: Array, tab_id: String):
-	# Clear existing items
+	print("ShopUI: Populating grid for %s with %d items" % [tab_id, items.size()])
+	
+	# Clear existing items immediately
 	for child in grid.get_children():
+		grid.remove_child(child)
 		child.queue_free()
 	
 	# Clear tracked cards for this tab
-	item_cards = item_cards.filter(func(card): return card.get_meta("tab_id") != tab_id)
+	item_cards = item_cards.filter(func(card): return card.get_meta("tab_id", "") != tab_id)
 	
-	# Sort items if needed
-	if current_sort == "type" and tab_id == "all":
-		_populate_grid_by_type(grid, items, tab_id)
-	else:
-		# Normal population
-		for item in items:
-			var card = _create_inventory_card(item, tab_id)
-			grid.add_child(card)
-			item_cards.append(card)
-
-func _populate_grid_by_type(grid: GridContainer, items: Array, tab_id: String):
-	# Group items by type
-	var items_by_type = {}
-	for item in items:
-		if not items_by_type.has(item.category):
-			items_by_type[item.category] = []
-		items_by_type[item.category].append(item)
-	
-	# Add items with type headers
-	var first_type = true
-	for type in ["card_skins", "board_skins", "avatars", "frames", "emojis"]:
-		if not items_by_type.has(type):
-			continue
-			
-		# Add type header
-		if not first_type:
-			# Add empty space for visual separation
-			for i in range(4):  # Full row of empty space
-				var spacer = Control.new()
-				spacer.custom_minimum_size = Vector2(120, 20)
-				grid.add_child(spacer)
+	# Create item cards
+	for i in range(items.size()):
+		var item = items[i]
+		var card = shop_item_card_scene.instantiate()
 		
-		# Add type label across full width
-		var type_label = Label.new()
-		type_label.text = _get_type_display_name(type)
-		type_label.add_theme_font_size_override("font_size", 16)
-		type_label.add_theme_color_override("font_color", Color("#a487ff"))
-		grid.add_child(type_label)
+		# Store reference for filtering BEFORE adding to grid
+		card.set_meta("tab_id", tab_id)
+		card.set_meta("item_data", item)
 		
-		# Add 3 empty cells to complete the row
-		for i in range(3):
-			var spacer = Control.new()
-			grid.add_child(spacer)
+		grid.add_child(card)
+		card.setup(item)
 		
-		# Add items of this type
-		for item in items_by_type[type]:
-			var card = _create_inventory_card(item, tab_id)
-			grid.add_child(card)
-			item_cards.append(card)
+		# Debug card visibility
+		if i == 0:  # Only check first card to avoid spam
+			print("ShopUI: First card size: ", card.size)
+			print("ShopUI: First card visible: ", card.visible)
+			print("ShopUI: First card modulate: ", card.modulate)
+			print("ShopUI: First card position: ", card.position)
 		
-		first_type = false
-
-func _get_type_display_name(type: String) -> String:
-	match type:
-		"card_skins": return "Card Skins"
-		"board_skins": return "Board Skins"
-		"avatars": return "Avatars"
-		"frames": return "Frames"
-		"emojis": return "Emojis"
-		_: return type.capitalize()
-
-func _create_inventory_card(item: ShopManager.ShopItem, tab_id: String):
-	var card = shop_item_card_scene.instantiate()
-	card.setup(item)
+		print("ShopUI: Created card for item: ", item.display_name)
+		
+		# IMPORTANT: Ensure price is visible for shop cards
+		var price_container = card.get_node_or_null("MarginContainer/VBoxContainer/PriceContainer")
+		if price_container:
+			price_container.visible = true
+			print("ShopUI: Price container visible for ", item.display_name)
+		else:
+			print("ShopUI: WARNING - No price container found for ", item.display_name)
+		
+		item_cards.append(card)
+		
+		# Connect signals
+		if not card.item_clicked.is_connected(_on_item_clicked):
+			card.item_clicked.connect(_on_item_clicked)
+		if not card.preview_requested.is_connected(_on_preview_requested):
+			card.preview_requested.connect(_on_preview_requested)
 	
-	# Store reference for filtering
-	card.set_meta("tab_id", tab_id)
-	card.set_meta("item_data", item)
-	
-	# Inventory-specific modifications
-	# Hide price container entirely
-	if card.has_node("MarginContainer/VBoxContainer/PriceContainer"):
-		var price_container = card.get_node("MarginContainer/VBoxContainer/PriceContainer")
-		price_container.visible = false
-	
-	# Connect for equip functionality (future)
-	if not card.item_clicked.is_connected(_on_item_clicked):
-		card.item_clicked.connect(_on_item_clicked)
-	
-	return card
+	print("ShopUI: Grid now has %d children" % grid.get_child_count())
 
 func _on_filter_changed(index: int, tab_id: String):
 	current_filter = FILTER_OPTIONS[index].id
 	_apply_filters(tab_id)
 
 func _on_sort_changed(index: int, tab_id: String):
-	var sort_opts = SORT_OPTIONS.duplicate()
-	if tab_id != "all":
-		sort_opts = sort_opts.filter(func(opt): return opt.id != "type")
-	
-	if index < sort_opts.size():
-		current_sort = sort_opts[index].id
-		_apply_sorting(tab_id)
+	current_sort = SORT_OPTIONS[index].id
+	_apply_sorting(tab_id)
 
 func _apply_filters(tab_id: String):
-	# Re-populate to apply filters
-	_refresh_current_tab()
-
-func _apply_sorting(tab_id: String):
 	var tab = tabs.get(tab_id)
 	if not tab:
 		return
 		
-	# If sorting by type, we need to repopulate
-	if current_sort == "type" and tab_id == "all":
-		_refresh_current_tab()
+	var grid = tab.find_child("ItemGrid", true, false)
+	if not grid:
+		return
+		
+	for card in grid.get_children():
+		var should_show = true
+		var item_data = card.get_meta("item_data")
+		
+		match current_filter:
+			"can_afford":
+				should_show = ShopManager.can_afford_item(item_data.id) and not card.is_owned
+			"owned":
+				should_show = card.is_owned
+			"not_owned":
+				should_show = not card.is_owned
+			"on_sale":
+				should_show = card.is_on_sale and not card.is_owned
+			"all":
+				should_show = true
+		
+		card.visible = should_show
+
+func _apply_sorting(tab_id: String):
+	var tab = tabs.get(tab_id)
+	if not tab:
 		return
 		
 	var grid = tab.find_child("ItemGrid", true, false)
@@ -300,35 +299,75 @@ func _apply_sorting(tab_id: String):
 		
 	var cards = []
 	for card in grid.get_children():
-		if card.has_meta("item_data"):  # Skip spacers and labels
-			cards.append(card)
+		cards.append(card)
 	
 	# Sort based on current sort option
 	match current_sort:
+		"price_low":
+			cards.sort_custom(func(a, b): 
+				return ShopManager.get_item_price(a.item_data.id) < ShopManager.get_item_price(b.item_data.id)
+			)
+		"price_high":
+			cards.sort_custom(func(a, b): 
+				return ShopManager.get_item_price(a.item_data.id) > ShopManager.get_item_price(b.item_data.id)
+			)
+		"rarity":
+			cards.sort_custom(func(a, b): 
+				return a.item_data.rarity > b.item_data.rarity
+			)
 		"name":
 			cards.sort_custom(func(a, b): 
-				return a.get_meta("item_data").display_name < b.get_meta("item_data").display_name
-			)
-		"rarity_low":
-			cards.sort_custom(func(a, b): 
-				return a.get_meta("item_data").rarity < b.get_meta("item_data").rarity
-			)
-		"rarity_high":
-			cards.sort_custom(func(a, b): 
-				return a.get_meta("item_data").rarity > b.get_meta("item_data").rarity
+				return a.item_data.display_name < b.item_data.display_name
 			)
 	
-	# Clear grid and re-add in sorted order
-	for child in grid.get_children():
-		grid.remove_child(child)
-		child.queue_free()
-	
+	# Re-add cards in sorted order
+	for card in cards:
+		grid.remove_child(card)
 	for card in cards:
 		grid.add_child(card)
 
 func _on_item_clicked(item: ShopManager.ShopItem):
-	# Future: Show equip dialog or item details
-	print("Inventory item clicked: ", item.display_name)
+	# Show purchase confirmation dialog
+	_show_purchase_dialog(item)
+
+func _on_preview_requested(item: ShopManager.ShopItem):
+	# Future: Show preview overlay
+	ShopManager.preview_requested.emit(item.id)
+
+func _show_purchase_dialog(item: ShopManager.ShopItem):
+	# Create simple confirmation dialog
+	var dialog = AcceptDialog.new()
+	dialog.title = "Confirm Purchase"
+	
+	var price = ShopManager.get_item_price(item.id)
+	var current_stars = StarManager.get_balance()
+	
+	dialog.dialog_text = "Purchase %s for %d stars?\n\nYour balance: %d stars\nAfter purchase: %d stars" % [
+		item.display_name,
+		price,
+		current_stars,
+		current_stars - price
+	]
+	
+	dialog.ok_button_text = "Buy Now"
+	dialog.get_ok_button().pressed.connect(_confirm_purchase.bind(item))
+	
+	get_viewport().add_child(dialog)
+	dialog.popup_centered()
+
+func _confirm_purchase(item: ShopManager.ShopItem):
+	if ShopManager.purchase_item(item.id):
+		# Success! Update UI
+		_refresh_current_tab()
+		item_purchased.emit(item.id)
+
+func _on_item_purchased(item_id: String, price: int, currency: String):
+	# Refresh the current tab to update owned states
+	_refresh_current_tab()
+
+func _on_shop_refreshed(new_sales: Array):
+	# Refresh all tabs to show new sales
+	_populate_shop()
 
 func _refresh_current_tab():
 	var current_tab_idx = tab_container.current_tab
@@ -342,16 +381,62 @@ func _refresh_current_tab():
 			break
 	
 	if category_id:
-		var items = _get_owned_items_for_category(category_id)
+		var items = _get_items_for_category(category_id)
 		var grid = current_tab_control.find_child("ItemGrid", true, false)
 		
 		if grid:
 			_populate_grid(grid, items, category_id)
 
-func show_inventory():
+func show_shop():
+	print("ShopUI: show_shop() called")
 	visible = true
-	_populate_inventory()  # Refresh on show
+	
+	# Force layout update
+	if is_inside_tree():
+		await get_tree().process_frame
+	
+	# Only populate if not already populated
+	if not _is_populated:
+		print("ShopUI: Not populated yet, populating...")
+		_populate_shop()
+	else:
+		print("ShopUI: Already populated, refreshing cards only")
+		# Force refresh daily sales check
+		ShopManager._check_daily_refresh()
+		# Refresh all displayed items
+		_refresh_all_shop_cards()
+	
+	# Force another layout update after population
+	if is_inside_tree():
+		await get_tree().process_frame
+		print("ShopUI: After layout update - TabContainer size: ", tab_container.size)
 
-func hide_inventory():
+func _refresh_all_shop_cards():
+	# Go through all tabs and refresh each card
+	for category_id in tabs:
+		var tab = tabs.get(category_id)
+		if not tab:
+			continue
+			
+		var grid = tab.find_child("ItemGrid", true, false)
+		if not grid:
+			continue
+			
+		# Refresh each shop card
+		for child in grid.get_children():
+			if child.has_method("refresh_for_shop"):
+				child.refresh_for_shop()
+			elif child.has_method("setup"):
+				# Re-setup the card to ensure proper state
+				var item_data = child.get_meta("item_data")
+				if item_data:
+					child.setup(item_data)
+					
+					# Force show price container
+					var price_container = child.get_node_or_null("MarginContainer/VBoxContainer/PriceContainer")
+					if price_container:
+						price_container.visible = true
+
+func hide_shop():
 	visible = false
-	inventory_closed.emit()
+	shop_closed.emit()

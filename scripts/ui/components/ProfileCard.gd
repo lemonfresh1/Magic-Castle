@@ -9,8 +9,6 @@ signal section_selected(section_name: String)
 @onready var clan_label: Label = $MarginContainer/HeaderContainer/ClanLabel
 @onready var player_name_label: Label = $MarginContainer/HeaderContainer/PlayerNameLabel
 
-
-
 # Button references
 @onready var profile_button: Button = $MarginContainer/HeaderContainer/ButtonContainer/HBoxContainer/ProfileButton
 @onready var inventory_button: Button = $MarginContainer/HeaderContainer/ButtonContainer/HBoxContainer/InventoryButton
@@ -20,6 +18,7 @@ signal section_selected(section_name: String)
 @onready var clan_button: Button = $MarginContainer/HeaderContainer/ButtonContainer/HBoxContainer/ClanButton
 @onready var followers_button: Button = $MarginContainer/HeaderContainer/ButtonContainer/HBoxContainer/FollowersButton
 @onready var referral_button: Button = $MarginContainer/HeaderContainer/ButtonContainer/HBoxContainer/ReferralButton
+var ui_buttons = []
 
 func _ready() -> void:
 	# Connect to XPManager signals
@@ -30,6 +29,18 @@ func _ready() -> void:
 	
 	# Connect button signals
 	_connect_buttons()
+	
+	# Store button references for easier management
+	ui_buttons = [
+		profile_button,
+		inventory_button,
+		inbox_button,
+		achievements_button,
+		stats_button,
+		clan_button,
+		followers_button,
+		referral_button
+	]
 	
 	# Hide clan label until player joins a clan
 	clan_label.visible = false
@@ -50,26 +61,34 @@ func _update_display() -> void:
 		level_label.modulate = prestige_color
 
 func _connect_buttons() -> void:
-	profile_button.pressed.connect(func(): _on_button_pressed("profile"))
-	inventory_button.pressed.connect(func(): _on_button_pressed("inventory"))
-	inbox_button.pressed.connect(func(): _on_button_pressed("inbox"))
-	achievements_button.pressed.connect(func(): _on_button_pressed("achievements"))
-	stats_button.pressed.connect(func(): _on_button_pressed("stats"))
-	clan_button.pressed.connect(func(): _on_button_pressed("clan"))
-	followers_button.pressed.connect(func(): _on_button_pressed("followers"))
-	referral_button.pressed.connect(func(): _on_button_pressed("referral"))
+	profile_button.toggled.connect(func(pressed): _on_ui_button_toggled("profile", profile_button, pressed))
+	inventory_button.toggled.connect(func(pressed): _on_ui_button_toggled("inventory", inventory_button, pressed))
+	inbox_button.toggled.connect(func(pressed): _on_ui_button_toggled("inbox", inbox_button, pressed))
+	achievements_button.toggled.connect(func(pressed): _on_ui_button_toggled("achievements", achievements_button, pressed))
+	stats_button.toggled.connect(func(pressed): _on_ui_button_toggled("stats", stats_button, pressed))
+	clan_button.toggled.connect(func(pressed): _on_ui_button_toggled("clan", clan_button, pressed))
+	followers_button.toggled.connect(func(pressed): _on_ui_button_toggled("followers", followers_button, pressed))
+	referral_button.toggled.connect(func(pressed): _on_ui_button_toggled("referral", referral_button, pressed))
 
-func _on_button_pressed(section: String) -> void:
+func _on_button_pressed(section: String, button: Button) -> void:
 	section_selected.emit(section)
+	
+	var ui_manager = get_node_or_null("/root/UIManager")
 	
 	# Handle navigation based on section
 	match section:
 		"profile":
+			# This changes scene, so close any open panels first
+			if ui_manager:
+				ui_manager.close_current_panel()
 			get_tree().change_scene_to_file("res://Magic-Castle/scenes/ui/menus/MenuProfile.tscn")
 		"achievements":
+			# This changes scene, so close any open panels first
+			if ui_manager:
+				ui_manager.close_current_panel()
 			get_tree().change_scene_to_file("res://Magic-Castle/scenes/ui/menus/AchievementsScreen.tscn")
 		"inventory":
-			# Don't change scene, just emit signal for MainMenu to handle
+			# Don't change scene, just emit signal for MainMenu to handle with UIManager
 			pass
 		# Other sections will emit signal for expandable content later
 
@@ -84,3 +103,25 @@ func set_clan_symbol(clan_symbol: String) -> void:
 		clan_label.visible = true
 	else:
 		clan_label.visible = false
+		
+func _on_ui_button_toggled(section: String, button: Button, pressed: bool) -> void:
+	print("ProfileCard: Button toggled - ", section, " pressed: ", pressed)
+	
+	if pressed:
+		# Untoggle all other buttons
+		for btn in ui_buttons:
+			if btn and btn != button and btn.button_pressed:
+				btn.button_pressed = false
+		
+		# Emit signal for MainMenu to handle
+		section_selected.emit(section)
+	else:
+		# Button was untoggled, close the panel
+		var ui_manager = get_node_or_null("/root/UIManager")
+		if ui_manager:
+			ui_manager.close_current_panel()
+
+func untoggle_all_buttons():
+	for btn in ui_buttons:
+		if btn and btn.button_pressed:
+			btn.button_pressed = false

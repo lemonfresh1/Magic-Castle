@@ -1,6 +1,6 @@
 # ShopItemCard.gd - Individual shop item display component with rarity borders and pricing
 # Location: res://Magic-Castle/scripts/ui/shop/ShopItemCard.gd
-# Last Updated: Created shop item card with rarity system and visual states [Date]
+# Last Updated: Added inventory mode support to prevent price conflicts [Date]
 
 extends PanelContainer
 
@@ -175,8 +175,21 @@ func _on_mouse_exited():
 		tween.set_trans(Tween.TRANS_CUBIC)
 		tween.tween_property(self, "scale", Vector2(1.0, 1.0), 0.1)
 
+func refresh_for_shop():
+	# Force refresh the visual state for shop display
+	if price_container:
+		price_container.visible = true
+	
+	# Re-check all states
+	is_owned = ShopManager.is_item_owned(item_data.id)
+	is_on_sale = ShopManager.is_item_on_sale(item_data.id)
+	is_new = ShopManager.is_item_new(item_data.id)
+	is_locked = item_data.unlock_level > 0  # Future: and XPManager.get_current_level() < item_data.unlock_level
+	
+	# Update the display
+	_update_visual_state()
+
 func _ready():
-	print("Looking for icon at: ", get_node_or_null("MarginContainer/VBoxContainer/IconContainer/IconTexture"))
 	mouse_entered.connect(_on_mouse_entered)
 	mouse_exited.connect(_on_mouse_exited)
 	

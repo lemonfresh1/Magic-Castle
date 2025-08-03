@@ -1,13 +1,13 @@
 # InventoryUI.gd - Inventory interface showing owned items
 # Location: res://Magic-Castle/scripts/ui/inventory/InventoryUI.gd
-# Last Updated: Created inventory system based on shop UI [Date]
+# Last Updated: Fixed grid layout and card visibility issues [Date]
 
 extends PanelContainer
 
 signal inventory_closed
 
 @onready var tab_container: TabContainer = $MarginContainer/TabContainer
-@onready var shop_item_card_scene = preload("res://Magic-Castle/scenes/ui/shop/ShopItemCard.tscn")
+@onready var inventory_item_card_scene = preload("res://Magic-Castle/scenes/ui/inventory/InventoryItemCard.tscn")
 
 # Tab references mapped by category id
 var tabs = {}
@@ -174,7 +174,12 @@ func _populate_grid(grid: GridContainer, items: Array, tab_id: String):
 		"type":
 			_populate_grid_by_type(grid, items, tab_id)
 		"rarity":
-			_populate_grid_by_rarity(grid, items, tab_id)
+			# Just sort by rarity without headers - like profile UI
+			items.sort_custom(func(a, b): return a.rarity > b.rarity)
+			for item in items:
+				var card = _create_inventory_card(item, tab_id)
+				grid.add_child(card)
+				item_cards.append(card)
 		_:
 			# Normal population (alphabetical)
 			items.sort_custom(func(a, b): return a.display_name < b.display_name)
@@ -197,24 +202,26 @@ func _populate_grid_by_type(grid: GridContainer, items: Array, tab_id: String):
 		if not items_by_type.has(type):
 			continue
 			
-		# Add type header
+		# Add spacing between sections (not for first)
 		if not first_type:
-			# Add empty space for visual separation
-			for i in range(4):  # Full row of empty space
-				var spacer = Control.new()
-				spacer.custom_minimum_size = Vector2(120, 20)
-				grid.add_child(spacer)
+			_add_grid_spacer_row(grid)
 		
-		# Add type label across full width
+		# Create header container that spans full width
+		var header_container = HBoxContainer.new()
+		header_container.custom_minimum_size = Vector2(520, 30)  # Full width
+		
 		var type_label = Label.new()
 		type_label.text = _get_type_display_name(type)
 		type_label.add_theme_font_size_override("font_size", 16)
 		type_label.add_theme_color_override("font_color", Color("#a487ff"))
-		grid.add_child(type_label)
+		header_container.add_child(type_label)
 		
-		# Add 3 empty cells to complete the row
+		grid.add_child(header_container)
+		
+		# Fill remaining cells in header row
 		for i in range(3):
 			var spacer = Control.new()
+			spacer.custom_minimum_size = Vector2(1, 1)
 			grid.add_child(spacer)
 		
 		# Sort items alphabetically within type
@@ -228,51 +235,12 @@ func _populate_grid_by_type(grid: GridContainer, items: Array, tab_id: String):
 		
 		first_type = false
 
-func _populate_grid_by_rarity(grid: GridContainer, items: Array, tab_id: String):
-	# Group items by rarity
-	var items_by_rarity = {}
-	for item in items:
-		if not items_by_rarity.has(item.rarity):
-			items_by_rarity[item.rarity] = []
-		items_by_rarity[item.rarity].append(item)
-	
-	# Add items with rarity headers (highest to lowest)
-	var first_rarity = true
-	for rarity in [ShopManager.Rarity.MYTHIC, ShopManager.Rarity.LEGENDARY, 
-					ShopManager.Rarity.EPIC, ShopManager.Rarity.RARE, 
-					ShopManager.Rarity.UNCOMMON, ShopManager.Rarity.COMMON]:
-		if not items_by_rarity.has(rarity):
-			continue
-			
-		# Add spacing between rarities
-		if not first_rarity:
-			for i in range(4):  # Full row of empty space
-				var spacer = Control.new()
-				spacer.custom_minimum_size = Vector2(120, 20)
-				grid.add_child(spacer)
-		
-		# Add rarity label
-		var rarity_label = Label.new()
-		rarity_label.text = _get_rarity_display_name(rarity)
-		rarity_label.add_theme_font_size_override("font_size", 16)
-		rarity_label.add_theme_color_override("font_color", ShopManager.get_rarity_color(rarity))
-		grid.add_child(rarity_label)
-		
-		# Add 3 empty cells to complete the row
-		for i in range(3):
-			var spacer = Control.new()
-			grid.add_child(spacer)
-		
-		# Sort items within rarity alphabetically
-		items_by_rarity[rarity].sort_custom(func(a, b): return a.display_name < b.display_name)
-		
-		# Add items of this rarity
-		for item in items_by_rarity[rarity]:
-			var card = _create_inventory_card(item, tab_id)
-			grid.add_child(card)
-			item_cards.append(card)
-		
-		first_rarity = false
+func _add_grid_spacer_row(grid: GridContainer):
+	# Add a full row of minimal spacers
+	for i in range(4):
+		var spacer = Control.new()
+		spacer.custom_minimum_size = Vector2(1, 20)
+		grid.add_child(spacer)
 
 func _get_type_display_name(type: String) -> String:
 	match type:
@@ -294,20 +262,16 @@ func _get_rarity_display_name(rarity: ShopManager.Rarity) -> String:
 		_: return "Unknown"
 
 func _create_inventory_card(item: ShopManager.ShopItem, tab_id: String):
-	var card = shop_item_card_scene.instantiate()
-	card.setup(item)
+	var card = inventory_item_card_scene.instantiate()
 	
-	# Store reference for filtering
+	# Set metadata
 	card.set_meta("tab_id", tab_id)
 	card.set_meta("item_data", item)
 	
-	# Inventory-specific modifications
-	# Hide price container entirely
-	if card.has_node("MarginContainer/VBoxContainer/PriceContainer"):
-		var price_container = card.get_node("MarginContainer/VBoxContainer/PriceContainer")
-		price_container.visible = false
+	# Setup the card
+	card.setup(item)
 	
-	# Connect for equip functionality (future)
+	# Connect for equip functionality
 	if not card.item_clicked.is_connected(_on_item_clicked):
 		card.item_clicked.connect(_on_item_clicked)
 	
@@ -362,8 +326,38 @@ func _apply_filters(tab_id: String):
 		card.visible = should_show
 
 func _on_item_clicked(item: ShopManager.ShopItem):
-	# Future: Show equip dialog or item details
-	print("Inventory item clicked: ", item.display_name)
+	# Show equip dialog
+	var dialog = AcceptDialog.new()
+	dialog.set_script(preload("res://Magic-Castle/scripts/ui/dialogs/EquipDialog.gd"))
+	add_child(dialog)
+	
+	dialog.setup_for_item(item)
+	dialog.item_equipped.connect(_on_item_equipped)
+	dialog.item_unequipped.connect(_on_item_unequipped)
+	dialog.canceled.connect(func(): dialog.queue_free())
+	dialog.confirmed.connect(func(): dialog.queue_free())
+	
+	dialog.popup_centered()
+
+func _on_item_equipped(item_id: String):
+	print("Item equipped: ", item_id)
+	# Refresh all cards to update equipped status
+	_refresh_all_cards()
+
+func _on_item_unequipped(item_id: String):
+	print("Item unequipped: ", item_id)
+	# Refresh all cards to update equipped status
+	_refresh_all_cards()
+
+func _refresh_all_cards():
+	# Refresh equipped status on all visible cards
+	for card in item_cards:
+		if card and is_instance_valid(card) and card.has_method("refresh_equipped_status"):
+			card.refresh_equipped_status()
+	
+	# If showing equipped filter, refresh the grid
+	if current_filter == "equipped":
+		_refresh_current_tab()
 
 func _refresh_current_tab():
 	var current_tab_idx = tab_container.current_tab

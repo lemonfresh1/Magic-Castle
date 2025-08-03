@@ -1,6 +1,7 @@
-[gd_scene load_steps=3 format=3 uid="uid://craksy104deun"]
+[gd_scene load_steps=4 format=3 uid="uid://craksy104deun"]
 
 [ext_resource type="Script" uid="uid://d2b04oak45xe4" path="res://Magic-Castle/scripts/game/MobileTopBar.gd" id="1_gi1i6"]
+[ext_resource type="StyleBox" uid="uid://bsrpgd3orlj87" path="res://Magic-Castle/res/PanelStandardLayout.tres" id="2_pfhy0"]
 [ext_resource type="Texture2D" uid="uid://8myvx8qs5e06" path="res://Magic-Castle/assets/cards/card_back.png" id="2_vlixn"]
 
 [node name="MobileTopBar" type="Control"]
@@ -19,6 +20,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_styles/panel = ExtResource("2_pfhy0")
 
 [node name="MarginContainer" type="MarginContainer" parent="Panel"]
 layout_mode = 1

@@ -1,5 +1,7 @@
 # SignalBus.gd - Autoload for centralized game signals
 # Path: res://Magic-Castle/scripts/autoloads/SignalBus.gd
+# Last Updated: Added mission and achievement tracking signals [Date]
+
 extends Node
 
 # === CARD GAMEPLAY SIGNALS ===
@@ -18,7 +20,14 @@ signal round_completed(score: int)
 signal game_over(total_score: int)
 signal timer_expired()
 
-# === SETTINGS SIGNALS (NEW) ===
+# === GAME TRACKING SIGNALS (NEW) ===
+signal game_won(final_score: int, time_elapsed: float)
+signal game_lost(final_score: int, reason: String)
+signal perfect_clear_achieved()
+signal streak_achieved(streak_count: int)
+signal special_combo_completed(combo_type: String)
+
+# === SETTINGS SIGNALS ===
 signal draw_pile_mode_changed(mode: int)
 signal sound_setting_changed(enabled: bool)
 signal card_skin_changed(skin_name: String)
@@ -26,11 +35,11 @@ signal board_skin_changed(skin_name: String)
 signal game_mode_changed(mode_name: String)
 signal high_contrast_changed(enabled: bool)
 
-# === AUDIO SIGNALS (NEW) ===
+# === AUDIO SIGNALS ===
 signal play_sound_effect(sound_name: String)
 signal play_random_sound(sound_group: String)
 
-# === MOBILE UI SIGNALS (NEW) ===
+# === MOBILE UI SIGNALS ===
 signal mobile_layout_changed()
 signal ui_scale_changed(scale_factor: float)
 
@@ -66,6 +75,15 @@ func emit_round_event(event_type: String, data: Variant = null) -> void:
 			game_over.emit(data as int)
 		"timer_expired":
 			timer_expired.emit()
+
+func emit_game_result(won: bool, score: int, time: float = 0.0, reason: String = "") -> void:
+	if won:
+		game_won.emit(score, time)
+	else:
+		game_lost.emit(score, reason)
+	
+	# Also emit general game_over
+	game_over.emit(score)
 
 func emit_audio_event(sound_type: String, sound_name: String) -> void:
 	match sound_type:
