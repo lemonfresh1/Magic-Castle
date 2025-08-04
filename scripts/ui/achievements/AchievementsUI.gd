@@ -1,6 +1,6 @@
 # AchievementsUI.gd - Achievements interface with 4 per row layout
 # Location: res://Magic-Castle/scripts/ui/achievements/AchievementsUI.gd
-# Last Updated: Created achievements UI with sorting and filtering [Date]
+# Last Updated: Integrated with UIStyleManager [Date]
 
 extends PanelContainer
 
@@ -14,101 +14,67 @@ var filter_mode: String = "all"  # all, completed, open
 var achievement_cards = []
 
 func _ready():
-	# Debug prints
-	print("AchievementsUI _ready called")
-	print("Node name: ", name)
-	print("Has MarginContainer: ", has_node("MarginContainer"))
-	
 	# Wait for next frame to ensure @onready vars are initialized
 	await get_tree().process_frame
 	
-	print("After await - tab_container is: ", tab_container)
-	
 	if not tab_container:
-		print("ERROR: TabContainer not found!")
-		# Try to find it manually
-		var margin = get_node_or_null("MarginContainer")
-		print("MarginContainer found: ", margin != null)
-		if margin:
-			var tc = margin.get_node_or_null("TabContainer")
-			print("TabContainer found manually: ", tc != null)
+		push_error("AchievementsUI: TabContainer not found!")
 		return
-		
+	
+	# Apply panel styling
+	UIStyleManager.apply_panel_style(self, "achievements_ui")
+	
 	_setup_achievements_tab()
 	_populate_achievements()
 
 func _setup_achievements_tab():
 	var achievements_tab = tab_container.get_node_or_null("Achievements")
 	if not achievements_tab:
-		print("ERROR: Achievements tab not found!")
+		push_error("AchievementsUI: Achievements tab not found!")
 		return
 	
-	print("Setting up achievements tab...")
-	
-	# Find existing buttons first
+	# Find and connect filter/sort buttons
 	var filter_button = achievements_tab.find_child("FilterButton", true, false)
 	var sort_button = achievements_tab.find_child("SortButton", true, false)
 	
-	print("Found FilterButton: ", filter_button != null)
-	print("Found SortButton: ", sort_button != null)
-	
-	# If buttons exist in scene, just connect them
 	if filter_button:
-		print("Connecting existing FilterButton")
 		if not filter_button.item_selected.is_connected(_on_filter_changed):
 			filter_button.item_selected.connect(_on_filter_changed)
-		_style_option_button(filter_button)
+		# Apply filter styling with purple theme for achievements
+		UIStyleManager.style_filter_button(filter_button, Color("#a487ff"))
 	
 	if sort_button:
-		print("Connecting existing SortButton")
 		if not sort_button.item_selected.is_connected(_on_sort_changed):
 			sort_button.item_selected.connect(_on_sort_changed)
-		_style_option_button(sort_button)
-	
-	# Create scroll container if needed
-	var scroll = achievements_tab.find_child("ScrollContainer", true, false)
-	if not scroll:
-		print("Creating ScrollContainer")
-		var vbox = achievements_tab.find_child("VBoxContainer", true, false)
-		if vbox:
-			scroll = ScrollContainer.new()
-			vbox.add_child(scroll)
-	else:
-		print("Found existing ScrollContainer")
-	
-	if scroll:
-		_setup_scroll_container(scroll)
-
-func _setup_scroll_container(scroll_container: ScrollContainer):
-	if not scroll_container:
-		return
-	scroll_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll_container.custom_minimum_size = Vector2(600, 300)
-	scroll_container.self_modulate.a = 0  # Make transparent
+		# Apply same styling to sort button
+		UIStyleManager.style_filter_button(sort_button, Color("#a487ff"))
 
 func _populate_achievements():
 	var achievements_tab = tab_container.get_node_or_null("Achievements")
 	if not achievements_tab:
 		return
-		
-	var scroll = achievements_tab.find_child("ScrollContainer", true, false)
-	if not scroll:
-		return
 	
-	# Create grid if it doesn't exist
-	var grid = scroll.get_child(0) if scroll.get_child_count() > 0 else null
-	if not grid:
-		grid = GridContainer.new()
-		grid.name = "AchievementsGrid"
-		grid.columns = 4  # 4 per row as requested
-		grid.add_theme_constant_override("h_separation", 15)
-		grid.add_theme_constant_override("v_separation", 15)
-		scroll.add_child(grid)
+	# Use UIStyleManager for scrollable content with custom config for grid
+	var config = {
+		"separation": 0  # Grid will handle its own spacing
+	}
+	await UIStyleManager.setup_scrollable_content(achievements_tab, _populate_achievements_content, config)
+
+func _populate_achievements_content(vbox: VBoxContainer) -> void:
+	"""Content for Achievements tab - uses a grid instead of vbox"""
+	# Replace VBox with Grid for achievements
+	var grid = GridContainer.new()
+	grid.name = "AchievementsGrid"
+	grid.columns = 4  # 4 per row as requested
+	grid.add_theme_constant_override("h_separation", 15)
+	grid.add_theme_constant_override("v_separation", 15)
 	
-	# Clear existing
-	for child in grid.get_children():
-		child.queue_free()
+	# Move grid to parent of vbox and remove vbox
+	var parent = vbox.get_parent()
+	parent.add_child(grid)
+	vbox.queue_free()
+	
+	# Clear existing cards
 	achievement_cards.clear()
 	
 	# Get all achievement IDs
@@ -172,27 +138,6 @@ func _on_filter_changed(index: int):
 			filter_mode = "open"
 	
 	_populate_achievements()
-
-func _style_option_button(button: OptionButton):
-	var popup = button.get_popup()
-	
-	# Popup background
-	var panel_style = StyleBoxFlat.new()
-	panel_style.bg_color = Color("#a487ff")
-	panel_style.corner_radius_top_left = 12
-	panel_style.corner_radius_top_right = 12
-	panel_style.corner_radius_bottom_left = 12
-	panel_style.corner_radius_bottom_right = 12
-	popup.add_theme_stylebox_override("panel", panel_style)
-	
-	# Hover style
-	var hover_style = StyleBoxFlat.new()
-	hover_style.bg_color = Color("#b497ff")
-	hover_style.corner_radius_top_left = 8
-	hover_style.corner_radius_top_right = 8
-	hover_style.corner_radius_bottom_left = 8
-	hover_style.corner_radius_bottom_right = 8
-	popup.add_theme_stylebox_override("hover", hover_style)
 
 func show_achievements():
 	visible = true

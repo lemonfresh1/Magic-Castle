@@ -1,6 +1,6 @@
 # SettingsUI.gd - Settings interface using the panel system
 # Location: res://Magic-Castle/scripts/ui/settings/SettingsUI.gd
-# Last Updated: Updated with correct renamed node paths [Date]
+# Last Updated: Integrated with UIStyleManager [Date]
 
 extends PanelContainer
 
@@ -12,6 +12,7 @@ signal settings_closed
 @onready var scroll_container: ScrollContainer = $MarginContainer/TabContainer/Game/MarginContainer/VBoxContainer/ScrollContainer
 @onready var v_box_container: VBoxContainer = $MarginContainer/TabContainer/Game/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer
 
+# [Keep all existing @onready references - they're already correct]
 # Game Mode Section
 @onready var game_mode_section: VBoxContainer = $MarginContainer/TabContainer/Game/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/game_mode_section
 @onready var game_mode_title: Label = $MarginContainer/TabContainer/Game/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/game_mode_section/game_mode_title
@@ -77,32 +78,10 @@ func _ready():
 	if not is_node_ready():
 		return
 	
-	available_modes = GameModeManager.get_all_mode_info()
+	# Apply panel styling
+	UIStyleManager.apply_panel_style(self, "settings_ui")
 	
-	# Debug the scene structure
-	print("=== SETTINGS UI DEBUG ===")
-	print("TabContainer found: ", tab_container != null)
-	print("Game tab sections:")
-	print("  - game_mode_section: ", game_mode_section != null)
-	print("  - card_section: ", card_section != null)
-	print("  - board_section: ", board_section != null)
-	print("Game mode UI elements:")
-	print("  - game_mode_left_button: ", game_mode_left_button != null)
-	print("  - game_mode_label: ", game_mode_label != null)
-	print("  - game_mode_right_button: ", game_mode_right_button != null)
-	print("  - game_mode_description: ", game_mode_description != null)
-	print("Card UI elements:")
-	print("  - card_left_button: ", card_left_button != null)
-	print("  - card_preview_container: ", card_preview_container != null)
-	print("  - card_right_button: ", card_right_button != null)
-	print("  - card_skin_name: ", card_skin_name != null)
-	print("  - card_high_contrast_check: ", card_high_contrast_check != null)
-	print("Board UI elements:")
-	print("  - board_left_button: ", board_left_button != null)
-	print("  - board_preview_container: ", board_preview_container != null)
-	print("  - board_right_button: ", board_right_button != null)
-	print("  - board_skin_name: ", board_skin_name != null)
-	print("========================")
+	available_modes = GameModeManager.get_all_mode_info()
 	
 	# Connect signals for Game tab
 	_connect_game_controls()
@@ -116,10 +95,8 @@ func _ready():
 	
 	# Create previews after loading settings
 	await get_tree().process_frame
-	print("After await - creating previews...")
 	_create_card_previews()
 	_create_board_preview()
-	print("Preview creation complete")
 
 	await get_tree().process_frame
 	_debug_game_tab()

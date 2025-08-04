@@ -1,12 +1,15 @@
 # ClanUI.gd - Clan interface placeholder
 # Location: res://Magic-Castle/scripts/ui/clan/ClanUI.gd
-# Last Updated: Created placeholder clan UI [Date]
+# Last Updated: Integrated with UIStyleManager [Date]
 
 extends PanelContainer
 
 signal clan_closed
 
 func _ready():
+	# Apply panel styling
+	UIStyleManager.apply_panel_style(self, "clan_ui")
+	
 	_setup_coming_soon()
 
 func _setup_coming_soon():

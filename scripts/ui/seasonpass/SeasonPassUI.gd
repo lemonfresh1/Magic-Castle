@@ -1,6 +1,6 @@
 # SeasonPassUI.gd - Season pass interface with tiers and missions
 # Location: res://Magic-Castle/scripts/ui/season_pass/SeasonPassUI.gd
-# Last Updated: Created season pass UI with mission display [Date]
+# Last Updated: Fixed duplicate scroll container setup [Date]
 
 extends PanelContainer
 
@@ -20,102 +20,56 @@ func _ready():
 		push_error("SeasonPassUI: TabContainer not found!")
 		return
 	
-	_setup_tabs()
-	_populate_season_missions()
+	# Apply panel styling
+	UIStyleManager.apply_panel_style(self, "season_pass_ui")
+	
+	# Setup tabs only once
+	call_deferred("_setup_tabs")
 
 func _setup_tabs():
 	# Setup Overview tab
 	var overview_tab = tab_container.get_node_or_null("Overview")
 	if overview_tab:
-		_setup_overview_tab(overview_tab)
+		await UIStyleManager.setup_scrollable_content(overview_tab, _populate_overview_content)
 	
 	# Setup Battle Pass tab
 	var battle_pass_tab = tab_container.get_node_or_null("Battle Pass")
 	if battle_pass_tab:
-		_setup_battle_pass_tab(battle_pass_tab)
+		await UIStyleManager.setup_scrollable_content(battle_pass_tab, _populate_battle_pass_content)
 	
-	# Setup Missions tab
+	# Setup Missions tab with both filter and content
 	var missions_tab = tab_container.get_node_or_null("Missions")
 	if missions_tab:
-		_setup_missions_tab(missions_tab)
+		# Setup filter button first
+		var filter_button = missions_tab.find_child("FilterButton", true, false)
+		if filter_button:
+			if not filter_button.item_selected.is_connected(_on_filter_changed):
+				filter_button.item_selected.connect(_on_filter_changed)
+			# Apply filter styling with season orange theme color
+			UIStyleManager.style_filter_button(filter_button, Color("#FFB75A"))
+		
+		# Then setup scrollable content
+		await UIStyleManager.setup_scrollable_content(missions_tab, _populate_missions_content)
 
-func _setup_overview_tab(tab: Control):
-	var scroll = tab.find_child("ScrollContainer", true, false)
-	if not scroll:
-		return
-	
-	# Clear any existing content
-	for child in scroll.get_children():
-		child.queue_free()
-	
-	# Create VBox
-	var vbox = VBoxContainer.new()
-	scroll.add_child(vbox)
-	
-	# Add "Coming Soon" label
+func _populate_overview_content(vbox: VBoxContainer) -> void:
+	"""Content for Overview tab"""
 	var label = Label.new()
 	label.text = "Coming Soon"
 	label.add_theme_font_size_override("font_size", 24)
 	label.modulate = Color(0.8, 0.8, 0.8)
 	vbox.add_child(label)
 
-func _setup_battle_pass_tab(tab: Control):
-	var scroll = tab.find_child("ScrollContainer", true, false)
-	if not scroll:
-		return
-	
-	# Clear any existing content
-	for child in scroll.get_children():
-		child.queue_free()
-	
-	# Create VBox
-	var vbox = VBoxContainer.new()
-	scroll.add_child(vbox)
-	
-	# Add "Coming Soon" label
+func _populate_battle_pass_content(vbox: VBoxContainer) -> void:
+	"""Content for Battle Pass tab"""
 	var label = Label.new()
 	label.text = "Coming Soon"
 	label.add_theme_font_size_override("font_size", 24)
 	label.modulate = Color(0.8, 0.8, 0.8)
 	vbox.add_child(label)
 
-func _setup_missions_tab(tab: Control):
-	var filter_button = tab.find_child("FilterButton", true, false)
-	if filter_button:
-		if not filter_button.item_selected.is_connected(_on_filter_changed):
-			filter_button.item_selected.connect(_on_filter_changed)
-		_style_filter_button(filter_button)
-	
-	# Setup scroll container
-	var scroll = tab.find_child("ScrollContainer", true, false)
-	if scroll:
-		_setup_scroll_container(scroll)
-
-func _setup_scroll_container(scroll_container: ScrollContainer):
-	scroll_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll_container.custom_minimum_size = Vector2(600, 300)
-
-func _populate_season_missions():
-	var missions_tab = tab_container.get_node_or_null("Missions")
-	if not missions_tab:
-		return
-	
-	var scroll = missions_tab.find_child("ScrollContainer", true, false)
-	if not scroll:
-		return
-	
-	# Create VBox if it doesn't exist
-	var vbox = scroll.get_child(0) if scroll.get_child_count() > 0 else null
-	if not vbox:
-		vbox = VBoxContainer.new()
-		vbox.name = "MissionsVBox"
-		vbox.add_theme_constant_override("separation", 10)
-		scroll.add_child(vbox)
-	
-	# Clear existing
-	for child in vbox.get_children():
-		child.queue_free()
+func _populate_missions_content(vbox: VBoxContainer) -> void:
+	"""Content for Missions tab"""
+	# Clear previous cards
 	mission_cards.clear()
 	
 	# Create season pass missions from current tier rewards
@@ -194,31 +148,29 @@ func _on_filter_changed(index: int):
 		2:
 			filter_mode = "completed"
 	
-	_populate_season_missions()
+	_refresh_missions()
 
-func _style_filter_button(button: OptionButton):
-	var popup = button.get_popup()
-	
-	# Style the popup
-	var panel_style = StyleBoxFlat.new()
-	panel_style.bg_color = Color("#FFB75A")  # Season orange
-	panel_style.corner_radius_top_left = 12
-	panel_style.corner_radius_top_right = 12
-	panel_style.corner_radius_bottom_left = 12
-	panel_style.corner_radius_bottom_right = 12
-	popup.add_theme_stylebox_override("panel", panel_style)
-	
-	var hover_style = StyleBoxFlat.new()
-	hover_style.bg_color = Color("#FFC77A")
-	hover_style.corner_radius_top_left = 8
-	hover_style.corner_radius_top_right = 8
-	hover_style.corner_radius_bottom_left = 8
-	hover_style.corner_radius_bottom_right = 8
-	popup.add_theme_stylebox_override("hover", hover_style)
+func _refresh_missions():
+	"""Refresh missions when filter changes"""
+	var missions_tab = tab_container.get_node_or_null("Missions")
+	if not missions_tab:
+		return
+		
+	# Find the existing VBox and repopulate it
+	var vbox = missions_tab.find_child("ContentVBox", true, false)
+	if vbox:
+		# Clear existing content
+		for child in vbox.get_children():
+			child.queue_free()
+		await get_tree().process_frame
+		
+		# Repopulate with filtered content
+		_populate_missions_content(vbox)
 
 func show_season_pass_ui():
 	visible = true
-	_populate_season_missions()
+	# Refresh missions on show
+	_refresh_missions()
 
 func hide_season_pass_ui():
 	visible = false

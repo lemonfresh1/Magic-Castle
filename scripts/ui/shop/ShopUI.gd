@@ -1,6 +1,6 @@
 # ShopUI.gd - Main shop interface controller using MenuBox template
 # Location: res://Magic-Castle/scripts/ui/shop/ShopUI.gd
-# Last Updated: Complete script with price visibility fixes [Date]
+# Last Updated: Minimal cleanup - panel styling and filter buttons only [Date]
 
 extends PanelContainer
 
@@ -40,16 +40,16 @@ func _ready():
 	if not is_node_ready():
 		return
 	
+	# Apply panel styling
+	UIStyleManager.apply_panel_style(self, "shop_ui")
+	
 	# Make sure tab container expands
 	if tab_container:
 		tab_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		tab_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		print("ShopUI: TabContainer size: ", tab_container.size)
-		print("ShopUI: TabContainer visible: ", tab_container.visible)
 		
 	_setup_tabs()
 	_populate_shop()
-	_apply_option_button_styling()
 	
 	# Connect to ShopManager signals
 	if ShopManager:
@@ -95,57 +95,24 @@ func _setup_tabs():
 		var filter_button = tab.find_child("FilterButton", true, false)
 		var sort_button = tab.find_child("SortButton", true, false)
 		
-		if filter_button and not filter_button.item_selected.is_connected(_on_filter_changed):
-			filter_button.item_selected.connect(_on_filter_changed.bind(category_id))
+		if filter_button:
+			if not filter_button.item_selected.is_connected(_on_filter_changed):
+				filter_button.item_selected.connect(_on_filter_changed.bind(category_id))
+			# Apply filter styling with purple theme
+			UIStyleManager.style_filter_button(filter_button, Color("#a487ff"))
 		
-		if sort_button and not sort_button.item_selected.is_connected(_on_sort_changed):
-			sort_button.item_selected.connect(_on_sort_changed.bind(category_id))
+		if sort_button:
+			if not sort_button.item_selected.is_connected(_on_sort_changed):
+				sort_button.item_selected.connect(_on_sort_changed.bind(category_id))
+			# Apply filter styling to sort button too
+			UIStyleManager.style_filter_button(sort_button, Color("#a487ff"))
 		
-		# Set scroll container to expand
+		# Fix scroll container sizing
 		var scroll_container = tab.find_child("ScrollContainer", true, false)
 		if scroll_container:
-			# scroll_container.self_modulate.a = 0  # Temporarily commented out
 			scroll_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
 			scroll_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			scroll_container.custom_minimum_size = Vector2(600, 300)  # Set minimum size
-
-func _apply_option_button_styling():
-	# Apply custom styling to all OptionButtons
-	for category_id in tabs:
-		var tab = tabs[category_id]
-		if not tab:
-			continue
-			
-		var filter_button = tab.find_child("FilterButton", true, false)
-		var sort_button = tab.find_child("SortButton", true, false)
-		
-		if filter_button:
-			_style_option_button(filter_button)
-		if sort_button:
-			_style_option_button(sort_button)
-
-func _style_option_button(button: OptionButton):
-	var popup = button.get_popup()
-	
-	# Popup background
-	var panel_style = StyleBoxFlat.new()
-	panel_style.bg_color = Color("#a487ff")
-	panel_style.corner_radius_top_left = 12
-	panel_style.corner_radius_top_right = 12
-	panel_style.corner_radius_bottom_left = 12
-	panel_style.corner_radius_bottom_right = 12
-	panel_style.border_width_top = 5
-	panel_style.border_color = Color.TRANSPARENT
-	popup.add_theme_stylebox_override("panel", panel_style)
-	
-	# Hover style
-	var hover_style = StyleBoxFlat.new()
-	hover_style.bg_color = Color("#b497ff")
-	hover_style.corner_radius_top_left = 8
-	hover_style.corner_radius_top_right = 8
-	hover_style.corner_radius_bottom_left = 8
-	hover_style.corner_radius_bottom_right = 8
-	popup.add_theme_stylebox_override("hover", hover_style)
 
 func _populate_shop():
 	print("ShopUI: Starting to populate shop")
@@ -166,11 +133,6 @@ func _populate_shop():
 		var scroll_container = tab.find_child("ScrollContainer", true, false)
 		
 		if scroll_container:
-			print("ShopUI: Found ScrollContainer for ", category_id)
-			print("  - ScrollContainer visible: ", scroll_container.visible)
-			print("  - ScrollContainer size: ", scroll_container.size)
-			print("  - ScrollContainer modulate: ", scroll_container.modulate)
-			
 			# Create grid if it doesn't exist
 			var grid = scroll_container.get_child(0) if scroll_container.get_child_count() > 0 else null
 			if not grid:
@@ -181,12 +143,8 @@ func _populate_shop():
 				grid.add_theme_constant_override("v_separation", 10)
 				grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 				grid.size_flags_vertical = Control.SIZE_EXPAND_FILL
-				# grid.self_modulate.a = 0  # Temporarily commented out to test visibility
 				scroll_container.add_child(grid)
 				print("ShopUI: Created new grid for ", category_id)
-			
-			print("  - Grid visible: ", grid.visible)
-			print("  - Grid size: ", grid.size)
 			
 			_populate_grid(grid, items, category_id)
 		else:
@@ -226,22 +184,12 @@ func _populate_grid(grid: GridContainer, items: Array, tab_id: String):
 		grid.add_child(card)
 		card.setup(item)
 		
-		# Debug card visibility
-		if i == 0:  # Only check first card to avoid spam
-			print("ShopUI: First card size: ", card.size)
-			print("ShopUI: First card visible: ", card.visible)
-			print("ShopUI: First card modulate: ", card.modulate)
-			print("ShopUI: First card position: ", card.position)
-		
 		print("ShopUI: Created card for item: ", item.display_name)
 		
 		# IMPORTANT: Ensure price is visible for shop cards
 		var price_container = card.get_node_or_null("MarginContainer/VBoxContainer/PriceContainer")
 		if price_container:
 			price_container.visible = true
-			print("ShopUI: Price container visible for ", item.display_name)
-		else:
-			print("ShopUI: WARNING - No price container found for ", item.display_name)
 		
 		item_cards.append(card)
 		
@@ -250,8 +198,6 @@ func _populate_grid(grid: GridContainer, items: Array, tab_id: String):
 			card.item_clicked.connect(_on_item_clicked)
 		if not card.preview_requested.is_connected(_on_preview_requested):
 			card.preview_requested.connect(_on_preview_requested)
-	
-	print("ShopUI: Grid now has %d children" % grid.get_child_count())
 
 func _on_filter_changed(index: int, tab_id: String):
 	current_filter = FILTER_OPTIONS[index].id
@@ -409,7 +355,6 @@ func show_shop():
 	# Force another layout update after population
 	if is_inside_tree():
 		await get_tree().process_frame
-		print("ShopUI: After layout update - TabContainer size: ", tab_container.size)
 
 func _refresh_all_shop_cards():
 	# Go through all tabs and refresh each card

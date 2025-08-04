@@ -1,12 +1,15 @@
 # ReferralUI.gd - Referral interface placeholder
 # Location: res://Magic-Castle/scripts/ui/referral/ReferralUI.gd
-# Last Updated: Created placeholder referral UI [Date]
+# Last Updated: Integrated with UIStyleManager [Date]
 
 extends PanelContainer
 
 signal referral_closed
 
 func _ready():
+	# Apply panel styling
+	UIStyleManager.apply_panel_style(self, "referral_ui")
+	
 	_setup_coming_soon()
 
 func _setup_coming_soon():

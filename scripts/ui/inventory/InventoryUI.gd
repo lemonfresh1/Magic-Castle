@@ -1,6 +1,6 @@
 # InventoryUI.gd - Inventory interface showing owned items
 # Location: res://Magic-Castle/scripts/ui/inventory/InventoryUI.gd
-# Last Updated: Fixed grid layout and card visibility issues [Date]
+# Last Updated: Minimal cleanup - panel styling and filter buttons only [Date]
 
 extends PanelContainer
 
@@ -25,10 +25,12 @@ const FILTER_OPTIONS = [
 func _ready():
 	if not is_node_ready():
 		return
+	
+	# Apply panel styling
+	UIStyleManager.apply_panel_style(self, "inventory_ui")
 		
 	_setup_tabs()
 	_populate_inventory()
-	_apply_option_button_styling()
 
 func _setup_tabs():
 	# Map existing tabs by their names (no Highlights in inventory)
@@ -79,48 +81,17 @@ func _setup_tabs():
 			
 			if not filter_button.item_selected.is_connected(_on_filter_changed):
 				filter_button.item_selected.connect(_on_filter_changed.bind(category_id))
+			
+			# Apply filter styling with purple theme
+			UIStyleManager.style_filter_button(filter_button, Color("#a487ff"))
 		
-		# Set scroll container to transparent
+		# Fix scroll container sizing
 		var scroll_container = tab.find_child("ScrollContainer", true, false)
 		if scroll_container:
 			scroll_container.self_modulate.a = 0
 			scroll_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
-			scroll_container.custom_minimum_size = Vector2(0, 300)
-
-func _apply_option_button_styling():
-	# Apply custom styling to filter buttons
-	for category_id in tabs:
-		var tab = tabs[category_id]
-		if not tab:
-			continue
-			
-		var filter_button = tab.find_child("FilterButton", true, false)
-		
-		if filter_button:
-			_style_option_button(filter_button)
-
-func _style_option_button(button: OptionButton):
-	var popup = button.get_popup()
-	
-	# Popup background
-	var panel_style = StyleBoxFlat.new()
-	panel_style.bg_color = Color("#a487ff")
-	panel_style.corner_radius_top_left = 12
-	panel_style.corner_radius_top_right = 12
-	panel_style.corner_radius_bottom_left = 12
-	panel_style.corner_radius_bottom_right = 12
-	panel_style.border_width_top = 5
-	panel_style.border_color = Color.TRANSPARENT
-	popup.add_theme_stylebox_override("panel", panel_style)
-	
-	# Hover style
-	var hover_style = StyleBoxFlat.new()
-	hover_style.bg_color = Color("#b497ff")
-	hover_style.corner_radius_top_left = 8
-	hover_style.corner_radius_top_right = 8
-	hover_style.corner_radius_bottom_left = 8
-	hover_style.corner_radius_bottom_right = 8
-	popup.add_theme_stylebox_override("hover", hover_style)
+			scroll_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			scroll_container.custom_minimum_size = Vector2(600, 300)
 
 func _populate_inventory():
 	# Populate each tab with owned items only

@@ -1,6 +1,6 @@
 # MissionUI.gd - Daily and weekly missions interface
 # Location: res://Magic-Castle/scripts/ui/missions/MissionUI.gd
-# Last Updated: Created mission UI with daily/weekly tabs [Date]
+# Last Updated: Fixed margins and integrated with UIStyleManager [Date]
 
 extends PanelContainer
 
@@ -22,14 +22,18 @@ func _ready():
 		push_error("MissionUI: TabContainer not found!")
 		return
 	
-	_setup_tabs()
-	_populate_all_missions()
+	# Apply panel styling
+	UIStyleManager.apply_panel_style(self, "mission_ui")
+	
+	# Setup tabs only once
+	call_deferred("_setup_tabs")
+	call_deferred("_populate_all_missions")
 
 func _setup_tabs():
 	# Setup Overview tab
 	var overview_tab = tab_container.get_node_or_null("Overview")
 	if overview_tab:
-		_setup_overview_tab(overview_tab)
+		await UIStyleManager.setup_scrollable_content(overview_tab, _populate_overview_content)
 	
 	# Setup Daily Missions tab
 	var daily_tab = tab_container.get_node_or_null("Daily Missions")
@@ -41,20 +45,8 @@ func _setup_tabs():
 	if weekly_tab:
 		_setup_weekly_missions_tab(weekly_tab)
 
-func _setup_overview_tab(tab: Control):
-	var scroll = tab.find_child("ScrollContainer", true, false)
-	if not scroll:
-		return
-	
-	# Clear any existing content
-	for child in scroll.get_children():
-		child.queue_free()
-	
-	# Create VBox
-	var vbox = VBoxContainer.new()
-	scroll.add_child(vbox)
-	
-	# Add "Coming Soon" label
+func _populate_overview_content(vbox: VBoxContainer) -> void:
+	"""Content for Overview tab"""
 	var label = Label.new()
 	label.text = "Coming Soon"
 	label.add_theme_font_size_override("font_size", 24)
@@ -66,53 +58,32 @@ func _setup_daily_missions_tab(tab: Control):
 	if filter_button:
 		if not filter_button.item_selected.is_connected(_on_daily_filter_changed):
 			filter_button.item_selected.connect(_on_daily_filter_changed)
-		_style_filter_button(filter_button, "daily")
-	
-	# Setup scroll container
-	var scroll = tab.find_child("ScrollContainer", true, false)
-	if scroll:
-		_setup_scroll_container(scroll)
+		# Apply filter styling with daily blue theme color
+		UIStyleManager.style_filter_button(filter_button, Color("#5ABFFF"))
 
 func _setup_weekly_missions_tab(tab: Control):
 	var filter_button = tab.find_child("FilterButton", true, false)
 	if filter_button:
 		if not filter_button.item_selected.is_connected(_on_weekly_filter_changed):
 			filter_button.item_selected.connect(_on_weekly_filter_changed)
-		_style_filter_button(filter_button, "weekly")
-	
-	# Setup scroll container
-	var scroll = tab.find_child("ScrollContainer", true, false)
-	if scroll:
-		_setup_scroll_container(scroll)
-
-func _setup_scroll_container(scroll_container: ScrollContainer):
-	scroll_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll_container.custom_minimum_size = Vector2(600, 300)
+		# Apply filter styling with weekly purple theme color
+		UIStyleManager.style_filter_button(filter_button, Color("#9B5AFF"))
 
 func _populate_all_missions():
-	_populate_daily_missions()
-	_populate_weekly_missions()
+	await _populate_daily_missions()
+	await _populate_weekly_missions()
 
 func _populate_daily_missions():
 	var daily_tab = tab_container.get_node_or_null("Daily Missions")
 	if not daily_tab:
 		return
 	
-	var scroll = daily_tab.find_child("ScrollContainer", true, false)
-	if not scroll:
-		return
-	
-	# Clear any existing content
-	for child in scroll.get_children():
-		child.queue_free()
+	# Use UIStyleManager for consistent setup
+	await UIStyleManager.setup_scrollable_content(daily_tab, _populate_daily_missions_content)
+
+func _populate_daily_missions_content(vbox: VBoxContainer) -> void:
+	"""Content for Daily Missions tab"""
 	daily_mission_cards.clear()
-	
-	# Create VBox
-	var vbox = VBoxContainer.new()
-	vbox.name = "DailyMissionsVBox"
-	vbox.add_theme_constant_override("separation", 10)
-	scroll.add_child(vbox)
 	
 	# Get daily missions as array
 	var daily_missions_array = MissionManager.daily_missions.values()
@@ -153,20 +124,12 @@ func _populate_weekly_missions():
 	if not weekly_tab:
 		return
 	
-	var scroll = weekly_tab.find_child("ScrollContainer", true, false)
-	if not scroll:
-		return
-	
-	# Clear any existing content
-	for child in scroll.get_children():
-		child.queue_free()
+	# Use UIStyleManager for consistent setup
+	await UIStyleManager.setup_scrollable_content(weekly_tab, _populate_weekly_missions_content)
+
+func _populate_weekly_missions_content(vbox: VBoxContainer) -> void:
+	"""Content for Weekly Missions tab"""
 	weekly_mission_cards.clear()
-	
-	# Create VBox
-	var vbox = VBoxContainer.new()
-	vbox.name = "WeeklyMissionsVBox"
-	vbox.add_theme_constant_override("separation", 10)
-	scroll.add_child(vbox)
 	
 	# Get weekly missions as array
 	var weekly_missions_array = MissionManager.weekly_missions.values()
@@ -223,28 +186,6 @@ func _on_weekly_filter_changed(index: int):
 			weekly_filter_mode = "completed"
 	
 	_populate_weekly_missions()
-
-func _style_filter_button(button: OptionButton, type: String):
-	var popup = button.get_popup()
-	
-	# Style based on mission type
-	var color = Color("#5ABFFF") if type == "daily" else Color("#9B5AFF")  # Light blue for daily, purple for weekly
-	
-	var panel_style = StyleBoxFlat.new()
-	panel_style.bg_color = color
-	panel_style.corner_radius_top_left = 12
-	panel_style.corner_radius_top_right = 12
-	panel_style.corner_radius_bottom_left = 12
-	panel_style.corner_radius_bottom_right = 12
-	popup.add_theme_stylebox_override("panel", panel_style)
-	
-	var hover_style = StyleBoxFlat.new()
-	hover_style.bg_color = color.lightened(0.2)
-	hover_style.corner_radius_top_left = 8
-	hover_style.corner_radius_top_right = 8
-	hover_style.corner_radius_bottom_left = 8
-	hover_style.corner_radius_bottom_right = 8
-	popup.add_theme_stylebox_override("hover", hover_style)
 
 func show_mission_ui():
 	visible = true

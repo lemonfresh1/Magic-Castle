@@ -1,12 +1,15 @@
 # FollowersUI.gd - Followers interface placeholder
 # Location: res://Magic-Castle/scripts/ui/followers/FollowersUI.gd
-# Last Updated: Created placeholder followers UI [Date]
+# Last Updated: Integrated with UIStyleManager [Date]
 
 extends PanelContainer
 
 signal followers_closed
 
 func _ready():
+	# Apply panel styling
+	UIStyleManager.apply_panel_style(self, "followers_ui")
+	
 	_setup_coming_soon()
 
 func _setup_coming_soon():
