@@ -185,6 +185,11 @@ func _on_score_changed(points: int, reason: String) -> void:
 func _on_combo_updated(combo: int) -> void:
 	if combo > 0:
 		update_combo_multiplier(combo)
+		
+		# Track combo milestones for missions
+		if combo >= 10:
+			# This will trigger the combo_10 mission update
+			print("Combo 10+ achieved!")
 	else:
 		current_multiplier = 1.0
 		combo_timer.stop()

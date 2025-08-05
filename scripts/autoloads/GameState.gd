@@ -235,6 +235,7 @@ func _continue_to_next_round() -> void:
 		start_round()
 
 func _end_game() -> void:
+	print("=== GAME ENDING ===")
 	print("Game completed! Final score: %d" % total_score)
 	
 	# Track game end
@@ -242,7 +243,11 @@ func _end_game() -> void:
 	StatsManager.end_game(mode, total_score, current_round - 1)
 	print("Checking achievements...")
 	AchievementManager.check_achievements()
+	
+	# CRITICAL: Emit game_over signal
+	print("Emitting game_over signal with score: %d" % total_score)
 	SignalBus.game_over.emit(total_score)
+	print("=== GAME ENDED ===")
 
 # === HELPER FUNCTIONS ===
 func _has_valid_moves() -> bool:

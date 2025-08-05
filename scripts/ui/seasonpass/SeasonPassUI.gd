@@ -1,6 +1,6 @@
 # SeasonPassUI.gd - Season pass interface with tiers and missions
 # Location: res://Magic-Castle/scripts/ui/season_pass/SeasonPassUI.gd
-# Last Updated: Fixed mission tab filtering and display issues [Date]
+# Last Updated: Simplified to use UnifiedMissionManager [Date]
 
 extends PanelContainer
 
@@ -11,7 +11,6 @@ signal season_pass_ui_closed
 @onready var pass_layout_scene = preload("res://Magic-Castle/scenes/ui/components/PassLayout.tscn")
 
 var filter_mode: String = "all"  # all, completed, open
-var mission_cards = []
 var pass_layout: PassLayout
 
 func _ready():
@@ -31,6 +30,11 @@ func _ready():
 	
 	# Setup tabs only once
 	call_deferred("_setup_tabs")
+	
+	# Connect to mission updates
+	if UnifiedMissionManager:
+		UnifiedMissionManager.mission_completed.connect(_on_mission_completed)
+		UnifiedMissionManager.missions_reset.connect(_on_missions_reset)
 
 func _setup_tabs():
 	# Setup Overview tab
@@ -71,7 +75,6 @@ func _populate_current_tab():
 	
 	match current_tab_name:
 		"Daily Missions", "Weekly Missions":
-			# Check if content exists
 			var scroll = current_tab.find_child("ScrollContainer", true, false)
 			if scroll:
 				var has_content = false
@@ -89,17 +92,14 @@ func _populate_current_tab():
 
 func _setup_missions_tab(tab: Control, mission_type: String):
 	"""Setup a missions tab with filter button"""
-	# First find and setup the filter button
 	var filter_button = tab.find_child("FilterButton", true, false)
 	if filter_button:
-		# Make sure it has the right items
 		if filter_button.get_item_count() == 0:
 			filter_button.add_item("All")
 			filter_button.add_item("Open")
 			filter_button.add_item("Completed")
 			filter_button.selected = 0
 		
-		# Connect with the mission type to distinguish between daily and weekly
 		if not filter_button.item_selected.is_connected(_on_filter_changed):
 			filter_button.item_selected.connect(_on_filter_changed)
 		
@@ -108,12 +108,10 @@ func _setup_missions_tab(tab: Control, mission_type: String):
 
 func _setup_battle_pass_tab(battle_pass_tab: Control):
 	"""Setup the Battle Pass tab with PassLayout inside scrollable content"""
-	# Use UIStyleManager to setup the tab structure first
 	await UIStyleManager.setup_scrollable_content(battle_pass_tab, _populate_battle_pass_content)
 
 func _populate_overview_content(vbox: VBoxContainer) -> void:
 	"""Content for Overview tab"""
-	# Season info header
 	var season_info = SeasonPassManager.get_season_info()
 	
 	var header = Label.new()
@@ -172,7 +170,6 @@ func _populate_overview_content(vbox: VBoxContainer) -> void:
 
 func _populate_battle_pass_content(vbox: VBoxContainer) -> void:
 	"""Content for Battle Pass tab using UIStyleManager structure"""
-	# Now instantiate PassLayout inside the VBox created by UIStyleManager
 	pass_layout = pass_layout_scene.instantiate()
 	vbox.add_child(pass_layout)
 	
@@ -195,73 +192,23 @@ func _populate_missions_content(vbox: VBoxContainer) -> void:
 	"""Content for Missions tab - filtered by current tab"""
 	print("=== Populating missions with filter: ", filter_mode, " ===")
 	
-	# Debug hierarchy
-	print("VBox parent: ", vbox.get_parent().name if vbox.get_parent() else "None")
-	if vbox.get_parent() and vbox.get_parent().get_parent():
-		print("VBox grandparent: ", vbox.get_parent().get_parent().name)
-	
-	# Ensure VBox fills space and aligns to top
 	vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vbox.alignment = BoxContainer.ALIGNMENT_BEGIN
 	vbox.add_theme_constant_override("separation", 8)
 	
-	# Clear previous cards
-	mission_cards.clear()
-	
 	# Determine which tab we're in
 	var current_tab_name = tab_container.get_tab_title(tab_container.current_tab)
-	var is_daily_tab = current_tab_name == "Daily Missions"
-	var is_weekly_tab = current_tab_name == "Weekly Missions"
+	var mission_type = "daily" if current_tab_name == "Daily Missions" else "weekly"
 	
-	print("Current tab: ", current_tab_name, " (Daily: ", is_daily_tab, ", Weekly: ", is_weekly_tab, ")")
+	print("Current tab: ", current_tab_name, " - Type: ", mission_type)
 	
-	# Get missions based on current tab
-	var missions_to_show = []
-	
-	if is_daily_tab:
-		# Only show daily missions in daily tab
-		for mission_id in SeasonPassManager.DAILY_MISSIONS:
-			var mission_def = SeasonPassManager.DAILY_MISSIONS[mission_id]
-			var progress = SeasonPassManager.season_data.daily_missions.get(mission_id, {})
-			
-			var mission_data = {
-				"id": mission_id,
-				"display_name": mission_def.name,
-				"description": mission_def.desc,
-				"current_value": progress.get("current", 0),
-				"target_value": mission_def.target,
-				"rewards": {"sp": mission_def.sp},
-				"is_completed": progress.get("completed", false),
-				"is_claimed": progress.get("claimed", false),
-				"mission_type": "daily"
-			}
-			missions_to_show.append(mission_data)
-			
-	elif is_weekly_tab:
-		# Only show weekly missions in weekly tab
-		for mission_id in SeasonPassManager.WEEKLY_MISSIONS:
-			var mission_def = SeasonPassManager.WEEKLY_MISSIONS[mission_id]
-			var progress = SeasonPassManager.season_data.weekly_missions.get(mission_id, {})
-			
-			var mission_data = {
-				"id": mission_id,
-				"display_name": mission_def.name,
-				"description": mission_def.desc,
-				"current_value": progress.get("current", 0),
-				"target_value": mission_def.target,
-				"rewards": {"sp": mission_def.sp},
-				"is_completed": progress.get("completed", false),
-				"is_claimed": progress.get("claimed", false),
-				"mission_type": "weekly"
-			}
-			missions_to_show.append(mission_data)
-	
-	print("Total missions before filter: ", missions_to_show.size())
+	# Get missions from UnifiedMissionManager
+	var missions = UnifiedMissionManager.get_missions_for_system("season_pass", mission_type)
+	var filtered_missions = []
 	
 	# Apply filter
-	var filtered_missions = []
-	for mission in missions_to_show:
+	for mission in missions:
 		var should_show = false
 		match filter_mode:
 			"completed":
@@ -293,18 +240,19 @@ func _populate_missions_content(vbox: VBoxContainer) -> void:
 		return false
 	)
 	
-	# Add mission cards WITHOUT headers
+	# Add mission cards
 	for mission in filtered_missions:
 		var card = mission_card_scene.instantiate()
 		vbox.add_child(card)
 		card.setup(mission, "season")
 		print("Added mission card: ", mission.display_name)
-		# Connect to the correct signal name
+		
+		# Connect claim signal
 		if card.has_signal("mission_claimed"):
-			card.mission_claimed.connect(_on_mission_claim)
-		mission_cards.append(card)
-	
-	print("Total cards added: ", mission_cards.size())
+			card.mission_claimed.connect(func(mission_id): 
+				UnifiedMissionManager.claim_mission(mission_id, "season_pass")
+				_refresh_missions()
+			)
 
 func _on_tier_clicked(tier_number: int):
 	"""Handle tier click from PassLayout"""
@@ -329,17 +277,6 @@ func _on_purchase_premium():
 		_refresh_overview()
 	else:
 		print("Failed to purchase premium pass - not enough stars")
-
-func _on_mission_claim(mission_id: String):
-	"""Handle mission reward claim"""
-	if SeasonPassManager.claim_mission_reward(mission_id):
-		print("Mission reward claimed: %s" % mission_id)
-		_refresh_missions()
-		# Update pass layout to show new tier progress
-		if pass_layout:
-			pass_layout.refresh()
-	else:
-		print("Failed to claim mission reward: %s" % mission_id)
 
 func _refresh_overview():
 	"""Refresh the overview tab content"""
@@ -370,24 +307,35 @@ func _refresh_missions():
 	
 	# Only refresh if we're on a missions tab
 	if current_tab_name in ["Daily Missions", "Weekly Missions"]:
-		# Find the existing ContentVBox inside the ScrollContainer
 		var scroll = current_tab.find_child("ScrollContainer", true, false)
 		if scroll:
 			var vbox = scroll.find_child("ContentVBox", true, false)
 			if vbox:
-				# Clear existing content
 				for child in vbox.get_children():
 					child.queue_free()
 				
-				# Wait for cleanup
 				await get_tree().process_frame
-				
-				# Repopulate with filtered content
 				_populate_missions_content(vbox)
-			else:
-				push_error("ContentVBox not found in ScrollContainer")
-		else:
-			push_error("ScrollContainer not found in missions tab")
+
+func _on_mission_completed(mission_id: String, system: String):
+	"""Handle mission completion from UnifiedMissionManager"""
+	if system == "season_pass":
+		# Refresh the appropriate tab if visible
+		var current_tab_name = tab_container.get_tab_title(tab_container.current_tab)
+		if ("daily" in mission_id and current_tab_name == "Daily Missions") or \
+		   ("weekly" in mission_id and current_tab_name == "Weekly Missions"):
+			_refresh_missions()
+		
+		# Update pass layout to show new tier progress
+		if pass_layout:
+			pass_layout.refresh()
+
+func _on_missions_reset(reset_type: String):
+	"""Handle mission reset from UnifiedMissionManager"""
+	var current_tab_name = tab_container.get_tab_title(tab_container.current_tab)
+	if (reset_type == "daily" and current_tab_name == "Daily Missions") or \
+	   (reset_type == "weekly" and current_tab_name == "Weekly Missions"):
+		_refresh_missions()
 
 func show_season_pass_ui():
 	visible = true

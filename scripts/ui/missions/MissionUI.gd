@@ -1,6 +1,6 @@
 # MissionUI.gd - Daily and weekly missions interface
 # Location: res://Magic-Castle/scripts/ui/missions/MissionUI.gd
-# Last Updated: Fixed filter overlap issue like SeasonPassUI [Date]
+# Last Updated: Simplified to use UnifiedMissionManager [Date]
 
 extends PanelContainer
 
@@ -11,8 +11,6 @@ signal mission_ui_closed
 
 var daily_filter_mode: String = "all"  # all, completed, open
 var weekly_filter_mode: String = "all"
-var daily_mission_cards = []
-var weekly_mission_cards = []
 
 func _ready():
 	# Wait for next frame to ensure nodes are ready
@@ -28,6 +26,12 @@ func _ready():
 	# Setup tabs only once
 	call_deferred("_setup_tabs")
 	call_deferred("_populate_all_missions")
+	
+	# Connect to mission updates with more specific handling
+	if UnifiedMissionManager:
+		UnifiedMissionManager.mission_progress_updated.connect(_on_mission_progress_updated)
+		UnifiedMissionManager.mission_completed.connect(_on_mission_completed)
+		UnifiedMissionManager.missions_reset.connect(_on_missions_reset)
 
 func _setup_tabs():
 	# Setup Overview tab
@@ -47,11 +51,24 @@ func _setup_tabs():
 
 func _populate_overview_content(vbox: VBoxContainer) -> void:
 	"""Content for Overview tab"""
-	var label = Label.new()
-	label.text = "Coming Soon"
-	label.add_theme_font_size_override("font_size", 24)
-	label.modulate = Color(0.8, 0.8, 0.8)
-	vbox.add_child(label)
+	var summary = UnifiedMissionManager.get_mission_summary()
+	
+	var header = Label.new()
+	header.text = "Mission Progress"
+	header.add_theme_font_size_override("font_size", 24)
+	vbox.add_child(header)
+	
+	# Show progress for standard missions
+	var standard_stats = summary.get("standard", {})
+	var daily_label = Label.new()
+	daily_label.text = "Daily: %d/%d completed" % [standard_stats.get("daily_complete", 0), standard_stats.get("daily_total", 0)]
+	daily_label.add_theme_font_size_override("font_size", 18)
+	vbox.add_child(daily_label)
+	
+	var weekly_label = Label.new()
+	weekly_label.text = "Weekly: %d/%d completed" % [standard_stats.get("weekly_complete", 0), standard_stats.get("weekly_total", 0)]
+	weekly_label.add_theme_font_size_override("font_size", 18)
+	vbox.add_child(weekly_label)
 
 func _setup_daily_missions_tab(tab: Control):
 	var filter_button = tab.find_child("FilterButton", true, false)
@@ -78,152 +95,110 @@ func _populate_daily_missions():
 	if not daily_tab:
 		return
 	
-	# Use UIStyleManager for consistent setup
 	await UIStyleManager.setup_scrollable_content(daily_tab, _populate_daily_missions_content)
 
 func _populate_daily_missions_content(vbox: VBoxContainer) -> void:
 	"""Content for Daily Missions tab"""
-	# Ensure VBox fills space and aligns to top
 	vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vbox.alignment = BoxContainer.ALIGNMENT_BEGIN
 	vbox.add_theme_constant_override("separation", 8)
 	
-	daily_mission_cards.clear()
+	# Get missions from UnifiedMissionManager
+	var missions = UnifiedMissionManager.get_missions_for_system("standard", "daily")
+	var filtered_missions = []
 	
-	# Get daily missions as array
-	var daily_missions_array = MissionManager.daily_missions.values()
-	
-	# Debug print
-	print("Daily missions filter mode: ", daily_filter_mode)
-	
-	# Track if we have any missions to show
-	var has_missions = false
-	
-	# Add mission cards
-	for mission in daily_missions_array:
-		# Get completion status
-		var is_completed = MissionManager.is_mission_completed(mission.id)
-		
-		# Apply filter BEFORE creating the card
+	# Apply filter
+	for mission in missions:
 		var should_show = false
 		match daily_filter_mode:
 			"completed":
-				should_show = is_completed
+				should_show = mission.is_completed
 			"open":
-				should_show = not is_completed
+				should_show = not mission.is_completed
 			"all":
 				should_show = true
 		
-		print("Mission ", mission.id, " - completed: ", is_completed, ", should_show: ", should_show)
-		
 		if should_show:
-			has_missions = true
-			
-			# Convert to format expected by MissionCard
-			var mission_data = {
-				"id": mission.id,
-				"display_name": mission.title,
-				"description": "%s %d/%d" % [mission.description, MissionManager.get_mission_progress(mission.id), mission.target],
-				"current_value": MissionManager.get_mission_progress(mission.id),
-				"target_value": mission.target,
-				"rewards": {
-					"stars": mission.get("reward_stars", 0),
-					"xp": mission.get("reward_xp", 0)
-				},
-				"is_completed": is_completed,
-				"is_claimed": false
-			}
-			
-			var card = mission_card_scene.instantiate()
-			vbox.add_child(card)
-			card.setup(mission_data, "daily")
-			daily_mission_cards.append(card)
+			filtered_missions.append(mission)
 	
-	# If no missions match filter, show a message
-	if not has_missions:
+	# Show empty message if no missions
+	if filtered_missions.is_empty():
 		var empty_label = Label.new()
 		empty_label.text = "No missions to display"
 		empty_label.add_theme_font_size_override("font_size", 16)
 		empty_label.add_theme_color_override("font_color", Color("#CCCCCC"))
 		empty_label.modulate = Color(0.7, 0.7, 0.7)
 		vbox.add_child(empty_label)
+		return
+	
+	# Add mission cards
+	for mission_data in filtered_missions:
+		var card = mission_card_scene.instantiate()
+		vbox.add_child(card)
+		card.setup(mission_data, "daily")
+		
+		# Connect claim signal
+		if card.has_signal("mission_claimed"):
+			card.mission_claimed.connect(func(mission_id): 
+				UnifiedMissionManager.claim_mission(mission_id, "standard")
+				_refresh_daily_missions()
+			)
 
 func _populate_weekly_missions():
 	var weekly_tab = tab_container.get_node_or_null("Weekly Missions")
 	if not weekly_tab:
 		return
 	
-	# Use UIStyleManager for consistent setup
 	await UIStyleManager.setup_scrollable_content(weekly_tab, _populate_weekly_missions_content)
 
 func _populate_weekly_missions_content(vbox: VBoxContainer) -> void:
 	"""Content for Weekly Missions tab"""
-	# Ensure VBox fills space and aligns to top
 	vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vbox.alignment = BoxContainer.ALIGNMENT_BEGIN
 	vbox.add_theme_constant_override("separation", 8)
 	
-	weekly_mission_cards.clear()
+	# Get missions from UnifiedMissionManager
+	var missions = UnifiedMissionManager.get_missions_for_system("standard", "weekly")
+	var filtered_missions = []
 	
-	# Get weekly missions as array
-	var weekly_missions_array = MissionManager.weekly_missions.values()
-	
-	# Debug print
-	print("Weekly missions filter mode: ", weekly_filter_mode)
-	
-	# Track if we have any missions to show
-	var has_missions = false
-	
-	# Add mission cards
-	for mission in weekly_missions_array:
-		# Get completion status
-		var is_completed = MissionManager.is_mission_completed(mission.id)
-		
-		# Apply filter BEFORE creating the card
+	# Apply filter
+	for mission in missions:
 		var should_show = false
 		match weekly_filter_mode:
 			"completed":
-				should_show = is_completed
+				should_show = mission.is_completed
 			"open":
-				should_show = not is_completed
+				should_show = not mission.is_completed
 			"all":
 				should_show = true
 		
-		print("Mission ", mission.id, " - completed: ", is_completed, ", should_show: ", should_show)
-		
 		if should_show:
-			has_missions = true
-			
-			# Convert to format expected by MissionCard
-			var mission_data = {
-				"id": mission.id,
-				"display_name": mission.title,
-				"description": "%s %d/%d" % [mission.description, MissionManager.get_mission_progress(mission.id), mission.target],
-				"current_value": MissionManager.get_mission_progress(mission.id),
-				"target_value": mission.target,
-				"rewards": {
-					"stars": mission.get("reward_stars", 0),
-					"xp": mission.get("reward_xp", 0)
-				},
-				"is_completed": is_completed,
-				"is_claimed": false
-			}
-			
-			var card = mission_card_scene.instantiate()
-			vbox.add_child(card)
-			card.setup(mission_data, "weekly")
-			weekly_mission_cards.append(card)
+			filtered_missions.append(mission)
 	
-	# If no missions match filter, show a message
-	if not has_missions:
+	# Show empty message if no missions
+	if filtered_missions.is_empty():
 		var empty_label = Label.new()
 		empty_label.text = "No missions to display"
 		empty_label.add_theme_font_size_override("font_size", 16)
 		empty_label.add_theme_color_override("font_color", Color("#CCCCCC"))
 		empty_label.modulate = Color(0.7, 0.7, 0.7)
 		vbox.add_child(empty_label)
+		return
+	
+	# Add mission cards
+	for mission_data in filtered_missions:
+		var card = mission_card_scene.instantiate()
+		vbox.add_child(card)
+		card.setup(mission_data, "weekly")
+		
+		# Connect claim signal
+		if card.has_signal("mission_claimed"):
+			card.mission_claimed.connect(func(mission_id): 
+				UnifiedMissionManager.claim_mission(mission_id, "standard")
+				_refresh_weekly_missions()
+			)
 
 func _on_daily_filter_changed(index: int):
 	match index:
@@ -248,54 +223,84 @@ func _on_weekly_filter_changed(index: int):
 	_refresh_weekly_missions()
 
 func _refresh_daily_missions():
-	"""Refresh daily missions without recreating structure"""
+	"""Refresh daily missions"""
 	var daily_tab = tab_container.get_node_or_null("Daily Missions")
 	if not daily_tab:
 		return
 	
-	# Find the existing ContentVBox inside the ScrollContainer
 	var scroll = daily_tab.find_child("ScrollContainer", true, false)
 	if scroll:
 		var vbox = scroll.find_child("ContentVBox", true, false)
 		if vbox:
-			# Clear existing content
 			for child in vbox.get_children():
 				child.queue_free()
 			
-			# Wait for cleanup
 			await get_tree().process_frame
-			
-			# Repopulate with filtered content
 			_populate_daily_missions_content(vbox)
-		else:
-			push_error("ContentVBox not found in Daily Missions ScrollContainer")
-	else:
-		push_error("ScrollContainer not found in Daily Missions tab")
 
 func _refresh_weekly_missions():
-	"""Refresh weekly missions without recreating structure"""
+	"""Refresh weekly missions"""
 	var weekly_tab = tab_container.get_node_or_null("Weekly Missions")
 	if not weekly_tab:
 		return
 	
-	# Find the existing ContentVBox inside the ScrollContainer
 	var scroll = weekly_tab.find_child("ScrollContainer", true, false)
 	if scroll:
 		var vbox = scroll.find_child("ContentVBox", true, false)
 		if vbox:
-			# Clear existing content
 			for child in vbox.get_children():
 				child.queue_free()
 			
-			# Wait for cleanup
 			await get_tree().process_frame
-			
-			# Repopulate with filtered content
 			_populate_weekly_missions_content(vbox)
-		else:
-			push_error("ContentVBox not found in Weekly Missions ScrollContainer")
-	else:
-		push_error("ScrollContainer not found in Weekly Missions tab")
+
+func _on_mission_progress_updated(mission_id: String, current: int, target: int, system: String):
+	"""Handle real-time mission progress updates"""
+	if system == "standard":
+		# Find and update the specific mission card
+		var current_tab_name = tab_container.get_tab_title(tab_container.current_tab)
+		
+		# Determine if this mission should be visible on current tab
+		var is_daily_mission = "daily" in mission_id
+		var is_weekly_mission = "weekly" in mission_id
+		
+		if (is_daily_mission and current_tab_name == "Daily Missions") or \
+		   (is_weekly_mission and current_tab_name == "Weekly Missions"):
+			# Find the card with this mission_id
+			var found = false
+			var container = tab_container.get_child(tab_container.current_tab)
+			var scroll = container.find_child("ScrollContainer", true, false)
+			if scroll:
+				var vbox = scroll.find_child("ContentVBox", true, false)
+				if vbox:
+					for child in vbox.get_children():
+						if child.has_method("update_progress") and child.mission_data.get("id") == mission_id:
+							child.update_progress(current, target)
+							found = true
+							break
+			
+			if not found:
+				# If not found, refresh the whole tab
+				if is_daily_mission:
+					_refresh_daily_missions()
+				else:
+					_refresh_weekly_missions()
+
+func _on_mission_completed(mission_id: String, system: String):
+	"""Handle mission completion notification"""
+	if system == "standard":
+		# Refresh the appropriate tab
+		if "daily" in mission_id:
+			_refresh_daily_missions()
+		elif "weekly" in mission_id:
+			_refresh_weekly_missions()
+
+func _on_missions_reset(reset_type: String):
+	"""Handle mission reset"""
+	if reset_type == "daily":
+		_refresh_daily_missions()
+	elif reset_type == "weekly":
+		_refresh_weekly_missions()
 
 func show_mission_ui():
 	visible = true
@@ -306,5 +311,5 @@ func hide_mission_ui():
 	mission_ui_closed.emit()
 
 func refresh_missions():
-	"""Called to refresh mission display when progress updates"""
+	"""Called to refresh mission display"""
 	_populate_all_missions()

@@ -121,6 +121,9 @@ func _on_continue_pressed() -> void:
 		# Hide score screen
 		visible = false
 		
+		# CRITICAL: Trigger game end to emit game_over signal!
+		GameState._end_game()
+		
 		# Show post-game summary
 		var summary_scene = preload("res://Magic-Castle/scenes/ui/game_ui/PostGameSummary.tscn")
 		var summary = summary_scene.instantiate()
