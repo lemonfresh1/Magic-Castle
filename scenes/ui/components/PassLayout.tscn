@@ -1,0 +1,104 @@
+[gd_scene load_steps=5 format=3 uid="uid://bkb0n764fl27o"]
+
+[ext_resource type="Script" uid="uid://si3bh232ycyx" path="res://Magic-Castle/scripts/ui/components/PassLayout.gd" id="1_b3wnk"]
+[ext_resource type="Texture2D" uid="uid://cqa0do7fwvyaf" path="res://Magic-Castle/assets/placeholder/star.png" id="1_cdrqf"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_b3wnk"]
+content_margin_left = 10.0
+content_margin_top = 3.0
+content_margin_right = 10.0
+content_margin_bottom = 3.0
+bg_color = Color(0.6, 0.694118, 0.6, 1)
+skew = Vector2(0.2, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_l0ahc"]
+
+[node name="PassLayout" type="PanelContainer"]
+custom_minimum_size = Vector2(500, 220)
+offset_right = 500.0
+offset_bottom = 220.0
+script = ExtResource("1_b3wnk")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="HeaderContainer" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="TimerLabel" type="Label" parent="VBoxContainer/HeaderContainer"]
+layout_mode = 2
+text = "Ends in 66 days"
+
+[node name="TierInfoContainer" type="HBoxContainer" parent="VBoxContainer/HeaderContainer"]
+layout_mode = 2
+size_flags_horizontal = 10
+theme_override_constants/separation = 10
+
+[node name="PanelContainer" type="PanelContainer" parent="VBoxContainer/HeaderContainer/TierInfoContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_b3wnk")
+
+[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer/HeaderContainer/TierInfoContainer/PanelContainer"]
+layout_mode = 2
+alignment = 2
+
+[node name="TextureRect" type="TextureRect" parent="VBoxContainer/HeaderContainer/TierInfoContainer/PanelContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 8
+texture = ExtResource("1_cdrqf")
+expand_mode = 3
+stretch_mode = 5
+
+[node name="ProgressLabel" type="Label" parent="VBoxContainer/HeaderContainer/TierInfoContainer/PanelContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 0
+text = "0/10"
+
+[node name="TierLabel" type="Label" parent="VBoxContainer/HeaderContainer/TierInfoContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Level 1"
+
+[node name="ContentContainer" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="FixedLabelsContainer" type="VBoxContainer" parent="VBoxContainer/ContentContainer"]
+layout_mode = 2
+
+[node name="LevelLabel" type="Label" parent="VBoxContainer/ContentContainer/FixedLabelsContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.4
+theme_override_styles/normal = SubResource("StyleBoxFlat_l0ahc")
+text = "Level"
+
+[node name="FreePassLabel" type="Label" parent="VBoxContainer/ContentContainer/FixedLabelsContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.9
+text = "FREE PASS"
+
+[node name="BattlePassLabel" type="Label" parent="VBoxContainer/ContentContainer/FixedLabelsContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.9
+text = "BATTLE PASS"
+
+[node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer/ContentContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+vertical_scroll_mode = 0
+
+[node name="MarginContainer" type="MarginContainer" parent="VBoxContainer/ContentContainer/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/margin_left = 5
+theme_override_constants/margin_top = 5
+theme_override_constants/margin_right = 5
+theme_override_constants/margin_bottom = 5
+
+[node name="TiersContainer" type="HBoxContainer" parent="VBoxContainer/ContentContainer/ScrollContainer/MarginContainer"]
+layout_mode = 2

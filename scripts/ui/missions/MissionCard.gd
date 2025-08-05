@@ -1,189 +1,63 @@
-# MissionCard.gd - Reusable mission display card for all mission types
+# MissionCard.gd - Individual mission card display
 # Location: res://Magic-Castle/scripts/ui/missions/MissionCard.gd
-# Last Updated: Created universal mission card component [Date]
+# Last Updated: Created basic mission card implementation [Date]
 
 extends PanelContainer
+class_name MissionCard
 
-# UI References
-@onready var name_label: Label = $MarginContainer/HBoxContainer/VBoxContainer/Details/Name
-@onready var goal_label: Label = $MarginContainer/HBoxContainer/VBoxContainer/Details/Goal
-@onready var progress_bar: ProgressBar = $MarginContainer/HBoxContainer/VBoxContainer/Progress/ProgressBar
-@onready var progress_label: Label = $MarginContainer/HBoxContainer/VBoxContainer/Progress/ProgressBar/ProgressLabel
-@onready var rewards_label: Label = $MarginContainer/HBoxContainer/VBoxContainer/Progress/Rewards
+signal mission_claimed(mission_id: String)
 
-# Mission data
-var mission_id: String = ""
-var mission_type: String = ""  # "daily", "weekly", "season", "holiday"
+# UI references (adjust based on your scene structure)
+@onready var name_label: Label = $VBox/NameLabel
+@onready var description_label: Label = $VBox/DescriptionLabel
+@onready var progress_bar: ProgressBar = $VBox/ProgressBar
+@onready var reward_label: Label = $VBox/RewardLabel
+@onready var claim_button: Button = $VBox/ClaimButton
+
 var mission_data: Dictionary = {}
+var mission_type: String = ""
 
-# Color themes for different mission types
-const MISSION_COLORS = {
-	"daily": Color("#5ABFFF"),      # Light blue
-	"weekly": Color("#9B5AFF"),     # Purple
-	"season": Color("#FFB75A"),     # Orange
-	"holiday": Color("#FF5A8A"),    # Pink/Red
-	"special": Color("#5AFF7F")     # Green
-}
-
-func _ready() -> void:
-	# Verify all nodes exist
-	if not name_label or not goal_label or not progress_bar or not progress_label or not rewards_label:
-		push_error("MissionCard: Missing required UI nodes")
-		return
-	
-	# Set default appearance
-	_apply_theme_color("daily")
-
-func setup(mission: Dictionary, type: String = "daily") -> void:
-	"""
-	Sets up the mission card with data
-	mission: Dictionary containing mission data (from MissionManager.Mission)
-	type: String indicating mission type for theming
-	"""
+func setup(data: Dictionary, type: String = ""):
+	mission_data = data
 	mission_type = type
-	mission_data = mission
-	mission_id = mission.get("id", "")
 	
-	# Update display
-	_update_display()
-	_apply_theme_color(type)
-
-func setup_from_mission_object(mission: Object, type: String = "daily") -> void:
-	"""
-	Alternative setup method for Mission objects from MissionManager
-	"""
-	if not mission:
-		return
+	# Update UI
+	if name_label:
+		name_label.text = data.get("display_name", "Mission")
 	
-	mission_type = type
-	mission_id = mission.id
+	if description_label:
+		description_label.text = data.get("description", "")
 	
-	# Convert Mission object to dictionary
-	mission_data = {
-		"id": mission.id,
-		"display_name": mission.display_name,
-		"description": mission.description,
-		"current_value": mission.current_value,
-		"target_value": mission.target_value,
-		"rewards": mission.rewards,
-		"is_completed": mission.is_completed,
-		"is_claimed": mission.is_claimed
-	}
-	
-	_update_display()
-	_apply_theme_color(type)
-
-func _update_display() -> void:
-	# Update name
-	name_label.text = mission_data.get("display_name", "Unknown Mission")
-	
-	# Update goal/description
-	goal_label.text = mission_data.get("description", "")
-	
-	# Update progress
-	var current = mission_data.get("current_value", 0)
-	var target = mission_data.get("target_value", 1)
-	
-	if target > 0:
-		progress_bar.value = (float(current) / float(target)) * 100.0
-		progress_label.text = "%d / %d" % [current, target]
-	else:
-		progress_bar.value = 0
-		progress_label.text = "0 / 0"
-	
-	# Update rewards text
-	var rewards_text = _format_rewards(mission_data.get("rewards", {}))
-	rewards_label.text = rewards_text
-	
-	# Visual state for completed missions
-	if mission_data.get("is_completed", false):
-		modulate.a = 0.8  # Slightly fade completed missions
-		if not mission_data.get("is_claimed", false):
-			# Add completion glow effect
-			_add_completion_effect()
-
-func _format_rewards(rewards: Dictionary) -> String:
-	var reward_parts = []
-	
-	# Handle different reward types
-	if rewards.has("xp") and rewards.xp > 0:
-		reward_parts.append("+%d XP" % rewards.xp)
-	
-	if rewards.has("stars") and rewards.stars > 0:
-		reward_parts.append("+%d ⭐" % rewards.stars)
-	
-	if rewards.has("sp") and rewards.sp > 0:
-		reward_parts.append("+%d SP" % rewards.sp)
-	
-	if rewards.has("holiday_points") and rewards.holiday_points > 0:
-		reward_parts.append("+%d 🎁" % rewards.holiday_points)
-	
-	if rewards.has("cosmetic_id"):
-		reward_parts.append("🎨 Cosmetic")
-	
-	if rewards.has("card_back_id"):
-		reward_parts.append("🃏 Card Back")
-	
-	return "Rewards: " + ", ".join(reward_parts) if reward_parts else "Rewards: None"
-
-func _apply_theme_color(type: String) -> void:
-	var color = MISSION_COLORS.get(type, MISSION_COLORS.daily)
-	
-	# Apply color to progress bar
+	# Progress
+	var current = data.get("current_value", 0)
+	var target = data.get("target_value", 1)
 	if progress_bar:
-		var progress_style = StyleBoxFlat.new()
-		progress_style.bg_color = color
-		progress_style.corner_radius_top_left = 4
-		progress_style.corner_radius_top_right = 4
-		progress_style.corner_radius_bottom_left = 4
-		progress_style.corner_radius_bottom_right = 4
-		progress_bar.add_theme_stylebox_override("fill", progress_style)
-		
-		# Background style
-		var bg_style = StyleBoxFlat.new()
-		bg_style.bg_color = color.darkened(0.7)
-		bg_style.corner_radius_top_left = 4
-		bg_style.corner_radius_top_right = 4
-		bg_style.corner_radius_bottom_left = 4
-		bg_style.corner_radius_bottom_right = 4
-		progress_bar.add_theme_stylebox_override("background", bg_style)
-
-func _add_completion_effect() -> void:
-	# Add a subtle animation or visual effect for completed missions
-	# This could be a glow, pulse, or border highlight
-	var tween = create_tween()
-	tween.set_loops()
-	tween.tween_property(self, "modulate:a", 1.0, 0.5)
-	tween.tween_property(self, "modulate:a", 0.8, 0.5)
-
-func update_progress(current: int, target: int) -> void:
-	"""Called when mission progress updates"""
-	mission_data.current_value = current
-	mission_data.target_value = target
+		progress_bar.max_value = target
+		progress_bar.value = current
 	
-	if target > 0:
-		progress_bar.value = (float(current) / float(target)) * 100.0
-		progress_label.text = "%d / %d" % [current, target]
+	# Rewards
+	var rewards = data.get("rewards", {})
+	var reward_text = ""
+	for reward_type in rewards:
+		var amount = rewards[reward_type]
+		if reward_text != "":
+			reward_text += ", "
+		reward_text += "+%d %s" % [amount, reward_type.to_upper()]
+	
+	if reward_label:
+		reward_label.text = reward_text
+	
+	# Claim button
+	var is_completed = data.get("is_completed", false)
+	var is_claimed = data.get("is_claimed", false)
+	
+	if claim_button:
+		claim_button.visible = is_completed and not is_claimed
+		claim_button.disabled = is_claimed
+		claim_button.text = "Claim" if not is_claimed else "Claimed"
 		
-		# Check if just completed
-		if current >= target and not mission_data.get("is_completed", false):
-			mission_data.is_completed = true
-			_add_completion_effect()
+		if not claim_button.pressed.is_connected(_on_claim_pressed):
+			claim_button.pressed.connect(_on_claim_pressed)
 
-func mark_completed() -> void:
-	"""Mark mission as completed with visual feedback"""
-	mission_data.is_completed = true
-	modulate.a = 0.8
-	_add_completion_effect()
-
-func get_mission_id() -> String:
-	return mission_id
-
-func get_mission_type() -> String:
-	return mission_type
-
-func is_completed() -> bool:
-	return mission_data.get("is_completed", false)
-
-func get_rewards() -> Dictionary:
-	return mission_data.get("rewards", {})
+func _on_claim_pressed():
+	mission_claimed.emit(mission_data.get("id", ""))
