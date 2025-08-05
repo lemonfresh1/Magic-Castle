@@ -266,10 +266,18 @@ func _populate_missions_content(vbox: VBoxContainer) -> void:
 		vbox.add_child(empty_label)
 		return
 	
-	# Sort missions: uncompleted first
+	# Sort missions: claimable first, then uncompleted, then claimed
 	filtered_missions.sort_custom(func(a, b):
-		if a.is_completed != b.is_completed:
-			return not a.is_completed  # Uncompleted first
+		# First priority: Claimable (completed but not claimed)
+		var a_claimable = a.is_completed and not a.is_claimed
+		var b_claimable = b.is_completed and not b.is_claimed
+		if a_claimable != b_claimable:
+			return a_claimable  # Claimable ones first
+		
+		# Second priority: Uncompleted vs claimed
+		if a.is_claimed != b.is_claimed:
+			return b.is_claimed  # Non-claimed ones first
+		
 		return false
 	)
 	

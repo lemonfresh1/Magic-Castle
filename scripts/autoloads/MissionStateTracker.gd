@@ -1,6 +1,6 @@
 # MissionStateTracker.gd - Tracks mission state at game start for comparison
 # Location: res://Magic-Castle/scripts/autoloads/MissionStateTracker.gd
-# Last Updated: Created to track mission progress during gameplay [Date]
+# Last Updated: Cleaned debug output while maintaining functionality [Date]
 
 extends Node
 
@@ -9,7 +9,6 @@ var game_start_states = {}  # {system: {mission_id: {current_value, is_completed
 var is_tracking = false
 
 func _ready():
-	print("MissionStateTracker ready")
 	# Connect to game signals
 	SignalBus.round_started.connect(_on_round_started)
 	SignalBus.game_over.connect(_on_game_over)
@@ -29,8 +28,6 @@ func capture_mission_states():
 	"""Capture the current state of all missions at game start"""
 	game_start_states.clear()
 	
-	print("[MissionStateTracker] Capturing mission states at game start...")
-	
 	# Capture state for all systems
 	for system in ["standard", "season_pass", "holiday"]:
 		game_start_states[system] = {}
@@ -42,15 +39,6 @@ func capture_mission_states():
 				"is_completed": mission.is_completed,
 				"is_claimed": mission.is_claimed
 			}
-			
-			print("  [%s] %s: %d/%d (completed: %s, claimed: %s)" % [
-				system,
-				mission.id,
-				mission.current_value,
-				mission.target_value,
-				mission.is_completed,
-				mission.is_claimed
-			])
 
 func get_mission_start_state(system: String, mission_id: String) -> Dictionary:
 	"""Get the state of a mission at game start"""
@@ -88,4 +76,3 @@ func clear_states():
 	"""Clear stored states - call this when returning to menu"""
 	game_start_states.clear()
 	is_tracking = false
-	print("[MissionStateTracker] States cleared")

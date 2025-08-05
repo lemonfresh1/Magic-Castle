@@ -1,5 +1,7 @@
-# ScoreScreen.gd
+# ScoreScreen.gd - Round completion score display
 # Path: res://Magic-Castle/scripts/game/ScoreScreen.gd
+# Last Updated: Fixed total score calculation flow [Date]
+
 extends Control
 
 @onready var panel: Panel = $Panel
@@ -121,8 +123,8 @@ func _on_continue_pressed() -> void:
 		# Hide score screen
 		visible = false
 		
-		# CRITICAL: Trigger game end to emit game_over signal!
-		GameState._end_game()
+		# CRITICAL: Call _continue_to_next_round which will update total_score AND call _end_game
+		GameState._continue_to_next_round()
 		
 		# Show post-game summary
 		var summary_scene = preload("res://Magic-Castle/scenes/ui/game_ui/PostGameSummary.tscn")
@@ -130,9 +132,8 @@ func _on_continue_pressed() -> void:
 		summary.add_to_group("post_game_summary")
 		get_tree().root.add_child(summary)
 		
-		# Calculate final total including current round
-		var final_total = GameState.total_score + current_round_score
-		summary.show_summary(final_total, GameState.round_stats)
+		# GameState.total_score is now correctly calculated
+		summary.show_summary(GameState.total_score, GameState.round_stats)
 	else:
 		# Hide score screen and continue to next round
 		visible = false

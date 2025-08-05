@@ -1,6 +1,7 @@
 # PostGameSummary.gd - Comprehensive post-game progression screen
 # Path: res://Magic-Castle/scripts/ui/game_ui/PostGameSummary.gd
-# Last Updated: Enabled all mission systems (standard, season_pass, holiday) [Date]
+# Last Updated: Cleaned debug output while maintaining functionality [Date]
+
 extends Control
 
 @onready var panel: Panel = $Panel
@@ -61,15 +62,11 @@ func _ready() -> void:
 func show_summary(final_score: int, rounds_data: Array) -> void:
 	visible = true
 	
-	print("=== POSTGAME SUMMARY START ===")
-	
 	# Store initial state BEFORE any rewards
 	starting_xp = XPManager.current_xp
 	starting_level = XPManager.current_level
 	starting_stars = StarManager.get_balance()
 	starting_mmr = 0
-	
-	print("Starting values - XP: %d, Level: %d, Stars: %d" % [starting_xp, starting_level, starting_stars])
 	
 	# CRITICAL: Get achievements FIRST before enabling rewards
 	_check_achievements()  # This populates achievements_unlocked
@@ -107,8 +104,6 @@ func show_summary(final_score: int, rounds_data: Array) -> void:
 	# Total for display
 	stars_gained = level_stars + achievement_stars
 	
-	print("Stars to gain: %d from achievements (level stars awarded automatically)" % stars_gained)
-	
 	# Check missions - NOW ASYNC
 	await _check_missions()
 	
@@ -140,10 +135,6 @@ func _calculate_progression() -> void:
 	if XPManager.daily_games_played == 0:
 		xp_breakdown.first_win = 100
 	
-	print("XP Breakdown: base=%d, rounds=%d, peaks=%d, first_win=%d" % [
-		xp_breakdown.base, xp_breakdown.rounds, xp_breakdown.peaks, xp_breakdown.first_win
-	])
-	
 	# Apply multiplier
 	var subtotal = xp_breakdown.base + xp_breakdown.rounds + xp_breakdown.peaks + xp_breakdown.first_win
 	var game_xp = int(subtotal * XPManager.xp_multiplier)
@@ -168,8 +159,6 @@ func _calculate_progression() -> void:
 	# Total XP that will be gained
 	xp_gained = game_xp + achievement_xp_total
 	
-	print("XP Total: game=%d + achievements=%d = %d" % [game_xp, achievement_xp_total, xp_gained])
-	
 	# FIXED: Calculate level changes using actual XP requirements
 	var temp_xp = starting_xp + xp_gained
 	var temp_level = starting_level
@@ -183,9 +172,6 @@ func _calculate_progression() -> void:
 			break
 	
 	levels_gained = temp_level - starting_level
-	
-	print("Level progression: %d -> %d (gained %d levels)" % [starting_level, temp_level, levels_gained])
-	print("Remaining XP: %d" % temp_xp)
 	
 	# TODO: Calculate MMR change when implemented
 	mmr_change = 0
@@ -203,19 +189,14 @@ func _check_missions() -> void:
 	# Wait a frame to ensure UnifiedMissionManager has processed the game_over signal
 	await get_tree().process_frame
 	
-	print("[PostGameSummary] Checking missions...")
-	
 	# Get the actual score from this game
 	var game_score = 0
 	for round_stat in GameState.round_stats:
 		game_score += round_stat.score
 	
-	print("[PostGameSummary] Game score: %d" % game_score)
-	
 	# Check missions for ALL systems
 	for system in ["standard", "season_pass", "holiday"]:
 		var missions = UnifiedMissionManager.get_missions_for_system(system)
-		print("[PostGameSummary] Checking %s system with %d missions" % [system, missions.size()])
 		
 		for mission in missions:
 			# Skip already claimed missions
@@ -227,7 +208,6 @@ func _check_missions() -> void:
 			
 			# Skip if mission was already claimable before this game
 			if MissionStateTracker.was_already_claimable(system, mission.id):
-				print("  Skipping %s - was already claimable before game" % mission.id)
 				continue
 			
 			# Check if mission actually progressed
@@ -254,16 +234,6 @@ func _check_missions() -> void:
 				"old_value": old_value,
 				"new_value": new_value
 			})
-	
-	print("[PostGameSummary] Missions that progressed this game: %d" % missions_progressed.size())
-	for m in missions_progressed:
-		print("  - [%s] %s: %d -> %d (target: %d)" % [
-			m.system,
-			m.mission.display_name, 
-			m.old_value,
-			m.new_value, 
-			m.mission.target_value
-		])
 
 func _update_progression_display() -> void:
 	# XP Section
@@ -275,7 +245,6 @@ func _update_progression_display() -> void:
 		calculated_final_level,
 		" (+%d)" % levels_gained if levels_gained > 0 else ""
 	]
-	print("UPDATE 1: Setting level label in _update_progression_display")
 
 	# MMR Section
 	if starting_mmr > 0 or mmr_change != 0:
@@ -412,7 +381,6 @@ func _animate_xp_bar() -> void:
 			XPManager.rewards_enabled = false
 			StarManager.rewards_enabled = false
 		)
-		print("UPDATE 3: Setting level label in animation callback")
 
 		return
 	

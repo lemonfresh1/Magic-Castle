@@ -1,6 +1,6 @@
 # MiniMission.gd - Compact mission display for post-game summary
 # Location: res://Magic-Castle/scripts/ui/components/MiniMission.gd
-# Last Updated: Added _ready() function and fixed node references [Date]
+# Last Updated: Cleaned debug output while maintaining functionality [Date]
 
 extends PanelContainer
 
@@ -32,38 +32,27 @@ var new_progress: int = 0
 var pending_setup: bool = false
 
 func _ready() -> void:
-	print("[MiniMission] _ready() called")
-	
 	# Verify all nodes are found
 	var nodes_found = true
 	
 	if not title_label:
 		push_error("[MiniMission] title_label not found!")
 		nodes_found = false
-	else:
-		print("[MiniMission] title_label found: %s" % title_label.get_path())
 		
 	if not description_label:
 		push_error("[MiniMission] description_label not found!")
 		nodes_found = false
-	else:
-		print("[MiniMission] description_label found: %s" % description_label.get_path())
 		
 	if not progress_bar:
 		push_error("[MiniMission] progress_bar not found!")
 		nodes_found = false
-	else:
-		print("[MiniMission] progress_bar found: %s" % progress_bar.get_path())
 		
 	if not progress_label:
 		push_error("[MiniMission] progress_label not found!")
 		nodes_found = false
-	else:
-		print("[MiniMission] progress_label found: %s" % progress_label.get_path())
 	
 	# If setup was called before ready, apply it now
 	if pending_setup and nodes_found:
-		print("[MiniMission] Applying pending setup")
 		_apply_setup()
 		pending_setup = false
 
@@ -72,28 +61,18 @@ func setup(mission: Dictionary, old_value: int, new_value: int) -> void:
 	old_progress = old_value
 	new_progress = new_value
 	
-	print("[MiniMission] Setup called: %s - %d/%d (was %d)" % [
-		mission.get("display_name", "Unknown"), 
-		new_progress, 
-		mission.get("target_value", 1),
-		old_progress
-	])
-	
 	# Check if nodes are ready
 	if is_node_ready():
 		_apply_setup()
 	else:
-		print("[MiniMission] Nodes not ready, deferring setup")
 		pending_setup = true
 
 func _apply_setup() -> void:
 	"""Actually apply the setup data to the UI"""
-	print("[MiniMission] Applying setup data")
 	
 	# Set title
 	if title_label:
 		title_label.text = mission_data.get("display_name", "Mission")
-		print("[MiniMission] Set title: %s" % title_label.text)
 	
 	# Set short description
 	if description_label:
@@ -103,7 +82,6 @@ func _apply_setup() -> void:
 		
 		# Make description slightly transparent for visual hierarchy
 		description_label.modulate = Color(0.8, 0.8, 0.8, 0.8)
-		print("[MiniMission] Set description: %s" % short_desc)
 	
 	# Setup progress bar
 	if progress_bar:
@@ -119,7 +97,6 @@ func _apply_setup() -> void:
 			fill_style.bg_color = theme_color
 			fill_style.set_corner_radius_all(4)
 			progress_bar.add_theme_stylebox_override("fill", fill_style)
-		print("[MiniMission] Progress bar: %d/%d" % [new_progress, target])
 	
 	# Set progress label
 	if progress_label:
@@ -130,7 +107,6 @@ func _apply_setup() -> void:
 		if new_progress > old_progress:
 			var increase = new_progress - old_progress
 			progress_label.text += " (+%d)" % increase
-		print("[MiniMission] Progress label: %s" % progress_label.text)
 	
 	# Apply border color based on system
 	_apply_system_theme()
@@ -201,7 +177,6 @@ func _apply_system_theme() -> void:
 			var new_style = panel_style.duplicate()
 			new_style.border_color = theme_color
 			add_theme_stylebox_override("panel", new_style)
-			print("[MiniMission] Applied %s theme color" % system)
 
 func _animate_progress() -> void:
 	"""Animate the progress bar increase"""

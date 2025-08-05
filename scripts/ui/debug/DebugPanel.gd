@@ -619,12 +619,18 @@ func _reset_missions():
 	print("Missions reset!")
 
 func _reset_season_pass():
-	# TODO: Implement when SeasonPassManager is available
-	print("Season Pass reset! (Not implemented)")
+	if SeasonPassManager and SeasonPassManager.has_method("reset_season_data"):
+		SeasonPassManager.reset_season_data()
+		print("Season Pass reset! (SP set to 0)")
+	else:
+		print("SeasonPassManager not available")
 
 func _reset_holiday_event():
-	# TODO: Implement when HolidayEventManager is available
-	print("Holiday Event reset! (Not implemented)")
+	if HolidayEventManager and HolidayEventManager.has_method("reset_holiday_data"):
+		HolidayEventManager.reset_holiday_data()
+		print("Holiday Event reset! (HP set to 0)")
+	else:
+		print("HolidayEventManager not available")
 
 func _reset_xp():
 	if XPManager and XPManager.has_method("reset_xp"):

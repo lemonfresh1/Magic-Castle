@@ -1,5 +1,7 @@
 # GameState.gd - Autoload for game state management
 # Path: res://Magic-Castle/scripts/autoloads/GameState.gd
+# Last Updated: Cleaned debug output while maintaining functionality [Date]
+
 extends Node
 
 # === GAME MODE ===
@@ -27,11 +29,9 @@ var round_stats: Array[Dictionary] = []  # NEW: Track each round's details
 var game_timer: Timer
 
 func _ready() -> void:
-	print("GameState initializing...")
 	_setup_timer()
 	_connect_signals()
 	set_process(false)  # Don't process until round starts
-	print("GameState initialized")
 
 func _setup_timer() -> void:
 	# Create timer for game timing
@@ -65,7 +65,6 @@ func start_new_game(mode: String = "single") -> void:
 	board_cleared = false
 	
 	var game_mode_name = GameModeManager.get_current_mode().mode_name
-	print("Starting game with mode: %s" % game_mode_name)
 	StatsManager.start_game(game_mode_name)
 	XPManager.rewards_enabled = false
 	StarManager.rewards_enabled = false  # Add similar flag to StarManager
@@ -73,8 +72,6 @@ func start_new_game(mode: String = "single") -> void:
 	start_round()
 
 func start_round() -> void:
-	print("=== STARTING ROUND %d ===" % current_round)
-	
 	# Generate new seed for each round
 	deck_seed = randi()
 	
@@ -98,7 +95,6 @@ func start_round() -> void:
 	# Start timer
 	set_process(true)
 	
-	print("Round %d started - Seed: %d, Time: %ds" % [current_round, deck_seed, round_time_limit])
 	SignalBus.round_started.emit(current_round)
 
 func check_round_end() -> void:
@@ -128,7 +124,6 @@ func check_round_end() -> void:
 		reason = "Time's up!"
 	
 	if should_end:
-		print("Round ending: %s" % reason)
 		set_meta("round_end_reason", reason)
 		_delayed_end_round(reason)
 	
@@ -147,16 +142,15 @@ func end_round() -> void:
 	"""Actually end the current round"""
 	is_round_active = false
 	set_process(false)  # Stop timer processing
-	print("Checking achievements at round end...")
 
 	# Store peak data before it gets reset
 	if ScoreSystem and ScoreSystem.peaks_cleared_indices.size() >= 3:
-		print("All 3 peaks cleared!")
+		pass  # All 3 peaks cleared
 	
 	# Check speed clear while time_remaining is still valid
 	if board_cleared and round_time_limit > 0:
 		var time_taken = round_time_limit - time_remaining
-		print("Board cleared in %.1f seconds" % time_taken)
+		# Board cleared in time_taken seconds
 	
 	AchievementManager.check_achievements()
 
@@ -179,7 +173,6 @@ func end_round() -> void:
 		"clear_bonus": scores.clear
 	})
 	
-	print("Round %d completed - Score: %d" % [current_round, scores.round_total])
 	SignalBus.round_completed.emit(scores.round_total)
 	
 	var mode = GameModeManager.get_current_mode().mode_name
@@ -221,33 +214,28 @@ func _continue_to_next_round() -> void:
 	if round_scores.size() > 0:
 		total_score += round_scores[-1]
 	
-	print("Before increment: Round %d/%d" % [current_round, GameModeManager.get_max_rounds()])
 	current_round += 1
-	print("After increment: Round %d/%d" % [current_round, GameModeManager.get_max_rounds()])
 	
 	# Check if game is complete based on current mode
 	var max_rounds = GameModeManager.get_max_rounds()
 	if current_round > max_rounds:
-		print("Game over: %d > %d" % [current_round, max_rounds])
 		_end_game()
 	else:
-		print("Continuing to round %d" % current_round)
 		start_round()
 
 func _end_game() -> void:
-	print("=== GAME ENDING ===")
-	print("Game completed! Final score: %d" % total_score)
+	# CRITICAL: Calculate final total score from all rounds
+	total_score = 0
+	for score in round_scores:
+		total_score += score
 	
 	# Track game end
 	var mode = GameModeManager.get_current_mode().mode_name
 	StatsManager.end_game(mode, total_score, current_round - 1)
-	print("Checking achievements...")
 	AchievementManager.check_achievements()
 	
-	# CRITICAL: Emit game_over signal
-	print("Emitting game_over signal with score: %d" % total_score)
+	# CRITICAL: Emit game_over signal with correct total
 	SignalBus.game_over.emit(total_score)
-	print("=== GAME ENDED ===")
 
 # === HELPER FUNCTIONS ===
 func _has_valid_moves() -> bool:
@@ -294,7 +282,6 @@ func _on_timer_timeout() -> void:
 	SignalBus.timer_expired.emit()
 
 func _on_timer_expired() -> void:
-	print("Timer expired!")
 	check_round_end()
 
 # === GAME STATE QUERIES ===
@@ -333,18 +320,13 @@ func get_debug_info() -> Dictionary:
 
 func print_game_state() -> void:
 	var info = get_debug_info()
-	print("=== GAME STATE ===")
 	for key in info:
-		print("%s: %s" % [key, str(info[key])])
-	print("===================")
+		pass  # Debug output removed
 
 func reset_game_completely() -> void:
-	print("=== RESETTING GAME COMPLETELY ===")
-	
 	# Clean up any persistent UI nodes
 	var score_screens = get_tree().get_nodes_in_group("score_screen")
 	for screen in score_screens:
-		print("Removing persistent score screen")
 		screen.queue_free()
 	
 	# Reset GameState variables
@@ -373,8 +355,6 @@ func reset_game_completely() -> void:
 		ScoreSystem.pending_round_end = false
 		if ScoreSystem.combo_timer:
 			ScoreSystem.combo_timer.stop()
-	
-	print("Game reset complete")
 
 func _return_to_menu() -> void:
 	# First reset everything
@@ -387,6 +367,5 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	# TODO: Remove before release - Press E to instantly end round
 	if event is InputEventKey and event.pressed:
 		if event.keycode == KEY_E:
-			print("DEBUG: Force ending round with E key")
 			_delayed_end_round("DEBUG: Forced end")
 			get_viewport().set_input_as_handled()

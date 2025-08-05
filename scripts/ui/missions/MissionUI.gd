@@ -122,6 +122,21 @@ func _populate_daily_missions_content(vbox: VBoxContainer) -> void:
 		if should_show:
 			filtered_missions.append(mission)
 	
+	# Sort missions: claimable first, then uncompleted, then claimed
+	filtered_missions.sort_custom(func(a, b):
+		# First priority: Claimable (completed but not claimed)
+		var a_claimable = a.is_completed and not a.is_claimed
+		var b_claimable = b.is_completed and not b.is_claimed
+		if a_claimable != b_claimable:
+			return a_claimable  # Claimable ones first
+		
+		# Second priority: Uncompleted vs claimed
+		if a.is_claimed != b.is_claimed:
+			return b.is_claimed  # Non-claimed ones first
+		
+		return false
+	)
+	
 	# Show empty message if no missions
 	if filtered_missions.is_empty():
 		var empty_label = Label.new()
@@ -176,6 +191,21 @@ func _populate_weekly_missions_content(vbox: VBoxContainer) -> void:
 		
 		if should_show:
 			filtered_missions.append(mission)
+	
+	# Sort missions: claimable first, then uncompleted, then claimed
+	filtered_missions.sort_custom(func(a, b):
+		# First priority: Claimable (completed but not claimed)
+		var a_claimable = a.is_completed and not a.is_claimed
+		var b_claimable = b.is_completed and not b.is_claimed
+		if a_claimable != b_claimable:
+			return a_claimable  # Claimable ones first
+		
+		# Second priority: Uncompleted vs claimed
+		if a.is_claimed != b.is_claimed:
+			return b.is_claimed  # Non-claimed ones first
+		
+		return false
+	)
 	
 	# Show empty message if no missions
 	if filtered_missions.is_empty():

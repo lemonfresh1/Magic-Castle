@@ -1,6 +1,6 @@
 # UnifiedMissionManager.gd - Single manager for all mission types
 # Location: res://Magic-Castle/scripts/autoloads/UnifiedMissionManager.gd
-# Last Updated: Created unified mission system [Date]
+# Last Updated: Cleaned debug output while maintaining functionality [Date]
 
 extends Node
 
@@ -51,14 +51,11 @@ var current_game_score = 0
 var current_game_combo = 0
 
 func _ready():
-	print("UnifiedMissionManager initializing...")
 	load_missions()
 	_check_mission_resets()
 	
 	# Connect to game signals
 	call_deferred("_connect_signals")
-	
-	print("UnifiedMissionManager ready")
 
 func _connect_signals():
 	if SignalBus:
@@ -93,8 +90,6 @@ func _check_mission_resets():
 	save_missions()
 
 func _reset_missions(reset_type: String):
-	print("Resetting %s missions" % reset_type)
-	
 	# Reset for all systems
 	for system in ["standard", "season_pass", "holiday"]:
 		if not mission_progress.has(system):
@@ -233,24 +228,16 @@ func claim_mission(mission_id: String, system: String) -> bool:
 	return true
 
 func _on_game_over(final_score: int):
-	print("\n[UnifiedMissionManager] Game ENDED! Final Score: %d" % final_score)
-	
 	# Every completed game counts as:
 	# 1. A game played
-	var played_updates = update_progress("games_played", 1)
-	print("  - Updated games_played (%d missions affected)" % played_updates.size())
+	update_progress("games_played", 1)
 	
 	# 2. A game won (since in single player, completing = winning)
-	var won_updates = update_progress("games_won", 1)
-	print("  - Updated games_won (%d missions affected)" % won_updates.size())
+	update_progress("games_won", 1)
 	
 	# 3. Check for high score mission
 	if final_score >= 30000:
-		var score_updates = update_progress("high_score", 1)
-		print("  - Achieved 30k+ score! (%d missions affected)" % score_updates.size())
-	
-	# Always print mission status after game
-	debug_print_mission_status()
+		update_progress("high_score", 1)
 
 # Save/Load
 func save_missions():
@@ -352,15 +339,4 @@ func _on_combo_updated(combo_count: int):
 # Add debug function
 func debug_print_mission_status():
 	"""Print current status of all missions"""
-	print("\n=== MISSION STATUS ===")
-	for system in ["standard", "season_pass", "holiday"]:
-		print("\n[%s]" % system.to_upper())
-		var missions = get_missions_for_system(system)
-		for mission in missions:
-			print("  %s: %d/%d %s" % [
-				mission.display_name,
-				mission.current_value,
-				mission.target_value,
-				"✓" if mission.is_completed else ""
-			])
-	print("==================\n")
+	pass  # Removed debug output
