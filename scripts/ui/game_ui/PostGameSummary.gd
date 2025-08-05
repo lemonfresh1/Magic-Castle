@@ -1,6 +1,6 @@
 # PostGameSummary.gd - Comprehensive post-game progression screen
 # Path: res://Magic-Castle/scripts/ui/game_ui/PostGameSummary.gd
-# Shows XP gain, achievements, missions, and other progression after game ends
+# Last Updated: Enabled all mission systems (standard, season_pass, holiday) [Date]
 extends Control
 
 @onready var panel: Panel = $Panel
@@ -11,11 +11,9 @@ extends Control
 @onready var level_label: Label = $Panel/MarginContainer/VBoxContainer/Progression/XPSection/XPBarContainer/Label
 @onready var xp_progress_bar: ProgressBar = $Panel/MarginContainer/VBoxContainer/Progression/XPSection/XPBarContainer/ProgressBar
 @onready var mmr_section: VBoxContainer = $Panel/MarginContainer/VBoxContainer/Progression/MMRSection
-@onready var mmr_separator: VSeparator = $Panel/MarginContainer/VBoxContainer/Progression/VSeparator2
 @onready var mmr_gained_label: Label = $Panel/MarginContainer/VBoxContainer/Progression/MMRSection/MMRGainedLabel
 @onready var mmr_label: Label = $Panel/MarginContainer/VBoxContainer/Progression/MMRSection/MMRLabel
 @onready var star_section: VBoxContainer = $Panel/MarginContainer/VBoxContainer/Progression/StarSection
-@onready var star_separator: VSeparator = $Panel/MarginContainer/VBoxContainer/Progression/VSeparator
 @onready var star_gained_label: Label = $Panel/MarginContainer/VBoxContainer/Progression/StarSection/StarGainedLabel
 @onready var star_label: Label = $Panel/MarginContainer/VBoxContainer/Progression/StarSection/StarLabel
 
@@ -23,11 +21,8 @@ extends Control
 @onready var events_container: VBoxContainer = $Panel/MarginContainer/VBoxContainer/Events
 @onready var events_hbox: HBoxContainer = $Panel/MarginContainer/VBoxContainer/Events/ScrollContainer/HBoxContainer
 @onready var achievements_container: VBoxContainer = $Panel/MarginContainer/VBoxContainer/Events/ScrollContainer/HBoxContainer/AchievementsContainer
-@onready var achievements_separator: VSeparator = $Panel/MarginContainer/VBoxContainer/Events/ScrollContainer/HBoxContainer/VSeparator
-@onready var daily_missions_container: VBoxContainer = $Panel/MarginContainer/VBoxContainer/Events/ScrollContainer/HBoxContainer/DailyMissionsContainer
-@onready var daily_separator: VSeparator = $Panel/MarginContainer/VBoxContainer/Events/ScrollContainer/HBoxContainer/VSeparator2
+@onready var mission_container: VBoxContainer = $Panel/MarginContainer/VBoxContainer/Events/ScrollContainer/HBoxContainer/MissionContainer
 @onready var season_pass_container: VBoxContainer = $Panel/MarginContainer/VBoxContainer/Events/ScrollContainer/HBoxContainer/SeasonPassContainer
-@onready var season_separator: VSeparator = $Panel/MarginContainer/VBoxContainer/Events/ScrollContainer/HBoxContainer/VSeparator3
 @onready var holiday_event_container: VBoxContainer = $Panel/MarginContainer/VBoxContainer/Events/ScrollContainer/HBoxContainer/HolidayEventContainer
 
 # Button nodes
@@ -36,7 +31,7 @@ extends Control
 
 # Preload scenes
 const AchievementUnlocked = preload("res://Magic-Castle/scenes/ui/components/AchievementUnlocked.tscn")
-const MissionProgress = preload("res://Magic-Castle/scenes/ui/components/MissionProgress.tscn")
+const MiniMission = preload("res://Magic-Castle/scenes/ui/components/MiniMission.tscn")
 
 # Game data
 var starting_xp: int = 0
@@ -114,8 +109,8 @@ func show_summary(final_score: int, rounds_data: Array) -> void:
 	
 	print("Stars to gain: %d from achievements (level stars awarded automatically)" % stars_gained)
 	
-	# Check missions
-	_check_missions()
+	# Check missions - NOW ASYNC
+	await _check_missions()
 	
 	# Update UI with what we'll award
 	_update_progression_display()
@@ -202,11 +197,73 @@ func _check_achievements() -> void:
 	# DON'T update daily games here - do it after XP calculation
 
 func _check_missions() -> void:
-	# TODO: Check daily missions progress
-	# TODO: Check season pass progress
-	# TODO: Check holiday event progress
-	# For now, we'll use placeholder data
-	missions_progressed = MissionManager.track_game_completed()
+	"""Check mission progress from UnifiedMissionManager"""
+	missions_progressed = []
+	
+	# Wait a frame to ensure UnifiedMissionManager has processed the game_over signal
+	await get_tree().process_frame
+	
+	print("[PostGameSummary] Checking missions...")
+	
+	# Get the actual score from this game
+	var game_score = 0
+	for round_stat in GameState.round_stats:
+		game_score += round_stat.score
+	
+	print("[PostGameSummary] Game score: %d" % game_score)
+	
+	# Check missions for ALL systems
+	for system in ["standard", "season_pass", "holiday"]:
+		var missions = UnifiedMissionManager.get_missions_for_system(system)
+		print("[PostGameSummary] Checking %s system with %d missions" % [system, missions.size()])
+		
+		for mission in missions:
+			# Skip already claimed missions
+			if mission.is_claimed:
+				continue
+			
+			# Get mission state at game start
+			var start_state = MissionStateTracker.get_mission_start_state(system, mission.id)
+			
+			# Skip if mission was already claimable before this game
+			if MissionStateTracker.was_already_claimable(system, mission.id):
+				print("  Skipping %s - was already claimable before game" % mission.id)
+				continue
+			
+			# Check if mission actually progressed
+			var current_state = {
+				"current_value": mission.current_value,
+				"is_completed": mission.is_completed,
+				"is_claimed": mission.is_claimed
+			}
+			
+			if not MissionStateTracker.did_mission_progress(system, mission.id, current_state):
+				continue
+			
+			# Mission progressed! Determine old value for animation
+			var old_value = start_state.current_value
+			var new_value = mission.current_value
+			
+			# Add system to the mission data itself
+			var mission_with_system = mission.duplicate()
+			mission_with_system["system"] = system
+			
+			missions_progressed.append({
+				"mission": mission_with_system,
+				"system": system,
+				"old_value": old_value,
+				"new_value": new_value
+			})
+	
+	print("[PostGameSummary] Missions that progressed this game: %d" % missions_progressed.size())
+	for m in missions_progressed:
+		print("  - [%s] %s: %d -> %d (target: %d)" % [
+			m.system,
+			m.mission.display_name, 
+			m.old_value,
+			m.new_value, 
+			m.mission.target_value
+		])
 
 func _update_progression_display() -> void:
 	# XP Section
@@ -225,10 +282,8 @@ func _update_progression_display() -> void:
 		mmr_gained_label.text = "MMR change: %+d" % mmr_change
 		mmr_label.text = "New MMR: %d" % (starting_mmr + mmr_change)
 		mmr_section.visible = true
-		mmr_separator.visible = true
 	else:
 		mmr_section.visible = false
-		mmr_separator.visible = false
 	
 	# Stars Section
 	var total_stars = starting_stars + stars_gained
@@ -236,11 +291,8 @@ func _update_progression_display() -> void:
 		star_gained_label.text = "Stars gained: +%d" % stars_gained
 		star_label.text = "Star Count: %d" % total_stars
 		star_section.visible = true
-		star_separator.visible = true
 	else:
 		star_section.visible = false
-		star_separator.visible = false
-
 
 func _update_events_display() -> void:
 	var has_any_events = false
@@ -249,38 +301,32 @@ func _update_events_display() -> void:
 	if achievements_unlocked.size() > 0:
 		_populate_achievements()
 		achievements_container.visible = true
-		achievements_separator.visible = true
 		has_any_events = true
 	else:
 		achievements_container.visible = false
-		achievements_separator.visible = false
 	
-	# Daily Missions
-	var daily_progressed = missions_progressed.filter(func(m): return m.mission.type == "daily")
-	if daily_progressed.size() > 0:
-		_populate_missions(daily_missions_container, daily_progressed)
-		daily_missions_container.visible = true
-		daily_separator.visible = true
+	# Standard missions
+	var standard_missions = missions_progressed.filter(func(m): return m.system == "standard")
+	if standard_missions.size() > 0:
+		_populate_missions(mission_container, standard_missions)
+		mission_container.visible = true
 		has_any_events = true
 	else:
-		daily_missions_container.visible = false
-		daily_separator.visible = false
-
-	# Season Pass
-	var season_progressed = missions_progressed.filter(func(m): return m.mission.type == "season")
-	if season_progressed.size() > 0:
-		_populate_missions(season_pass_container, season_progressed)
+		mission_container.visible = false
+	
+	# Season Pass missions
+	var season_pass_missions = missions_progressed.filter(func(m): return m.system == "season_pass")
+	if season_pass_missions.size() > 0:
+		_populate_missions(season_pass_container, season_pass_missions)
 		season_pass_container.visible = true
-		season_separator.visible = true
 		has_any_events = true
 	else:
 		season_pass_container.visible = false
-		season_separator.visible = false
-
-	# Holiday Event
-	var event_progressed = missions_progressed.filter(func(m): return m.mission.type == "event")
-	if event_progressed.size() > 0:
-		_populate_missions(holiday_event_container, event_progressed)
+	
+	# Holiday Event missions
+	var holiday_missions = missions_progressed.filter(func(m): return m.system == "holiday")
+	if holiday_missions.size() > 0:
+		_populate_missions(holiday_event_container, holiday_missions)
 		holiday_event_container.visible = true
 		has_any_events = true
 	else:
@@ -307,15 +353,13 @@ func _populate_missions(container: VBoxContainer, missions: Array) -> void:
 		if child.name != "TitleLabel":
 			child.queue_free()
 	
-	# Add each mission progress
+	# Add each mission progress using MiniMission
 	for mission_data in missions:
-		var mission_item = MissionProgress.instantiate()
-		mission_item.setup(mission_data.mission, mission_data.old_value, mission_data.new_value)
+		var mission_item = MiniMission.instantiate()
+		# Pass the mission dictionary and progress values
+		if mission_item.has_method("setup"):
+			mission_item.setup(mission_data.mission, mission_data.old_value, mission_data.new_value)
 		container.add_child(mission_item)
-		
-		# Animate after a short delay
-		await get_tree().create_timer(0.1).timeout
-		mission_item.animate_progress()
 
 func _animate_progression() -> void:
 	# Fade in
@@ -437,6 +481,9 @@ func _animate_xp_bar() -> void:
 
 func _on_continue_pressed() -> void:
 	visible = false
+	# Clear mission tracker states when returning to menu
+	if MissionStateTracker:
+		MissionStateTracker.clear_states()
 	GameState._return_to_menu()
 
 func _on_rematch_pressed() -> void:

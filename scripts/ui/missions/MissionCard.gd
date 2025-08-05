@@ -1,6 +1,6 @@
-# MissionCard.gd - Individual mission card display
+# MissionCard.gd - Individual mission card display with claim overlay
 # Location: res://Magic-Castle/scripts/ui/missions/MissionCard.gd
-# Last Updated: Fixed node paths to match scene structure [Date]
+# Last Updated: Added claim overlay functionality [Date]
 
 extends PanelContainer
 class_name MissionCard
@@ -14,6 +14,11 @@ signal mission_claimed(mission_id: String)
 @onready var progress_label: Label = $MarginContainer/HBoxContainer/VBoxContainer/Progress/ProgressBar/ProgressLabel
 @onready var rewards_label: Label = $MarginContainer/HBoxContainer/VBoxContainer/Progress/Rewards
 
+# Claim overlay references
+@onready var claim_overlay: Panel = $ClaimOverlay
+@onready var claim_label: Label = $ClaimOverlay/ClaimLabel
+@onready var completed_label: Label = $ClaimOverlay/CompletedLabel
+
 # Add claim button if it exists in your scene
 @onready var claim_button: Button = $MarginContainer/HBoxContainer/ClaimButton if has_node("MarginContainer/HBoxContainer/ClaimButton") else null
 
@@ -21,8 +26,16 @@ var mission_data: Dictionary = {}
 var mission_theme: String = ""
 
 func _ready():
-	# Don't apply theme styling here - wait for setup()
-	pass
+	# Initially hide the overlay
+	if claim_overlay:
+		claim_overlay.visible = false
+		claim_overlay.gui_input.connect(_on_overlay_input)
+	
+	# Hide both labels initially
+	if claim_label:
+		claim_label.visible = false
+	if completed_label:
+		completed_label.visible = false
 
 func setup(data: Dictionary, theme: String = ""):
 	mission_data = data
@@ -33,6 +46,9 @@ func setup(data: Dictionary, theme: String = ""):
 	
 	# Apply theme styling ONCE at the end
 	_apply_theme_styling()
+	
+	# Update claim overlay state
+	_update_claim_state()
 
 func _update_display():
 	"""Update all UI elements with current mission data"""
@@ -90,6 +106,53 @@ func update_progress(new_current: int, new_target: int):
 	
 	# Update display
 	_update_display()
+	
+	# Update claim state
+	_update_claim_state()
+
+func _update_claim_state():
+	"""Update the claim overlay based on mission state"""
+	if not claim_overlay:
+		return
+	
+	var is_completed = mission_data.get("is_completed", false)
+	var is_claimed = mission_data.get("is_claimed", false)
+	
+	if is_claimed:
+		# Mission is claimed - show completed state
+		claim_overlay.visible = true
+		claim_label.visible = false
+		completed_label.visible = true
+		# Gray out the card
+		modulate = Color(0.7, 0.7, 0.7)
+	elif is_completed:
+		# Mission is ready to claim
+		claim_overlay.visible = true
+		claim_label.visible = true
+		completed_label.visible = false
+		# Normal color
+		modulate = Color.WHITE
+	else:
+		# Mission is still in progress
+		claim_overlay.visible = false
+		claim_label.visible = false
+		completed_label.visible = false
+		# Normal color
+		modulate = Color.WHITE
+
+func _on_overlay_input(event: InputEvent):
+	"""Handle clicking on the claim overlay"""
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		var is_completed = mission_data.get("is_completed", false)
+		var is_claimed = mission_data.get("is_claimed", false)
+		
+		if is_completed and not is_claimed:
+			# Emit signal to claim the mission
+			mission_claimed.emit(mission_data.get("id", ""))
+			
+			# Immediately update visual state
+			mission_data["is_claimed"] = true
+			_update_claim_state()
 
 func _apply_theme_styling():
 	"""Apply visual theme based on mission type"""

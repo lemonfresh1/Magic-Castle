@@ -81,9 +81,6 @@ size_flags_horizontal = 2
 size_flags_vertical = 6
 text = "Play Again"
 
-[node name="HSeparator" type="HSeparator" parent="Panel/MarginContainer/VBoxContainer"]
-layout_mode = 2
-
 [node name="Progression" type="HBoxContainer" parent="Panel/MarginContainer/VBoxContainer"]
 layout_mode = 2
 theme_override_constants/separation = 10
@@ -116,9 +113,6 @@ theme_override_styles/fill = ExtResource("3_qxbof")
 value = 50.0
 show_percentage = false
 
-[node name="VSeparator2" type="VSeparator" parent="Panel/MarginContainer/VBoxContainer/Progression"]
-layout_mode = 2
-
 [node name="MMRSection" type="VBoxContainer" parent="Panel/MarginContainer/VBoxContainer/Progression"]
 layout_mode = 2
 size_flags_horizontal = 3
@@ -131,9 +125,6 @@ text = "MMR change: +25"
 custom_minimum_size = Vector2(70, 0)
 layout_mode = 2
 text = "New MMR: 1375"
-
-[node name="VSeparator" type="VSeparator" parent="Panel/MarginContainer/VBoxContainer/Progression"]
-layout_mode = 2
 
 [node name="StarSection" type="VBoxContainer" parent="Panel/MarginContainer/VBoxContainer/Progression"]
 layout_mode = 2
@@ -148,9 +139,6 @@ custom_minimum_size = Vector2(70, 0)
 layout_mode = 2
 text = "Star Count: 1200"
 
-[node name="HSeparator2" type="HSeparator" parent="Panel/MarginContainer/VBoxContainer"]
-layout_mode = 2
-
 [node name="Events" type="VBoxContainer" parent="Panel/MarginContainer/VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 3
@@ -162,6 +150,7 @@ size_flags_vertical = 3
 [node name="HBoxContainer" type="HBoxContainer" parent="Panel/MarginContainer/VBoxContainer/Events/ScrollContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_constants/separation = 4
 
 [node name="AchievementsContainer" type="VBoxContainer" parent="Panel/MarginContainer/VBoxContainer/Events/ScrollContainer/HBoxContainer"]
 layout_mode = 2
@@ -173,21 +162,15 @@ layout_mode = 2
 text = "Achievements"
 horizontal_alignment = 1
 
-[node name="VSeparator" type="VSeparator" parent="Panel/MarginContainer/VBoxContainer/Events/ScrollContainer/HBoxContainer"]
-layout_mode = 2
-
-[node name="DailyMissionsContainer" type="VBoxContainer" parent="Panel/MarginContainer/VBoxContainer/Events/ScrollContainer/HBoxContainer"]
+[node name="MissionContainer" type="VBoxContainer" parent="Panel/MarginContainer/VBoxContainer/Events/ScrollContainer/HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 0
 
-[node name="TitleLabel" type="Label" parent="Panel/MarginContainer/VBoxContainer/Events/ScrollContainer/HBoxContainer/DailyMissionsContainer"]
+[node name="TitleLabel" type="Label" parent="Panel/MarginContainer/VBoxContainer/Events/ScrollContainer/HBoxContainer/MissionContainer"]
 layout_mode = 2
 text = "Daily Missions"
 horizontal_alignment = 1
-
-[node name="VSeparator2" type="VSeparator" parent="Panel/MarginContainer/VBoxContainer/Events/ScrollContainer/HBoxContainer"]
-layout_mode = 2
 
 [node name="SeasonPassContainer" type="VBoxContainer" parent="Panel/MarginContainer/VBoxContainer/Events/ScrollContainer/HBoxContainer"]
 layout_mode = 2
@@ -198,9 +181,6 @@ size_flags_vertical = 0
 layout_mode = 2
 text = "Season Pass"
 horizontal_alignment = 1
-
-[node name="VSeparator3" type="VSeparator" parent="Panel/MarginContainer/VBoxContainer/Events/ScrollContainer/HBoxContainer"]
-layout_mode = 2
 
 [node name="HolidayEventContainer" type="VBoxContainer" parent="Panel/MarginContainer/VBoxContainer/Events/ScrollContainer/HBoxContainer"]
 layout_mode = 2

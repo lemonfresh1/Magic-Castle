@@ -1,6 +1,6 @@
 # SeasonPassManager.gd - Manages season pass progression and rewards
 # Location: res://Magic-Castle/scripts/autoloads/SeasonPassManager.gd
-# Last Updated: Fixed missing signals and methods [Date]
+# Last Updated: Removed mission logic, focused on tier progression [Date]
 
 extends Node
 
@@ -9,6 +9,7 @@ signal season_points_gained(amount: int, source: String)
 signal season_level_up(new_level: int)
 signal season_ended(season_id: String)
 signal season_started(season_id: String)
+signal season_progress_updated()  # NEW: For UI refresh
 
 const SAVE_PATH = "user://season_pass_data.save"
 const SP_PER_LEVEL = 10  # Season Points per level
@@ -17,20 +18,6 @@ const MAX_TIER = 50
 # Tiers that have rewards
 const FREE_REWARD_TIERS = [1, 3, 5, 8, 10, 15, 20, 25, 30, 35, 40, 50]
 const PREMIUM_REWARD_TIERS = [1, 2, 3, 4, 5, 7, 9, 10, 12, 15, 18, 20, 25, 30, 35, 40, 45, 50]
-
-# Daily and Weekly missions for Season Pass
-const DAILY_MISSIONS = {
-	"season_daily_1": {"name": "First Game", "desc": "Play 1 game", "target": 1, "sp": 2, "track": "games_played"},
-	"season_daily_2": {"name": "Triple Play", "desc": "Play 3 games", "target": 3, "sp": 2, "track": "games_played"},
-	"season_daily_3": {"name": "Combo Master", "desc": "Achieve combo ≥10", "target": 1, "sp": 2, "track": "combo_10"},
-	"season_daily_4": {"name": "High Scorer", "desc": "Score ≥30,000 in one game", "target": 1, "sp": 2, "track": "high_score"},
-	"season_daily_5": {"name": "Point Collector", "desc": "Score 75,000 total points", "target": 75000, "sp": 2, "track": "total_score"}
-}
-
-const WEEKLY_MISSIONS = {
-	"season_weekly_1": {"name": "Dedicated Player", "desc": "Play 15 games", "target": 15, "sp": 5, "track": "games_played"},
-	"season_weekly_2": {"name": "Point Master", "desc": "Score 750,000 total points", "target": 750000, "sp": 5, "track": "total_score"}
-}
 
 # Season tier structure
 class SeasonTier extends Resource:
@@ -50,11 +37,7 @@ var season_data = {
 	"has_premium_pass": false,
 	"claimed_tiers": [],
 	"season_end_date": "",
-	"lifetime_seasons_completed": 0,
-	"daily_missions": {},  # Track daily mission progress
-	"weekly_missions": {},  # Track weekly mission progress
-	"last_daily_reset": "",  # To track when to reset dailies
-	"last_weekly_reset": ""  # To track when to reset weeklies
+	"lifetime_seasons_completed": 0
 }
 
 # Current season configuration
@@ -108,39 +91,13 @@ var season_rewards = {
 func _ready():
 	load_season_data()
 	_initialize_season_tiers()
-	
-	# Initialize missions if they don't exist
-	if season_data.daily_missions.is_empty():
-		_reset_daily_missions()
-	if season_data.weekly_missions.is_empty():
-		_reset_weekly_missions()
-	
-	# TEST: Set some missions as completed for testing
-	if OS.is_debug_build():
-		# Complete first two daily missions for testing
-		if season_data.daily_missions.has("season_daily_1"):
-			season_data.daily_missions["season_daily_1"]["current"] = 1
-			season_data.daily_missions["season_daily_1"]["completed"] = true
-		if season_data.daily_missions.has("season_daily_2"):
-			season_data.daily_missions["season_daily_2"]["current"] = 3
-			season_data.daily_missions["season_daily_2"]["completed"] = true
-		# Complete first weekly mission
-		if season_data.weekly_missions.has("season_weekly_1"):
-			season_data.weekly_missions["season_weekly_1"]["current"] = 15
-			season_data.weekly_missions["season_weekly_1"]["completed"] = true
-		save_season_data()
-		print("TEST: Set some missions as completed")
-	
-	# Connect to XP gains for season progress
-	if XPManager:
-		XPManager.xp_gained.connect(_on_xp_gained)
 
 func _initialize_season_tiers():
 	# Create 50 tiers with rewards
 	for i in range(1, MAX_TIER + 1):
 		var tier = SeasonTier.new()
 		tier.tier = i
-		tier.required_sp = (i - 1) * SP_PER_LEVEL  # Fixed: was using required_level
+		tier.required_sp = (i - 1) * SP_PER_LEVEL
 		
 		# Set free track rewards
 		if i in FREE_REWARD_TIERS:
@@ -166,12 +123,15 @@ func _initialize_season_tiers():
 		current_season.tiers.append(tier)
 
 func add_season_points(amount: int, source: String = "gameplay"):
+	print("[SeasonPassManager] Adding %d SP from %s" % [amount, source])
 	season_data.season_points += amount
 	season_points_gained.emit(amount, source)
 	
 	# Check for level ups
+	var leveled_up = false
 	while season_data.season_points >= season_data.season_level * SP_PER_LEVEL:
 		season_data.season_level += 1
+		leveled_up = true
 		season_level_up.emit(season_data.season_level)
 		
 		# Unlock new tier
@@ -181,6 +141,9 @@ func add_season_points(amount: int, source: String = "gameplay"):
 			tier_unlocked.emit(season_data.season_level, tier.free_rewards)
 	
 	save_season_data()
+	
+	# Emit progress update for UI refresh
+	season_progress_updated.emit()
 
 func claim_tier_rewards(tier_number: int, is_premium: bool = false) -> bool:
 	if tier_number < 1 or tier_number > MAX_TIER:
@@ -213,6 +176,7 @@ func claim_tier_rewards(tier_number: int, is_premium: bool = false) -> bool:
 	
 	season_data.claimed_tiers.append(tier_key)
 	save_season_data()
+	season_progress_updated.emit()
 	return true
 
 func _grant_rewards(rewards: Dictionary):
@@ -226,10 +190,7 @@ func _grant_rewards(rewards: Dictionary):
 	
 	# Grant cosmetics through ShopManager
 	if rewards.has("cosmetic_id") and rewards.has("cosmetic_type"):
-		# Add to owned items in ShopManager
 		ShopManager.grant_item(rewards.cosmetic_id)
-		
-		# Emit signal for UI updates
 		print("Granted cosmetic: %s (%s)" % [rewards.cosmetic_id, rewards.cosmetic_type])
 
 func purchase_premium_pass() -> bool:
@@ -237,6 +198,15 @@ func purchase_premium_pass() -> bool:
 	if StarManager.spend_stars(1000, "premium_pass_purchase"):
 		season_data.has_premium_pass = true
 		save_season_data()
+		season_progress_updated.emit()
+		return true
+	return false
+
+func purchase_tier_skips(num_tiers: int) -> bool:
+	# Each tier skip costs 100 stars
+	var cost = num_tiers * 100
+	if StarManager.spend_stars(cost, "tier_skip_purchase"):
+		add_season_points(num_tiers * SP_PER_LEVEL, "tier_skip")
 		return true
 	return false
 
@@ -250,11 +220,12 @@ func get_tier_progress() -> Dictionary:
 	var progress_sp = current_sp - current_tier_sp
 	
 	return {
+		"current_tier": season_data.season_level,
 		"current_sp": progress_sp,
 		"required_sp": SP_PER_LEVEL,
 		"percentage": float(progress_sp) / float(SP_PER_LEVEL),
 		"total_sp": current_sp,
-		"total_required": MAX_TIER * SP_PER_LEVEL  # 500 total
+		"total_required": MAX_TIER * SP_PER_LEVEL
 	}
 
 func get_season_tiers() -> Array:
@@ -285,17 +256,13 @@ func get_season_info() -> Dictionary:
 		"theme": current_season.theme,
 		"days_remaining": _calculate_days_remaining(),
 		"current_tier": season_data.season_level,
+		"total_sp": season_data.season_points,
 		"has_premium": season_data.has_premium_pass
 	}
 
 func _calculate_days_remaining() -> int:
 	# Simple calculation - would need proper date parsing
 	return 90  # 90 days for full season
-
-func _on_xp_gained(amount: int):
-	# XP no longer converts to season points
-	# Season points only come from missions and purchases
-	pass
 
 func check_season_end():
 	# Called daily to check if season should end
@@ -320,95 +287,9 @@ func start_new_season(season_config: Dictionary):
 	save_season_data()
 	season_started.emit(season_config.id)
 
-func _reset_daily_missions():
-	"""Reset daily missions progress"""
-	season_data.daily_missions.clear()
-	for mission_id in DAILY_MISSIONS:
-		season_data.daily_missions[mission_id] = {
-			"current": 0,
-			"completed": false,
-			"claimed": false
-		}
-	
-	var current_date = Time.get_date_string_from_system()
-	season_data.last_daily_reset = current_date
-	save_season_data()
-
-func _reset_weekly_missions():
-	"""Reset weekly missions progress"""
-	season_data.weekly_missions.clear()
-	for mission_id in WEEKLY_MISSIONS:
-		season_data.weekly_missions[mission_id] = {
-			"current": 0,
-			"completed": false,
-			"claimed": false
-		}
-	
-	var current_date = Time.get_date_string_from_system()
-	season_data.last_weekly_reset = current_date
-	save_season_data()
-
-func update_mission_progress(track_type: String, value: int = 1):
-	"""Update mission progress for both daily and weekly missions"""
-	var missions_updated = false
-	
-	print("Updating mission progress - track: ", track_type, ", value: ", value)
-	
-	# Update daily missions
-	for mission_id in DAILY_MISSIONS:
-		var mission = DAILY_MISSIONS[mission_id]
-		if mission.track == track_type and season_data.daily_missions.has(mission_id):
-			var progress_data = season_data.daily_missions[mission_id]
-			if not progress_data.completed:
-				progress_data.current += value
-				print("Mission ", mission_id, " progress: ", progress_data.current, "/", mission.target)
-				if progress_data.current >= mission.target:
-					progress_data.completed = true
-					print("Mission ", mission_id, " COMPLETED!")
-					missions_updated = true
-	
-	# Update weekly missions
-	for mission_id in WEEKLY_MISSIONS:
-		var mission = WEEKLY_MISSIONS[mission_id]
-		if mission.track == track_type and season_data.weekly_missions.has(mission_id):
-			var progress_data = season_data.weekly_missions[mission_id]
-			if not progress_data.completed:
-				progress_data.current += value
-				print("Mission ", mission_id, " progress: ", progress_data.current, "/", mission.target)
-				if progress_data.current >= mission.target:
-					progress_data.completed = true
-					print("Mission ", mission_id, " COMPLETED!")
-					missions_updated = true
-	
-	if missions_updated:
-		save_season_data()
-
-func claim_mission_reward(mission_id: String) -> bool:
-	"""Claim rewards for a completed mission"""
-	var is_daily = mission_id in DAILY_MISSIONS
-	var is_weekly = mission_id in WEEKLY_MISSIONS
-	
-	if not is_daily and not is_weekly:
-		return false
-	
-	var mission_data = DAILY_MISSIONS.get(mission_id, WEEKLY_MISSIONS.get(mission_id))
-	var progress_data = season_data.daily_missions.get(mission_id, season_data.weekly_missions.get(mission_id))
-	
-	if not progress_data or not progress_data.completed or progress_data.claimed:
-		return false
-	
-	# Grant SP reward
-	add_season_points(mission_data.sp, "mission_reward")
-	
-	# Mark as claimed
-	progress_data.claimed = true
-	save_season_data()
-	
-	return true
-
 func save_season_data():
 	var save_dict = {
-		"version": 1,
+		"version": 2,
 		"data": season_data
 	}
 	
@@ -435,13 +316,16 @@ func reset_season_data():
 		"has_premium_pass": false,
 		"claimed_tiers": [],
 		"season_end_date": "",
-		"lifetime_seasons_completed": 0,
-		"daily_missions": {},
-		"weekly_missions": {},
-		"last_daily_reset": "",
-		"last_weekly_reset": ""
+		"lifetime_seasons_completed": 0
 	}
 	save_season_data()
 	_initialize_season_tiers()
-	_reset_daily_missions()
-	_reset_weekly_missions()
+
+# Debug functions
+func debug_add_points(amount: int):
+	"""Debug function to add season points"""
+	add_season_points(amount, "debug")
+
+func debug_unlock_all_tiers():
+	"""Debug function to unlock all tiers"""
+	add_season_points(MAX_TIER * SP_PER_LEVEL, "debug_unlock_all")

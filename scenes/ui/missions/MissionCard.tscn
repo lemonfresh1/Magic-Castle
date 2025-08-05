@@ -1,9 +1,16 @@
-[gd_scene load_steps=5 format=3 uid="uid://dkmygtqqnryn8"]
+[gd_scene load_steps=6 format=3 uid="uid://dkmygtqqnryn8"]
 
 [ext_resource type="StyleBox" uid="uid://bsrpgd3orlj87" path="res://Magic-Castle/res/PanelStandardLayout.tres" id="1_m2oud"]
 [ext_resource type="Script" uid="uid://crk860bjh0ng6" path="res://Magic-Castle/scripts/ui/missions/MissionCard.gd" id="2_6qnpd"]
 [ext_resource type="StyleBox" uid="uid://cf4gwa8xipnwh" path="res://Magic-Castle/res/XPBarLayout.tres" id="3_xcphm"]
 [ext_resource type="StyleBox" uid="uid://bdt87hqe856cv" path="res://Magic-Castle/res/XPBarFillLayout.tres" id="4_fak5g"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_6qnpd"]
+bg_color = Color(0.568627, 1, 0.67451, 0.721569)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
 
 [node name="MissionCard" type="PanelContainer"]
 custom_minimum_size = Vector2(300, 80)
@@ -73,4 +80,43 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.257476, 0.257476, 0.257476, 1)
 text = "25"
+horizontal_alignment = 2
+
+[node name="ClaimOverlay" type="Panel" parent="."]
+visible = false
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_6qnpd")
+
+[node name="ClaimLabel" type="Label" parent="ClaimOverlay"]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -20.0
+offset_top = -11.5
+offset_right = 20.0
+offset_bottom = 11.5
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_outline_color = Color(1, 0.705882, 0, 1)
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/font_size = 24
+text = "Press to claim "
+horizontal_alignment = 1
+
+[node name="CompletedLabel" type="Label" parent="ClaimOverlay"]
+layout_mode = 1
+anchors_preset = -1
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 5.0
+offset_right = -10.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.153077, 0.153077, 0.153077, 1)
+text = "Completed"
 horizontal_alignment = 2

@@ -1,0 +1,71 @@
+[gd_scene load_steps=5 format=3 uid="uid://cf5mdk6kvosa1"]
+
+[ext_resource type="Script" uid="uid://cpff50f2pjvu0" path="res://Magic-Castle/scripts/ui/components/MiniMission.gd" id="1_4lrd1"]
+[ext_resource type="StyleBox" uid="uid://cf4gwa8xipnwh" path="res://Magic-Castle/res/XPBarLayout.tres" id="2_7nni1"]
+[ext_resource type="StyleBox" uid="uid://bdt87hqe856cv" path="res://Magic-Castle/res/XPBarFillLayout.tres" id="3_akk3j"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_7kb5u"]
+bg_color = Color(0.776929, 0.533655, 0.774109, 0.662745)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0.454524, 0.454524, 0.454524, 0.6)
+shadow_size = 1
+
+[node name="MiniMission" type="PanelContainer"]
+custom_minimum_size = Vector2(100, 30)
+offset_right = 40.0
+offset_bottom = 40.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_7kb5u")
+script = ExtResource("1_4lrd1")
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 3
+theme_override_constants/margin_top = 3
+theme_override_constants/margin_right = 3
+theme_override_constants/margin_bottom = 3
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer"]
+layout_mode = 2
+
+[node name="TitleLabel" type="Label" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Name"
+
+[node name="DescriptionLabel" type="Label" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_font_sizes/font_size = 12
+text = "Task"
+
+[node name="ProgressBar" type="ProgressBar" parent="MarginContainer/VBoxContainer"]
+custom_minimum_size = Vector2(0, 12)
+layout_mode = 2
+theme_override_styles/background = ExtResource("2_7nni1")
+theme_override_styles/fill = ExtResource("3_akk3j")
+value = 40.0
+show_percentage = false
+
+[node name="ProgressBarLabel" type="Label" parent="MarginContainer/VBoxContainer/ProgressBar"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -8.0
+offset_top = -7.0
+offset_right = 8.0
+offset_bottom = 7.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_font_sizes/font_size = 10
+text = "2/3"

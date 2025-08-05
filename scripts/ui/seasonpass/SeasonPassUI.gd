@@ -1,6 +1,6 @@
-# SeasonPassUI.gd - Season pass interface with tiers and missions
+# SeasonPassUI.gd - Season pass interface with tiers and missions (FIXED)
 # Location: res://Magic-Castle/scripts/ui/season_pass/SeasonPassUI.gd
-# Last Updated: Simplified to use UnifiedMissionManager [Date]
+# Last Updated: Fixed to refresh on SP gains [Date]
 
 extends PanelContainer
 
@@ -35,6 +35,28 @@ func _ready():
 	if UnifiedMissionManager:
 		UnifiedMissionManager.mission_completed.connect(_on_mission_completed)
 		UnifiedMissionManager.missions_reset.connect(_on_missions_reset)
+	
+	# CRITICAL: Connect to SeasonPassManager for SP updates
+	if SeasonPassManager:
+		if not SeasonPassManager.season_points_gained.is_connected(_on_season_points_gained):
+			SeasonPassManager.season_points_gained.connect(_on_season_points_gained)
+		if not SeasonPassManager.season_progress_updated.is_connected(_on_season_progress_updated):
+			SeasonPassManager.season_progress_updated.connect(_on_season_progress_updated)
+
+func _on_season_points_gained(amount: int, source: String):
+	"""Handle when season points are gained"""
+	print("[SeasonPassUI] SP gained: %d from %s" % [amount, source])
+	# Refresh overview if it's the current tab
+	if tab_container.current_tab == 0:
+		_refresh_overview()
+	# Update pass layout if visible
+	if tab_container.current_tab == 1 and pass_layout:
+		pass_layout.refresh()
+
+func _on_season_progress_updated():
+	"""Handle general progress updates"""
+	# Refresh current tab
+	_populate_current_tab()
 
 func _setup_tabs():
 	# Setup Overview tab
@@ -74,6 +96,11 @@ func _populate_current_tab():
 	print("Populating tab: ", current_tab_name)
 	
 	match current_tab_name:
+		"Overview":
+			_refresh_overview()
+		"Battle Pass":
+			if pass_layout:
+				pass_layout.refresh()
 		"Daily Missions", "Weekly Missions":
 			var scroll = current_tab.find_child("ScrollContainer", true, false)
 			if scroll:
@@ -113,6 +140,7 @@ func _setup_battle_pass_tab(battle_pass_tab: Control):
 func _populate_overview_content(vbox: VBoxContainer) -> void:
 	"""Content for Overview tab"""
 	var season_info = SeasonPassManager.get_season_info()
+	var tier_progress = SeasonPassManager.get_tier_progress()
 	
 	var header = Label.new()
 	header.text = season_info.name
@@ -130,9 +158,14 @@ func _populate_overview_content(vbox: VBoxContainer) -> void:
 	current_tier_label.add_theme_font_size_override("font_size", 20)
 	stats_container.add_child(current_tier_label)
 	
-	var progress = SeasonPassManager.get_tier_progress()
+	# Show actual SP values
+	var sp_label = Label.new()
+	sp_label.text = "Total SP: %d" % season_info.total_sp
+	sp_label.add_theme_font_size_override("font_size", 18)
+	stats_container.add_child(sp_label)
+	
 	var progress_label = Label.new()
-	progress_label.text = "Progress: %d / %d SP (%.1f%%)" % [progress.current_sp, progress.required_sp, progress.percentage * 100]
+	progress_label.text = "Progress: %d / %d SP (%.1f%%)" % [tier_progress.current_sp, tier_progress.required_sp, tier_progress.percentage * 100]
 	progress_label.add_theme_font_size_override("font_size", 18)
 	stats_container.add_child(progress_label)
 	
@@ -307,15 +340,8 @@ func _refresh_missions():
 	
 	# Only refresh if we're on a missions tab
 	if current_tab_name in ["Daily Missions", "Weekly Missions"]:
-		var scroll = current_tab.find_child("ScrollContainer", true, false)
-		if scroll:
-			var vbox = scroll.find_child("ContentVBox", true, false)
-			if vbox:
-				for child in vbox.get_children():
-					child.queue_free()
-				
-				await get_tree().process_frame
-				_populate_missions_content(vbox)
+		# Use UIStyleManager to properly refresh the content
+		await UIStyleManager.setup_scrollable_content(current_tab, _populate_missions_content)
 
 func _on_mission_completed(mission_id: String, system: String):
 	"""Handle mission completion from UnifiedMissionManager"""
@@ -354,3 +380,7 @@ func show_season_pass_ui():
 func hide_season_pass_ui():
 	visible = false
 	season_pass_ui_closed.emit()
+
+func show_season_pass():
+	"""Alias for compatibility"""
+	show_season_pass_ui()

@@ -1,0 +1,48 @@
+[gd_scene format=3 uid="uid://bxtwy7dug8tlh"]
+
+[node name="Background" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="TextureRect" type="TextureRect" parent="."]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="Area2D3" type="Area2D" parent="TextureRect"]
+position = Vector2(35, -48)
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="TextureRect/Area2D3"]
+position = Vector2(457.583, 180.672)
+scale = Vector2(1.36051, 1.36051)
+polygon = PackedVector2Array(17, 18, 239, 234, -169, 232)
+
+[node name="TextureRect2" type="TextureRect" parent="."]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="Area2D4" type="Area2D" parent="TextureRect2"]
+position = Vector2(35, -48)
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="TextureRect2/Area2D4"]
+position = Vector2(724, 183)
+scale = Vector2(1.36051, 1.36051)
+polygon = PackedVector2Array(17, 18, 239, 234, -169, 232)
+
+[node name="TextureRect3" type="TextureRect" parent="."]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="Area2D5" type="Area2D" parent="TextureRect3"]
+position = Vector2(35, -48)
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="TextureRect3/Area2D5"]
+position = Vector2(239, 179)
+scale = Vector2(1.36051, 1.36051)
+polygon = PackedVector2Array(17, 18, 239, 234, -169, 232)

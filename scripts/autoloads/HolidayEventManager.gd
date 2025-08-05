@@ -1,31 +1,46 @@
-# HolidayEventManager.gd - Manages holiday events and special missions
-# Location: res://Magic-Castle/scripts/autoloads/HolidayEventManager.gd
-# Last Updated: Created holiday event system [Date]
+# HolidayEventManager.gd - Manages holiday pass progression and rewards
+# Location: res://Magic-Castle/scripts/autoloads/HolidayPassManager.gd
+# Last Updated: Created to match SeasonPassManager structure [Date]
 
 extends Node
 
-signal holiday_mission_completed(mission_id: String, rewards: Dictionary)
-signal holiday_mission_progress_updated(mission_id: String, current: int, target: int)
+signal tier_unlocked(tier: int, rewards: Dictionary)
+signal holiday_points_gained(amount: int, source: String)
+signal holiday_level_up(new_level: int)
 signal holiday_event_started(event_id: String)
 signal holiday_event_ended(event_id: String)
-signal holiday_currency_earned(amount: int)
+signal holiday_progress_updated()  # For UI refresh
 
-const SAVE_PATH = "user://holiday_event_data.save"
+const SAVE_PATH = "user://holiday_pass_data.save"
+const HP_PER_LEVEL = 10  # Holiday Points per level
+const MAX_TIER = 30  # Shorter than season pass
 
-# Holiday mission structure (same as MissionManager.Mission)
-class HolidayMission extends Resource:
-	@export var id: String = ""
-	@export var display_name: String = ""
-	@export var description: String = ""
-	@export var target_value: int = 1
-	@export var current_value: int = 0
-	@export var rewards: Dictionary = {}  # "holiday_points": 100, "xp": 50, etc.
-	@export var icon_path: String = ""
-	@export var expires_at: String = ""
-	@export var is_completed: bool = false
-	@export var is_claimed: bool = false
+# Tiers that have rewards
+const FREE_REWARD_TIERS = [1, 3, 5, 8, 10, 15, 20, 25, 30]
+const PREMIUM_REWARD_TIERS = [1, 2, 3, 5, 7, 10, 12, 15, 18, 20, 22, 25, 27, 30]
 
-# Active event data
+# Holiday tier structure
+class HolidayTier extends Resource:
+	@export var tier: int = 1
+	@export var required_hp: int = 0  # Total HP needed to reach this tier
+	@export var free_rewards: Dictionary = {}
+	@export var premium_rewards: Dictionary = {}
+	@export var is_unlocked: bool = false
+	@export var free_claimed: bool = false
+	@export var premium_claimed: bool = false
+
+# Holiday save data
+var holiday_data = {
+	"current_event_id": "winter_2024",
+	"holiday_points": 0,  # Current HP
+	"holiday_level": 1,
+	"has_premium_pass": false,
+	"claimed_tiers": [],
+	"event_end_date": "",
+	"lifetime_events_participated": 0
+}
+
+# Current holiday event configuration
 var current_event = {
 	"id": "winter_2024",
 	"name": "Winter Wonderland",
@@ -33,182 +48,213 @@ var current_event = {
 	"start_date": "2024-12-01",
 	"end_date": "2024-12-31",
 	"currency_name": "Snowflakes",
-	"currency_icon": "❄️"
+	"currency_icon": "❄️",
+	"tiers": []
 }
 
-# Active missions
-var holiday_missions: Array[HolidayMission] = []
-
-# Save data
-var holiday_data = {
-	"current_event_id": "",
-	"holiday_currency": 0,
-	"completed_missions": [],
-	"claimed_missions": [],
-	"mission_progress": {},
-	"lifetime_events_participated": 0
-}
-
-# Mission templates
-var holiday_mission_templates = {
-	"holiday_collect_50": {
-		"name": "Snowflake Collector",
-		"desc": "Collect 50 snowflakes from games",
-		"target": 50,
-		"rewards": {"holiday_points": 100, "xp": 200},
-		"track": "items_collected"
+# Define specific rewards for each tier (holiday themed)
+var holiday_rewards = {
+	"free": {
+		1: {"stars": 25},
+		3: {"stars": 50},
+		5: {"cosmetic_type": "emoji", "cosmetic_id": "holiday_emoji_1"},
+		8: {"stars": 75},
+		10: {"cosmetic_type": "card_skin", "cosmetic_id": "holiday_card_1"},
+		15: {"stars": 100},
+		20: {"cosmetic_type": "avatar", "cosmetic_id": "holiday_avatar_1"},
+		25: {"stars": 150},
+		30: {"cosmetic_type": "card_skin", "cosmetic_id": "holiday_legendary_1", "stars": 500}
 	},
-	"holiday_win_10": {
-		"name": "Holiday Victor",
-		"desc": "Win 10 games during the event",
-		"target": 10,
-		"rewards": {"holiday_points": 150, "xp": 300},
-		"track": "games_won"
-	},
-	"holiday_perfect_3": {
-		"name": "Perfect Holiday",
-		"desc": "Get 3 perfect clears",
-		"target": 3,
-		"rewards": {"holiday_points": 200, "xp": 400},
-		"track": "perfect_clears"
-	},
-	"holiday_play_20": {
-		"name": "Festive Player",
-		"desc": "Play 20 games during the event",
-		"target": 20,
-		"rewards": {"holiday_points": 75, "xp": 150},
-		"track": "games_played"
-	},
-	"holiday_score_50k": {
-		"name": "Holiday High Scorer",
-		"desc": "Score 50,000 points total",
-		"target": 50000,
-		"rewards": {"holiday_points": 125, "xp": 250},
-		"track": "score_earned"
+	"premium": {
+		1: {"stars": 50},
+		2: {"cosmetic_type": "emoji", "cosmetic_id": "premium_holiday_emoji_1"},
+		3: {"stars": 75},
+		5: {"cosmetic_type": "card_skin", "cosmetic_id": "premium_holiday_card_1"},
+		7: {"cosmetic_type": "avatar", "cosmetic_id": "premium_holiday_avatar_1"},
+		10: {"stars": 100, "cosmetic_type": "frame", "cosmetic_id": "premium_holiday_frame_1"},
+		12: {"cosmetic_type": "board_skin", "cosmetic_id": "premium_holiday_board_1"},
+		15: {"stars": 150, "cosmetic_type": "emoji", "cosmetic_id": "premium_holiday_emoji_2"},
+		18: {"cosmetic_type": "card_skin", "cosmetic_id": "premium_holiday_card_2"},
+		20: {"stars": 200},
+		22: {"cosmetic_type": "avatar", "cosmetic_id": "premium_holiday_avatar_2"},
+		25: {"cosmetic_type": "frame", "cosmetic_id": "premium_holiday_frame_2", "stars": 250},
+		27: {"cosmetic_type": "board_skin", "cosmetic_id": "premium_holiday_board_2"},
+		30: {"cosmetic_type": "card_skin", "cosmetic_id": "premium_holiday_legendary_1", "stars": 750}
 	}
 }
 
 func _ready():
 	load_holiday_data()
-	_check_active_event()
+	_initialize_holiday_tiers()
 	
-	# Defer signal connections to ensure SignalBus is ready
-	call_deferred("_connect_signals")
-
-func _connect_signals():
-	# Connect to game signals
-	if SignalBus:
-		if not SignalBus.game_won.is_connected(_on_game_won):
-			SignalBus.game_won.connect(_on_game_won)
-		if not SignalBus.game_lost.is_connected(_on_game_lost):
-			SignalBus.game_lost.connect(_on_game_lost)
-		if not SignalBus.score_changed.is_connected(_on_score_changed):
-			SignalBus.score_changed.connect(_on_score_changed)
-		if not SignalBus.perfect_clear_achieved.is_connected(_on_perfect_clear):
-			SignalBus.perfect_clear_achieved.connect(_on_perfect_clear)
-	else:
-		push_error("HolidayEventManager: SignalBus not found!")
+	# Check if event is active
+	_check_active_event()
 
 func _check_active_event():
 	# Check if event is active (simplified - would need proper date checking)
 	if holiday_data.current_event_id != current_event.id:
 		start_holiday_event(current_event)
-	else:
-		# Still initialize missions if they're empty
-		if holiday_missions.is_empty():
-			_initialize_holiday_missions()
 
 func start_holiday_event(event_config: Dictionary):
 	current_event = event_config
 	holiday_data.current_event_id = event_config.id
 	holiday_data.lifetime_events_participated += 1
 	
-	# Initialize missions
-	_initialize_holiday_missions()
+	# Reset progress for new event
+	holiday_data.holiday_points = 0
+	holiday_data.holiday_level = 1
+	holiday_data.has_premium_pass = false
+	holiday_data.claimed_tiers.clear()
 	
+	_initialize_holiday_tiers()
 	save_holiday_data()
 	holiday_event_started.emit(event_config.id)
 
-func _initialize_holiday_missions():
-	holiday_missions.clear()
+func _initialize_holiday_tiers():
+	current_event.tiers.clear()
 	
-	# Add all holiday missions
-	for template_id in holiday_mission_templates:
-		var template = holiday_mission_templates[template_id]
-		var mission = _create_mission_from_template(template_id, template)
-		holiday_missions.append(mission)
-	
-	print("HolidayEventManager: Initialized %d holiday missions" % holiday_missions.size())
+	# Create 30 tiers with rewards
+	for i in range(1, MAX_TIER + 1):
+		var tier = HolidayTier.new()
+		tier.tier = i
+		tier.required_hp = (i - 1) * HP_PER_LEVEL
+		
+		# Set free track rewards
+		if i in FREE_REWARD_TIERS:
+			tier.free_rewards = holiday_rewards.free.get(i, {"stars": 25})
+		
+		# Set premium track rewards
+		if i in PREMIUM_REWARD_TIERS:
+			tier.premium_rewards = holiday_rewards.premium.get(i, {"stars": 50})
+		
+		# Check if already unlocked
+		if i <= holiday_data.holiday_level:
+			tier.is_unlocked = true
+		
+		# Check if already claimed
+		var tier_key = "tier_%d_free" % i
+		if tier_key in holiday_data.claimed_tiers:
+			tier.free_claimed = true
+		
+		tier_key = "tier_%d_premium" % i
+		if tier_key in holiday_data.claimed_tiers:
+			tier.premium_claimed = true
+		
+		current_event.tiers.append(tier)
 
-func _create_mission_from_template(id: String, template: Dictionary) -> HolidayMission:
-	var mission = HolidayMission.new()
-	mission.id = id
-	mission.display_name = template.name
-	mission.description = template.desc
-	mission.target_value = template.target
-	mission.rewards = template.rewards
+func add_holiday_points(amount: int, source: String = "gameplay"):
+	print("[HolidayPassManager] Adding %d HP from %s" % [amount, source])
+	holiday_data.holiday_points += amount
+	holiday_points_gained.emit(amount, source)
 	
-	# Check if already completed/claimed
-	mission.is_completed = id in holiday_data.completed_missions
-	mission.is_claimed = id in holiday_data.claimed_missions
-	
-	# Load progress
-	if holiday_data.mission_progress.has(id):
-		mission.current_value = holiday_data.mission_progress[id]
-	
-	return mission
-
-func update_mission_progress(track_type: String, value: int):
-	for mission in holiday_missions:
-		if mission.is_completed:
-			continue
-			
-		var template_key = mission.id
-		if holiday_mission_templates.has(template_key):
-			var template = holiday_mission_templates[template_key]
-			if template.get("track", "") == track_type:
-				mission.current_value += value
-				holiday_data.mission_progress[mission.id] = mission.current_value
-				
-				# Check completion
-				if mission.current_value >= mission.target_value:
-					mission.is_completed = true
-					holiday_data.completed_missions.append(mission.id)
-					
-					# Auto-grant rewards (no claiming needed)
-					_grant_mission_rewards(mission)
-					holiday_mission_completed.emit(mission.id, mission.rewards)
-				
-				holiday_mission_progress_updated.emit(mission.id, mission.current_value, mission.target_value)
+	# Check for level ups
+	var leveled_up = false
+	while holiday_data.holiday_points >= holiday_data.holiday_level * HP_PER_LEVEL:
+		holiday_data.holiday_level += 1
+		leveled_up = true
+		holiday_level_up.emit(holiday_data.holiday_level)
+		
+		# Unlock new tier
+		if holiday_data.holiday_level <= MAX_TIER:
+			var tier = current_event.tiers[holiday_data.holiday_level - 1]
+			tier.is_unlocked = true
+			tier_unlocked.emit(holiday_data.holiday_level, tier.free_rewards)
 	
 	save_holiday_data()
-
-func _grant_mission_rewards(mission: HolidayMission):
-	if mission.rewards.has("holiday_points"):
-		add_holiday_currency(mission.rewards.holiday_points)
-	if mission.rewards.has("xp"):
-		XPManager.add_xp(mission.rewards.xp)
 	
-	mission.is_claimed = true
-	holiday_data.claimed_missions.append(mission.id)
+	# Emit progress update for UI refresh
+	holiday_progress_updated.emit()
 
+# Alias for compatibility with old HolidayEventManager
 func add_holiday_currency(amount: int):
-	holiday_data.holiday_currency += amount
-	holiday_currency_earned.emit(amount)
-	save_holiday_data()
+	add_holiday_points(amount, "legacy_currency")
 
-func spend_holiday_currency(amount: int) -> bool:
-	if holiday_data.holiday_currency >= amount:
-		holiday_data.holiday_currency -= amount
+func claim_tier_rewards(tier_number: int, is_premium: bool = false) -> bool:
+	if tier_number < 1 or tier_number > MAX_TIER:
+		return false
+		
+	var tier = current_event.tiers[tier_number - 1]
+	
+	if not tier.is_unlocked:
+		return false
+	
+	if is_premium and not holiday_data.has_premium_pass:
+		return false
+	
+	var rewards = {}
+	var tier_key = ""
+	
+	if is_premium and not tier.premium_claimed:
+		rewards = tier.premium_rewards
+		tier.premium_claimed = true
+		tier_key = "tier_%d_premium" % tier_number
+	elif not is_premium and not tier.free_claimed:
+		rewards = tier.free_rewards
+		tier.free_claimed = true
+		tier_key = "tier_%d_free" % tier_number
+	else:
+		return false  # Already claimed
+	
+	# Grant rewards
+	_grant_rewards(rewards)
+	
+	holiday_data.claimed_tiers.append(tier_key)
+	save_holiday_data()
+	holiday_progress_updated.emit()
+	return true
+
+func _grant_rewards(rewards: Dictionary):
+	# Grant stars
+	if rewards.has("stars"):
+		StarManager.add_stars(rewards.stars, "holiday_pass")
+	
+	# Grant XP
+	if rewards.has("xp"):
+		XPManager.add_xp(rewards.xp)
+	
+	# Grant cosmetics through ShopManager
+	if rewards.has("cosmetic_id") and rewards.has("cosmetic_type"):
+		ShopManager.grant_item(rewards.cosmetic_id)
+		print("Granted holiday cosmetic: %s (%s)" % [rewards.cosmetic_id, rewards.cosmetic_type])
+
+func purchase_premium_pass() -> bool:
+	# Holiday pass costs 1000 stars (same as season pass)
+	if StarManager.spend_stars(1000, "holiday_pass_purchase"):
+		holiday_data.has_premium_pass = true
 		save_holiday_data()
+		holiday_progress_updated.emit()
 		return true
 	return false
 
-func get_holiday_currency() -> int:
-	return holiday_data.holiday_currency
+func purchase_tier_skips(num_tiers: int) -> bool:
+	# Each tier skip costs 100 stars
+	var cost = num_tiers * 100
+	if StarManager.spend_stars(cost, "holiday_tier_skip"):
+		add_holiday_points(num_tiers * HP_PER_LEVEL, "tier_skip")
+		return true
+	return false
 
-func get_active_missions() -> Array[HolidayMission]:
-	return holiday_missions
+func get_current_tier() -> int:
+	return holiday_data.holiday_level
+
+func get_tier_progress() -> Dictionary:
+	var current_hp = holiday_data.holiday_points
+	var current_tier_hp = (holiday_data.holiday_level - 1) * HP_PER_LEVEL
+	var next_tier_hp = holiday_data.holiday_level * HP_PER_LEVEL
+	var progress_hp = current_hp - current_tier_hp
+	
+	return {
+		"current_tier": holiday_data.holiday_level,
+		"current_hp": progress_hp,
+		"required_hp": HP_PER_LEVEL,
+		"percentage": float(progress_hp) / float(HP_PER_LEVEL),
+		"total_hp": current_hp,
+		"total_required": MAX_TIER * HP_PER_LEVEL
+	}
+
+# Compatibility method for UI that expects SP naming
+func get_season_info() -> Dictionary:
+	return get_event_info()
 
 func get_event_info() -> Dictionary:
 	return {
@@ -217,34 +263,37 @@ func get_event_info() -> Dictionary:
 		"theme": current_event.theme,
 		"currency_name": current_event.currency_name,
 		"currency_icon": current_event.currency_icon,
-		"currency_amount": holiday_data.holiday_currency,
-		"days_remaining": _calculate_days_remaining()
+		"days_remaining": _calculate_days_remaining(),
+		"current_tier": holiday_data.holiday_level,
+		"total_hp": holiday_data.holiday_points,
+		"has_premium": holiday_data.has_premium_pass
+	}
+
+func get_holiday_tiers() -> Array:
+	return current_event.tiers
+
+func get_tier_data(tier_number: int) -> Dictionary:
+	"""Get complete tier data for UI display"""
+	if tier_number < 1 or tier_number > MAX_TIER:
+		return {}
+		
+	var tier = current_event.tiers[tier_number - 1]
+	
+	return {
+		"tier": tier.tier,
+		"is_current": tier.tier == holiday_data.holiday_level,
+		"is_unlocked": tier.is_unlocked,
+		"has_premium_pass": holiday_data.has_premium_pass,
+		"free_claimed": tier.free_claimed,
+		"premium_claimed": tier.premium_claimed,
+		"free_rewards": tier.free_rewards,
+		"premium_rewards": tier.premium_rewards
 	}
 
 func _calculate_days_remaining() -> int:
 	# Simplified - would need proper date parsing
-	return 15
+	return 15  # Holiday events are shorter
 
-# Signal handlers
-func _on_game_won(final_score: int, time_elapsed: float):
-	update_mission_progress("games_won", 1)
-	update_mission_progress("games_played", 1)
-	# Award some holiday currency for winning
-	add_holiday_currency(10)
-
-func _on_game_lost(final_score: int, reason: String):
-	update_mission_progress("games_played", 1)
-
-func _on_perfect_clear():
-	update_mission_progress("perfect_clears", 1)
-	# Bonus currency for perfect clear
-	add_holiday_currency(5)
-
-func _on_score_changed(points: int, reason: String):
-	if points > 0:
-		update_mission_progress("score_earned", points)
-
-# Save/Load
 func save_holiday_data():
 	var save_dict = {
 		"version": 1,
@@ -266,20 +315,24 @@ func load_holiday_data():
 			if save_dict and save_dict.has("data"):
 				holiday_data = save_dict.data
 
-func debug_force_init_missions():
-	"""Force initialize missions for testing"""
-	print("HolidayEventManager: Force initializing missions")
-	_initialize_holiday_missions()
-	return holiday_missions.size()
-
 func reset_holiday_data():
 	holiday_data = {
-		"current_event_id": "",
-		"holiday_currency": 0,
-		"completed_missions": [],
-		"claimed_missions": [],
-		"mission_progress": {},
+		"current_event_id": "winter_2024",
+		"holiday_points": 0,
+		"holiday_level": 1,
+		"has_premium_pass": false,
+		"claimed_tiers": [],
+		"event_end_date": "",
 		"lifetime_events_participated": 0
 	}
 	save_holiday_data()
-	_check_active_event()
+	_initialize_holiday_tiers()
+
+# Debug functions
+func debug_add_points(amount: int):
+	"""Debug function to add holiday points"""
+	add_holiday_points(amount, "debug")
+
+func debug_unlock_all_tiers():
+	"""Debug function to unlock all tiers"""
+	add_holiday_points(MAX_TIER * HP_PER_LEVEL, "debug_unlock_all")
