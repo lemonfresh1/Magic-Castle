@@ -1,26 +1,32 @@
-[gd_scene load_steps=8 format=3 uid="uid://bkb0n764fl27o"]
+[gd_scene load_steps=12 format=3 uid="uid://bkb0n764fl27o"]
 
-[ext_resource type="Script" uid="uid://si3bh232ycyx" path="res://Magic-Castle/scripts/ui/components/PassLayout.gd" id="1_b3wnk"]
+[ext_resource type="Script" uid="uid://si3bh232ycyx" path="res://Magic-Castle/scripts/ui/components/PassLayout.gd" id="1_22vl6"]
+[ext_resource type="Texture2D" uid="uid://cqa0do7fwvyaf" path="res://Magic-Castle/assets/placeholder/star.png" id="2_h4wxi"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_jj5f8"]
-bg_color = Color(1, 1, 1, 0.847059)
+bg_color = Color(1, 1, 1, 1)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
 border_color = Color(0.8, 0.8, 0.196078, 1)
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_cdrqf"]
-bg_color = Color(0.6, 0.6, 0.6, 0.498039)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.6, 0.6, 0.6, 1)
-corner_radius_top_left = 25
-corner_radius_top_right = 25
-corner_radius_bottom_right = 25
-corner_radius_bottom_left = 25
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_igb5r"]
+bg_color = Color(0.559289, 0.52537, 1, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_b3wnk"]
+content_margin_left = 10.0
+content_margin_top = 3.0
+content_margin_right = 10.0
+content_margin_bottom = 3.0
+bg_color = Color(0.6, 0.694118, 0.6, 1)
+skew = Vector2(0.2, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_l0ahc"]
+bg_color = Color(0.560784, 0.52549, 1, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_qjmq2"]
+bg_color = Color(0.560784, 0.52549, 1, 1)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hc6bu"]
 content_margin_left = 4.0
@@ -59,141 +65,106 @@ custom_minimum_size = Vector2(500, 270)
 offset_right = 500.0
 offset_bottom = 220.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_jj5f8")
-script = ExtResource("1_b3wnk")
+script = ExtResource("1_22vl6")
 
 [node name="VBoxContainer" type="VBoxContainer" parent="."]
 layout_mode = 2
-theme_override_constants/separation = 5
+theme_override_constants/separation = 0
 
-[node name="HeaderContainer" type="HBoxContainer" parent="VBoxContainer"]
+[node name="HeaderPanelContainer" type="PanelContainer" parent="VBoxContainer"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_igb5r")
+
+[node name="HeaderContainer" type="HBoxContainer" parent="VBoxContainer/HeaderPanelContainer"]
 layout_mode = 2
 
-[node name="ProgressBar" type="ProgressBar" parent="VBoxContainer/HeaderContainer"]
-custom_minimum_size = Vector2(0, 25)
+[node name="TimerLabel" type="Label" parent="VBoxContainer/HeaderPanelContainer/HeaderContainer"]
+layout_mode = 2
+text = "Ends in 66 days"
+
+[node name="TierInfoContainer" type="HBoxContainer" parent="VBoxContainer/HeaderPanelContainer/HeaderContainer"]
+layout_mode = 2
+size_flags_horizontal = 10
+theme_override_constants/separation = 10
+
+[node name="PanelContainer" type="PanelContainer" parent="VBoxContainer/HeaderPanelContainer/HeaderContainer/TierInfoContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_styles/background = SubResource("StyleBoxFlat_cdrqf")
-show_percentage = false
+theme_override_styles/panel = SubResource("StyleBoxFlat_b3wnk")
 
-[node name="PassLevelLabel" type="Label" parent="VBoxContainer/HeaderContainer/ProgressBar"]
-custom_minimum_size = Vector2(70, 0)
-layout_mode = 1
-anchors_preset = 4
-anchor_top = 0.5
-anchor_bottom = 0.5
-offset_top = -11.5
-offset_right = 70.0
-offset_bottom = 11.5
-grow_vertical = 2
-pivot_offset = Vector2(781, 324)
-text = "Level 1"
-horizontal_alignment = 2
+[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer/HeaderPanelContainer/HeaderContainer/TierInfoContainer/PanelContainer"]
+layout_mode = 2
+alignment = 2
 
-[node name="ProgressLabel" type="Label" parent="VBoxContainer/HeaderContainer/ProgressBar"]
-layout_mode = 1
-anchors_preset = 5
-anchor_left = 0.5
-anchor_right = 0.5
-offset_left = -28.5
-offset_right = 28.5
-offset_bottom = 23.0
-grow_horizontal = 2
+[node name="ProgressIcon" type="TextureRect" parent="VBoxContainer/HeaderPanelContainer/HeaderContainer/TierInfoContainer/PanelContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 8
+texture = ExtResource("2_h4wxi")
+expand_mode = 3
+stretch_mode = 5
+
+[node name="ProgressLabel" type="Label" parent="VBoxContainer/HeaderPanelContainer/HeaderContainer/TierInfoContainer/PanelContainer/HBoxContainer"]
+layout_mode = 2
 size_flags_horizontal = 0
-text = "6/10 SP"
+text = "0/10"
 
-[node name="TimerLabel" type="Label" parent="VBoxContainer/HeaderContainer/ProgressBar"]
-layout_mode = 1
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -118.0
-offset_bottom = 23.0
-grow_horizontal = 0
-text = "90 days left"
+[node name="TierLabel" type="Label" parent="VBoxContainer/HeaderPanelContainer/HeaderContainer/TierInfoContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Level 1"
 
 [node name="ContentContainer" type="HBoxContainer" parent="VBoxContainer"]
-self_modulate = Color(1, 1, 1, 0.847059)
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="FixedLabelsContainer" type="VBoxContainer" parent="VBoxContainer/ContentContainer"]
+[node name="PanelContainer" type="PanelContainer" parent="VBoxContainer/ContentContainer"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_l0ahc")
+
+[node name="FixedLabelsContainer" type="VBoxContainer" parent="VBoxContainer/ContentContainer/PanelContainer"]
 custom_minimum_size = Vector2(30, 0)
 layout_mode = 2
 
-[node name="Control" type="Control" parent="VBoxContainer/ContentContainer/FixedLabelsContainer"]
-self_modulate = Color(1, 1, 1, 0)
+[node name="LevelLabel" type="Label" parent="VBoxContainer/ContentContainer/PanelContainer/FixedLabelsContainer"]
 layout_mode = 2
-size_flags_vertical = 3
-size_flags_stretch_ratio = 0.15
-
-[node name="LevelLabel" type="Label" parent="VBoxContainer/ContentContainer/FixedLabelsContainer/Control"]
-custom_minimum_size = Vector2(20, 20)
-layout_mode = 1
-anchors_preset = 7
-anchor_left = 0.5
-anchor_top = 1.0
-anchor_right = 0.5
-anchor_bottom = 1.0
-offset_left = -15.0
-offset_top = -31.0
-offset_right = 15.0
-grow_horizontal = 2
-grow_vertical = 0
 size_flags_vertical = 3
 size_flags_stretch_ratio = 0.4
-theme_override_colors/font_color = Color(0, 0, 0, 1)
-text = "Lvl"
+text = "Lv."
 horizontal_alignment = 1
-vertical_alignment = 2
+vertical_alignment = 1
 
-[node name="Control2" type="Control" parent="VBoxContainer/ContentContainer/FixedLabelsContainer"]
-self_modulate = Color(1, 1, 1, 0)
+[node name="FreePassLabel" type="Label" parent="VBoxContainer/ContentContainer/PanelContainer/FixedLabelsContainer"]
 layout_mode = 2
 size_flags_vertical = 3
-size_flags_stretch_ratio = 0.42
-
-[node name="FreePassLabel" type="Label" parent="VBoxContainer/ContentContainer/FixedLabelsContainer/Control2"]
-layout_mode = 1
-anchors_preset = 2
-anchor_top = 1.0
-anchor_bottom = 1.0
-offset_top = -20.0
-offset_right = 48.0
-grow_vertical = 0
-rotation = -1.5708
-size_flags_vertical = 3
 size_flags_stretch_ratio = 0.9
-theme_override_colors/font_color = Color(0, 0, 0, 1)
-theme_override_font_sizes/font_size = 14
-text = "asdasd"
-
-[node name="Control3" type="Control" parent="VBoxContainer/ContentContainer/FixedLabelsContainer"]
-self_modulate = Color(1, 1, 1, 0)
-layout_mode = 2
-size_flags_vertical = 3
-size_flags_stretch_ratio = 0.42
-
-[node name="BattlePassLabel" type="Label" parent="VBoxContainer/ContentContainer/FixedLabelsContainer/Control3"]
-custom_minimum_size = Vector2(20, 20)
-layout_mode = 1
-anchors_preset = 2
-anchor_top = 1.0
-anchor_bottom = 1.0
-offset_top = -20.0
-offset_right = 48.0
-grow_vertical = 0
-rotation = -1.5708
-size_flags_vertical = 3
-size_flags_stretch_ratio = 0.9
-theme_override_colors/font_color = Color(0, 0, 0, 1)
 theme_override_constants/line_spacing = -9
 theme_override_font_sizes/font_size = 14
-text = "asdasd"
+text = "F
+R
+E
+E"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="BattlePassLabel" type="Label" parent="VBoxContainer/ContentContainer/PanelContainer/FixedLabelsContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.9
+theme_override_constants/line_spacing = -9
+theme_override_font_sizes/font_size = 14
+text = "P
+R
+E
+M
+I
+U
+M"
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer/ContentContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
-draw_focus_border = true
 vertical_scroll_mode = 0
 
 [node name="MarginContainer" type="MarginContainer" parent="VBoxContainer/ContentContainer/ScrollContainer"]
@@ -208,13 +179,16 @@ theme_override_constants/margin_bottom = 5
 [node name="TiersContainer" type="HBoxContainer" parent="VBoxContainer/ContentContainer/ScrollContainer/MarginContainer"]
 layout_mode = 2
 
-[node name="ButtonContainer" type="HBoxContainer" parent="VBoxContainer"]
+[node name="ButtonPanelContainer" type="PanelContainer" parent="VBoxContainer"]
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_qjmq2")
+
+[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer/ButtonPanelContainer"]
 layout_mode = 2
 size_flags_horizontal = 4
-size_flags_vertical = 4
 
-[node name="BuyPremiumButton" type="Button" parent="VBoxContainer/ButtonContainer"]
-visible = false
+[node name="BuyPremiumButton" type="Button" parent="VBoxContainer/ButtonPanelContainer/HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 4
@@ -229,8 +203,7 @@ theme_override_styles/pressed = SubResource("StyleBoxFlat_rh7uf")
 theme_override_styles/normal = SubResource("StyleBoxFlat_mc2au")
 text = "Buy Premium"
 
-[node name="BuyLevelsButton" type="Button" parent="VBoxContainer/ButtonContainer"]
-visible = false
+[node name="BuyLevelsButton" type="Button" parent="VBoxContainer/ButtonPanelContainer/HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 4
@@ -245,8 +218,7 @@ theme_override_styles/pressed = SubResource("StyleBoxFlat_rh7uf")
 theme_override_styles/normal = SubResource("StyleBoxFlat_mc2au")
 text = "Buy +5 Levels"
 
-[node name="ClaimAllButton" type="Button" parent="VBoxContainer/ButtonContainer"]
-visible = false
+[node name="ClaimAllButton" type="Button" parent="VBoxContainer/ButtonPanelContainer/HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 4

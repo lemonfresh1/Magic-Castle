@@ -7,6 +7,7 @@
 [ext_resource type="StyleBox" uid="uid://bdt87hqe856cv" path="res://Magic-Castle/res/XPBarFillLayout.tres" id="5_gnuli"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_c74os"]
+bg_color = Color(1, 1, 1, 1)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
@@ -29,16 +30,16 @@ border_width_bottom = 1
 border_color = Color(1, 1, 1, 0.862745)
 corner_radius_top_left = 8
 corner_radius_top_right = 8
-corner_radius_bottom_right = 24
-corner_radius_bottom_left = 24
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
 shadow_color = Color(0, 0, 0, 0.184314)
 shadow_size = 1
 shadow_offset = Vector2(0, 3)
 
 [node name="AchievementItemCard" type="PanelContainer"]
-custom_minimum_size = Vector2(120, 150)
+custom_minimum_size = Vector2(120, 178)
 offset_right = 120.0
-offset_bottom = 145.0
+offset_bottom = 180.0
 mouse_filter = 1
 theme_override_styles/panel = ExtResource("1_odw5b")
 script = ExtResource("2_vjuql")
@@ -100,8 +101,9 @@ mouse_filter = 1
 theme_override_styles/panel = SubResource("StyleBoxFlat_c74os")
 
 [node name="ProgressBar" type="ProgressBar" parent="MarginContainer/FrontContainer/ProgressBarContainer"]
-custom_minimum_size = Vector2(20, 25)
+custom_minimum_size = Vector2(20, 20)
 layout_mode = 2
+size_flags_vertical = 4
 mouse_filter = 1
 theme_override_styles/background = ExtResource("4_7mce4")
 theme_override_styles/fill = ExtResource("5_gnuli")
@@ -110,6 +112,7 @@ show_percentage = false
 
 [node name="ProgressLabel" type="Label" parent="MarginContainer/FrontContainer/ProgressBarContainer"]
 layout_mode = 2
+size_flags_horizontal = 4
 mouse_filter = 1
 theme_override_colors/font_color = Color(0.942986, 1.55944e-05, 0.64026, 1)
 text = "2/5"
@@ -127,16 +130,16 @@ theme_override_colors/font_color = Color(0.257476, 0.257476, 0.257476, 1)
 text = "⭐ 10"
 horizontal_alignment = 1
 
-[node name="BackContainer" type="VBoxContainer" parent="MarginContainer"]
+[node name="BackContainer" type="VBoxContainer" parent="."]
 layout_mode = 2
 
-[node name="TitleLabel" type="Label" parent="MarginContainer/BackContainer"]
+[node name="TitleLabel" type="Label" parent="BackContainer"]
 layout_mode = 2
 
-[node name="HSeparator" type="HSeparator" parent="MarginContainer/BackContainer"]
+[node name="HSeparator" type="HSeparator" parent="BackContainer"]
 layout_mode = 2
 
-[node name="DescriptionLabel" type="Label" parent="MarginContainer/BackContainer"]
+[node name="DescriptionLabel" type="Label" parent="BackContainer"]
 custom_minimum_size = Vector2(1, 1)
 layout_mode = 2
 text = "This is a way longer text than usual"

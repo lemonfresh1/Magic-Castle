@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://j4j7e8a52mpe"]
 
-[ext_resource type="Script" uid="uid://bbjcoarygx2ys" path="res://ButtonCreationTest.gd" id="1_m0cni"]
+[ext_resource type="Script" uid="uid://bbjcoarygx2ys" path="res://Magic-Castle/test/ButtonCreationTest.gd" id="1_m0cni"]
 
 [node name="Control" type="Control"]
 layout_mode = 3

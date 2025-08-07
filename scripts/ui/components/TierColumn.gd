@@ -1,9 +1,18 @@
 # TierColumn.gd - Individual tier column for season/event passes
 # Location: res://Magic-Castle/scripts/ui/components/TierColumn.gd
-# Last Updated: Created tier column component with battle pass styling [Date]
+# Last Updated: Fixed lock visibility to properly hide when unlocked [Date]
 
 extends VBoxContainer
 class_name TierColumn
+
+# Global counter for debugging
+static var total_instances: int = 0
+static var active_instances: int = 0
+
+signal reward_claim_requested(tier_number: int, is_free: bool)
+
+# Instance ID for debugging
+var instance_id: int = 0
 
 # Column sizing variables
 @export var column_width: int = 120
@@ -29,42 +38,32 @@ var has_premium_pass: bool = false
 var free_claimed: bool = false
 var premium_claimed: bool = false
 
-# Color schemes
-const BATTLE_PASS_COLORS = {
-	"header_bg": Color("1a1a3e"),  # Dark blue
-	"header_text": Color("ffffff"),
-	"free_bg_locked": Color("2a2a5e"),  # Darker blue
-	"free_bg_unlocked": Color("3a3a7e"),  # Medium blue
-	"free_bg_current": Color("4169e1"),  # Bright blue
-	"premium_bg_locked": Color("3a2a5e"),  # Purple-ish dark
-	"premium_bg_unlocked": Color("5a3a8e"),  # Purple
-	"premium_bg_current": Color("ff8c00"),  # Orange/Gold
-	"text_locked": Color("888888"),
-	"text_unlocked": Color("ffffff"),
-	"border_color": Color("4169e1"),  # Blue border
-	"current_border": Color("ffaa00")  # Gold border for current
-}
-
-const HOLIDAY_COLORS = {
-	"header_bg": Color("1e3a1e"),  # Dark green
-	"header_text": Color("ffffff"),
-	"free_bg_locked": Color("2e4a2e"),  # Darker green
-	"free_bg_unlocked": Color("3e5a3e"),  # Medium green
-	"free_bg_current": Color("228b22"),  # Forest green
-	"premium_bg_locked": Color("4a2e2e"),  # Dark red
-	"premium_bg_unlocked": Color("8b2222"),  # Crimson
-	"premium_bg_current": Color("dc143c"),  # Bright red
-	"text_locked": Color("888888"),
-	"text_unlocked": Color("ffffff"),
-	"border_color": Color("228b22"),  # Green border
-	"current_border": Color("ffd700")  # Gold border
-}
-
 var current_theme: String = "battle_pass"
 
+# Add these after existing variables
+var free_reward_data: Dictionary = {}
+var premium_reward_data: Dictionary = {}
+var popup_scene = preload("res://Magic-Castle/scenes/ui/popups/RewardClaimPopup.tscn")
+
 func _ready():
+	# Track instance creation
+	total_instances += 1
+	active_instances += 1
+	instance_id = total_instances
+	
+	print("[TierColumn] Instance #", instance_id, " created - Active: ", active_instances, " Total: ", total_instances)
+	
 	custom_minimum_size = Vector2(column_width, column_height)
 	_apply_theme()
+	
+	# Connect input handling for reward panels
+	free_reward.gui_input.connect(_on_free_reward_clicked)
+	premium_reward.gui_input.connect(_on_premium_reward_clicked)
+
+func _exit_tree():
+	"""Track when instances are destroyed"""
+	active_instances -= 1
+	print("[TierColumn] Instance #", instance_id, " destroyed - Active: ", active_instances)
 
 func setup(tier_data: Dictionary, theme: String = "battle_pass"):
 	current_theme = theme
@@ -75,15 +74,21 @@ func setup(tier_data: Dictionary, theme: String = "battle_pass"):
 	free_claimed = tier_data.get("free_claimed", false)
 	premium_claimed = tier_data.get("premium_claimed", false)
 	
+	# Debug output for tracking
+	if tier_number <= 5 or tier_number % 10 == 0:  # Only log first 5 and every 10th tier
+		print("[TierColumn] Tier %d - unlocked: %s, premium: %s, free_claimed: %s, premium_claimed: %s" % 
+			[tier_number, is_unlocked, has_premium_pass, free_claimed, premium_claimed])
+	
 	# Set tier number
 	tier_number_label.text = str(tier_number)
 	
-	# Set rewards
-	var free_rewards = tier_data.get("free_rewards", {})
-	var premium_rewards = tier_data.get("premium_rewards", {})
+	# Store rewards data
+	free_reward_data = tier_data.get("free_rewards", {})
+	premium_reward_data = tier_data.get("premium_rewards", {})
 	
-	_setup_reward_panel(free_reward, free_icon, free_amount, free_lock, free_rewards, true)
-	_setup_reward_panel(premium_reward, premium_icon, premium_amount, premium_lock, premium_rewards, false)
+	# Set rewards
+	_setup_reward_panel(free_reward, free_icon, free_amount, free_lock, free_reward_data, true)
+	_setup_reward_panel(premium_reward, premium_icon, premium_amount, premium_lock, premium_reward_data, false)
 	
 	_apply_theme()
 
@@ -91,14 +96,34 @@ func _setup_reward_panel(panel: PanelContainer, icon: TextureRect, amount_label:
 	# Hide all elements first
 	icon.visible = false
 	amount_label.visible = false
-	lock.visible = true  # Show lock by default
 	
-	# Determine if this reward is accessible
-	var is_accessible = is_unlocked and (is_free or has_premium_pass)
+	# Determine if this reward is claimed
 	var is_claimed = free_claimed if is_free else premium_claimed
 	
-	# Hide lock if accessible and not claimed
-	lock.visible = not is_accessible or is_claimed
+	# Lock visibility logic
+	if is_free:
+		# Free track: show lock only if not unlocked OR already claimed
+		if not is_unlocked:
+			lock.visible = true
+			lock.modulate.a = UIStyleManager.opacity.lock_strong
+		elif is_claimed:
+			lock.visible = true
+			lock.modulate.a = UIStyleManager.opacity.lock_faint
+		else:
+			lock.visible = false  # Can claim - no lock
+	else:
+		# Premium track: show lock if not unlocked OR no premium pass OR already claimed
+		if not is_unlocked:
+			lock.visible = true
+			lock.modulate.a = UIStyleManager.opacity.lock_strong
+		elif not has_premium_pass:
+			lock.visible = true
+			lock.modulate.a = UIStyleManager.opacity.lock_medium
+		elif is_claimed:
+			lock.visible = true
+			lock.modulate.a = UIStyleManager.opacity.lock_faint
+		else:
+			lock.visible = false  # Can claim - no lock
 	
 	# Show reward if we have one
 	if rewards.size() > 0:
@@ -124,7 +149,7 @@ func _setup_reward_panel(panel: PanelContainer, icon: TextureRect, amount_label:
 			# Show cosmetic name as amount label
 			amount_label.visible = true
 			amount_label.text = "NEW!"
-			amount_label.add_theme_color_override("font_color", Color("#FFD700"))
+			amount_label.add_theme_color_override("font_color", UIStyleManager.get_color("warning"))
 		
 		elif rewards.has("xp"):
 			# XP reward
@@ -150,61 +175,86 @@ func _setup_reward_panel(panel: PanelContainer, icon: TextureRect, amount_label:
 			if reward_amount is int and reward_amount > 1:
 				amount_label.visible = true
 				amount_label.text = str(reward_amount)
+	
+	# Apply transparency to icons/labels based on state
+	if is_claimed:
+		# Dimmed for claimed rewards
+		icon.modulate.a = UIStyleManager.opacity.claimed
+		amount_label.modulate.a = UIStyleManager.opacity.claimed
+	elif lock.visible and not is_claimed:
+		# Dim if locked (but not if claimed)
+		icon.modulate.a = UIStyleManager.opacity.locked
+		amount_label.modulate.a = UIStyleManager.opacity.locked
+	else:
+		# Full visibility if unlocked and not claimed
+		icon.modulate.a = UIStyleManager.opacity.full
+		amount_label.modulate.a = UIStyleManager.opacity.full
 
 func _apply_theme():
-	var colors = BATTLE_PASS_COLORS if current_theme == "battle_pass" else HOLIDAY_COLORS
+	# Style tier header using design system colors
+	_style_tier_header()
 	
-	# Style tier header
-	var header_style = StyleBoxFlat.new()
-	header_style.bg_color = colors.header_bg
-	header_style.set_corner_radius_all(6)
-	tier_header.add_theme_stylebox_override("panel", header_style)
-	tier_number_label.add_theme_color_override("font_color", colors.header_text)
-	tier_number_label.add_theme_font_size_override("font_size", 20)
+	# Determine states for reward panels
+	var free_state = _get_panel_state(true)
+	var premium_state = _get_panel_state(false)
 	
-	# Style free reward panel
-	_style_reward_panel(
-		free_reward, 
-		colors.free_bg_locked if not is_unlocked else (colors.free_bg_current if is_current else colors.free_bg_unlocked),
-		is_current
-	)
+	# Apply styling to reward panels using UIStyleManager
+	UIStyleManager.apply_tier_column_style(free_reward, free_state, current_theme)
+	UIStyleManager.apply_tier_column_style(premium_reward, premium_state, current_theme)
 	
-	# Style premium reward panel
-	_style_reward_panel(
-		premium_reward,
-		colors.premium_bg_locked if not (is_unlocked and has_premium_pass) else (colors.premium_bg_current if is_current else colors.premium_bg_unlocked),
-		is_current
-	)
-	
-	# Style amount labels
-	var text_color = colors.text_locked if not is_unlocked else colors.text_unlocked
-	free_amount.add_theme_color_override("font_color", text_color)
-	free_amount.add_theme_font_size_override("font_size", 16)
-	free_amount.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.8))
-	free_amount.add_theme_constant_override("shadow_offset_x", 1)
-	free_amount.add_theme_constant_override("shadow_offset_y", 1)
-	
-	premium_amount.add_theme_color_override("font_color", text_color)
-	premium_amount.add_theme_font_size_override("font_size", 16)
-	premium_amount.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.8))
-	premium_amount.add_theme_constant_override("shadow_offset_x", 1)
-	premium_amount.add_theme_constant_override("shadow_offset_y", 1)
+	# Style labels
+	_style_labels()
 
-func _style_reward_panel(panel: PanelContainer, bg_color: Color, is_current_tier: bool):
+func _style_tier_header():
+	"""Style the tier header with transparent background"""
 	var style = StyleBoxFlat.new()
-	style.bg_color = bg_color
-	style.set_corner_radius_all(8)
 	
-	# Add border for current tier
-	if is_current_tier:
-		var colors = BATTLE_PASS_COLORS if current_theme == "battle_pass" else HOLIDAY_COLORS
-		style.border_color = colors.current_border
-		style.set_border_width_all(3)
+	# Fully transparent background
+	style.bg_color = Color(0, 0, 0, 0)  # Transparent
+	
+	# No border
+	style.set_border_width_all(0)
+	
+	# Apply to header
+	tier_header.add_theme_stylebox_override("panel", style)
+	
+	# Style tier number label using UIStyleManager colors and sizes
+	tier_number_label.add_theme_color_override("font_color", UIStyleManager.get_color("gray_900"))  # Primary text color
+	tier_number_label.add_theme_font_size_override("font_size", UIStyleManager.get_font_size("size_body_large"))  # 20px
+	
+	# Remove any shadows - clean look
+	tier_number_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0))
+	tier_number_label.add_theme_constant_override("shadow_offset_x", 0)
+	tier_number_label.add_theme_constant_override("shadow_offset_y", 0)
+
+func _get_panel_state(is_free: bool) -> String:
+	"""Determine the state of a reward panel"""
+	var is_claimed = free_claimed if is_free else premium_claimed
+	var is_accessible = is_unlocked and (is_free or has_premium_pass)
+	
+	if is_claimed:
+		return "claimed"
+	elif not is_accessible:
+		return "locked"
+	elif is_accessible and not is_claimed:
+		return "claimable"  # Can claim right now
 	else:
-		style.set_border_width_all(1)
-		style.border_color = bg_color.darkened(0.2)
+		return "normal"
+
+func _style_labels():
+	"""Style amount labels using design system"""
+	# Determine text color based on unlock state
+	var text_color = UIStyleManager.get_color("gray_400") if not is_unlocked else UIStyleManager.get_color("gray_900")
 	
-	panel.add_theme_stylebox_override("panel", style)
+	# Apply to both labels
+	for label in [free_amount, premium_amount]:
+		label.add_theme_color_override("font_color", text_color)
+		label.add_theme_font_size_override("font_size", UIStyleManager.get_font_size("size_body_small"))
+		
+		# Add subtle shadow using UIStyleManager's shadow system
+		label.add_theme_color_override("font_shadow_color", UIStyleManager.shadows.color_default)
+		label.add_theme_constant_override("shadow_offset_x", UIStyleManager.shadows.offset_small.x)
+		label.add_theme_constant_override("shadow_offset_y", UIStyleManager.shadows.offset_small.y)
 
 func set_current(current: bool):
 	is_current = current
@@ -215,11 +265,44 @@ func claim_reward(is_free: bool):
 	if is_free:
 		free_claimed = true
 		free_lock.visible = true
+		free_lock.modulate.a = UIStyleManager.opacity.lock_faint
+		
+		# Fade the reward content
+		free_icon.modulate.a = UIStyleManager.opacity.claimed
+		free_amount.modulate.a = UIStyleManager.opacity.claimed
+		
+		# Update panel state to show gray border
+		var state = _get_panel_state(true)
+		UIStyleManager.apply_tier_column_style(free_reward, state, current_theme)
+		
+		# Optional: Add a quick fade animation
+		var tween = create_tween()
+		tween.set_parallel(true)
+		tween.tween_property(free_icon, "modulate:a", UIStyleManager.opacity.claimed, UIStyleManager.animations.duration_normal)
+		tween.tween_property(free_amount, "modulate:a", UIStyleManager.opacity.claimed, UIStyleManager.animations.duration_normal)
+		tween.tween_property(free_lock, "modulate:a", UIStyleManager.opacity.lock_faint, UIStyleManager.animations.duration_normal)
+		
 	else:
 		premium_claimed = true
 		premium_lock.visible = true
+		premium_lock.modulate.a = UIStyleManager.opacity.lock_faint
+		
+		# Fade the reward content
+		premium_icon.modulate.a = UIStyleManager.opacity.claimed
+		premium_amount.modulate.a = UIStyleManager.opacity.claimed
+		
+		# Update panel state to show gray border
+		var state = _get_panel_state(false)
+		UIStyleManager.apply_tier_column_style(premium_reward, state, current_theme)
+		
+		# Optional: Add a quick fade animation
+		var tween = create_tween()
+		tween.set_parallel(true)
+		tween.tween_property(premium_icon, "modulate:a", UIStyleManager.opacity.claimed, UIStyleManager.animations.duration_normal)
+		tween.tween_property(premium_amount, "modulate:a", UIStyleManager.opacity.claimed, UIStyleManager.animations.duration_normal)
+		tween.tween_property(premium_lock, "modulate:a", UIStyleManager.opacity.lock_faint, UIStyleManager.animations.duration_normal)
 	
-	# Could add claim animation here
+	# Refresh the entire column styling
 	_apply_theme()
 
 func _get_reward_icon_path(reward_type: String, amount: int = 1) -> String:
@@ -277,3 +360,36 @@ func _get_reward_icon_path(reward_type: String, amount: int = 1) -> String:
 		_:
 			# Default fallback
 			return base_path + "92_sandwich.png"
+
+func _on_free_reward_clicked(event: InputEvent):
+	"""Handle clicks on free reward panel"""
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		if is_unlocked and not free_claimed and free_reward_data.size() > 0:
+			_show_claim_popup(free_reward_data, free_icon.texture, true)
+
+func _on_premium_reward_clicked(event: InputEvent):
+	"""Handle clicks on premium reward panel"""
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		if is_unlocked and has_premium_pass and not premium_claimed and premium_reward_data.size() > 0:
+			_show_claim_popup(premium_reward_data, premium_icon.texture, false)
+
+func _show_claim_popup(rewards: Dictionary, icon_texture: Texture2D, is_free: bool):
+	"""Show the reward claim confirmation popup"""
+	var popup = popup_scene.instantiate()
+	
+	# Add popup to the same parent as the SeasonPassUI (so it's within the same bounds)
+	var season_pass_ui = get_tree().get_nodes_in_group("season_pass_ui")[0] if get_tree().has_group("season_pass_ui") else null
+	if season_pass_ui:
+		season_pass_ui.add_child(popup)
+	else:
+		# Fallback: add to the PassLayout's parent
+		var pass_layout = get_parent().get_parent().get_parent().get_parent()
+		pass_layout.get_parent().add_child(popup)
+	
+	popup.setup(rewards, icon_texture)
+	popup.confirmed.connect(_on_popup_confirmed.bind(is_free))
+
+func _on_popup_confirmed(is_free: bool):
+	"""Handle popup confirmation"""
+	reward_claim_requested.emit(tier_number, is_free)
+	

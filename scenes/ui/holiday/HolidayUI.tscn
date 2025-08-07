@@ -158,26 +158,11 @@ layout_mode = 2
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="Holiday Pass" type="PanelContainer" parent="MarginContainer/TabContainer"]
+[node name="Holiday Pass" type="Control" parent="MarginContainer/TabContainer"]
 visible = false
 self_modulate = Color(1, 1, 1, 0)
 layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_xnrfp")
 metadata/_tab_index = 1
-
-[node name="MarginContainer" type="MarginContainer" parent="MarginContainer/TabContainer/Holiday Pass"]
-layout_mode = 2
-theme_override_constants/margin_left = 12
-theme_override_constants/margin_top = 10
-theme_override_constants/margin_right = 8
-theme_override_constants/margin_bottom = 10
-
-[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer/TabContainer/Holiday Pass/MarginContainer"]
-layout_mode = 2
-
-[node name="ScrollContainer" type="ScrollContainer" parent="MarginContainer/TabContainer/Holiday Pass/MarginContainer/VBoxContainer"]
-layout_mode = 2
-size_flags_vertical = 3
 
 [node name="Daily Missions" type="PanelContainer" parent="MarginContainer/TabContainer"]
 visible = false
@@ -198,6 +183,8 @@ layout_mode = 2
 
 [node name="FilterButton" type="OptionButton" parent="MarginContainer/TabContainer/Daily Missions/MarginContainer/VBoxContainer"]
 layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 4
 theme_override_styles/hover = SubResource("StyleBoxFlat_115bk")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_n8fhq")
 theme_override_styles/normal = SubResource("StyleBoxFlat_em1yx")
@@ -233,6 +220,8 @@ layout_mode = 2
 
 [node name="FilterButton" type="OptionButton" parent="MarginContainer/TabContainer/Weekly Missions/MarginContainer/VBoxContainer"]
 layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 4
 theme_override_styles/hover = SubResource("StyleBoxFlat_115bk")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_n8fhq")
 theme_override_styles/normal = SubResource("StyleBoxFlat_em1yx")

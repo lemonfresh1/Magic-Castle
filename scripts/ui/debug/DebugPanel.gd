@@ -621,7 +621,9 @@ func _reset_missions():
 func _reset_season_pass():
 	if SeasonPassManager and SeasonPassManager.has_method("reset_season_data"):
 		SeasonPassManager.reset_season_data()
-		print("Season Pass reset! (SP set to 0)")
+		# Also emit the update signal so UI refreshes
+		SeasonPassManager.season_progress_updated.emit()
+		print("Season Pass reset! (SP set to 0, Premium removed, Tier 1)")
 	else:
 		print("SeasonPassManager not available")
 

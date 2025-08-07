@@ -17,9 +17,10 @@ signal achievement_clicked(achievement_id: String)
 @onready var star_label: Label = $MarginContainer/FrontContainer/StarContainer/StarLabel
 
 # Back side (description view)
-@onready var back_container: VBoxContainer = $MarginContainer/BackContainer
-@onready var title_label: Label = $MarginContainer/BackContainer/TitleLabel
-@onready var description_label: Label = $MarginContainer/BackContainer/DescriptionLabel
+@onready var back_container: VBoxContainer = $BackContainer
+@onready var title_label: Label = $BackContainer/TitleLabel
+@onready var description_label: Label = $BackContainer/DescriptionLabel
+
 
 var achievement_id: String
 var achievement_data: Dictionary

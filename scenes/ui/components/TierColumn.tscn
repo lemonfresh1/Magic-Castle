@@ -7,7 +7,7 @@
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_fa87p"]
 
 [node name="TierColumn" type="VBoxContainer"]
-custom_minimum_size = Vector2(120, 187)
+custom_minimum_size = Vector2(100, 220)
 size_flags_horizontal = 3
 theme_override_constants/separation = 5
 script = ExtResource("1_14o0l")
@@ -42,6 +42,7 @@ text = "20"
 horizontal_alignment = 1
 
 [node name="LockOverlay" type="TextureRect" parent="FreeReward"]
+modulate = Color(0.184314, 0, 0, 1)
 custom_minimum_size = Vector2(0, 20)
 layout_mode = 2
 size_flags_horizontal = 8
@@ -69,6 +70,7 @@ text = "20"
 horizontal_alignment = 1
 
 [node name="LockOverlay" type="TextureRect" parent="PremiumReward"]
+modulate = Color(0.184314, 0, 0, 1)
 custom_minimum_size = Vector2(0, 20)
 layout_mode = 2
 size_flags_horizontal = 8

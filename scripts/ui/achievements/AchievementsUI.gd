@@ -1,6 +1,6 @@
 # AchievementsUI.gd - Achievements interface with 4 per row layout
 # Location: res://Magic-Castle/scripts/ui/achievements/AchievementsUI.gd
-# Last Updated: Integrated with UIStyleManager [Date]
+# Last Updated: Following InventoryUI pattern exactly [Date]
 
 extends PanelContainer
 
@@ -48,31 +48,40 @@ func _setup_achievements_tab():
 			sort_button.item_selected.connect(_on_sort_changed)
 		# Apply same styling to sort button
 		UIStyleManager.style_filter_button(sort_button, Color("#a487ff"))
+	
+	# Fix scroll container sizing (exactly like InventoryUI)
+	var scroll_container = achievements_tab.find_child("ScrollContainer", true, false)
+	if scroll_container:
+		scroll_container.self_modulate.a = 0
+		scroll_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		scroll_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		scroll_container.custom_minimum_size = Vector2(600, 300)
 
 func _populate_achievements():
 	var achievements_tab = tab_container.get_node_or_null("Achievements")
 	if not achievements_tab:
 		return
 	
-	# Use UIStyleManager for scrollable content with custom config for grid
-	var config = {
-		"separation": 0  # Grid will handle its own spacing
-	}
-	await UIStyleManager.setup_scrollable_content(achievements_tab, _populate_achievements_content, config)
-
-func _populate_achievements_content(vbox: VBoxContainer) -> void:
-	"""Content for Achievements tab - uses a grid instead of vbox"""
-	# Replace VBox with Grid for achievements
-	var grid = GridContainer.new()
-	grid.name = "AchievementsGrid"
-	grid.columns = 4  # 4 per row as requested
-	grid.add_theme_constant_override("h_separation", 15)
-	grid.add_theme_constant_override("v_separation", 15)
+	var scroll_container = achievements_tab.find_child("ScrollContainer", true, false)
 	
-	# Move grid to parent of vbox and remove vbox
-	var parent = vbox.get_parent()
-	parent.add_child(grid)
-	vbox.queue_free()
+	if scroll_container:
+		# Create grid if it doesn't exist (exactly like InventoryUI)
+		var grid = scroll_container.get_child(0) if scroll_container.get_child_count() > 0 else null
+		if not grid:
+			grid = GridContainer.new()
+			grid.name = "AchievementsGrid"
+			grid.columns = 4
+			grid.add_theme_constant_override("h_separation", 15)
+			grid.add_theme_constant_override("v_separation", 15)
+			grid.self_modulate.a = 0
+			scroll_container.add_child(grid)
+		
+		_populate_grid(grid)
+
+func _populate_grid(grid: GridContainer):
+	# Clear existing items
+	for child in grid.get_children():
+		child.queue_free()
 	
 	# Clear existing cards
 	achievement_cards.clear()
@@ -110,7 +119,7 @@ func _populate_achievements_content(vbox: VBoxContainer) -> void:
 				return name_a < name_b
 			)
 	
-	# Add achievement items
+	# Add achievement items directly to grid (like InventoryUI does)
 	for id in achievement_ids:
 		var item = achievement_item_scene.instantiate()
 		grid.add_child(item)
