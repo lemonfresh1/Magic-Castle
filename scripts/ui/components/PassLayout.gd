@@ -43,6 +43,7 @@ var has_been_setup: bool = false  # Track if initial setup is done
 
 func _ready():
 	print("[PassLayout] _ready() called - Instance ID: ", get_instance_id())
+	print("[PassLayout] Pass type: ", pass_type, " Theme type: ", theme_type)
 	print("[PassLayout] Current tier container children: ", tiers_container.get_child_count())
 	
 	# Debug label creation
@@ -79,20 +80,30 @@ func _ready():
 	buy_levels_button.pressed.connect(_on_buy_levels_pressed)
 	claim_all_button.pressed.connect(_on_claim_all_pressed)
 	
-	# Connect to manager signals
+	# Connect to manager signals based on pass type
 	if pass_type == "season" and SeasonPassManager:
+		print("[PassLayout] Connecting to SeasonPassManager signals")
 		if not SeasonPassManager.tier_unlocked.is_connected(_on_tier_unlocked):
 			SeasonPassManager.tier_unlocked.connect(_on_tier_unlocked)
 		if not SeasonPassManager.season_level_up.is_connected(_on_level_up):
 			SeasonPassManager.season_level_up.connect(_on_level_up)
 		if not SeasonPassManager.season_progress_updated.is_connected(_on_season_progress_updated):
 			SeasonPassManager.season_progress_updated.connect(_on_season_progress_updated)
+	elif pass_type == "holiday" and HolidayEventManager:
+		print("[PassLayout] Connecting to HolidayEventManager signals")
+		if not HolidayEventManager.tier_unlocked.is_connected(_on_tier_unlocked):
+			HolidayEventManager.tier_unlocked.connect(_on_tier_unlocked)
+		if not HolidayEventManager.holiday_level_up.is_connected(_on_level_up):
+			HolidayEventManager.holiday_level_up.connect(_on_level_up)
+		if not HolidayEventManager.holiday_progress_updated.is_connected(_on_holiday_progress_updated):
+			HolidayEventManager.holiday_progress_updated.connect(_on_holiday_progress_updated)
+	else:
+		push_warning("[PassLayout] No manager available for pass type: " + pass_type)
 	
-	# DON'T automatically call setup_pass - let parent control this
-	print("[PassLayout] _ready() complete - waiting for parent to call setup_pass()")
-
+	# Update initial labels
 	_update_labels()
 	
+	# DON'T automatically call setup_pass - let parent control this
 	print("[PassLayout] _ready() complete - waiting for parent to call setup_pass()")
 
 func _apply_styling():
@@ -102,6 +113,17 @@ func _apply_styling():
 	transparent_style.bg_color = Color(0, 0, 0, 0)
 	transparent_style.set_border_width_all(0)
 	add_theme_stylebox_override("panel", transparent_style)
+	
+	# FIX: Ensure VBoxContainer is also transparent
+	if has_node("VBoxContainer"):
+		var vbox = $VBoxContainer
+		vbox.self_modulate = Color(1, 1, 1, 0)  # Fully transparent
+		vbox.mouse_filter = Control.MOUSE_FILTER_PASS  # Allow clicks to pass through
+		
+		# Remove any potential panel styles
+		var empty_style = StyleBoxEmpty.new()
+		vbox.add_theme_stylebox_override("panel", empty_style)
+		vbox.add_theme_stylebox_override("normal", empty_style)
 	
 	# Style progress bar
 	UIStyleManager.apply_progress_bar_style(progress_bar, theme_type)
@@ -124,6 +146,7 @@ func _apply_styling():
 func setup_pass():
 	"""Initialize the pass with current data"""
 	print("\n[PassLayout] setup_pass() called - Instance: ", get_instance_id())
+	print("[PassLayout] Pass type: ", pass_type, " Theme type: ", theme_type)
 	
 	# Prevent concurrent setups
 	if is_setting_up:
@@ -148,21 +171,34 @@ func setup_pass():
 	
 	# Get data based on pass type
 	var tiers_data = []
+	var max_tiers = 0
+	
 	if pass_type == "season":
 		tiers_data = SeasonPassManager.get_season_tiers()
 		current_tier = SeasonPassManager.get_current_tier()
 		is_premium = SeasonPassManager.season_data.has_premium_pass
+		max_tiers = SeasonPassManager.MAX_TIER
+	elif pass_type == "holiday":
+		# FIXED: Use HolidayEventManager for holiday passes
+		tiers_data = HolidayEventManager.get_holiday_tiers()
+		current_tier = HolidayEventManager.get_current_tier()
+		is_premium = HolidayEventManager.holiday_data.has_premium_pass
+		max_tiers = HolidayEventManager.MAX_TIER
 	else:
-		# Event pass data would come from EventManager
-		push_warning("Event pass not yet implemented")
+		push_warning("Unknown pass type: " + pass_type)
 		is_setting_up = false
 		return
 	
-	print("[PassLayout] Creating ", min(tiers_data.size(), SeasonPassManager.MAX_TIER), " tier columns...")
+	print("[PassLayout] Creating ", min(tiers_data.size(), max_tiers), " tier columns for ", pass_type, " pass...")
 	
-	# Create tier columns (suppress individual creation logs)
-	for i in range(min(tiers_data.size(), SeasonPassManager.MAX_TIER)):
-		var tier_data = SeasonPassManager.get_tier_data(i + 1)
+	# Create tier columns
+	for i in range(min(tiers_data.size(), max_tiers)):
+		var tier_data = {}
+		if pass_type == "season":
+			tier_data = SeasonPassManager.get_tier_data(i + 1)
+		else:
+			tier_data = HolidayEventManager.get_tier_data(i + 1)
+		
 		var column = _create_tier_column(tier_data)
 		tier_columns.append(column)
 	
@@ -233,8 +269,10 @@ func _try_claim_reward(tier_number: int, is_premium_reward: bool) -> bool:
 	"""Try to claim a tier reward"""
 	if pass_type == "season":
 		return SeasonPassManager.claim_tier_rewards(tier_number, is_premium_reward)
+	elif pass_type == "holiday":
+		# FIXED: Use HolidayEventManager
+		return HolidayEventManager.claim_tier_rewards(tier_number, is_premium_reward)
 	else:
-		# Event pass claim logic
 		return false
 
 func _on_tier_reward_claim_requested(tier_number: int, is_free: bool):
@@ -282,17 +320,25 @@ func _update_labels():
 		# Update pass level label
 		pass_level_label.text = "Level %d" % SeasonPassManager.get_current_tier()
 		
-		# Style the pass level label using UIStyleManager
-		pass_level_label.add_theme_font_size_override("font_size", UIStyleManager.get_font_size("size_body"))
-		pass_level_label.add_theme_color_override("font_color", UIStyleManager.get_color("white"))
+	elif pass_type == "holiday":
+		# FIXED: Use HolidayEventManager and show HP
+		var progress = HolidayEventManager.get_tier_progress()
+		progress_label.text = "%d/%d HP" % [progress.current_hp, progress.required_hp]
 		
-		# Add shadow using UIStyleManager's shadow config
-		pass_level_label.add_theme_color_override("font_shadow_color", UIStyleManager.shadows.color_medium)
-		pass_level_label.add_theme_constant_override("shadow_offset_x", UIStyleManager.shadows.offset_small.x)
-		pass_level_label.add_theme_constant_override("shadow_offset_y", UIStyleManager.shadows.offset_small.y)
-		
-		# Ensure proper alignment (you mentioned you set this in the node)
-		pass_level_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		# Update pass level label
+		pass_level_label.text = "Tier %d" % HolidayEventManager.get_current_tier()
+	
+	# Style the pass level label using UIStyleManager
+	pass_level_label.add_theme_font_size_override("font_size", UIStyleManager.get_font_size("size_body"))
+	pass_level_label.add_theme_color_override("font_color", UIStyleManager.get_color("white"))
+	
+	# Add shadow using UIStyleManager's shadow config
+	pass_level_label.add_theme_color_override("font_shadow_color", UIStyleManager.shadows.color_medium)
+	pass_level_label.add_theme_constant_override("shadow_offset_x", UIStyleManager.shadows.offset_small.x)
+	pass_level_label.add_theme_constant_override("shadow_offset_y", UIStyleManager.shadows.offset_small.y)
+	
+	# Ensure proper alignment
+	pass_level_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 
 func _update_timer():
 	"""Update countdown timer display"""
@@ -306,9 +352,15 @@ func _update_timer():
 			time_left = "1 day left"
 		else:
 			time_left = "Ends today!"
-	else:
-		# Event timer logic
-		time_left = "Event timer"
+	elif pass_type == "holiday":
+		# FIXED: Use HolidayEventManager
+		var days = HolidayEventManager._calculate_days_remaining()
+		if days > 1:
+			time_left = "%d days left" % days
+		elif days == 1:
+			time_left = "1 day left"
+		else:
+			time_left = "Ends today!"
 	
 	timer_label.text = time_left
 
@@ -316,9 +368,15 @@ func _update_progress_display():
 	"""Update the progress display for current tier"""
 	if pass_type == "season":
 		var progress = SeasonPassManager.get_tier_progress()
-		# Update progress bar value
 		if progress.required_sp > 0:
 			progress_bar.value = (float(progress.current_sp) / float(progress.required_sp)) * 100.0
+		else:
+			progress_bar.value = 0
+	elif pass_type == "holiday":
+		# FIXED: Use HolidayEventManager
+		var progress = HolidayEventManager.get_tier_progress()
+		if progress.required_hp > 0:
+			progress_bar.value = (float(progress.current_hp) / float(progress.required_hp)) * 100.0
 		else:
 			progress_bar.value = 0
 
@@ -395,10 +453,15 @@ func _on_buy_premium_pressed():
 	"""Handle buy premium button press"""
 	if StarManager.get_balance() < 1000:
 		print("[PassLayout] Not enough stars for premium pass (need 1000, have %d)" % StarManager.get_balance())
-		# Could show a popup here
 		return
 	
-	if SeasonPassManager.purchase_premium_pass():
+	var success = false
+	if pass_type == "season":
+		success = SeasonPassManager.purchase_premium_pass()
+	elif pass_type == "holiday":
+		success = HolidayEventManager.purchase_premium_pass()
+	
+	if success:
 		set_premium_status(true)
 		_update_button_states()
 		print("[PassLayout] Premium pass purchased successfully!")
@@ -409,7 +472,13 @@ func _on_buy_levels_pressed():
 		print("[PassLayout] Not enough stars for 5 tiers (need 500, have %d)" % StarManager.get_balance())
 		return
 	
-	if SeasonPassManager.purchase_tier_skips(5):
+	var success = false
+	if pass_type == "season":
+		success = SeasonPassManager.purchase_tier_skips(5)
+	elif pass_type == "holiday":
+		success = HolidayEventManager.purchase_tier_skips(5)
+	
+	if success:
 		print("[PassLayout] Purchased 5 tier skips!")
 		refresh()
 
@@ -496,3 +565,7 @@ func get_visible_tiers() -> Array:
 				visible.append(i + 1)
 	
 	return visible
+
+func _on_holiday_progress_updated():
+	"""Handle any holiday progress update"""
+	refresh()

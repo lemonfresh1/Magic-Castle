@@ -1,21 +1,7 @@
 [gd_scene load_steps=13 format=3 uid="uid://bj8fxqgd8l6gj"]
 
 [ext_resource type="Script" uid="uid://bkv1lbgcdpaeh" path="res://Magic-Castle/scripts/ui/seasonpass/SeasonPassUI.gd" id="1_l5b6o"]
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_c3481"]
-bg_color = Color(1, 1, 1, 0.847059)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(1, 1, 1, 0.862745)
-corner_radius_top_left = 12
-corner_radius_top_right = 12
-corner_radius_bottom_right = 12
-corner_radius_bottom_left = 12
-shadow_color = Color(0.444843, 0.444843, 0.444843, 0.6)
-shadow_size = 5
-shadow_offset = Vector2(0, 3)
+[ext_resource type="StyleBox" uid="uid://bsrpgd3orlj87" path="res://Magic-Castle/res/PanelStandardLayout.tres" id="1_n3c8n"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_0keu4"]
 content_margin_left = 15.0
@@ -32,7 +18,7 @@ corner_radius_bottom_left = 12
 bg_color = Color(0.6, 0.6, 0.6, 0)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_5kd37"]
-bg_color = Color(0.6, 0.6, 0.6, 0)
+bg_color = Color(1, 1, 1, 0)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tn04k"]
 content_margin_left = 15.0
@@ -115,7 +101,7 @@ offset_right = 400.0
 offset_bottom = 420.0
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_styles/panel = SubResource("StyleBoxFlat_c3481")
+theme_override_styles/panel = ExtResource("1_n3c8n")
 script = ExtResource("1_l5b6o")
 
 [node name="MarginContainer" type="MarginContainer" parent="."]
@@ -162,6 +148,7 @@ size_flags_vertical = 3
 
 [node name="Battle Pass" type="Control" parent="MarginContainer/TabContainer"]
 visible = false
+self_modulate = Color(1, 1, 1, 0)
 layout_mode = 2
 metadata/_tab_index = 1
 

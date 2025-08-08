@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3 uid="uid://co0v2o2x4aths"]
+
+[ext_resource type="Script" uid="uid://c20023uxgvdij" path="res://Magic-Castle/scripts/resources/ItemData.gd" id="1_mwrvu"]
+
+[resource]
+script = ExtResource("1_mwrvu")
+id = "card_neon"
+display_name = "Neon Cards"
+description = "Futuristic neon style"
+category = 0
+rarity = 2
+subcategory = "futuristic"
+tags = Array[String]([])
+set_name = ""
+source = 1
+base_price = 250
+currency_type = "stars"
+bundle_id = ""
+unlock_level = 0
+is_purchasable = true
+is_tradeable = false
+icon_path = ""
+texture_path = ""
+preview_texture_path = ""
+is_animated = false
+animation_frames = 0
+sort_order = 0
+is_new = false
+is_limited = false
+available_until = ""
+effects = {}
+colors = {}
+stats = {}
+metadata = {}
+metadata/_custom_type_script = "uid://c20023uxgvdij"

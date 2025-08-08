@@ -219,7 +219,7 @@ func claim_mission(mission_id: String, system: String) -> bool:
 	elif system == "holiday":
 		if rewards.has("hp"):
 			# For now, use season points (HP would be added later)
-			SeasonPassManager.add_season_points(rewards.hp, "holiday_mission_%s" % mission_id)
+			HolidayEventManager.add_holiday_points(rewards.hp, "holiday_mission_%s" % mission_id)
 	
 	progress.claimed = true
 	mission_claimed.emit(mission_id, rewards, system)

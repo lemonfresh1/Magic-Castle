@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Magic-Castle/scripts/resources/ItemData.gd" id="1_wksqv"]
+
+[resource]
+script = ExtResource("1_wksqv")
+id = "card_classic"
+display_name = "Classic Cards"
+description = "The original card design"
+category = 0
+rarity = 0
+subcategory = ""
+tags = Array[String]([])
+set_name = ""
+source = 0
+base_price = 0
+currency_type = "stars"
+bundle_id = ""
+unlock_level = 0
+is_purchasable = false
+is_tradeable = false
+icon_path = ""
+texture_path = ""
+preview_texture_path = ""
+is_animated = false
+animation_frames = 0
+sort_order = 0
+is_new = false
+is_limited = false
+available_until = ""
+effects = {}
+colors = {}
+stats = {}
+metadata = {}

@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Magic-Castle/scripts/resources/ItemData.gd" id="1_wwus6"]
+
+[resource]
+script = ExtResource("1_wwus6")
+id = "board_green"
+display_name = "Classic Green"
+description = "The classic green felt board"
+category = 2
+rarity = 0
+subcategory = ""
+tags = Array[String]([])
+set_name = ""
+source = 0
+base_price = 0
+currency_type = "stars"
+bundle_id = ""
+unlock_level = 0
+is_purchasable = false
+is_tradeable = false
+icon_path = ""
+texture_path = ""
+preview_texture_path = ""
+is_animated = false
+animation_frames = 0
+sort_order = 0
+is_new = false
+is_limited = false
+available_until = ""
+effects = {}
+colors = {
+"primary": Color(0.2, 0.5, 0.2, 1)
+}
+stats = {}
+metadata = {}

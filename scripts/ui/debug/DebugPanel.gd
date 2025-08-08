@@ -619,30 +619,56 @@ func _reset_missions():
 	print("Missions reset!")
 
 func _reset_season_pass():
-	if SeasonPassManager and SeasonPassManager.has_method("reset_season_data"):
+	if SeasonPassManager:
+		# Reset the data
 		SeasonPassManager.reset_season_data()
-		# Also emit the update signal so UI refreshes
+		
+		# Clear all tier claimed states
+		for tier in SeasonPassManager.current_season.tiers:
+			tier.free_claimed = false
+			tier.premium_claimed = false
+		
+		# Clear the claimed tiers array
+		SeasonPassManager.season_data.claimed_tiers.clear()
+		
+		# Save and update
+		SeasonPassManager.save_season_data()
 		SeasonPassManager.season_progress_updated.emit()
-		print("Season Pass reset! (SP set to 0, Premium removed, Tier 1)")
+		
+		print("Season Pass reset! (SP set to 0, Premium removed, Tier 1, All claims cleared)")
 	else:
 		print("SeasonPassManager not available")
 
 func _reset_holiday_event():
-	if HolidayEventManager and HolidayEventManager.has_method("reset_holiday_data"):
+	if HolidayEventManager:
+		# Reset the data
 		HolidayEventManager.reset_holiday_data()
-		print("Holiday Event reset! (HP set to 0)")
+		
+		# Clear all tier claimed states - current_event is a dictionary property
+		for tier in HolidayEventManager.current_event.tiers:
+			tier.free_claimed = false
+			tier.premium_claimed = false
+		
+		# Clear the claimed tiers array
+		HolidayEventManager.holiday_data.claimed_tiers.clear()
+		
+		# Save and update
+		HolidayEventManager.save_holiday_data()
+		HolidayEventManager.holiday_progress_updated.emit()
+		
+		print("Holiday Event reset! (HP set to 0, All claims cleared)")
 	else:
 		print("HolidayEventManager not available")
 
 func _reset_xp():
 	if XPManager and XPManager.has_method("reset_xp"):
-		XPManager.reset_xp()
+		XPManager.reset_xp()  # This exists!
 	_update_xp_display()
 	print("XP reset!")
 
 func _reset_stars():
 	if StarManager and StarManager.has_method("reset_stars"):
-		StarManager.reset_stars()
+		StarManager.reset_stars()  # This exists!
 	_update_stars_display()
 	print("Stars reset!")
 
@@ -702,14 +728,14 @@ func _unlock_holiday_pass():
 # XP functions
 func _add_custom_xp(amount_text: String):
 	var amount = amount_text.to_int()
-	if amount > 0 and XPManager and XPManager.has_method("add_debug_xp"):
-		XPManager.add_debug_xp(amount)
+	if amount > 0 and XPManager:
+		XPManager.add_debug_xp(amount)  # This exists!
 		_update_xp_display()
 		print("Added %d XP!" % amount)
 
 func _set_level(level: int):
 	if XPManager and XPManager.has_method("set_debug_level"):
-		XPManager.set_debug_level(level)
+		XPManager.set_debug_level(level)  # This exists!
 		_update_xp_display()
 		print("Set level to %d!" % level)
 
@@ -717,15 +743,15 @@ func _level_up_debug():
 	if XPManager:
 		var needed = XPManager.get_xp_for_next_level() - XPManager.current_xp
 		if needed > 0:
-			XPManager.add_debug_xp(needed)
+			XPManager.add_debug_xp(needed)  # This exists!
 			_update_xp_display()
 			print("Leveled up!")
 
 # Star functions
 func _add_custom_stars(amount_text: String):
 	var amount = amount_text.to_int()
-	if amount > 0 and StarManager and StarManager.has_method("add_debug_stars"):
-		StarManager.add_debug_stars(amount)
+	if amount > 0 and StarManager:
+		StarManager.add_stars(amount, "debug")  # This is correct
 		_update_stars_display()
 		print("Added %d stars!" % amount)
 

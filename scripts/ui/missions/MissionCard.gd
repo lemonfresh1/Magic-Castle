@@ -197,3 +197,6 @@ func _on_claim_pressed():
 		claim_button.text = "Claimed"
 		claim_button.disabled = true
 		claim_button.modulate = Color(0.5, 0.5, 0.5)
+
+func get_mission_id() -> String:
+	return mission_data.get("id", "")

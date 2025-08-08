@@ -86,20 +86,20 @@ func _add_coming_soon_message():
 					
 					var future_label = Label.new()
 					future_label.text = "Mode-specific stats tabs coming soon!"
-					future_label.add_theme_font_size_override("font_size", 16)
-					future_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
+					future_label.add_theme_font_size_override("font_size", UIStyleManager.get_font_size("size_body_small"))
+					future_label.add_theme_color_override("font_color", UIStyleManager.get_color("gray_500"))
 					vbox.add_child(future_label)
 
 func _add_section_header(container: VBoxContainer, text: String):
 	var header = Label.new()
 	header.text = text
-	header.add_theme_font_size_override("font_size", 24)
-	header.add_theme_color_override("font_color", Color(0.9, 0.9, 0.5))
+	header.add_theme_font_size_override("font_size", UIStyleManager.get_font_size("size_title"))
+	header.add_theme_color_override("font_color", UIStyleManager.get_color("primary"))  # Green accent for headers
 	container.add_child(header)
 	
 	# Add spacing
 	var spacer = Control.new()
-	spacer.custom_minimum_size.y = 10
+	spacer.custom_minimum_size.y = UIStyleManager.get_spacing("space_2")
 	container.add_child(spacer)
 
 func _add_stat_row(container: VBoxContainer, stat_name: String, value: String):
@@ -108,12 +108,13 @@ func _add_stat_row(container: VBoxContainer, stat_name: String, value: String):
 	var name_label = Label.new()
 	name_label.text = stat_name
 	name_label.custom_minimum_size.x = 250
-	name_label.add_theme_font_size_override("font_size", 16)
+	name_label.add_theme_font_size_override("font_size", UIStyleManager.get_font_size("size_body_small"))
+	name_label.add_theme_color_override("font_color", UIStyleManager.get_color("gray_700"))
 	
 	var value_label = Label.new()
 	value_label.text = value
-	value_label.add_theme_color_override("font_color", Color(0.4, 0.9, 0.4))  # Green
-	value_label.add_theme_font_size_override("font_size", 16)
+	value_label.add_theme_font_size_override("font_size", UIStyleManager.get_font_size("size_body_small"))
+	value_label.add_theme_color_override("font_color", UIStyleManager.get_color("success"))  # Green for values
 	
 	hbox.add_child(name_label)
 	hbox.add_child(value_label)
@@ -121,14 +122,15 @@ func _add_stat_row(container: VBoxContainer, stat_name: String, value: String):
 
 func _add_separator(container: VBoxContainer):
 	var spacer = Control.new()
-	spacer.custom_minimum_size.y = 20
+	spacer.custom_minimum_size.y = UIStyleManager.get_spacing("space_5")
 	container.add_child(spacer)
 	
 	var sep = HSeparator.new()
+	sep.modulate = UIStyleManager.get_color("gray_300")
 	container.add_child(sep)
 	
 	var spacer2 = Control.new()
-	spacer2.custom_minimum_size.y = 20
+	spacer2.custom_minimum_size.y = UIStyleManager.get_spacing("space_5")
 	container.add_child(spacer2)
 
 func _format_number(num: int) -> String:

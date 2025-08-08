@@ -203,8 +203,8 @@ var holiday_style = {
 
 # Panel styling configuration (existing)
 var panel_style_config = {
-	"bg_color": Color(1.0, 1.0, 1.0, 0.847),
-	"border_color": Color(1.0, 1.0, 1.0, 0.863),
+	"bg_color": Color(1.0, 1.0, 1.0, 1.0),
+	"border_color": Color(1.0, 1.0, 1.0, 1.0),
 	"border_width": 1,
 	"corner_radius": 12,
 	"shadow_size": 5,

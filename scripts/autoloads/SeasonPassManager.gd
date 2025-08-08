@@ -146,15 +146,21 @@ func add_season_points(amount: int, source: String = "gameplay"):
 	season_progress_updated.emit()
 
 func claim_tier_rewards(tier_number: int, is_premium: bool = false) -> bool:
+	print("[SeasonPassManager] claim_tier_rewards called - tier: %d, premium: %s" % [tier_number, is_premium])
+	
 	if tier_number < 1 or tier_number > MAX_TIER:
+		print("[SeasonPassManager] Invalid tier number")
 		return false
 		
 	var tier = current_season.tiers[tier_number - 1]
+	print("[SeasonPassManager] Tier data - unlocked: %s, free_claimed: %s, premium_claimed: %s" % [tier.is_unlocked, tier.free_claimed, tier.premium_claimed])
 	
 	if not tier.is_unlocked:
+		print("[SeasonPassManager] Tier not unlocked")
 		return false
 	
 	if is_premium and not season_data.has_premium_pass:
+		print("[SeasonPassManager] No premium pass")
 		return false
 	
 	var rewards = {}
@@ -162,16 +168,20 @@ func claim_tier_rewards(tier_number: int, is_premium: bool = false) -> bool:
 	
 	if is_premium and not tier.premium_claimed:
 		rewards = tier.premium_rewards
+		print("[SeasonPassManager] Premium rewards to grant: ", rewards)
 		tier.premium_claimed = true
 		tier_key = "tier_%d_premium" % tier_number
 	elif not is_premium and not tier.free_claimed:
 		rewards = tier.free_rewards
+		print("[SeasonPassManager] Free rewards to grant: ", rewards)
 		tier.free_claimed = true
 		tier_key = "tier_%d_free" % tier_number
 	else:
+		print("[SeasonPassManager] Already claimed")
 		return false  # Already claimed
 	
 	# Grant rewards
+	print("[SeasonPassManager] About to grant rewards: ", rewards)
 	_grant_rewards(rewards)
 	
 	season_data.claimed_tiers.append(tier_key)
@@ -180,18 +190,58 @@ func claim_tier_rewards(tier_number: int, is_premium: bool = false) -> bool:
 	return true
 
 func _grant_rewards(rewards: Dictionary):
+	"""Grant rewards through proper managers"""
+	print("[SeasonPassManager] _grant_rewards called with: ", rewards)
+	
+	# Get managers
+	var star_manager = get_node("/root/StarManager")
+	var item_manager = get_node("/root/ItemManager")
+	
+	print("[SeasonPassManager] Manager checks - Star: %s, Item: %s" % [
+		star_manager != null,
+		item_manager != null
+	])
+	
 	# Grant stars
 	if rewards.has("stars"):
-		StarManager.add_stars(rewards.stars, "season_pass")
+		print("[SeasonPassManager] Attempting to grant %d stars" % rewards.stars)
+		if star_manager:
+			print("[SeasonPassManager] Calling star_manager.add_stars()")
+			# Temporarily enable rewards to ensure stars are granted
+			var old_state = StarManager.rewards_enabled
+			StarManager.rewards_enabled = true
+			star_manager.add_stars(rewards.stars, "season_pass_tier")
+			StarManager.rewards_enabled = old_state
+			print("[SeasonPassManager] Stars added successfully")
+		else:
+			push_error("[SeasonPassManager] StarManager not found!")
 	
 	# Grant XP
 	if rewards.has("xp"):
-		XPManager.add_xp(rewards.xp)
+		print("[SeasonPassManager] Attempting to grant %d XP" % rewards.xp)
+		if XPManager:
+			var old_state = XPManager.rewards_enabled
+			XPManager.rewards_enabled = true
+			XPManager.add_xp(rewards.xp, "season_pass_tier")
+			XPManager.rewards_enabled = old_state
+			print("[SeasonPassManager] XP added successfully")
 	
-	# Grant cosmetics through ShopManager
+	# Grant cosmetics
 	if rewards.has("cosmetic_id") and rewards.has("cosmetic_type"):
-		ShopManager.grant_item(rewards.cosmetic_id)
-		print("Granted cosmetic: %s (%s)" % [rewards.cosmetic_id, rewards.cosmetic_type])
+		print("[SeasonPassManager] Attempting to grant cosmetic: %s (%s)" % [
+			rewards.cosmetic_id,
+			rewards.cosmetic_type
+		])
+		if item_manager:
+			var success = item_manager.grant_item(rewards.cosmetic_id, ItemData.Source.SEASON_PASS)
+			if success:
+				print("[SeasonPassManager] Cosmetic granted successfully")
+			else:
+				print("[SeasonPassManager] Failed to grant cosmetic")
+		else:
+			push_error("[SeasonPassManager] ItemManager not found!")
+	
+	print("[SeasonPassManager] _grant_rewards completed")
 
 func purchase_premium_pass() -> bool:
 	# Premium pass costs 1000 stars

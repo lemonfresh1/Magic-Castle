@@ -61,6 +61,7 @@ func _ready():
 	# Finally, populate the current tab
 	_populate_current_tab()
 
+
 func _initialize_all_tabs():
 	"""Initialize all tabs and wait for their completion"""
 	print("[SeasonPassUI] Starting controlled tab initialization")
@@ -264,11 +265,13 @@ func _populate_current_tab():
 						break
 				
 				if not has_content:
+					# First time - create content
 					print("No content found, setting up scrollable content")
 					await UIStyleManager.setup_scrollable_content(current_tab, _populate_missions_content)
 				else:
-					print("Content exists, refreshing")
-					await UIStyleManager.setup_scrollable_content(current_tab, _populate_missions_content)
+					# FIXED: Don't recreate, just update existing cards
+					print("Content exists, updating mission cards")
+					_update_mission_visibility()
 
 func _setup_missions_tab(tab: Control, mission_type: String):
 	"""Setup a missions tab with filter button"""
@@ -293,40 +296,47 @@ func _populate_overview_content(vbox: VBoxContainer) -> void:
 	
 	var header = Label.new()
 	header.text = season_info.name
-	header.add_theme_font_size_override("font_size", 32)
-	header.add_theme_color_override("font_color", Color("#FFB75A"))
+	header.add_theme_font_size_override("font_size", UIStyleManager.get_font_size("size_h2"))
+	header.add_theme_color_override("font_color", Color("#FFB75A"))  # Keep season orange theme
 	vbox.add_child(header)
 	
 	# Season stats
 	var stats_container = VBoxContainer.new()
-	stats_container.add_theme_constant_override("separation", 8)
+	stats_container.add_theme_constant_override("separation", UIStyleManager.get_spacing("space_2"))
 	vbox.add_child(stats_container)
 	
 	var current_tier_label = Label.new()
 	current_tier_label.text = "Current Tier: %d / %d" % [season_info.current_tier, SeasonPassManager.MAX_TIER]
-	current_tier_label.add_theme_font_size_override("font_size", 20)
+	current_tier_label.add_theme_font_size_override("font_size", UIStyleManager.get_font_size("size_body_large"))
+	current_tier_label.add_theme_color_override("font_color", UIStyleManager.get_color("gray_700"))
 	stats_container.add_child(current_tier_label)
 	
 	# Show actual SP values
 	var sp_label = Label.new()
 	sp_label.text = "Total SP: %d" % season_info.total_sp
-	sp_label.add_theme_font_size_override("font_size", 18)
+	sp_label.add_theme_font_size_override("font_size", UIStyleManager.get_font_size("size_body"))
+	sp_label.add_theme_color_override("font_color", UIStyleManager.get_color("gray_600"))
 	stats_container.add_child(sp_label)
 	
 	var progress_label = Label.new()
 	progress_label.text = "Progress: %d / %d SP (%.1f%%)" % [tier_progress.current_sp, tier_progress.required_sp, tier_progress.percentage * 100]
-	progress_label.add_theme_font_size_override("font_size", 18)
+	progress_label.add_theme_font_size_override("font_size", UIStyleManager.get_font_size("size_body"))
+	progress_label.add_theme_color_override("font_color", UIStyleManager.get_color("gray_600"))
 	stats_container.add_child(progress_label)
 	
 	var premium_status = Label.new()
 	premium_status.text = "Battle Pass: %s" % ("ACTIVE" if season_info.has_premium else "FREE")
-	premium_status.add_theme_font_size_override("font_size", 18)
-	premium_status.add_theme_color_override("font_color", Color("#FFD700") if season_info.has_premium else Color("#CCCCCC"))
+	premium_status.add_theme_font_size_override("font_size", UIStyleManager.get_font_size("size_body"))
+	# Keep conditional coloring for premium status
+	if season_info.has_premium:
+		premium_status.add_theme_color_override("font_color", Color("#FFD700"))  # Gold for active
+	else:
+		premium_status.add_theme_color_override("font_color", UIStyleManager.get_color("gray_400"))
 	stats_container.add_child(premium_status)
 	
 	# Add separator
 	var separator = HSeparator.new()
-	separator.modulate = Color(0.5, 0.5, 0.5)
+	separator.modulate = UIStyleManager.get_color("gray_300")
 	vbox.add_child(separator)
 	
 	# Purchase premium button if not owned
@@ -490,16 +500,46 @@ func _apply_mission_filter():
 
 func _update_mission_visibility():
 	"""Update mission cards when data changes (completion, claims, etc)"""
+	print("[SeasonPassUI] === UPDATE VISIBILITY STARTED")
+	
 	# Get fresh mission data
 	var current_tab_name = tab_container.get_tab_title(tab_container.current_tab)
 	var mission_type = "daily" if current_tab_name == "Daily Missions" else "weekly"
 	var missions = UnifiedMissionManager.get_missions_for_system("season_pass", mission_type)
+	
+	print("[SeasonPassUI] Got %d missions for %s" % [missions.size(), mission_type])
+	
+	# Create a list to track cards that need repositioning
+	var cards_to_reorder = []
 	
 	# Update each card with fresh data
 	for mission in missions:
 		if mission_cards.has(mission.id) and is_instance_valid(mission_cards[mission.id]):
 			var card = mission_cards[mission.id]
 			card.setup(mission, "season")  # Refresh the card data
+			cards_to_reorder.append({"card": card, "mission": mission})
+	
+	# Re-sort and reposition cards without recreating them
+	cards_to_reorder.sort_custom(func(a, b):
+		var a_claimable = a.mission.is_completed and not a.mission.is_claimed
+		var b_claimable = b.mission.is_completed and not b.mission.is_claimed
+		if a_claimable != b_claimable:
+			return a_claimable
+		if a.mission.is_claimed != b.mission.is_claimed:
+			return b.mission.is_claimed
+		return false
+	)
+	
+	# Get the parent vbox
+	var current_tab = tab_container.get_child(tab_container.current_tab)
+	var scroll = current_tab.find_child("ScrollContainer", true, false)
+	if scroll:
+		var vbox = scroll.find_child("ContentVBox", true, false)
+		if vbox:
+			# Reorder children in VBox
+			for i in range(cards_to_reorder.size()):
+				var card_data = cards_to_reorder[i]
+				vbox.move_child(card_data.card, i)
 	
 	# Reapply filter
 	_apply_mission_filter()

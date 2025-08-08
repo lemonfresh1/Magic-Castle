@@ -30,8 +30,19 @@ func _ready():
 
 # === EARNING STARS ===
 func add_stars(amount: int, source: String = "") -> void:
-	if not rewards_enabled and source != "post_game_total":
+	# Allow certain sources to bypass rewards_enabled check
+	var bypass_sources = ["season_pass", "holiday_pass", "achievement", "debug", "level_up", "shop_refund"]
+	var should_bypass = false
+	
+	for bypass_source in bypass_sources:
+		if bypass_source in source:
+			should_bypass = true
+			break
+	
+	if not should_bypass and not rewards_enabled and source != "post_game_total":
+		print("[StarManager] Blocked %d stars from %s (rewards disabled)" % [amount, source])
 		return
+		
 	if amount <= 0:
 		return
 	
@@ -50,7 +61,8 @@ func add_stars(amount: int, source: String = "") -> void:
 	save_stars()
 	stars_changed.emit(total_stars, amount)
 	
-	print("Earned %d stars from %s. New balance: %d" % [amount, source, total_stars])
+	print("[StarManager] Earned %d stars from %s. New balance: %d" % [amount, source, total_stars])
+	print("[StarManager] Signal emitted with %d connected listeners" % stars_changed.get_connections().size())
 
 # === SPENDING STARS ===
 func spend_stars(amount: int, item: String) -> bool:

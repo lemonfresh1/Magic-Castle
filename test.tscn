@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://8gb13xws8vbo"]
 
-[ext_resource type="Texture2D" uid="uid://hp5mntcfta8v" path="res://Magic-Castle/test/Screenshot 2025-08-07 at 14.58.55.png" id="1_m4nu8"]
+[ext_resource type="Texture2D" uid="uid://hp5mntcfta8v" path="res://Magic-Castle/deprecated/Screenshot 2025-08-07 at 14.58.55.png" id="1_m4nu8"]
 
 [node name="Control" type="Control"]
 layout_mode = 3

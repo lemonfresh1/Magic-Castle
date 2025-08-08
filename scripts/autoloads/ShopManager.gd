@@ -1,6 +1,6 @@
 # ShopManager.gd - Manages shop inventory, purchases, sales, and multi-currency support
 # Location: res://Magic-Castle/scripts/autoloads/ShopManager.gd
-# Last Updated: Initial shop system with rarity tiers and daily sales [Date]
+# Last Updated: Integrated with ItemManager, removed CosmeticManager dependency [Date]
 
 extends Node
 
@@ -200,25 +200,36 @@ func purchase_item(item_id: String) -> bool:
 		save_shop_data()
 		item_purchased.emit(item_id, price, item.currency_type)
 		
-		# If it's a cosmetic, update the appropriate manager
-		_update_cosmetic_managers(item_id, item.category)
+		# Grant item through ItemManager
+		if ItemManager:
+			ItemManager.grant_item(item_id, ItemData.Source.SHOP)
 		
 		return true
 	
 	return false
 
+func grant_item(item_id: String) -> bool:
+	"""Grant an item through ItemManager - DEPRECATED, use ItemManager directly"""
+	push_warning("ShopManager.grant_item() is deprecated. Use ItemManager.grant_item() directly.")
+	
+	if ItemManager:
+		# Use SHOP source for backward compatibility
+		return ItemManager.grant_item(item_id, ItemData.Source.SHOP)
+	else:
+		push_error("ShopManager: ItemManager not found!")
+		return false
+
 func _update_cosmetic_managers(item_id: String, category: String):
-	match category:
-		"card_skins":
-			if CardSkinManager:
-				# Future: CardSkinManager.unlock_skin(item_id)
-				pass
-		"board_skins", "avatars", "frames":
-			if CosmeticManager:
-				var type = category.trim_suffix("s")  # Remove plural
-				CosmeticManager.unlock_cosmetic(type, item_id)
+	# This function is deprecated - ItemManager handles everything now
+	# Keeping empty for compatibility
+	pass
 
 func equip_item(item_id: String) -> bool:
+	# Delegate to ItemManager
+	if ItemManager:
+		return ItemManager.equip_item(item_id)
+	
+	# Fallback to old system if ItemManager not available
 	var item = shop_inventory.get(item_id)
 	if not item or not is_item_owned(item_id):
 		return false
@@ -257,6 +268,10 @@ func is_item_on_sale(item_id: String) -> bool:
 	return item_id in shop_data.current_sales
 
 func is_item_owned(item_id: String) -> bool:
+	# Check ItemManager first (source of truth)
+	if ItemManager:
+		return ItemManager.is_item_owned(item_id)
+	# Fallback to local data
 	return item_id in shop_data.owned_items
 
 func is_item_new(item_id: String) -> bool:

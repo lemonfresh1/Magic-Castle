@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://hp5mntcfta8v"
-path="res://.godot/imported/Screenshot 2025-08-07 at 14.58.55.png-02e01b3fa4b1e8cf9d177f37a2d29d15.ctex"
+path="res://.godot/imported/Screenshot 2025-08-07 at 14.58.55.png-8ed129672e8645c524e64fcbe1141273.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/test/Screenshot 2025-08-07 at 14.58.55.png"
-dest_files=["res://.godot/imported/Screenshot 2025-08-07 at 14.58.55.png-02e01b3fa4b1e8cf9d177f37a2d29d15.ctex"]
+source_file="res://Magic-Castle/deprecated/Screenshot 2025-08-07 at 14.58.55.png"
+dest_files=["res://.godot/imported/Screenshot 2025-08-07 at 14.58.55.png-8ed129672e8645c524e64fcbe1141273.ctex"]
 
 [params]
 

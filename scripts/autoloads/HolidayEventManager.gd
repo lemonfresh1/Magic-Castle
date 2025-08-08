@@ -204,18 +204,58 @@ func claim_tier_rewards(tier_number: int, is_premium: bool = false) -> bool:
 	return true
 
 func _grant_rewards(rewards: Dictionary):
+	"""Grant rewards through proper managers"""
+	print("[HolidayEventManager] _grant_rewards called with: ", rewards)
+	
+	# Get managers
+	var star_manager = get_node("/root/StarManager")
+	var item_manager = get_node("/root/ItemManager")
+	
+	print("[HolidayEventManager] Manager checks - Star: %s, Item: %s" % [
+		star_manager != null,
+		item_manager != null
+	])
+	
 	# Grant stars
 	if rewards.has("stars"):
-		StarManager.add_stars(rewards.stars, "holiday_pass")
+		print("[HolidayEventManager] Attempting to grant %d stars" % rewards.stars)
+		if star_manager:
+			print("[HolidayEventManager] Calling star_manager.add_stars()")
+			# Temporarily enable rewards to ensure stars are granted
+			var old_state = StarManager.rewards_enabled
+			StarManager.rewards_enabled = true
+			star_manager.add_stars(rewards.stars, "holiday_pass_tier")
+			StarManager.rewards_enabled = old_state
+			print("[HolidayEventManager] Stars added successfully")
+		else:
+			push_error("[HolidayEventManager] StarManager not found!")
 	
 	# Grant XP
 	if rewards.has("xp"):
-		XPManager.add_xp(rewards.xp)
+		print("[HolidayEventManager] Attempting to grant %d XP" % rewards.xp)
+		if XPManager:
+			var old_state = XPManager.rewards_enabled
+			XPManager.rewards_enabled = true
+			XPManager.add_xp(rewards.xp, "holiday_pass_tier")
+			XPManager.rewards_enabled = old_state
+			print("[HolidayEventManager] XP added successfully")
 	
-	# Grant cosmetics through ShopManager
+	# Grant cosmetics
 	if rewards.has("cosmetic_id") and rewards.has("cosmetic_type"):
-		ShopManager.grant_item(rewards.cosmetic_id)
-		print("Granted holiday cosmetic: %s (%s)" % [rewards.cosmetic_id, rewards.cosmetic_type])
+		print("[HolidayEventManager] Attempting to grant cosmetic: %s (%s)" % [
+			rewards.cosmetic_id,
+			rewards.cosmetic_type
+		])
+		if item_manager:
+			var success = item_manager.grant_item(rewards.cosmetic_id, ItemData.Source.HOLIDAY_EVENT)
+			if success:
+				print("[HolidayEventManager] Cosmetic granted successfully")
+			else:
+				print("[HolidayEventManager] Failed to grant cosmetic")
+		else:
+			push_error("[HolidayEventManager] ItemManager not found!")
+	
+	print("[HolidayEventManager] _grant_rewards completed")
 
 func purchase_premium_pass() -> bool:
 	# Holiday pass costs 1000 stars (same as season pass)
