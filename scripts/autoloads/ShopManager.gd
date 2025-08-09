@@ -80,6 +80,7 @@ var shop_inventory = {}
 
 func _ready():
 	_initialize_shop_inventory()
+	_sync_with_item_manager() 
 	load_shop_data()
 	_check_daily_refresh()
 	
@@ -282,6 +283,21 @@ func is_item_new(item_id: String) -> bool:
 
 func get_items_by_category(category: String) -> Array:
 	var items = []
+	
+	# First try to get from ItemManager for accurate data
+	if ItemManager and category == "board_skins":
+		var boards = ItemManager.get_items_by_category(ItemData.Category.BOARD)
+		for board in boards:
+			# Convert ItemData to ShopItem for compatibility
+			if shop_inventory.has(board.id):
+				items.append(shop_inventory[board.id])
+			else:
+				# Create temporary ShopItem from ItemData
+				var shop_item = _create_shop_item_from_itemdata(board)
+				items.append(shop_item)
+		return items
+	
+	# Fallback to existing logic
 	for id in shop_inventory:
 		if shop_inventory[id].category == category:
 			items.append(shop_inventory[id])
@@ -378,3 +394,86 @@ func reset_shop_data():
 		"trial_used": []
 	}
 	save_shop_data()
+
+# Add this function to ShopManager.gd:
+
+# Update ShopManager.gd to use icons from ItemData:
+
+func _sync_with_item_manager():
+	"""Load items from ItemManager and use their actual icons"""
+	if not ItemManager:
+		return
+	
+	# Sync all categories
+	_sync_category(ItemData.Category.BOARD, "board_skins")
+	_sync_category(ItemData.Category.CARD_FRONT, "card_skins")
+	_sync_category(ItemData.Category.AVATAR, "avatars")
+	_sync_category(ItemData.Category.FRAME, "frames")
+	_sync_category(ItemData.Category.EMOJI, "emojis")
+
+func _sync_category(item_category: ItemData.Category, shop_category: String):
+	"""Sync a specific category from ItemManager"""
+	var items = ItemManager.get_items_by_category(item_category)
+	
+	for item in items:
+		# Only skip if explicitly not purchasable
+		if not item.is_purchasable:
+			continue
+		
+		# Check if already in shop inventory
+		if shop_inventory.has(item.id):
+			# Update existing item with ItemData info
+			var shop_item = shop_inventory[item.id]
+			shop_item.preview_texture_path = item.icon_path  # Use actual icon!
+		else:
+			# Create new shop item from ItemData
+			var shop_item = ShopItem.new()
+			shop_item.id = item.id
+			shop_item.display_name = item.display_name
+			shop_item.category = shop_category
+			shop_item.rarity = item.rarity
+			shop_item.base_price = item.base_price if item.base_price > 0 else _calculate_item_price(shop_category, item.rarity)
+			shop_item.currency_type = item.currency_type
+			shop_item.preview_texture_path = item.icon_path  # Use actual icon!
+			shop_item.unlock_level = item.unlock_level
+			shop_item.is_featured = item.is_new or item.is_limited
+			
+			# Only use placeholder if no icon path is set
+			if item.icon_path == "" or not ResourceLoader.exists(item.icon_path):
+				shop_item.placeholder_icon = _get_placeholder_icon_for_rarity(item.rarity)
+			
+			shop_inventory[item.id] = shop_item
+
+func _get_placeholder_icon_for_rarity(rarity: ItemData.Rarity) -> String:
+	"""Return placeholder icon based on rarity"""
+	match rarity:
+		ItemData.Rarity.COMMON: return "07_bread.png"
+		ItemData.Rarity.UNCOMMON: return "08_bread_dish.png"
+		ItemData.Rarity.RARE: return "09_baguette.png"
+		ItemData.Rarity.EPIC: return "10_baguette_dish.png"
+		ItemData.Rarity.LEGENDARY: return "11_bun.png"
+		_: return "01_dish.png"
+
+func _create_shop_item_from_itemdata(item_data: ItemData) -> ShopItem:
+	"""Convert ItemData to ShopItem for display"""
+	var shop_item = ShopItem.new()
+	shop_item.id = item_data.id
+	shop_item.display_name = item_data.display_name
+	shop_item.category = _get_shop_category_from_itemdata(item_data.category)
+	shop_item.rarity = item_data.rarity
+	shop_item.base_price = item_data.base_price
+	shop_item.currency_type = item_data.currency_type
+	shop_item.preview_texture_path = item_data.icon_path  # Use the actual icon!
+	shop_item.unlock_level = item_data.unlock_level
+	shop_item.is_featured = item_data.is_new
+	return shop_item
+
+func _get_shop_category_from_itemdata(category: ItemData.Category) -> String:
+	match category:
+		ItemData.Category.CARD_FRONT: return "card_skins"
+		ItemData.Category.CARD_BACK: return "card_backs"
+		ItemData.Category.BOARD: return "board_skins"
+		ItemData.Category.FRAME: return "frames"
+		ItemData.Category.AVATAR: return "avatars"
+		ItemData.Category.EMOJI: return "emojis"
+		_: return "misc"

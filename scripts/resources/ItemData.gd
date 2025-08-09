@@ -66,6 +66,8 @@ enum Rarity {
 @export var preview_texture_path: String = ""  # Preview image
 @export var is_animated: bool = false
 @export var animation_frames: int = 0
+@export var background_scene_path: String = ""  # ADD THIS - Path to packed scene for animated backgrounds
+@export var background_type: String = "color"  # ADD THIS - "color", "sprite", "scene"
 
 @export_group("Display")
 @export var sort_order: int = 0  # For display ordering

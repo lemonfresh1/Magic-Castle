@@ -90,21 +90,28 @@ func _load_all_items():
 	_ensure_default_items()
 
 func _load_items_from_directory(path: String):
+	print("Loading items from: ", path)  # ADD THIS
 	var dir = DirAccess.open(path)
 	if not dir:
+		print("  - Directory not found!")  # ADD THIS
 		return
 	
 	dir.list_dir_begin()
 	var file_name = dir.get_next()
 	
 	while file_name != "":
+		print("  - Found file: ", file_name)  # ADD THIS
 		if file_name.ends_with(".tres") or file_name.ends_with(".res"):
 			var resource_path = path + file_name
 			var item = load(resource_path) as ItemData
 			if item and item.id != "":
 				all_items[item.id] = item
-				print("ItemManager: Loaded item '%s' from %s" % [item.display_name, resource_path])
+				print("    ✓ Loaded: '%s' (id: %s)" % [item.display_name, item.id])  # MODIFY THIS
 			else:
+				if item:
+					print("    ✗ Invalid: ID is empty for ", file_name)  # ADD THIS
+				else:
+					print("    ✗ Invalid: Not an ItemData resource")  # ADD THIS
 				push_warning("ItemManager: Invalid item resource at " + resource_path)
 		file_name = dir.get_next()
 
@@ -479,3 +486,54 @@ func debug_print_status():
 		if value != "" and value != []:
 			print("  %s: %s" % [key, value])
 	print("===========================\n")
+
+# Add this debug function to ItemManager.gd and call it from _ready():
+
+func debug_pyramid_board():
+	print("\n=== PYRAMID BOARD DEBUG ===")
+	
+	# 1. Check if the file exists
+	var pyramid_path = "res://Magic-Castle/resources/items/boards/pyramids.tres"
+	if ResourceLoader.exists(pyramid_path):
+		print("✓ File exists at: ", pyramid_path)
+	else:
+		print("✗ File NOT found at: ", pyramid_path)
+		return
+	
+	# 2. Try to load it manually
+	var pyramid_resource = load(pyramid_path)
+	if pyramid_resource:
+		print("✓ Resource loads successfully")
+		print("  - Resource type: ", pyramid_resource.get_class())
+		
+		# 3. Check if it's an ItemData
+		if pyramid_resource is ItemData:
+			print("✓ Resource is ItemData")
+			var item = pyramid_resource as ItemData
+			print("  - ID: ", item.id)
+			print("  - Display Name: ", item.display_name)
+			print("  - Category: ", item.category)
+			print("  - Background Type: ", item.background_type)
+			print("  - Scene Path: ", item.background_scene_path)
+			
+			# 4. Check if ID is empty (common issue)
+			if item.id == "":
+				print("✗ ERROR: Item ID is empty! This prevents loading.")
+				print("  FIX: Set the 'id' field to 'board_pyramids' in the resource")
+			
+			# 5. Check if it's in all_items
+			if all_items.has(item.id):
+				print("✓ Item IS in all_items dictionary")
+			else:
+				print("✗ Item NOT in all_items dictionary")
+				print("  Attempting to register manually...")
+				all_items[item.id] = item
+				if all_items.has(item.id):
+					print("  ✓ Manual registration successful!")
+		else:
+			print("✗ Resource is NOT ItemData, it's: ", pyramid_resource.get_class())
+			print("  FIX: Make sure the resource has ItemData as its script")
+	else:
+		print("✗ Failed to load resource")
+	
+	print("=========================\n")

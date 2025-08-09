@@ -115,19 +115,15 @@ func _setup_tabs():
 			scroll_container.custom_minimum_size = Vector2(600, 300)  # Set minimum size
 
 func _populate_shop():
-	print("ShopUI: Starting to populate shop")
-	
 	# Populate each tab with relevant items
 	for category_id in tabs:
 		if category_id == "sounds":  # Skip future category
 			continue
 			
 		var items = _get_items_for_category(category_id)
-		print("ShopUI: Category %s has %d items" % [category_id, items.size()])
 		
 		var tab = tabs[category_id]
 		if not tab:
-			print("ShopUI: Tab not found for category: ", category_id)
 			continue
 		
 		var scroll_container = tab.find_child("ScrollContainer", true, false)
@@ -144,27 +140,13 @@ func _populate_shop():
 				grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 				grid.size_flags_vertical = Control.SIZE_EXPAND_FILL
 				scroll_container.add_child(grid)
-				print("ShopUI: Created new grid for ", category_id)
 			
 			_populate_grid(grid, items, category_id)
-		else:
-			print("ShopUI: ScrollContainer not found for ", category_id)
 	
 	_is_populated = true
 
-func _get_items_for_category(category_id: String) -> Array:
-	match category_id:
-		"highlights":
-			return ShopManager.get_featured_items()
-		"all":
-			return ShopManager.get_all_items()
-		_:
-			return ShopManager.get_items_by_category(category_id)
-
 func _populate_grid(grid: GridContainer, items: Array, tab_id: String):
-	print("ShopUI: Populating grid for %s with %d items" % [tab_id, items.size()])
-	
-	# Clear existing items immediately
+	# Clear existing items
 	for child in grid.get_children():
 		grid.remove_child(child)
 		child.queue_free()
@@ -173,20 +155,17 @@ func _populate_grid(grid: GridContainer, items: Array, tab_id: String):
 	item_cards = item_cards.filter(func(card): return card.get_meta("tab_id", "") != tab_id)
 	
 	# Create item cards
-	for i in range(items.size()):
-		var item = items[i]
+	for item in items:
 		var card = shop_item_card_scene.instantiate()
 		
-		# Store reference for filtering BEFORE adding to grid
+		# Store reference for filtering
 		card.set_meta("tab_id", tab_id)
 		card.set_meta("item_data", item)
 		
 		grid.add_child(card)
 		card.setup(item)
 		
-		print("ShopUI: Created card for item: ", item.display_name)
-		
-		# IMPORTANT: Ensure price is visible for shop cards
+		# Ensure price is visible for shop cards
 		var price_container = card.get_node_or_null("MarginContainer/VBoxContainer/PriceContainer")
 		if price_container:
 			price_container.visible = true
@@ -198,6 +177,15 @@ func _populate_grid(grid: GridContainer, items: Array, tab_id: String):
 			card.item_clicked.connect(_on_item_clicked)
 		if not card.preview_requested.is_connected(_on_preview_requested):
 			card.preview_requested.connect(_on_preview_requested)
+
+func _get_items_for_category(category_id: String) -> Array:
+	match category_id:
+		"highlights":
+			return ShopManager.get_featured_items()
+		"all":
+			return ShopManager.get_all_items()
+		_:
+			return ShopManager.get_items_by_category(category_id)
 
 func _on_filter_changed(index: int, tab_id: String):
 	current_filter = FILTER_OPTIONS[index].id
@@ -334,7 +322,6 @@ func _refresh_current_tab():
 			_populate_grid(grid, items, category_id)
 
 func show_shop():
-	print("ShopUI: show_shop() called")
 	visible = true
 	
 	# Force layout update
@@ -343,10 +330,8 @@ func show_shop():
 	
 	# Only populate if not already populated
 	if not _is_populated:
-		print("ShopUI: Not populated yet, populating...")
 		_populate_shop()
 	else:
-		print("ShopUI: Already populated, refreshing cards only")
 		# Force refresh daily sales check
 		ShopManager._check_daily_refresh()
 		# Refresh all displayed items

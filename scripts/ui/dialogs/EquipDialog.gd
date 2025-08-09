@@ -1,67 +1,83 @@
-# EquipDialog.gd - Simple dialog for equipping items from inventory
+# EquipDialog.gd - Dialog for equipping items using CustomDialog
 # Location: res://Magic-Castle/scripts/ui/dialogs/EquipDialog.gd
-# Last Updated: Created equip dialog for inventory items [Date]
+# Last Updated: Converted to use CustomDialog [Date]
 
-extends AcceptDialog
+extends CustomDialog
 
 signal item_equipped(item_id: String)
-signal item_unequipped(item_id: String)
 
 var current_item: ShopManager.ShopItem
-var is_currently_equipped: bool = false
 
 func setup_for_item(item: ShopManager.ShopItem):
 	current_item = item
 	
-	# Check if currently equipped
-	var equipped = ShopManager.shop_data.equipped
-	is_currently_equipped = false
+	# Only show for equipping (not unequipping as requested)
+	var item_type = _get_item_type_display(item.category)
 	
-	match item.category:
-		"card_skins":
-			is_currently_equipped = equipped.card_skin == item.id
-		"board_skins":
-			is_currently_equipped = equipped.board_skin == item.id
-		"avatars":
-			is_currently_equipped = equipped.avatar == item.id
-		"frames":
-			is_currently_equipped = equipped.frame == item.id
-		"emojis":
-			is_currently_equipped = item.id in equipped.selected_emojis
+	# Try to get icon - same logic as InventoryItemCard
+	var icon: Texture2D = null
+	var icon_loaded = false
 	
-	# Set dialog text
-	if is_currently_equipped:
-		title = "Unequip Item"
-		dialog_text = "Do you want to unequip %s?" % item.display_name
-		ok_button_text = "Unequip"
-	else:
-		title = "Equip Item"
-		dialog_text = "Do you want to equip %s?" % item.display_name
-		ok_button_text = "Equip"
+	# First try preview_texture_path (actual icon from ItemData)
+	if item.preview_texture_path != "" and ResourceLoader.exists(item.preview_texture_path):
+		icon = load(item.preview_texture_path)
+		icon_loaded = true
 	
-	# Add cancel button
-	add_cancel_button("Cancel")
+	# Fallback to placeholder icon if no actual icon
+	if not icon_loaded and item.placeholder_icon != "":
+		var placeholder_path = "res://Magic-Castle/assets/placeholder/food/" + item.placeholder_icon
+		if ResourceLoader.exists(placeholder_path):
+			icon = load(placeholder_path)
+	
+	# Setup the dialog with body text only, empty title
+	setup("", "Equip: %s (%s)" % [item.display_name, item_type], icon, "Equip", false)
+	
+	# Hide the title label completely
+	if title_label:
+		title_label.visible = false
+	
+	# Override confirm behavior
+	if confirmed.is_connected(_on_confirm):
+		confirmed.disconnect(_on_confirm)
+	confirmed.connect(_on_equip_confirmed)
 
-func _ready():
-	# Connect to confirmed signal
-	confirmed.connect(_on_confirmed)
+func _get_item_type_display(category: String) -> String:
+	match category:
+		"card_skins": return "Card Skin"
+		"board_skins": return "Board Skin"
+		"avatars": return "Avatar"
+		"frames": return "Frame"
+		"emojis": return "Emoji"
+		_: return category.capitalize()
 
-func _on_confirmed():
-	if is_currently_equipped:
-		# Unequip logic
-		match current_item.category:
-			"emojis":
-				# Remove from selected emojis
-				var equipped_emojis = ShopManager.shop_data.equipped.selected_emojis
-				equipped_emojis.erase(current_item.id)
+func _on_equip_confirmed():
+	var success = false
+	
+	# Try ItemManager first
+	if ItemManager and ItemManager.get_item(current_item.id):
+		success = ItemManager.equip_item(current_item.id)
+		if success:
+			# Update ShopManager for compatibility
+			var key = _get_shop_equipped_key()
+			if key != "":
+				ShopManager.shop_data.equipped[key] = current_item.id
 				ShopManager.save_shop_data()
-			_:
-				# For other categories, we'd need to set to default
-				# For now, just prevent unequipping
-				pass
-		
-		item_unequipped.emit(current_item.id)
 	else:
-		# Equip the item
-		if ShopManager.equip_item(current_item.id):
-			item_equipped.emit(current_item.id)
+		# Fallback to ShopManager
+		success = ShopManager.equip_item(current_item.id)
+	
+	if success:
+		item_equipped.emit(current_item.id)
+		
+		# Update InventoryUI if it exists
+		var inventory_ui = get_tree().get_nodes_in_group("inventory_ui")
+		if inventory_ui.size() > 0:
+			inventory_ui[0]._refresh_all_cards()
+
+func _get_shop_equipped_key() -> String:
+	match current_item.category:
+		"card_skins": return "card_skin"
+		"board_skins": return "board_skin"
+		"avatars": return "avatar"
+		"frames": return "frame"
+		_: return ""

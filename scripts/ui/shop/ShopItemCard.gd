@@ -1,6 +1,6 @@
 # ShopItemCard.gd - Individual shop item display component with rarity borders and pricing
 # Location: res://Magic-Castle/scripts/ui/shop/ShopItemCard.gd
-# Last Updated: Added inventory mode support to prevent price conflicts [Date]
+# Last Updated: Updated to use icons from ItemData [Date]
 
 extends PanelContainer
 
@@ -35,11 +35,20 @@ func setup(item: ShopManager.ShopItem):
 	if not is_node_ready():
 		await ready
 	
-	# Load placeholder icon
-	var icon_path = "res://Magic-Castle/assets/placeholder/food/" + item.placeholder_icon
-	if FileAccess.file_exists(icon_path):
-		if icon_texture:
-			icon_texture.texture = load(icon_path)
+	# Load icon - prefer preview_texture_path (from ItemData.icon_path) over placeholder
+	if icon_texture:
+		var icon_loaded = false
+		
+		# First try preview_texture_path (actual icon from ItemData)
+		if item.preview_texture_path != "" and ResourceLoader.exists(item.preview_texture_path):
+			icon_texture.texture = load(item.preview_texture_path)
+			icon_loaded = true
+		
+		# Fallback to placeholder icon if no actual icon
+		if not icon_loaded and item.placeholder_icon != "":
+			var placeholder_path = "res://Magic-Castle/assets/placeholder/food/" + item.placeholder_icon
+			if ResourceLoader.exists(placeholder_path):
+				icon_texture.texture = load(placeholder_path)
 	
 	# Set item name (truncate if too long)
 	var display_name = item.display_name

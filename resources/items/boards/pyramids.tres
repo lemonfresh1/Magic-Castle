@@ -1,0 +1,39 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3 uid="uid://me06n8mp2qu4"]
+
+[ext_resource type="Script" uid="uid://c20023uxgvdij" path="res://Magic-Castle/scripts/resources/ItemData.gd" id="1_y6fh1"]
+
+[resource]
+script = ExtResource("1_y6fh1")
+id = "board_pyramids"
+display_name = "Desert Pyramids"
+description = "Ancient pyramids under moving clouds"
+category = 2
+rarity = 2
+subcategory = "desert"
+tags = Array[String](["animated", "pyramids", "desert", "clouds"])
+set_name = "Ancient Collection"
+source = 0
+base_price = 250
+currency_type = "stars"
+bundle_id = ""
+unlock_level = 0
+is_purchasable = true
+is_tradeable = false
+icon_path = "res://Magic-Castle/assets/icons/pyramids_icon.png"
+texture_path = ""
+preview_texture_path = ""
+is_animated = true
+animation_frames = 0
+background_scene_path = "res://Magic-Castle/scenes/items/boards/1_pyramids/PyramidsBackground.tscn"
+background_type = "scene"
+sort_order = 0
+is_new = false
+is_limited = false
+available_until = ""
+effects = {}
+colors = {
+Color(0, 0, 0, 1): Color(0.6, 0.501961, 0.301961, 1)
+}
+stats = {}
+metadata = {}
+metadata/_custom_type_script = "uid://c20023uxgvdij"

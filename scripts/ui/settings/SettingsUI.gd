@@ -59,6 +59,7 @@ var available_board_skins: Array[Dictionary] = [
 	{"name": "classic", "display": "Classic Green"},
 	{"name": "green", "display": "Green Felt"},
 	{"name": "blue", "display": "Ocean Blue"},
+	{"name": "board_pyramids", "display": "Desert Pyramids"},
 	{"name": "sunset", "display": "Sunset"}
 ]
 
@@ -374,21 +375,44 @@ func _load_current_settings():
 			break
 	_update_mode_display()
 	
-	# Load card skin
+	# Load card skin - check what's actually equipped
+	var equipped_card = _get_current_equipped_card_skin()
 	for i in range(available_card_skins.size()):
-		if available_card_skins[i].name == SettingsSystem.current_card_skin:
+		if available_card_skins[i].name == equipped_card:
 			current_card_skin_index = i
 			break
 	_update_card_skin_display()
 	
-	# Load board skin
+	# Load board skin - check what's actually equipped
+	var equipped_board = _get_current_equipped_board_skin()
 	for i in range(available_board_skins.size()):
-		if available_board_skins[i].name == SettingsSystem.current_board_skin:
+		if available_board_skins[i].name == equipped_board:
 			current_board_skin_index = i
 			break
 	_update_board_skin_display()
 	
 	_update_volume_labels()
+
+func _get_current_equipped_board_skin() -> String:
+	# Check ItemManager first for board skins
+	if ItemManager:
+		var equipped_board = ItemManager.get_equipped_item(ItemData.Category.BOARD)
+		if equipped_board != "":
+			return equipped_board
+	
+	# Fallback to SettingsSystem
+	return SettingsSystem.current_board_skin
+
+func _get_current_equipped_card_skin() -> String:
+	# Check ItemManager first for card skins
+	if ItemManager:
+		var equipped_card = ItemManager.get_equipped_item(ItemData.Category.CARD_FRONT)
+		if equipped_card != "":
+			# Map ItemManager ID to settings name if needed
+			return equipped_card.trim_prefix("card_")
+	
+	# Fallback to SettingsSystem
+	return SettingsSystem.current_card_skin
 
 # Game Mode functions
 func _on_mode_left():
@@ -480,10 +504,30 @@ func _update_board_skin_display():
 	var skin = available_board_skins[current_board_skin_index]
 	board_skin_name.text = skin.display
 	
+	# Handle preview
 	if board_preview_instance and board_preview_instance.has_method("set_skin"):
 		board_preview_instance.set_skin(skin.name)
+	
+	# Check if this is an ItemManager board
+	if skin.name.begins_with("board_"):
+		# This is an ItemManager board, equip it if owned
+		if ItemManager:
+			# Only equip if we own it
+			if ItemManager.is_item_owned(skin.name):
+				ItemManager.equip_item(skin.name)
+			else:
+				# Don't auto-grant, just show as unowned
+				board_skin_name.text = skin.display + " (Not Owned)"
+				board_skin_name.modulate = Color(0.5, 0.5, 0.5)
+				return
 		
-	SettingsSystem.set_board_skin(skin.name)
+		# Save to SettingsSystem for backwards compatibility
+		SettingsSystem.set_board_skin(skin.name)
+		SignalBus.board_skin_changed.emit()
+	else:
+		# Legacy board skin
+		SettingsSystem.set_board_skin(skin.name)
+		SignalBus.board_skin_changed.emit()
 
 # Audio functions
 func _on_error_sound_toggled(pressed: bool):

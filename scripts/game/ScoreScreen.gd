@@ -1,6 +1,6 @@
 # ScoreScreen.gd - Round completion score display
 # Path: res://Magic-Castle/scripts/game/ScoreScreen.gd
-# Last Updated: Fixed total score calculation flow [Date]
+# Last Updated: Applied UIStyleManager styling [Date]
 
 extends Control
 
@@ -40,14 +40,116 @@ func _ready() -> void:
 	# Set as top level to ensure it's always on top
 	set_as_top_level(true)
 	
-	# Position at center of screen
+	# Apply UIStyleManager styling
+	_apply_ui_styling()
+	
+	# Position at center of screen with proper sizing
+	_setup_panel_position()
+	
+	# Hide on start
+	visible = false
+
+func _apply_ui_styling() -> void:
+	# Apply panel styling with transparency
+	if panel:
+		var style = StyleBoxFlat.new()
+		style.bg_color = UIStyleManager.colors.white
+		style.bg_color.a = 0.95  # Slight transparency as requested
+		style.border_color = UIStyleManager.colors.gray_200
+		style.set_border_width_all(UIStyleManager.borders.width_thin)
+		style.set_corner_radius_all(UIStyleManager.dimensions.corner_radius_large)
+		
+		# Add shadow for depth
+		style.shadow_size = UIStyleManager.shadows.size_large
+		style.shadow_offset = UIStyleManager.shadows.offset_large
+		style.shadow_color = UIStyleManager.shadows.color_medium
+		
+		panel.add_theme_stylebox_override("panel", style)
+
+	# Round score - larger and primary color
+	if round_score_label:
+		round_score_label.add_theme_font_size_override("font_size", UIStyleManager.typography.size_h3)
+		round_score_label.add_theme_color_override("font_color", UIStyleManager.colors.primary)
+		round_score_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	
+	# Total score - same size as round but different color
+	if total_score_label:
+		total_score_label.add_theme_font_size_override("font_size", UIStyleManager.typography.size_h3)
+		total_score_label.add_theme_color_override("font_color", UIStyleManager.colors.gray_900)
+		total_score_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	
+	# Style continue button
+	if continue_button:
+		UIStyleManager.apply_button_style(continue_button, "primary", "large")
+		continue_button.custom_minimum_size.x = 200
+		
+		# Center the button in its container
+		var parent = continue_button.get_parent()
+		if parent is VBoxContainer:
+			continue_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	
+	# Apply margins to the container - FURTHER REDUCED BOTTOM
+	var margin_container = $Panel/MarginContainer
+	if margin_container:
+		margin_container.add_theme_constant_override("margin_left", UIStyleManager.spacing.space_8)
+		margin_container.add_theme_constant_override("margin_right", UIStyleManager.spacing.space_8)
+		margin_container.add_theme_constant_override("margin_top", UIStyleManager.spacing.space_12)  # 48px top margin
+		margin_container.add_theme_constant_override("margin_bottom", UIStyleManager.spacing.space_1)  # 4px bottom margin only
+	
+	# Apply spacing to VBoxContainer
+	var vbox = $Panel/MarginContainer/VBoxContainer
+	if vbox:
+		vbox.add_theme_constant_override("separation", UIStyleManager.spacing.space_4)
+	
+	# Apply typography styling
+	if title_label:
+		title_label.add_theme_font_size_override("font_size", UIStyleManager.typography.size_title)
+		title_label.add_theme_color_override("font_color", UIStyleManager.colors.gray_900)
+		title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	
+	# Subscore labels - smaller size and INDENTED
+	var subscore_labels = [score_label_base, score_label_cards, score_label_time, score_label_clear]
+	for label in subscore_labels:
+		if label:
+			label.add_theme_font_size_override("font_size", UIStyleManager.typography.size_body_small)
+			label.add_theme_color_override("font_color", UIStyleManager.colors.gray_600)
+			label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+			# Add left margin to indent the text
+			if label.get_parent() is VBoxContainer:
+				# Create a margin container for each label to add indentation
+				var parent = label.get_parent()
+				var index = label.get_index()
+				parent.remove_child(label)
+				
+				var indent_container = MarginContainer.new()
+				indent_container.add_theme_constant_override("margin_left", 30)  # 30px indent as requested
+				parent.add_child(indent_container)
+				parent.move_child(indent_container, index)
+				indent_container.add_child(label)
+
+func _setup_panel_position() -> void:
+	# Center the entire Control
 	anchor_left = 0.5
 	anchor_right = 0.5
 	anchor_top = 0.5
 	anchor_bottom = 0.5
 	
-	# Hide on start
-	visible = false
+	# Set panel size - increased height by 15px
+	if panel:
+		panel.custom_minimum_size = Vector2(420, 415)  # Increased from 400 to 415
+		panel.size = Vector2(420, 415)
+		
+		# Properly center it using anchors and margins
+		panel.anchor_left = 0.5
+		panel.anchor_right = 0.5
+		panel.anchor_top = 0.5
+		panel.anchor_bottom = 0.5
+		
+		# Use negative margins to center (half of the size)
+		panel.offset_left = -210
+		panel.offset_right = 210
+		panel.offset_top = -207.5  # Half of 415
+		panel.offset_bottom = 207.5
 
 func show_round_complete(round_num: int, scores: Dictionary) -> void:
 	# Force to front
@@ -60,15 +162,12 @@ func show_round_complete(round_num: int, scores: Dictionary) -> void:
 	# Store the round score for continue logic
 	current_round_score = scores.round_total
 	
-	# Set title
-	if GameState.board_cleared:
-		title_label.text = "Round %d Complete!" % round_num
-	else:
-		title_label.text = "Round %d Failed!" % round_num
+	# Set title with new format
+	title_label.text = "Round %d: Score Summary" % round_num
 	
 	# Display scores from the dictionary
 	score_label_base.text = "Base Score: %d" % scores.base
-	score_label_cards.text = "Cards Bonus: %d" % scores.cards
+	score_label_cards.text = "Card Bonus: %d" % scores.cards
 	score_label_time.text = "Time Bonus: %d" % scores.time
 	score_label_clear.text = "Peak Bonus: %d" % scores.clear
 	
@@ -80,14 +179,12 @@ func show_round_complete(round_num: int, scores: Dictionary) -> void:
 	
 	if round_score_label:
 		round_score_label.text = "Round Score: %d" % scores.round_total
-		round_score_label.add_theme_font_size_override("font_size", 32)
 		round_score_label.visible = true
 	
 	# Total is what we had before + this round
 	total_score_label.text = "Total Score: %d" % (GameState.total_score + scores.round_total)
-	total_score_label.add_theme_font_size_override("font_size", 28)
 	
-	# Update button text based on game state - FIXED to use GameModeManager
+	# Update button text based on game state
 	var max_rounds = GameModeManager.get_max_rounds()
 	if round_num >= max_rounds:
 		continue_button.text = "View Results"  # Show game over screen next
@@ -176,7 +273,7 @@ func _show_game_over() -> void:
 	# Use the base score label to show summary (it's multiline capable)
 	score_label_base.text = summary_text
 	score_label_base.visible = true
-	score_label_base.add_theme_font_size_override("font_size", 14)
+	score_label_base.add_theme_font_size_override("font_size", UIStyleManager.typography.size_caption)
 	
 	# Hide other score breakdowns
 	score_label_cards.visible = false
@@ -186,7 +283,7 @@ func _show_game_over() -> void:
 	
 	# Show final score prominently - USE THE CORRECTED TOTAL
 	total_score_label.text = "Final Score: %d" % final_total
-	total_score_label.add_theme_font_size_override("font_size", 40)
+	total_score_label.add_theme_font_size_override("font_size", UIStyleManager.typography.size_h1)
 	
 	# Also update GameState so it's correct if needed elsewhere
 	GameState.total_score = final_total

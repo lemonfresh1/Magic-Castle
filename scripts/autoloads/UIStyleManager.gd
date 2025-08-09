@@ -233,6 +233,41 @@ var filter_style_config = {
 	"content_margin_v": -1   # Top and bottom
 }
 
+var game_style = {
+	# Proportional sizes (as percentages)
+	"top_bar_height_percent": 0.24,  # 15% of screen
+	"board_area_height_percent": 0.76,  # 85% of screen
+	"draw_zone_width_percent": 0.08,  # 8% of screen width
+	
+	# Draw zones - MORE VISIBLE COLORS
+	"draw_zone_bg_color": Color(0.1, 0.2, 0.3, 0.5),  # Dark blue-gray with 50% alpha
+	"draw_zone_border_color": Color(0.2, 0.4, 0.6, 0.8),  # Matching border
+	"draw_zone_text_color": Color(0.9, 0.95, 1.0, 1.0),  # Keep bright white
+	"draw_zone_pulse_alpha_min": 0.5,  # Higher minimum
+	"draw_zone_pulse_alpha_max": 1.0,  # Full opacity at peak
+	"draw_zone_pulse_duration": 1.5,  # Faster pulse
+	
+	# Top bar - MORE VISIBLE
+	"top_bar_bg_color": Color(0.15, 0.15, 0.15, 0.95),  # Darker, more opaque
+	"top_bar_border_color": Color(0.4, 0.4, 0.4, 0.5),  # More visible border
+	
+	# Progress bars
+	"timer_bar_bg": Color(0.2, 0.8, 0.2, 0.3),
+	"timer_bar_fill": Color(0.2, 0.8, 0.2),
+	"combo_bar_bg": Color(0.9, 0.9, 0.2, 0.3),
+	"combo_bar_fill": Color(0.9, 0.9, 0.2),
+	
+	# Cards (keeping some fixed for gameplay consistency)
+	"card_width_mobile": 50,
+	"card_height_mobile": 70,
+	"card_overlap_y": 25,
+	"card_spacing_min": 3,
+	
+	# Animations
+	"draw_zone_click_scale": 0.95,
+	"draw_zone_click_duration": 0.1
+}
+
 # Dictionary to track styled panels for easy updates
 var styled_panels = {}
 
@@ -584,3 +619,133 @@ func update_scroll_config(new_config: Dictionary) -> void:
 func update_filter_style_config(new_config: Dictionary) -> void:
 	"""Update the filter button style configuration"""
 	filter_style_config.merge(new_config, true)
+
+#GAME
+
+# Screen size helpers 
+func get_screen_size() -> Vector2:
+	"""Get the actual current screen/viewport size"""
+	# Since UIStyleManager is an autoload, we can access the viewport from anywhere
+	var viewport = get_viewport()
+	if viewport:
+		return viewport.get_visible_rect().size
+	else:
+		# Fallback for edge cases during initialization
+		return Vector2(1200.0, 540.0)
+
+func get_proportional_size(base_value: float, axis: String = "width") -> float:
+	"""Convert a base value to screen-proportional size
+	Base reference is 1200x540 (our design resolution)"""
+	var screen = get_screen_size()
+	var base_width = 1200.0   # Our design reference width
+	var base_height = 540.0   # Our design reference height
+	
+	if axis == "width":
+		return base_value * (screen.x / base_width)
+	else:
+		return base_value * (screen.y / base_height)
+
+func get_scale_factor() -> float:
+	"""Get a uniform scale factor based on the smaller dimension
+	Useful for keeping aspect ratios consistent"""
+	var screen = get_screen_size()
+	var width_scale = screen.x / 1200.0
+	var height_scale = screen.y / 540.0
+	return min(width_scale, height_scale)
+
+func is_portrait_mode() -> bool:
+	"""Check if device is in portrait orientation"""
+	var screen = get_screen_size()
+	return screen.y > screen.x
+
+func get_safe_area_margins() -> Dictionary:
+	"""Get safe area margins for notches/rounded corners
+	TODO: Implement actual safe area detection for mobile"""
+	# For now, return conservative margins
+	var screen = get_screen_size()
+	return {
+		"top": 20 if is_portrait_mode() else 0,
+		"bottom": 20 if is_portrait_mode() else 0,
+		"left": 20,
+		"right": 20
+	}
+
+func get_game_dimension(key: String) -> float:
+	"""Get game-specific dimensions based on screen size"""
+	var screen = get_screen_size()
+	
+	match key:
+		"top_bar_height":
+			return screen.y * game_style.top_bar_height_percent
+		"board_area_height":
+			return screen.y * game_style.board_area_height_percent
+		"draw_zone_width":
+			return screen.x * game_style.draw_zone_width_percent
+		_:
+			# Check if it's in game_style as a direct value
+			return game_style.get(key, 100.0)
+
+# Game-specific styling functions
+func apply_game_progress_bar_style(progress_bar: ProgressBar, bar_type: String = "timer") -> void:
+	"""Apply game-specific progress bar styling"""
+	var bg_style = StyleBoxFlat.new()
+	var fill_style = StyleBoxFlat.new()
+	
+	match bar_type:
+		"timer":
+			bg_style.bg_color = game_style.timer_bar_bg
+			fill_style.bg_color = game_style.timer_bar_fill
+		"combo":
+			bg_style.bg_color = game_style.combo_bar_bg
+			fill_style.bg_color = game_style.combo_bar_fill
+		_:
+			bg_style.bg_color = colors.gray_200
+			fill_style.bg_color = colors.primary
+	
+	# Common styling
+	bg_style.set_corner_radius_all(dimensions.corner_radius_small)
+	fill_style.set_corner_radius_all(dimensions.corner_radius_small)
+	
+	progress_bar.add_theme_stylebox_override("background", bg_style)
+	progress_bar.add_theme_stylebox_override("fill", fill_style)
+
+func apply_draw_zone_style(zone: Control) -> StyleBoxFlat:
+	"""Create and return draw zone style"""
+	var style = StyleBoxFlat.new()
+	style.bg_color = game_style.draw_zone_bg_color
+	style.border_color = game_style.draw_zone_border_color
+	style.set_border_width_all(borders.width_medium)
+	style.set_corner_radius_all(dimensions.corner_radius_small)
+	return style
+
+func apply_top_bar_panel_style(panel: Panel) -> void:
+	"""Apply top bar specific panel styling - white with shadow like other panels"""
+	var style = StyleBoxFlat.new()
+	
+	# Use white background like other panels for consistency
+	style.bg_color = Color(0, 0, 0, 0.7)
+	
+	# Add shadow for depth (downward shadow)
+	style.shadow_size = shadows.size_medium
+	style.shadow_offset = Vector2(0, 2)
+	style.shadow_color = shadows.color_medium
+	
+	panel.add_theme_stylebox_override("panel", style)
+
+func create_draw_zone_animation(zone: Control, available: bool = true) -> void:
+	"""Create pulse animation for draw zone when cards available"""
+	if not available:
+		zone.modulate.a = 0.3
+		return
+	
+	# Create pulse tween
+	var tween = zone.create_tween()
+	tween.set_loops()
+	tween.tween_property(zone, "modulate:a", game_style.draw_zone_pulse_alpha_max, game_style.draw_zone_pulse_duration / 2)
+	tween.tween_property(zone, "modulate:a", game_style.draw_zone_pulse_alpha_min, game_style.draw_zone_pulse_duration / 2)
+
+func animate_draw_zone_click(zone: Control) -> void:
+	"""Animate draw zone on click"""
+	var tween = zone.create_tween()
+	tween.tween_property(zone, "scale", Vector2.ONE * game_style.draw_zone_click_scale, game_style.draw_zone_click_duration)
+	tween.tween_property(zone, "scale", Vector2.ONE, game_style.draw_zone_click_duration)

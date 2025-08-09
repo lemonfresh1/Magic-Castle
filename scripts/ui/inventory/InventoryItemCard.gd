@@ -1,6 +1,6 @@
 # InventoryItemCard.gd - Individual inventory item display component
 # Location: res://Magic-Castle/scripts/ui/inventory/InventoryItemCard.gd
-# Last Updated: Updated to match actual scene structure [Date]
+# Last Updated: Updated to use icons from ItemData [Date]
 
 extends PanelContainer
 
@@ -23,11 +23,20 @@ func setup(item: ShopManager.ShopItem):
 	if not is_node_ready():
 		await ready
 	
-	# Load placeholder icon
+	# Load icon - prefer preview_texture_path (from ItemData.icon_path) over placeholder
 	if icon_texture:
-		var icon_path = "res://Magic-Castle/assets/placeholder/food/" + item.placeholder_icon
-		if FileAccess.file_exists(icon_path):
-			icon_texture.texture = load(icon_path)
+		var icon_loaded = false
+		
+		# First try preview_texture_path (actual icon from ItemData)
+		if item.preview_texture_path != "" and ResourceLoader.exists(item.preview_texture_path):
+			icon_texture.texture = load(item.preview_texture_path)
+			icon_loaded = true
+		
+		# Fallback to placeholder icon if no actual icon
+		if not icon_loaded and item.placeholder_icon != "":
+			var placeholder_path = "res://Magic-Castle/assets/placeholder/food/" + item.placeholder_icon
+			if ResourceLoader.exists(placeholder_path):
+				icon_texture.texture = load(placeholder_path)
 	
 	# Set item name
 	if item_name:
@@ -48,6 +57,15 @@ func setup(item: ShopManager.ShopItem):
 	_apply_rarity_style(item.rarity)
 
 func _check_equipped_status():
+	# Check with ItemManager first for ItemManager items
+	if ItemManager and (item_data.id.begins_with("board_") or item_data.id.begins_with("card_")):
+		var category = _get_item_category(item_data.category)
+		if category != -1:
+			var equipped_id = ItemManager.get_equipped_item(category)
+			is_equipped = (equipped_id == item_data.id)
+			return
+	
+	# Fallback to ShopManager data
 	var equipped = ShopManager.shop_data.equipped
 	
 	match item_data.category:
@@ -140,3 +158,12 @@ func _ready():
 	custom_minimum_size = Vector2(120, 150)
 	size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	size_flags_vertical = Control.SIZE_SHRINK_CENTER
+
+func _get_item_category(shop_category: String) -> ItemData.Category:
+	match shop_category:
+		"card_skins": return ItemData.Category.CARD_FRONT
+		"board_skins": return ItemData.Category.BOARD
+		"avatars": return ItemData.Category.AVATAR
+		"frames": return ItemData.Category.FRAME
+		"emojis": return ItemData.Category.EMOJI
+		_: return -1

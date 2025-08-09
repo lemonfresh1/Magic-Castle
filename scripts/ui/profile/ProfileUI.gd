@@ -1,6 +1,6 @@
 # ProfileUI.gd - Profile interface showing player overview and owned skins
 # Location: res://Magic-Castle/scripts/ui/profile/ProfileUI.gd
-# Last Updated: Minimal cleanup - panel styling and filter buttons only [Date]
+# Last Updated: Added ItemManager support for equipping items [Date]
 
 extends PanelContainer
 
@@ -64,23 +64,17 @@ func _setup_skins_tab():
 	if not skins_tab:
 		return
 	
-	print("Setting up skins tab...")
-	
 	# Connect filter button - it's called "OptionButton" in the scene
 	var filter_button = skins_tab.find_child("OptionButton", true, false)
 	if filter_button:
-		print("Found OptionButton in skins tab")
 		filter_button.clear()
 		filter_button.add_item("All")
 		filter_button.add_item("Equipped")
 		filter_button.add_item("By Rarity")
 		if not filter_button.item_selected.is_connected(_on_skins_filter_changed):
 			filter_button.item_selected.connect(_on_skins_filter_changed)
-			print("Connected filter button signal")
 		# Apply filter styling with purple theme
 		UIStyleManager.style_filter_button(filter_button, Color("#a487ff"))
-	else:
-		print("ERROR: OptionButton not found in skins tab!")
 	
 	# Fix scroll container sizing
 	var scroll_container = skins_tab.find_child("ScrollContainer", true, false)
@@ -154,8 +148,20 @@ func _populate_skins_grid(grid: GridContainer, skins: Array):
 		card.item_clicked.connect(_on_skin_clicked)
 		grid.add_child(card)
 		skin_cards.append(card)
+		
+		# Connect to refresh when items are equipped
+		if ItemManager and not ItemManager.item_equipped.is_connected(_on_item_equipped):
+			ItemManager.item_equipped.connect(_on_item_equipped)
 
 func _is_item_equipped(item: ShopManager.ShopItem) -> bool:
+	# Check with ItemManager first for ItemManager items
+	if ItemManager and (item.id.begins_with("board_") or item.id.begins_with("card_")):
+		var category = _get_item_category(item.category)
+		if category != -1:
+			var equipped_id = ItemManager.get_equipped_item(category)
+			return equipped_id == item.id
+	
+	# Fallback to ShopManager data
 	var equipped = ShopManager.shop_data.equipped
 	
 	match item.category:
@@ -172,6 +178,15 @@ func _is_item_equipped(item: ShopManager.ShopItem) -> bool:
 	
 	return false
 
+func _get_item_category(shop_category: String) -> ItemData.Category:
+	match shop_category:
+		"card_skins": return ItemData.Category.CARD_FRONT
+		"board_skins": return ItemData.Category.BOARD
+		"avatars": return ItemData.Category.AVATAR
+		"frames": return ItemData.Category.FRAME
+		"emojis": return ItemData.Category.EMOJI
+		_: return -1
+
 func _on_skins_filter_changed(index: int):
 	match index:
 		0:
@@ -184,8 +199,68 @@ func _on_skins_filter_changed(index: int):
 	_populate_skins()
 
 func _on_skin_clicked(item: ShopManager.ShopItem):
-	print("Skin clicked in profile: ", item.display_name)
-	# Could show equip dialog here
+	# Check if item is already equipped
+	if _is_item_equipped(item):
+		print("Item already equipped: ", item.display_name)
+		return  # Don't show dialog
+	
+	# Create equip dialog using the new custom dialog
+	var dialog = preload("res://Magic-Castle/scripts/ui/dialogs/EquipDialog.gd").new()
+	get_tree().root.add_child(dialog)
+	
+	dialog.setup_for_item(item)
+	dialog.item_equipped.connect(_on_item_equipped_from_dialog)
+	dialog.popup()
+
+func _direct_equip(item: ShopManager.ShopItem):
+	"""Fallback method to equip directly without dialog"""
+	var success = false
+	
+	# Try ItemManager first
+	if ItemManager and ItemManager.get_item(item.id):
+		success = ItemManager.equip_item(item.id)
+		if success:
+			# Also update ShopManager for backwards compatibility
+			var key = _get_shop_equipped_key(item.category)
+			if key != "":
+				ShopManager.shop_data.equipped[key] = item.id
+				ShopManager.save_shop_data()
+	else:
+		# Fallback to ShopManager
+		success = ShopManager.equip_item(item.id)
+	
+	if success:
+		_refresh_all_cards()
+
+func _get_shop_equipped_key(category: String) -> String:
+	match category:
+		"card_skins": return "card_skin"
+		"board_skins": return "board_skin"
+		"avatars": return "avatar"
+		"frames": return "frame"
+		_: return ""
+
+func _on_item_equipped(item_id: String, category: String):
+	"""Called when any item is equipped via ItemManager"""
+	_refresh_all_cards()
+
+func _on_item_equipped_from_dialog(item_id: String):
+	"""Called when item is equipped from dialog"""
+	_refresh_all_cards()
+
+func _on_item_unequipped_from_dialog(item_id: String):
+	"""Called when item is unequipped from dialog"""
+	_refresh_all_cards()
+
+func _refresh_all_cards():
+	"""Refresh equipped status on all visible cards"""
+	for card in skin_cards:
+		if card and is_instance_valid(card) and card.has_method("refresh_equipped_status"):
+			card.refresh_equipped_status()
+	
+	# If showing equipped filter, refresh the grid
+	if current_filter == "equipped":
+		_populate_skins()
 
 func show_profile():
 	visible = true

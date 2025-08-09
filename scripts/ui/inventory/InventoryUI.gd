@@ -297,18 +297,51 @@ func _apply_filters(tab_id: String):
 		card.visible = should_show
 
 func _on_item_clicked(item: ShopManager.ShopItem):
-	# Show equip dialog
-	var dialog = AcceptDialog.new()
-	dialog.set_script(preload("res://Magic-Castle/scripts/ui/dialogs/EquipDialog.gd"))
-	add_child(dialog)
+	# Check if item is already equipped
+	if _is_item_already_equipped(item):
+		print("Item already equipped: ", item.display_name)
+		return  # Don't show dialog
+	
+	# Create equip dialog
+	var dialog = preload("res://Magic-Castle/scripts/ui/dialogs/EquipDialog.gd").new()
+	get_tree().root.add_child(dialog)
 	
 	dialog.setup_for_item(item)
 	dialog.item_equipped.connect(_on_item_equipped)
-	dialog.item_unequipped.connect(_on_item_unequipped)
-	dialog.canceled.connect(func(): dialog.queue_free())
-	dialog.confirmed.connect(func(): dialog.queue_free())
+	dialog.popup()
+
+func _is_item_already_equipped(item: ShopManager.ShopItem) -> bool:
+	# Check with ItemManager first for ItemManager items
+	if ItemManager and (item.id.begins_with("board_") or item.id.begins_with("card_")):
+		var category = _get_item_category(item.category)
+		if category != -1:
+			var equipped_id = ItemManager.get_equipped_item(category)
+			return equipped_id == item.id
 	
-	dialog.popup_centered()
+	# Fallback to ShopManager data
+	var equipped = ShopManager.shop_data.equipped
+	match item.category:
+		"card_skins":
+			return equipped.card_skin == item.id
+		"board_skins":
+			return equipped.board_skin == item.id
+		"avatars":
+			return equipped.avatar == item.id
+		"frames":
+			return equipped.frame == item.id
+		"emojis":
+			return item.id in equipped.selected_emojis
+	
+	return false
+
+func _get_item_category(shop_category: String) -> ItemData.Category:
+	match shop_category:
+		"card_skins": return ItemData.Category.CARD_FRONT
+		"board_skins": return ItemData.Category.BOARD
+		"avatars": return ItemData.Category.AVATAR
+		"frames": return ItemData.Category.FRAME
+		"emojis": return ItemData.Category.EMOJI
+		_: return -1
 
 func _on_item_equipped(item_id: String):
 	print("Item equipped: ", item_id)
