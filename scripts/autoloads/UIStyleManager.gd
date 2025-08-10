@@ -240,8 +240,8 @@ var game_style = {
 	"draw_zone_width_percent": 0.08,  # 8% of screen width
 	
 	# Draw zones - MORE VISIBLE COLORS
-	"draw_zone_bg_color": Color(0.1, 0.2, 0.3, 0.5),  # Dark blue-gray with 50% alpha
-	"draw_zone_border_color": Color(0.2, 0.4, 0.6, 0.8),  # Matching border
+	"draw_zone_bg_color": Color(0.1, 0.2, 0.3, 0.1),  # Dark blue-gray with 50% alpha
+	"draw_zone_border_color": Color(0.2, 0.4, 0.6, 0.2),  # Matching border
 	"draw_zone_text_color": Color(0.9, 0.95, 1.0, 1.0),  # Keep bright white
 	"draw_zone_pulse_alpha_min": 0.5,  # Higher minimum
 	"draw_zone_pulse_alpha_max": 1.0,  # Full opacity at peak
@@ -403,6 +403,14 @@ func apply_button_style(button: Button, button_type: String = "default", size: S
 			style_normal.bg_color = colors.primary
 			style_hover.bg_color = colors.primary_dark
 			button.add_theme_color_override("font_color", colors.white)
+		"danger":  # NEW - for Continue button
+			style_normal.bg_color = colors.error
+			style_hover.bg_color = colors.error.darkened(0.1)
+			button.add_theme_color_override("font_color", colors.white)
+		"success":  # NEW - for Rematch button
+			style_normal.bg_color = colors.success
+			style_hover.bg_color = colors.primary_dark
+			button.add_theme_color_override("font_color", colors.white)
 		"secondary":
 			style_normal.bg_color = colors.white
 			style_hover.bg_color = colors.gray_50
@@ -426,9 +434,8 @@ func apply_button_style(button: Button, button_type: String = "default", size: S
 			style_normal.set_corner_radius_all(dimensions.corner_radius_small)
 		"medium":
 			button.custom_minimum_size.y = dimensions.medium_button_height
-			button.add_theme_font_size_override("font_size", typography.size_body_small)
-			style_normal.set_corner_radius_all(dimensions.corner_radius_small)
-		
+			button.add_theme_font_size_override("font_size", typography.size_body)
+			style_normal.set_corner_radius_all(dimensions.corner_radius_medium)
 		_:  # default
 			button.add_theme_font_size_override("font_size", typography.size_body)
 			style_normal.set_corner_radius_all(dimensions.corner_radius_medium)
@@ -512,6 +519,10 @@ func setup_scrollable_content(parent: Control, content_callback: Callable, confi
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.visible = true
+	
+	scroll.horizontal_scroll_mode = ScrollContainer.ScrollMode.SCROLL_MODE_SHOW_NEVER
+	scroll.vertical_scroll_mode = ScrollContainer.ScrollMode.SCROLL_MODE_SHOW_NEVER
+
 	
 	# Clear existing content
 	for child in scroll.get_children():
@@ -722,8 +733,11 @@ func apply_top_bar_panel_style(panel: Panel) -> void:
 	"""Apply top bar specific panel styling - white with shadow like other panels"""
 	var style = StyleBoxFlat.new()
 	
-	# Use white background like other panels for consistency
-	style.bg_color = Color(0, 0, 0, 0.7)
+	# Use white background with slight transparency like other panels
+	style.bg_color = Color(1.0, 1.0, 1.0, 0.95)  # White with 95% opacity
+	
+	# Add rounded corners
+	style.set_corner_radius_all(dimensions.corner_radius_medium)
 	
 	# Add shadow for depth (downward shadow)
 	style.shadow_size = shadows.size_medium
@@ -749,3 +763,161 @@ func animate_draw_zone_click(zone: Control) -> void:
 	var tween = zone.create_tween()
 	tween.tween_property(zone, "scale", Vector2.ONE * game_style.draw_zone_click_scale, game_style.draw_zone_click_duration)
 	tween.tween_property(zone, "scale", Vector2.ONE, game_style.draw_zone_click_duration)
+
+func apply_label_style(label: Label, style_type: String = "body") -> void:
+	"""Apply consistent label styling based on type"""
+	match style_type:
+		"header":
+			label.add_theme_font_size_override("font_size", typography.size_title)  # Use existing 24
+			label.add_theme_color_override("font_color", colors.gray_900)
+		"title":
+			label.add_theme_font_size_override("font_size", typography.size_title)  # Use existing 24
+			label.add_theme_color_override("font_color", colors.gray_900)
+		"body":
+			label.add_theme_font_size_override("font_size", typography.size_body)  # Existing 18
+			label.add_theme_color_override("font_color", colors.gray_700)
+		"body_small":
+			label.add_theme_font_size_override("font_size", typography.size_body_small)  # Existing 16
+			label.add_theme_color_override("font_color", colors.gray_700)
+		"caption":
+			label.add_theme_font_size_override("font_size", typography.size_caption)  # Existing 14
+			label.add_theme_color_override("font_color", colors.gray_600)
+		"overlay":
+			label.add_theme_font_size_override("font_size", typography.size_body_small)  # Use existing 16
+			label.add_theme_color_override("font_color", colors.white)
+		"success":
+			label.add_theme_font_size_override("font_size", typography.size_body)  # Existing 18
+			label.add_theme_color_override("font_color", colors.success)
+		"error":
+			label.add_theme_font_size_override("font_size", typography.size_body)  # Existing 18
+			label.add_theme_color_override("font_color", colors.error)
+
+func apply_menu_button_style(button: Button, button_type: String = "default") -> void:
+	"""Apply menu button styling for main menu buttons"""
+	# Get the panel if it exists
+	var main_panel = button.get_node_or_null("MainPanel")
+	if not main_panel or not main_panel is PanelContainer:
+		return
+	
+	# Get the label and icon for styling
+	var label = button.get_node_or_null("MainPanel/MarginContainer/Label")
+	var icon = button.get_node_or_null("MainPanel/MarginContainer/Icon")
+	
+	# Create panel style
+	var panel_style = StyleBoxFlat.new()
+	
+	# Configure based on button type and SET SIZE DIRECTLY
+	if button_type == "play":
+		# Play button - green, larger but flatter
+		panel_style.bg_color = colors.primary
+		panel_style.border_color = colors.primary_dark
+		
+		# Set size directly on the button
+		button.size = Vector2(300, 70)
+		button.custom_minimum_size = Vector2(300, 70)
+		
+		# Also set the panel size
+		main_panel.custom_minimum_size = Vector2(300, 70)
+		main_panel.size = Vector2(300, 70)
+		
+		# FULLY ROUNDED for play button (35px = half of 70px height)
+		panel_style.set_corner_radius_all(35)
+		
+		if label:
+			label.add_theme_color_override("font_color", colors.white)
+			label.add_theme_font_size_override("font_size", typography.size_title)  # 24px
+			label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.3))
+			label.add_theme_constant_override("shadow_offset_x", 1)
+			label.add_theme_constant_override("shadow_offset_y", 1)
+			
+			# Center the label in the full button width
+			label.set_anchors_preset(Control.PRESET_FULL_RECT)
+			label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	else:
+		# Default buttons - white background, flatter
+		panel_style.bg_color = colors.white
+		panel_style.border_color = colors.gray_300
+		
+		# Set size directly on the button
+		button.size = Vector2(300, 48)
+		button.custom_minimum_size = Vector2(300, 48)
+		
+		# Also set the panel size
+		main_panel.custom_minimum_size = Vector2(300, 48)
+		main_panel.size = Vector2(300, 48)
+		
+		# Fully rounded for other buttons too (24px = half of 48px height)
+		panel_style.set_corner_radius_all(24)
+		
+		if label:
+			label.add_theme_color_override("font_color", colors.gray_900)
+			label.add_theme_font_size_override("font_size", typography.size_body)  # 18px
+			label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.08))
+			label.add_theme_constant_override("shadow_offset_x", 1)
+			label.add_theme_constant_override("shadow_offset_y", 1)
+			
+			# Center the label in the full button width
+			label.set_anchors_preset(Control.PRESET_FULL_RECT)
+			label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	
+	# Common styling for all menu buttons
+	panel_style.set_border_width_all(borders.width_thin)  # 1px border
+	
+	# Add shadow
+	panel_style.shadow_size = shadows.size_small
+	panel_style.shadow_offset = shadows.offset_small
+	panel_style.shadow_color = Color(0, 0, 0, 0.1)
+	
+	# Apply the style to the panel
+	main_panel.add_theme_stylebox_override("panel", panel_style)
+	
+	# Configure margins
+	var margin_container = button.get_node_or_null("MainPanel/MarginContainer")
+	if margin_container:
+		margin_container.add_theme_constant_override("margin_left", spacing.space_8)  # 16px
+		margin_container.add_theme_constant_override("margin_right", spacing.space_4)
+		margin_container.add_theme_constant_override("margin_top", spacing.space_2)   # 8px
+		margin_container.add_theme_constant_override("margin_bottom", spacing.space_2) # 8px
+	
+	# Position icon absolutely on the left
+	if icon:
+		icon.visible = true
+		
+		# Position icon on the left with custom anchors
+		icon.set_anchors_preset(Control.PRESET_CENTER_LEFT)
+		icon.anchor_left = 0.0
+		icon.anchor_top = 0.5
+		icon.anchor_right = 0.0
+		icon.anchor_bottom = 0.5
+		
+		if button_type == "play":
+			icon.modulate = colors.white
+			icon.custom_minimum_size = Vector2(32, 32)
+			icon.position.x = 20  # Push it 20px from the left edge
+			icon.position.y = -16  # Center vertically (half of icon height)
+		else:
+			icon.modulate = colors.gray_700
+			icon.custom_minimum_size = Vector2(24, 24)
+			icon.position.x = 16  # Push it 16px from the left edge
+			icon.position.y = -12  # Center vertically (half of icon height)
+		
+		icon.expand_mode = TextureRect.EXPAND_FIT_HEIGHT
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	
+	# Remove focus rectangle
+	var empty_style = StyleBoxEmpty.new()
+	button.add_theme_stylebox_override("focus", empty_style)
+	
+	# For pressed state
+	if button_type != "play":
+		# Create pressed state style
+		var pressed_style = panel_style.duplicate()
+		pressed_style.bg_color = colors.gray_100
+		pressed_style.border_color = colors.primary
+		pressed_style.set_border_width_all(borders.width_medium)
+		
+		# Store the styles on the button for toggle functionality
+		button.set_meta("normal_style", panel_style)
+		button.set_meta("pressed_style", pressed_style)

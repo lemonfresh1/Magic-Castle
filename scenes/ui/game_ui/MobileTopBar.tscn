@@ -1,45 +1,35 @@
-[gd_scene load_steps=3 format=3 uid="uid://craksy104deun"]
+[gd_scene load_steps=4 format=3 uid="uid://craksy104deun"]
 
 [ext_resource type="Script" uid="uid://d2b04oak45xe4" path="res://Magic-Castle/scripts/game/MobileTopBar.gd" id="1_gi1i6"]
 [ext_resource type="Texture2D" uid="uid://8myvx8qs5e06" path="res://Magic-Castle/assets/cards/card_back.png" id="2_vlixn"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_vlixn"]
 
 [node name="MobileTopBar" type="HBoxContainer"]
 anchors_preset = 10
 anchor_right = 1.0
 grow_horizontal = 2
 size_flags_horizontal = 3
+size_flags_vertical = 0
 script = ExtResource("1_gi1i6")
 
-[node name="Panel" type="Panel" parent="."]
+[node name="HBoxContainer" type="HBoxContainer" parent="."]
 layout_mode = 2
 size_flags_horizontal = 3
-
-[node name="MarginContainer" type="MarginContainer" parent="Panel"]
-layout_mode = 1
-anchors_preset = 14
-anchor_top = 0.5
-anchor_right = 1.0
-anchor_bottom = 0.5
-offset_top = -65.0
-offset_bottom = 65.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 10
-theme_override_constants/margin_right = 10
-theme_override_constants/margin_bottom = 10
-
-[node name="HBoxContainer" type="HBoxContainer" parent="Panel/MarginContainer"]
-layout_mode = 2
 theme_override_constants/separation = 20
 alignment = 1
 
-[node name="LeftSection" type="HBoxContainer" parent="Panel/MarginContainer/HBoxContainer"]
+[node name="LeftSection" type="HBoxContainer" parent="HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_stretch_ratio = 1.4
+size_flags_stretch_ratio = 1.38
 
-[node name="MenuButton" type="Button" parent="Panel/MarginContainer/HBoxContainer/LeftSection"]
+[node name="VSeparator" type="VSeparator" parent="HBoxContainer/LeftSection"]
+modulate = Color(1, 1, 1, 0)
+custom_minimum_size = Vector2(10, 0)
+layout_mode = 2
+
+[node name="MenuButton" type="Button" parent="HBoxContainer/LeftSection"]
 custom_minimum_size = Vector2(80, 30)
 layout_mode = 2
 size_flags_horizontal = 4
@@ -47,13 +37,13 @@ size_flags_vertical = 4
 theme_override_font_sizes/font_size = 24
 text = "Menu"
 
-[node name="TimerContainer" type="Control" parent="Panel/MarginContainer/HBoxContainer/LeftSection"]
+[node name="TimerContainer" type="Control" parent="HBoxContainer/LeftSection"]
 custom_minimum_size = Vector2(120, 30)
 layout_mode = 2
 size_flags_horizontal = 10
 size_flags_stretch_ratio = 3.0
 
-[node name="TimerBar" type="ProgressBar" parent="Panel/MarginContainer/HBoxContainer/LeftSection/TimerContainer"]
+[node name="TimerBar" type="ProgressBar" parent="HBoxContainer/LeftSection/TimerContainer"]
 custom_minimum_size = Vector2(120, 30)
 layout_mode = 1
 anchors_preset = 14
@@ -69,7 +59,7 @@ step = 1.0
 value = 60.0
 show_percentage = false
 
-[node name="TimerLabel" type="Label" parent="Panel/MarginContainer/HBoxContainer/LeftSection/TimerContainer"]
+[node name="TimerLabel" type="Label" parent="HBoxContainer/LeftSection/TimerContainer"]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -86,21 +76,38 @@ theme_override_font_sizes/font_size = 24
 text = "20"
 horizontal_alignment = 1
 
-[node name="CenterSection" type="HBoxContainer" parent="Panel/MarginContainer/HBoxContainer"]
+[node name="CenterSection" type="HBoxContainer" parent="HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.6
 
-[node name="DrawPileContainer" type="Control" parent="Panel/MarginContainer/HBoxContainer/CenterSection"]
+[node name="Panel" type="Panel" parent="HBoxContainer/CenterSection"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_vlixn")
+
+[node name="MarginContainer" type="MarginContainer" parent="HBoxContainer/CenterSection/Panel"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 110.0
+grow_horizontal = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="HBoxContainer/CenterSection/Panel/MarginContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+
+[node name="DrawPileContainer" type="Control" parent="HBoxContainer/CenterSection/Panel/MarginContainer/HBoxContainer"]
 custom_minimum_size = Vector2(80, 110)
 layout_mode = 2
 size_flags_stretch_ratio = 1.5
 
-[node name="DrawPileSprite" type="TextureRect" parent="Panel/MarginContainer/HBoxContainer/CenterSection/DrawPileContainer"]
+[node name="DrawPileSprite" type="TextureRect" parent="HBoxContainer/CenterSection/Panel/MarginContainer/HBoxContainer/DrawPileContainer"]
 custom_minimum_size = Vector2(80, 110)
 layout_mode = 0
 texture = ExtResource("2_vlixn")
 
-[node name="DrawPileLabel" type="Label" parent="Panel/MarginContainer/HBoxContainer/CenterSection/DrawPileContainer"]
+[node name="DrawPileLabel" type="Label" parent="HBoxContainer/CenterSection/Panel/MarginContainer/HBoxContainer/DrawPileContainer"]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -117,15 +124,15 @@ theme_override_font_sizes/font_size = 24
 text = "20"
 horizontal_alignment = 1
 
-[node name="CardSlot1" type="Control" parent="Panel/MarginContainer/HBoxContainer/CenterSection"]
+[node name="CardSlot1" type="Control" parent="HBoxContainer/CenterSection/Panel/MarginContainer/HBoxContainer"]
 custom_minimum_size = Vector2(80, 110)
 layout_mode = 2
 
-[node name="CardSlot2" type="Control" parent="Panel/MarginContainer/HBoxContainer/CenterSection"]
+[node name="CardSlot2" type="Control" parent="HBoxContainer/CenterSection/Panel/MarginContainer/HBoxContainer"]
 custom_minimum_size = Vector2(80, 110)
 layout_mode = 2
 
-[node name="Background" type="TextureRect" parent="Panel/MarginContainer/HBoxContainer/CenterSection/CardSlot2"]
+[node name="Background" type="TextureRect" parent="HBoxContainer/CenterSection/Panel/MarginContainer/HBoxContainer/CardSlot2"]
 modulate = Color(1, 1, 1, 0.25098)
 custom_minimum_size = Vector2(80, 110)
 layout_mode = 0
@@ -133,7 +140,7 @@ offset_right = 40.0
 offset_bottom = 40.0
 texture = ExtResource("2_vlixn")
 
-[node name="ComboCountdown1" type="Label" parent="Panel/MarginContainer/HBoxContainer/CenterSection/CardSlot2"]
+[node name="ComboCountdown1" type="Label" parent="HBoxContainer/CenterSection/Panel/MarginContainer/HBoxContainer/CardSlot2"]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -151,11 +158,11 @@ text = "2"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="CardSlot3" type="Control" parent="Panel/MarginContainer/HBoxContainer/CenterSection"]
+[node name="CardSlot3" type="Control" parent="HBoxContainer/CenterSection/Panel/MarginContainer/HBoxContainer"]
 custom_minimum_size = Vector2(80, 110)
 layout_mode = 2
 
-[node name="Background2" type="TextureRect" parent="Panel/MarginContainer/HBoxContainer/CenterSection/CardSlot3"]
+[node name="Background2" type="TextureRect" parent="HBoxContainer/CenterSection/Panel/MarginContainer/HBoxContainer/CardSlot3"]
 modulate = Color(1, 1, 1, 0.25098)
 custom_minimum_size = Vector2(80, 110)
 layout_mode = 0
@@ -163,7 +170,7 @@ offset_right = 40.0
 offset_bottom = 40.0
 texture = ExtResource("2_vlixn")
 
-[node name="ComboCountdown2" type="Label" parent="Panel/MarginContainer/HBoxContainer/CenterSection/CardSlot3"]
+[node name="ComboCountdown2" type="Label" parent="HBoxContainer/CenterSection/Panel/MarginContainer/HBoxContainer/CardSlot3"]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -181,18 +188,18 @@ text = "6"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="RightSection" type="HBoxContainer" parent="Panel/MarginContainer/HBoxContainer"]
+[node name="RightSection" type="HBoxContainer" parent="HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 1.72
 
-[node name="ComboContainer" type="Control" parent="Panel/MarginContainer/HBoxContainer/RightSection"]
+[node name="ComboContainer" type="Control" parent="HBoxContainer/RightSection"]
 custom_minimum_size = Vector2(120, 30)
 layout_mode = 2
 size_flags_horizontal = 0
 size_flags_stretch_ratio = 2.0
 
-[node name="ComboBar" type="ProgressBar" parent="Panel/MarginContainer/HBoxContainer/RightSection/ComboContainer"]
+[node name="ComboBar" type="ProgressBar" parent="HBoxContainer/RightSection/ComboContainer"]
 custom_minimum_size = Vector2(120, 30)
 layout_mode = 1
 anchors_preset = 14
@@ -208,7 +215,7 @@ step = 1.0
 value = 15.0
 show_percentage = false
 
-[node name="ComboLabel" type="Label" parent="Panel/MarginContainer/HBoxContainer/RightSection/ComboContainer"]
+[node name="ComboLabel" type="Label" parent="HBoxContainer/RightSection/ComboContainer"]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -224,10 +231,15 @@ grow_vertical = 2
 theme_override_font_sizes/font_size = 24
 text = "15"
 
-[node name="PauseButton" type="Button" parent="Panel/MarginContainer/HBoxContainer/RightSection"]
+[node name="PauseButton" type="Button" parent="HBoxContainer/RightSection"]
 custom_minimum_size = Vector2(100, 30)
 layout_mode = 2
 size_flags_horizontal = 10
 size_flags_vertical = 4
 theme_override_font_sizes/font_size = 24
 text = "Pause"
+
+[node name="VSeparator2" type="VSeparator" parent="HBoxContainer/RightSection"]
+modulate = Color(1, 1, 1, 0)
+custom_minimum_size = Vector2(10, 0)
+layout_mode = 2

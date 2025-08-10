@@ -1,5 +1,7 @@
 # MobileGameBoard.gd - Mobile-optimized game board
 # Path: res://Magic-Castle/scenes/game/MobileGameBoard.gd
+# Last Updated: Removed draw zone labels and debug output [Date]
+
 extends Control
 
 # === SCENE REFERENCES ===
@@ -29,7 +31,7 @@ func _ready() -> void:
 	_connect_signals()
 	CardManager.set_game_board(self)
 	set_process_unhandled_key_input(true)
-	set_process(true)  # ADD THIS - Enable process for animations
+	set_process(true)
 	GameState.start_new_game("single")
 	_apply_board_skin()
 	SignalBus.board_skin_changed.connect(_apply_board_skin)
@@ -47,18 +49,13 @@ func _process(_delta: float) -> void:
 			_update_draw_zone_state(right_draw_zone, cards_available)
 
 func _update_draw_zone_state(zone: Control, available: bool) -> void:
-	# Update the label to show availability
-	var label = zone.get_node_or_null("Label")
-	if label:
-		if available:
-			label.modulate.a = 1.0
-		else:
-			label.modulate.a = 0.3
-	
-	# Update background opacity
+	# Update background opacity based on availability
 	var background = zone.get_node_or_null("Background")
-	if background and not available:
-		background.modulate.a = 0.2
+	if background:
+		if available:
+			background.modulate.a = UIStyleManager.game_style.draw_zone_pulse_alpha_max
+		else:
+			background.modulate.a = 0.2
 
 func _setup_mobile_layout() -> void:
 	# Create and add mobile top bar
@@ -126,13 +123,13 @@ func _setup_draw_zones() -> void:
 		# Proper anchoring for left side
 		left_draw_zone.set_anchors_preset(Control.PRESET_LEFT_WIDE)
 		left_draw_zone.position.x = 0
-		left_draw_zone.size.x = zone_width  # Force width after anchoring
+		left_draw_zone.size.x = zone_width
 		left_draw_zone.size.y = board_area.size.y
 		
 		if not left_draw_zone.gui_input.is_connected(_on_left_draw_zone_input):
 			left_draw_zone.gui_input.connect(_on_left_draw_zone_input)
-			left_draw_zone.z_index = 5  # ADD THIS - Above background, below cards
-		_setup_draw_zone_visual(left_draw_zone, "⬅ TAP TO DRAW")
+			left_draw_zone.z_index = 5
+		_setup_draw_zone_visual(left_draw_zone)
 	
 	if right_draw_zone.visible:
 		# Set size using proportional width
@@ -142,22 +139,22 @@ func _setup_draw_zones() -> void:
 		# Proper anchoring for right side
 		right_draw_zone.set_anchors_preset(Control.PRESET_RIGHT_WIDE)
 		right_draw_zone.position.x = board_area.size.x - zone_width
-		right_draw_zone.size.x = zone_width  # Force width after anchoring
+		right_draw_zone.size.x = zone_width
 		right_draw_zone.size.y = board_area.size.y
 		
 		if not right_draw_zone.gui_input.is_connected(_on_right_draw_zone_input):
 			right_draw_zone.gui_input.connect(_on_right_draw_zone_input)
-			right_draw_zone.z_index = 5  # ADD THIS - Above background, below cards
-		_setup_draw_zone_visual(right_draw_zone, "TAP TO DRAW ➡")
+			right_draw_zone.z_index = 5
+		_setup_draw_zone_visual(right_draw_zone)
 
-func _setup_draw_zone_visual(zone: Control, text: String) -> void:
+func _setup_draw_zone_visual(zone: Control) -> void:
 	# Clear existing children first
 	for child in zone.get_children():
 		child.queue_free()
 	
 	# Add background panel with UIStyleManager styling
 	var background = Panel.new()
-	background.name = "Background"  # ADD NAME
+	background.name = "Background"
 	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	
@@ -166,20 +163,6 @@ func _setup_draw_zone_visual(zone: Control, text: String) -> void:
 	background.add_theme_stylebox_override("panel", style)
 	
 	zone.add_child(background)
-	
-	# Add instructional label with UIStyleManager colors
-	var label = Label.new()
-	label.name = "Label"  # ADD NAME
-	label.text = text
-	label.rotation = PI / 2
-	label.add_theme_font_size_override("font_size", UIStyleManager.get_font_size("size_caption"))
-	label.add_theme_color_override("font_color", UIStyleManager.game_style.draw_zone_text_color)
-	label.add_theme_color_override("font_shadow_color", UIStyleManager.get_color("gray_900"))
-	label.add_theme_constant_override("shadow_offset_x", 2)
-	label.add_theme_constant_override("shadow_offset_y", 2)
-	label.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	zone.add_child(label)
 	
 	# Add pulse animation if cards available
 	var cards_available = CardManager.draw_pile.size() > 0 and CardManager.cards_drawn < GameModeManager.get_draw_pile_limit(GameState.current_round)
@@ -213,7 +196,7 @@ func _adjust_board_layout() -> void:
 func _connect_signals() -> void:
 	SignalBus.round_started.connect(_on_round_started)
 	SignalBus.card_selected.connect(_on_card_selected)
-	SignalBus.draw_pile_clicked.connect(_on_draw_pile_clicked)  # ADD THIS
+	SignalBus.draw_pile_clicked.connect(_on_draw_pile_clicked)
 	SignalBus.draw_pile_mode_changed.connect(_on_draw_pile_mode_changed)
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -222,11 +205,10 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			_trigger_draw_pile()
 			get_viewport().set_input_as_handled()
 
-
 func _trigger_draw_pile() -> void:
 	SignalBus.draw_pile_clicked.emit()
 	
-	# UPDATE: Force slot update after drawing
+	# Force slot update after drawing
 	if mobile_top_bar and mobile_top_bar.has_method("update_slots"):
 		# Wait a frame for CardManager to process the draw
 		await get_tree().process_frame
@@ -332,7 +314,7 @@ func _on_card_selected(card: Control) -> void:
 		board_card_nodes[index] = null
 		card.remove_from_board()
 	
-	# UPDATE: Always update slots after card selection
+	# Always update slots after card selection
 	if mobile_top_bar and mobile_top_bar.has_method("update_slots"):
 		mobile_top_bar.update_slots()
 	
@@ -365,65 +347,48 @@ func _on_draw_pile_clicked() -> void:
 		await get_tree().process_frame
 		mobile_top_bar.update_slots()
 	
-	# CRITICAL: Update all cards selectability after drawing
+	# Update all cards selectability after drawing
 	await get_tree().process_frame
 	update_all_cards()
 
 func _apply_board_skin() -> void:
-	print("\n=== APPLYING BOARD SKIN ===")
-	
 	# Clear existing background
 	if has_node("BackgroundNode"):
-		print("  Removing existing background")
 		get_node("BackgroundNode").queue_free()
 		await get_tree().process_frame
 	
 	# Get the current equipped board from ItemManager
 	var board_id = ItemManager.get_equipped_item(ItemData.Category.BOARD)
-	print("  Equipped board ID: ", board_id)
-	
 	var board_item = ItemManager.get_item(board_id) if board_id else null
 	
 	# If no board equipped, use default
 	if not board_item:
-		print("  No board item found, using default")
 		board_item = ItemManager.get_item("board_green")
 	
 	if board_item and board_item is ItemData:
-		print("  Found board item: ", board_item.display_name)
-		print("  - Background type: ", board_item.background_type)
-		print("  - Scene path: ", board_item.background_scene_path)
 		_apply_item_background(board_item)
 	else:
-		print("  Falling back to legacy system")
 		# Fallback to legacy system
 		_apply_legacy_background()
 
 func _apply_item_background(item: ItemData) -> void:
-	print("  _apply_item_background called")
 	var bg_node: Node
 	
-	# Check for background type - it's a direct field, not in metadata!
-	var bg_type = item.background_type  # Direct field access
-	print("  Background type: ", bg_type)
+	# Check for background type
+	var bg_type = item.background_type
 	
 	match bg_type:
 		"scene":
-			# Load animated scene from direct field
-			var scene_path = item.background_scene_path  # Direct field access
-			print("  Loading background scene from: ", scene_path)
+			# Load animated scene
+			var scene_path = item.background_scene_path
 			
 			if scene_path and ResourceLoader.exists(scene_path):
-				print("  Scene exists, loading...")
 				var scene = load(scene_path)
 				bg_node = scene.instantiate()
-				print("  Successfully instantiated background scene!")
 			else:
-				print("  ERROR: Scene path not found or empty: ", scene_path)
 				bg_node = _create_color_background(item)
 				
 		"sprite":
-			print("  Loading sprite background")
 			# Static sprite using texture_path
 			if item.texture_path and ResourceLoader.exists(item.texture_path):
 				var texture = load(item.texture_path)
@@ -436,24 +401,16 @@ func _apply_item_background(item: ItemData) -> void:
 				bg_node = _create_color_background(item)
 				
 		_:  # "color" or default
-			print("  Using color background")
 			bg_node = _create_color_background(item)
 	
 	if bg_node:
-		print("  Adding background node to scene")
 		bg_node.name = "BackgroundNode"
 		add_child(bg_node)
 		move_child(bg_node, 0)
 		if bg_node is Control:
-			bg_node.z_index = -10  # Ensure background is behind everything
-			# If it's the pyramid scene, make sure it fills the screen
+			bg_node.z_index = -10
 			if bg_node.has_method("set_anchors_and_offsets_preset"):
 				bg_node.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		print("  Background added successfully!")
-	else:
-		print("  ERROR: No background node created!")
-	
-	print("========================\n")
 
 func _create_color_background(item: ItemData) -> ColorRect:
 	var rect = ColorRect.new()
@@ -464,7 +421,7 @@ func _create_color_background(item: ItemData) -> ColorRect:
 	return rect
 
 func _apply_legacy_background() -> void:
-	# Your existing fallback code for backwards compatibility
+	# Fallback for backwards compatibility
 	var bg_color: Color
 	match SettingsSystem.current_board_skin:
 		"green":
@@ -480,6 +437,6 @@ func _apply_legacy_background() -> void:
 	rect.name = "BackgroundNode"
 	rect.color = bg_color
 	rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	rect.z_index = -10  # ADD THIS - Ensure background is behind everything
+	rect.z_index = -10
 	add_child(rect)
 	move_child(rect, 0)

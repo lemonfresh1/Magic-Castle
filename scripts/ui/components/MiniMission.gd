@@ -1,13 +1,12 @@
 # MiniMission.gd - Compact mission display for post-game summary
 # Location: res://Magic-Castle/scripts/ui/components/MiniMission.gd
-# Last Updated: Cleaned debug output while maintaining functionality [Date]
+# Last Updated: Redesigned for better mobile readability [Date]
 
 extends PanelContainer
 
 @onready var title_label: Label = $MarginContainer/VBoxContainer/TitleLabel
-@onready var description_label: Label = $MarginContainer/VBoxContainer/DescriptionLabel
+@onready var description_label: Label = $MarginContainer/VBoxContainer/ProgressBar/DescriptionLabel
 @onready var progress_bar: ProgressBar = $MarginContainer/VBoxContainer/ProgressBar
-@onready var progress_label: Label = $MarginContainer/VBoxContainer/ProgressBar/ProgressBarLabel
 
 # Short descriptions for common mission types
 const SHORT_DESCRIPTIONS = {
@@ -17,13 +16,6 @@ const SHORT_DESCRIPTIONS = {
 	"combo_10": "10+ combo",
 	"total_score": "Earn points",
 	"perfect_clears": "Clear peaks"
-}
-
-# Theme colors based on mission system
-const THEME_COLORS = {
-	"standard": Color("#5ABFFF"),  # Blue
-	"season_pass": Color("#FFB75A"), # Orange
-	"holiday": Color("#FF5A5A")      # Red
 }
 
 var mission_data: Dictionary = {}
@@ -46,10 +38,6 @@ func _ready() -> void:
 	if not progress_bar:
 		push_error("[MiniMission] progress_bar not found!")
 		nodes_found = false
-		
-	if not progress_label:
-		push_error("[MiniMission] progress_label not found!")
-		nodes_found = false
 	
 	# If setup was called before ready, apply it now
 	if pending_setup and nodes_found:
@@ -70,57 +58,92 @@ func setup(mission: Dictionary, old_value: int, new_value: int) -> void:
 func _apply_setup() -> void:
 	"""Actually apply the setup data to the UI"""
 	
-	# Set title
+	# Set minimum height to match AchievementUnlocked (68px)
+	custom_minimum_size.y = 68.0
+	
+	# Apply normal white panel styling with dark grey border
+	var panel_style = StyleBoxFlat.new()
+	panel_style.bg_color = UIStyleManager.colors.white
+	panel_style.set_corner_radius_all(UIStyleManager.dimensions.corner_radius_medium)
+	# Add 1px dark grey border
+	panel_style.border_color = UIStyleManager.colors.gray_700
+	panel_style.set_border_width_all(1)
+	# Add left and right margins of 6
+	panel_style.content_margin_left = 6
+	panel_style.content_margin_right = 6
+	add_theme_stylebox_override("panel", panel_style)
+	
+	# Set title with same size as description
 	if title_label:
 		title_label.text = mission_data.get("display_name", "Mission")
+		title_label.add_theme_font_size_override("font_size", UIStyleManager.typography.size_body)  # Same as description
+		title_label.add_theme_color_override("font_color", UIStyleManager.colors.gray_900)
 	
-	# Set short description
+	# Set short description with outline for readability
 	if description_label:
 		var mission_id = mission_data.get("id", "")
 		var short_desc = _get_short_description(mission_id)
 		description_label.text = short_desc
 		
-		# Make description slightly transparent for visual hierarchy
-		description_label.modulate = Color(0.8, 0.8, 0.8, 0.8)
+		# Standard body text size with outline for readability over colored progress bar
+		description_label.add_theme_font_size_override("font_size", UIStyleManager.typography.size_body)
+		description_label.add_theme_color_override("font_color", UIStyleManager.colors.white)
+		
+		# Add outline for better readability
+		description_label.add_theme_color_override("font_outline_color", UIStyleManager.colors.gray_900)
+		description_label.add_theme_constant_override("outline_size", 2)
+		
+		# Center alignment (you'll set anchors in inspector)
+		description_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		description_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	
-	# Setup progress bar
+	# Setup progress bar with moderate height and theme colors
 	if progress_bar:
 		var target = mission_data.get("target_value", 1)
 		progress_bar.max_value = target
 		progress_bar.value = new_progress
 		
-		# Apply theme color to progress bar
-		var system = mission_data.get("system", "standard")
-		if system in THEME_COLORS:
-			var theme_color = THEME_COLORS[system]
-			var fill_style = StyleBoxFlat.new()
-			fill_style.bg_color = theme_color
-			fill_style.set_corner_radius_all(4)
-			progress_bar.add_theme_stylebox_override("fill", fill_style)
-	
-	# Set progress label
-	if progress_label:
-		var target = mission_data.get("target_value", 1)
-		progress_label.text = "%d/%d" % [new_progress, target]
+		# Moderate height for progress bar
+		progress_bar.custom_minimum_size.y = 30
 		
-		# Show progress change if there was an increase
-		if new_progress > old_progress:
-			var increase = new_progress - old_progress
-			progress_label.text += " (+%d)" % increase
+		# Apply standard progress bar background style
+		var bg_style = StyleBoxFlat.new()
+		bg_style.bg_color = UIStyleManager.colors.gray_200
+		bg_style.set_corner_radius_all(UIStyleManager.dimensions.corner_radius_small)
+		progress_bar.add_theme_stylebox_override("background", bg_style)
+		
+		# Apply themed fill color based on mission system
+		var fill_style = StyleBoxFlat.new()
+		fill_style.set_corner_radius_all(UIStyleManager.dimensions.corner_radius_small)
+		
+		# Determine fill color from mission system using existing UIStyleManager colors
+		var system = mission_data.get("system", "standard")
+		match system:
+			"standard", "daily":
+				# Use info color for standard/daily missions (blue)
+				fill_style.bg_color = UIStyleManager.colors.info
+			"season_pass":
+				# Use warning color for season pass (orange)
+				fill_style.bg_color = UIStyleManager.colors.warning
+			"holiday":
+				# Use error color for holiday events (red)
+				fill_style.bg_color = UIStyleManager.colors.error
+			_:
+				# Default to primary color
+				fill_style.bg_color = UIStyleManager.colors.primary
+		
+		progress_bar.add_theme_stylebox_override("fill", fill_style)
+		
+		# Hide the value text on progress bar
+		progress_bar.show_percentage = false
 	
-	# Apply border color based on system
-	_apply_system_theme()
-	
-	# Animate progress increase
+	# Animate progress increase if there was one
 	if old_progress < new_progress:
 		_animate_progress()
 
 func _get_short_description(mission_id: String) -> String:
 	"""Get a short description based on mission ID"""
 	# Extract the track type from mission ID
-	# E.g., "daily_play_3" -> check for "play"
-	
-	# First check if mission has a track field from UnifiedMissionManager
 	var track_type = ""
 	
 	# Try to find the track type by matching mission ID with templates
@@ -164,20 +187,6 @@ func _get_short_description(mission_id: String) -> String:
 	
 	return full_desc
 
-func _apply_system_theme() -> void:
-	"""Apply border color based on mission system"""
-	# Determine system from mission data
-	var system = mission_data.get("system", "standard")
-	
-	# Apply border color
-	if system in THEME_COLORS:
-		var theme_color = THEME_COLORS[system]
-		var panel_style = get_theme_stylebox("panel")
-		if panel_style and panel_style is StyleBoxFlat:
-			var new_style = panel_style.duplicate()
-			new_style.border_color = theme_color
-			add_theme_stylebox_override("panel", new_style)
-
 func _animate_progress() -> void:
 	"""Animate the progress bar increase"""
 	if not progress_bar:
@@ -191,8 +200,8 @@ func _animate_progress() -> void:
 	tween.set_trans(Tween.TRANS_CUBIC)
 	tween.tween_property(progress_bar, "value", new_progress, 0.5)
 	
-	# Optional: Add a slight scale pop on the progress label
-	if progress_label:
-		var original_scale = progress_label.scale
-		tween.parallel().tween_property(progress_label, "scale", original_scale * 1.2, 0.2)
-		tween.tween_property(progress_label, "scale", original_scale, 0.2)
+	# Optional: Add a slight scale pop on the description label for emphasis
+	if description_label:
+		var original_scale = description_label.scale
+		tween.parallel().tween_property(description_label, "scale", original_scale * 1.1, 0.2)
+		tween.tween_property(description_label, "scale", original_scale, 0.2)

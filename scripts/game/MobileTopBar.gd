@@ -1,40 +1,44 @@
 # MobileTopBar.gd - Mobile-optimized top bar with UIStyleManager integration
 # Path: res://Magic-Castle/scripts/game/MobileTopBar.gd
-# Last Updated: Applied UIStyleManager and new structure
+# Last Updated: Panel moved to CenterSection only
 
 extends Control
 
 # === SCENE REFERENCES (Updated for new structure) ===
-@onready var panel: Panel = $Panel
-@onready var margin_container: MarginContainer = $Panel/MarginContainer
-@onready var hbox_container: HBoxContainer = $Panel/MarginContainer/HBoxContainer
+# Top level container
+@onready var hbox_container: HBoxContainer = $HBoxContainer
 
 # Left Section
-@onready var left_section: HBoxContainer = $Panel/MarginContainer/HBoxContainer/LeftSection
-@onready var menu_button: Button = $Panel/MarginContainer/HBoxContainer/LeftSection/MenuButton
-@onready var timer_container: Control = $Panel/MarginContainer/HBoxContainer/LeftSection/TimerContainer
-@onready var timer_bar: ProgressBar = $Panel/MarginContainer/HBoxContainer/LeftSection/TimerContainer/TimerBar
-@onready var timer_label: Label = $Panel/MarginContainer/HBoxContainer/LeftSection/TimerContainer/TimerLabel
+@onready var left_section: HBoxContainer = $HBoxContainer/LeftSection
+@onready var menu_button: Button = $HBoxContainer/LeftSection/MenuButton
+@onready var timer_container: Control = $HBoxContainer/LeftSection/TimerContainer
+@onready var timer_bar: ProgressBar = $HBoxContainer/LeftSection/TimerContainer/TimerBar
+@onready var timer_label: Label = $HBoxContainer/LeftSection/TimerContainer/TimerLabel
 
-# Center Section  
-@onready var center_section: HBoxContainer = $Panel/MarginContainer/HBoxContainer/CenterSection
-@onready var draw_pile_container: Control = $Panel/MarginContainer/HBoxContainer/CenterSection/DrawPileContainer
-@onready var draw_pile_sprite: TextureRect = $Panel/MarginContainer/HBoxContainer/CenterSection/DrawPileContainer/DrawPileSprite
-@onready var draw_pile_label: Label = $Panel/MarginContainer/HBoxContainer/CenterSection/DrawPileContainer/DrawPileLabel
-@onready var card_slot_1: Control = $Panel/MarginContainer/HBoxContainer/CenterSection/CardSlot1
-@onready var card_slot_2: Control = $Panel/MarginContainer/HBoxContainer/CenterSection/CardSlot2
-@onready var slot_2_background: TextureRect = $Panel/MarginContainer/HBoxContainer/CenterSection/CardSlot2/Background
-@onready var slot_2_countdown: Label = $Panel/MarginContainer/HBoxContainer/CenterSection/CardSlot2/ComboCountdown1
-@onready var card_slot_3: Control = $Panel/MarginContainer/HBoxContainer/CenterSection/CardSlot3
-@onready var slot_3_background: TextureRect = $Panel/MarginContainer/HBoxContainer/CenterSection/CardSlot3/Background2
-@onready var slot_3_countdown: Label = $Panel/MarginContainer/HBoxContainer/CenterSection/CardSlot3/ComboCountdown2
+# Center Section with Panel
+@onready var center_section: HBoxContainer = $HBoxContainer/CenterSection
+@onready var center_panel: Panel = $HBoxContainer/CenterSection/Panel
+@onready var center_margin: MarginContainer = $HBoxContainer/CenterSection/Panel/MarginContainer
+@onready var center_hbox: HBoxContainer = $HBoxContainer/CenterSection/Panel/MarginContainer/HBoxContainer
+
+# Center Section content (inside Panel)
+@onready var draw_pile_container: Control = $HBoxContainer/CenterSection/Panel/MarginContainer/HBoxContainer/DrawPileContainer
+@onready var draw_pile_sprite: TextureRect = $HBoxContainer/CenterSection/Panel/MarginContainer/HBoxContainer/DrawPileContainer/DrawPileSprite
+@onready var draw_pile_label: Label = $HBoxContainer/CenterSection/Panel/MarginContainer/HBoxContainer/DrawPileContainer/DrawPileLabel
+@onready var card_slot_1: Control = $HBoxContainer/CenterSection/Panel/MarginContainer/HBoxContainer/CardSlot1
+@onready var card_slot_2: Control = $HBoxContainer/CenterSection/Panel/MarginContainer/HBoxContainer/CardSlot2
+@onready var slot_2_background: TextureRect = $HBoxContainer/CenterSection/Panel/MarginContainer/HBoxContainer/CardSlot2/Background
+@onready var slot_2_countdown: Label = $HBoxContainer/CenterSection/Panel/MarginContainer/HBoxContainer/CardSlot2/ComboCountdown1
+@onready var card_slot_3: Control = $HBoxContainer/CenterSection/Panel/MarginContainer/HBoxContainer/CardSlot3
+@onready var slot_3_background: TextureRect = $HBoxContainer/CenterSection/Panel/MarginContainer/HBoxContainer/CardSlot3/Background2
+@onready var slot_3_countdown: Label = $HBoxContainer/CenterSection/Panel/MarginContainer/HBoxContainer/CardSlot3/ComboCountdown2
 
 # Right Section
-@onready var right_section: HBoxContainer = $Panel/MarginContainer/HBoxContainer/RightSection
-@onready var combo_container: Control = $Panel/MarginContainer/HBoxContainer/RightSection/ComboContainer
-@onready var combo_bar: ProgressBar = $Panel/MarginContainer/HBoxContainer/RightSection/ComboContainer/ComboBar
-@onready var combo_label: Label = $Panel/MarginContainer/HBoxContainer/RightSection/ComboContainer/ComboLabel
-@onready var pause_button: Button = $Panel/MarginContainer/HBoxContainer/RightSection/PauseButton
+@onready var right_section: HBoxContainer = $HBoxContainer/RightSection
+@onready var combo_container: Control = $HBoxContainer/RightSection/ComboContainer
+@onready var combo_bar: ProgressBar = $HBoxContainer/RightSection/ComboContainer/ComboBar
+@onready var combo_label: Label = $HBoxContainer/RightSection/ComboContainer/ComboLabel
+@onready var pause_button: Button = $HBoxContainer/RightSection/PauseButton
 
 # State
 var is_paused: bool = false
@@ -94,37 +98,55 @@ func _setup_proportional_layout() -> void:
 	size = Vector2(screen.x, top_bar_height)  # Full width
 	custom_minimum_size = Vector2(screen.x, top_bar_height)
 	
-	# Make panel fill the entire control
-	if panel:
-		panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		panel.position = Vector2(0, 0)
-		panel.size = Vector2(screen.x, top_bar_height)
-	
-	# Add proper margins to the container
-	if margin_container:
-		margin_container.add_theme_constant_override("margin_left", UIStyleManager.get_spacing("space_4"))
-		margin_container.add_theme_constant_override("margin_right", UIStyleManager.get_spacing("space_4"))
-		margin_container.add_theme_constant_override("margin_top", UIStyleManager.get_spacing("space_2"))
-		margin_container.add_theme_constant_override("margin_bottom", UIStyleManager.get_spacing("space_2"))
-	
-	# Set stretch ratios for sections
+	# Set stretch ratios for sections - UPDATED VALUES
 	if left_section:
-		left_section.size_flags_stretch_ratio = 1.4
+		left_section.size_flags_stretch_ratio = 1.38  # Changed from 1.4
 		left_section.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	if center_section:
-		center_section.size_flags_stretch_ratio = 1.0
+		center_section.size_flags_stretch_ratio = 1.6  # Changed from 1.0
 		center_section.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	if right_section:
-		right_section.size_flags_stretch_ratio = 1.72
+		right_section.size_flags_stretch_ratio = 1.72  # Already correct
 		right_section.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	
 	# Ensure proper z-index so it doesn't overlap cards
 	z_index = 10  # Lower than cards which are at 25
 
 func _apply_ui_styles() -> void:
-	# Style the panel with white background and shadow
-	if panel:
-		UIStyleManager.apply_top_bar_panel_style(panel)
+	# Style the center panel with extended edges
+	if center_panel:
+		# First ensure the panel fills the center section
+		center_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		
+		# Get the actual size of center section
+		var center_size = center_section.size if center_section else Vector2(200, 100)
+		
+		# Set minimum size to ensure it's visible
+		center_panel.custom_minimum_size = Vector2(center_size.x + 40, center_size.y)  # +40 for the 20px extensions
+		
+		# Now extend 20px on each side
+		center_panel.anchor_left = 0
+		center_panel.anchor_right = 1
+		center_panel.anchor_top = 0
+		center_panel.anchor_bottom = 1
+		center_panel.offset_left = -20
+		center_panel.offset_right = 20
+		center_panel.offset_top = 0
+		center_panel.offset_bottom = 0
+		
+		# Apply the styling
+		UIStyleManager.apply_top_bar_panel_style(center_panel)
+	
+	# Ensure center section has proper size
+	if center_section:
+		center_section.custom_minimum_size.y = UIStyleManager.get_game_dimension("top_bar_height")
+	
+	# Add margins to the center container
+	if center_margin:
+		center_margin.add_theme_constant_override("margin_left", UIStyleManager.spacing.space_2)
+		center_margin.add_theme_constant_override("margin_right", UIStyleManager.spacing.space_2)
+		center_margin.add_theme_constant_override("margin_top", UIStyleManager.spacing.space_2)
+		center_margin.add_theme_constant_override("margin_bottom", UIStyleManager.spacing.space_2)
 	
 	# Style progress bars
 	if timer_bar:
@@ -134,7 +156,7 @@ func _apply_ui_styles() -> void:
 		UIStyleManager.apply_game_progress_bar_style(combo_bar, "combo")
 		combo_bar.max_value = 15  # Set max for combo timer
 	
-	# Style buttons with primary style for better contrast on white
+	# Style buttons with primary style for better contrast
 	if menu_button:
 		UIStyleManager.apply_button_style(menu_button, "primary", "small")
 		menu_button.text = "Menu"
@@ -142,7 +164,7 @@ func _apply_ui_styles() -> void:
 		UIStyleManager.apply_button_style(pause_button, "primary", "small")
 		pause_button.text = "Pause"
 	
-	# Style labels with dark colors for white background
+	# Style labels with dark colors for visibility
 	if timer_label:
 		timer_label.add_theme_font_size_override("font_size", UIStyleManager.get_font_size("size_body"))
 		timer_label.add_theme_color_override("font_color", UIStyleManager.get_color("white"))

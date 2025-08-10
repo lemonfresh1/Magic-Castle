@@ -4,19 +4,21 @@
 
 extends Control
 
-@onready var panel: Panel = $Panel
+@onready var panel: PanelContainer = $Panel
 @onready var title_label: Label = $Panel/MarginContainer/VBoxContainer/ButtonContainer/TitleLabel
 
 # Progression nodes
-@onready var xp_gained_label: Label = $Panel/MarginContainer/VBoxContainer/Progression/XPSection/XPGainedLabel
-@onready var level_label: Label = $Panel/MarginContainer/VBoxContainer/Progression/XPSection/XPBarContainer/Label
-@onready var xp_progress_bar: ProgressBar = $Panel/MarginContainer/VBoxContainer/Progression/XPSection/XPBarContainer/ProgressBar
-@onready var mmr_section: VBoxContainer = $Panel/MarginContainer/VBoxContainer/Progression/MMRSection
-@onready var mmr_gained_label: Label = $Panel/MarginContainer/VBoxContainer/Progression/MMRSection/MMRGainedLabel
+@onready var continue_button: Button = $Panel/MarginContainer/VBoxContainer/ButtonContainer/ContinueButton
+@onready var rematch_button: Button = $Panel/MarginContainer/VBoxContainer/ButtonContainer/RematchButton
+@onready var level_label: Label = $Panel/MarginContainer/VBoxContainer/Progression/XPBarContainer/LevelLabel
+@onready var xp_progress_bar: ProgressBar = $Panel/MarginContainer/VBoxContainer/Progression/XPBarContainer/ProgressBar
+@onready var xp_overlay_label: Label = $Panel/MarginContainer/VBoxContainer/Progression/XPBarContainer/ProgressBar/XPOverlayLabel
 @onready var mmr_label: Label = $Panel/MarginContainer/VBoxContainer/Progression/MMRSection/MMRLabel
-@onready var star_section: VBoxContainer = $Panel/MarginContainer/VBoxContainer/Progression/StarSection
-@onready var star_gained_label: Label = $Panel/MarginContainer/VBoxContainer/Progression/StarSection/StarGainedLabel
 @onready var star_label: Label = $Panel/MarginContainer/VBoxContainer/Progression/StarSection/StarLabel
+@onready var mmr_section: HBoxContainer = $Panel/MarginContainer/VBoxContainer/Progression/MMRSection
+@onready var star_section: HBoxContainer = $Panel/MarginContainer/VBoxContainer/Progression/StarSection
+@onready var xp_bar_container: HBoxContainer = $Panel/MarginContainer/VBoxContainer/Progression/XPBarContainer
+
 
 # Events nodes
 @onready var events_container: VBoxContainer = $Panel/MarginContainer/VBoxContainer/Events
@@ -25,10 +27,6 @@ extends Control
 @onready var mission_container: VBoxContainer = $Panel/MarginContainer/VBoxContainer/Events/ScrollContainer/HBoxContainer/MissionContainer
 @onready var season_pass_container: VBoxContainer = $Panel/MarginContainer/VBoxContainer/Events/ScrollContainer/HBoxContainer/SeasonPassContainer
 @onready var holiday_event_container: VBoxContainer = $Panel/MarginContainer/VBoxContainer/Events/ScrollContainer/HBoxContainer/HolidayEventContainer
-
-# Button nodes
-@onready var continue_button: Button = $Panel/MarginContainer/VBoxContainer/ButtonContainer/ContinueButton
-@onready var rematch_button: Button = $Panel/MarginContainer/VBoxContainer/ButtonContainer/RematchButton
 
 # Preload scenes
 const AchievementUnlocked = preload("res://Magic-Castle/scenes/ui/components/AchievementUnlocked.tscn")
@@ -51,6 +49,30 @@ func _ready() -> void:
 	# Set high z-index
 	z_index = 1000
 	set_as_top_level(true)
+	
+	# Apply panel styling
+	UIStyleManager.apply_panel_style(panel, "post_game_summary")
+	
+	# Apply title label styling
+	UIStyleManager.apply_label_style(title_label, "header")
+	
+	# Apply button styling
+	UIStyleManager.apply_button_style(continue_button, "danger", "medium")
+	UIStyleManager.apply_button_style(rematch_button, "success", "medium")
+	
+	# Apply progress bar styling
+	UIStyleManager.apply_progress_bar_style(xp_progress_bar, "battle_pass")
+	
+	# Style the XP overlay label (centered on progress bar)
+	UIStyleManager.apply_label_style(xp_overlay_label, "overlay")
+	xp_overlay_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	xp_overlay_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	xp_overlay_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	
+	# Style other labels
+	UIStyleManager.apply_label_style(level_label, "body")
+	UIStyleManager.apply_label_style(mmr_label, "body")
+	UIStyleManager.apply_label_style(star_label, "body")
 	
 	# Connect buttons
 	continue_button.pressed.connect(_on_continue_pressed)
@@ -236,31 +258,34 @@ func _check_missions() -> void:
 			})
 
 func _update_progression_display() -> void:
-	# XP Section
-	xp_gained_label.text = "Experience gained: %d" % xp_gained
+	# XP Section - Update overlay label and level label
+	xp_overlay_label.text = "+%d XP" % xp_gained
 	
-	# FIXED: Use our calculated final level, not XPManager's current level (which hasn't been updated yet)
+	# Level label shows current level with change
 	var calculated_final_level = starting_level + levels_gained
-	level_label.text = "Level %d%s" % [
-		calculated_final_level,
-		" (+%d)" % levels_gained if levels_gained > 0 else ""
-	]
-
-	# MMR Section
+	if levels_gained > 0:
+		level_label.text = "Level %d (+%d)" % [calculated_final_level, levels_gained]
+	else:
+		level_label.text = "Level %d" % calculated_final_level
+	
+	# MMR Section - Single line format
 	if starting_mmr > 0 or mmr_change != 0:
-		mmr_gained_label.text = "MMR change: %+d" % mmr_change
-		mmr_label.text = "New MMR: %d" % (starting_mmr + mmr_change)
+		var final_mmr = starting_mmr + mmr_change
+		if mmr_change != 0:
+			mmr_label.text = "MMR: %d (%+d)" % [final_mmr, mmr_change]
+		else:
+			mmr_label.text = "MMR: %d" % final_mmr
 		mmr_section.visible = true
 	else:
 		mmr_section.visible = false
 	
-	# Stars Section
+	# Stars Section - Single line format
 	var total_stars = starting_stars + stars_gained
 	if stars_gained > 0:
-		star_gained_label.text = "Stars gained: +%d" % stars_gained
-		star_label.text = "Star Count: %d" % total_stars
+		star_label.text = "Stars: %d (+%d)" % [total_stars, stars_gained]
 		star_section.visible = true
 	else:
+		star_label.text = "Stars: %d" % total_stars
 		star_section.visible = false
 
 func _update_events_display() -> void:
@@ -310,6 +335,11 @@ func _populate_achievements() -> void:
 		if child.name != "TitleLabel":
 			child.queue_free()
 	
+	# Style the title label if it exists
+	var title = achievements_container.get_node_or_null("TitleLabel")
+	if title:
+		UIStyleManager.apply_label_style(title, "body")
+	
 	# Add each unlocked achievement
 	for achievement_id in achievements_unlocked:
 		var achievement_item = AchievementUnlocked.instantiate()
@@ -321,6 +351,11 @@ func _populate_missions(container: VBoxContainer, missions: Array) -> void:
 	for child in container.get_children():
 		if child.name != "TitleLabel":
 			child.queue_free()
+	
+	# Style the title label if it exists
+	var title = container.get_node_or_null("TitleLabel")
+	if title:
+		UIStyleManager.apply_label_style(title, "body")
 	
 	# Add each mission progress using MiniMission
 	for mission_data in missions:

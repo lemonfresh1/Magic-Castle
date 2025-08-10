@@ -196,6 +196,8 @@ popup/item_4/id = 4
 [node name="ScrollContainer" type="ScrollContainer" parent="MarginContainer/TabContainer/Highlights/MarginContainer/VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 3
+horizontal_scroll_mode = 3
+vertical_scroll_mode = 3
 
 [node name="All" type="PanelContainer" parent="MarginContainer/TabContainer"]
 visible = false
@@ -256,6 +258,8 @@ popup/item_4/id = 4
 [node name="ScrollContainer" type="ScrollContainer" parent="MarginContainer/TabContainer/All/MarginContainer/VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 3
+horizontal_scroll_mode = 3
+vertical_scroll_mode = 3
 
 [node name="Cards" type="PanelContainer" parent="MarginContainer/TabContainer"]
 visible = false
@@ -316,6 +320,8 @@ popup/item_4/id = 4
 [node name="ScrollContainer" type="ScrollContainer" parent="MarginContainer/TabContainer/Cards/MarginContainer/VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 3
+horizontal_scroll_mode = 3
+vertical_scroll_mode = 3
 
 [node name="Boards" type="PanelContainer" parent="MarginContainer/TabContainer"]
 visible = false
@@ -376,6 +382,8 @@ popup/item_4/id = 4
 [node name="ScrollContainer" type="ScrollContainer" parent="MarginContainer/TabContainer/Boards/MarginContainer/VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 3
+horizontal_scroll_mode = 3
+vertical_scroll_mode = 3
 
 [node name="Avatars" type="PanelContainer" parent="MarginContainer/TabContainer"]
 visible = false
@@ -436,6 +444,8 @@ popup/item_4/id = 4
 [node name="ScrollContainer" type="ScrollContainer" parent="MarginContainer/TabContainer/Avatars/MarginContainer/VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 3
+horizontal_scroll_mode = 3
+vertical_scroll_mode = 3
 
 [node name="Frames" type="PanelContainer" parent="MarginContainer/TabContainer"]
 visible = false
@@ -496,6 +506,8 @@ popup/item_4/id = 4
 [node name="ScrollContainer" type="ScrollContainer" parent="MarginContainer/TabContainer/Frames/MarginContainer/VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 3
+horizontal_scroll_mode = 3
+vertical_scroll_mode = 3
 
 [node name="Emojis" type="PanelContainer" parent="MarginContainer/TabContainer"]
 visible = false
@@ -556,6 +568,8 @@ popup/item_4/id = 4
 [node name="ScrollContainer" type="ScrollContainer" parent="MarginContainer/TabContainer/Emojis/MarginContainer/VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 3
+horizontal_scroll_mode = 3
+vertical_scroll_mode = 3
 
 [node name="Sounds" type="PanelContainer" parent="MarginContainer/TabContainer"]
 visible = false
@@ -616,3 +630,5 @@ popup/item_4/id = 4
 [node name="ScrollContainer" type="ScrollContainer" parent="MarginContainer/TabContainer/Sounds/MarginContainer/VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 3
+horizontal_scroll_mode = 3
+vertical_scroll_mode = 3

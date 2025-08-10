@@ -145,6 +145,8 @@ layout_mode = 2
 [node name="ScrollContainer" type="ScrollContainer" parent="MarginContainer/TabContainer/Overview/MarginContainer/VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 3
+horizontal_scroll_mode = 3
+vertical_scroll_mode = 3
 
 [node name="Battle Pass" type="Control" parent="MarginContainer/TabContainer"]
 visible = false
@@ -188,6 +190,8 @@ popup/item_2/id = 2
 [node name="ScrollContainer" type="ScrollContainer" parent="MarginContainer/TabContainer/Daily Missions/MarginContainer/VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 3
+horizontal_scroll_mode = 3
+vertical_scroll_mode = 3
 
 [node name="Weekly Missions" type="PanelContainer" parent="MarginContainer/TabContainer"]
 visible = false
@@ -225,3 +229,5 @@ popup/item_2/id = 2
 [node name="ScrollContainer" type="ScrollContainer" parent="MarginContainer/TabContainer/Weekly Missions/MarginContainer/VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 3
+horizontal_scroll_mode = 3
+vertical_scroll_mode = 3

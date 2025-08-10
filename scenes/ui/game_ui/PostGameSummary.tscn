@@ -24,7 +24,7 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0, 0, 0, 0.792157)
 
-[node name="Panel" type="Panel" parent="."]
+[node name="Panel" type="PanelContainer" parent="."]
 custom_minimum_size = Vector2(800, 400)
 layout_mode = 1
 anchors_preset = 8
@@ -32,21 +32,16 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -20.0
-offset_top = -20.0
-offset_right = 20.0
-offset_bottom = 20.0
+offset_left = -400.0
+offset_top = -200.0
+offset_right = 400.0
+offset_bottom = 200.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = ExtResource("1_0x1kt")
 
 [node name="MarginContainer" type="MarginContainer" parent="Panel"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
+layout_mode = 2
 theme_override_constants/margin_left = 20
 theme_override_constants/margin_top = 20
 theme_override_constants/margin_right = 20
@@ -85,26 +80,17 @@ text = "Play Again"
 layout_mode = 2
 theme_override_constants/separation = 10
 
-[node name="XPSection" type="VBoxContainer" parent="Panel/MarginContainer/VBoxContainer/Progression"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_stretch_ratio = 1.6
-
-[node name="XPGainedLabel" type="Label" parent="Panel/MarginContainer/VBoxContainer/Progression/XPSection"]
-layout_mode = 2
-text = "Experience gained: 500"
-
-[node name="XPBarContainer" type="HBoxContainer" parent="Panel/MarginContainer/VBoxContainer/Progression/XPSection"]
+[node name="XPBarContainer" type="HBoxContainer" parent="Panel/MarginContainer/VBoxContainer/Progression"]
 layout_mode = 2
 theme_override_constants/separation = 10
 
-[node name="Label" type="Label" parent="Panel/MarginContainer/VBoxContainer/Progression/XPSection/XPBarContainer"]
+[node name="LevelLabel" type="Label" parent="Panel/MarginContainer/VBoxContainer/Progression/XPBarContainer"]
 custom_minimum_size = Vector2(70, 0)
 layout_mode = 2
 text = "Level 5"
 
-[node name="ProgressBar" type="ProgressBar" parent="Panel/MarginContainer/VBoxContainer/Progression/XPSection/XPBarContainer"]
-custom_minimum_size = Vector2(0, 20)
+[node name="ProgressBar" type="ProgressBar" parent="Panel/MarginContainer/VBoxContainer/Progression/XPBarContainer"]
+custom_minimum_size = Vector2(150, 20)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
@@ -113,26 +99,33 @@ theme_override_styles/fill = ExtResource("3_qxbof")
 value = 50.0
 show_percentage = false
 
-[node name="MMRSection" type="VBoxContainer" parent="Panel/MarginContainer/VBoxContainer/Progression"]
+[node name="XPOverlayLabel" type="Label" parent="Panel/MarginContainer/VBoxContainer/Progression/XPBarContainer/ProgressBar"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -14.0
+offset_top = -11.5
+offset_right = 14.0
+offset_bottom = 11.5
+grow_horizontal = 2
+grow_vertical = 2
+text = "500"
+
+[node name="MMRSection" type="HBoxContainer" parent="Panel/MarginContainer/VBoxContainer/Progression"]
 layout_mode = 2
 size_flags_horizontal = 3
-
-[node name="MMRGainedLabel" type="Label" parent="Panel/MarginContainer/VBoxContainer/Progression/MMRSection"]
-layout_mode = 2
-text = "MMR change: +25"
 
 [node name="MMRLabel" type="Label" parent="Panel/MarginContainer/VBoxContainer/Progression/MMRSection"]
 custom_minimum_size = Vector2(70, 0)
 layout_mode = 2
 text = "New MMR: 1375"
 
-[node name="StarSection" type="VBoxContainer" parent="Panel/MarginContainer/VBoxContainer/Progression"]
+[node name="StarSection" type="HBoxContainer" parent="Panel/MarginContainer/VBoxContainer/Progression"]
 layout_mode = 2
 size_flags_horizontal = 3
-
-[node name="StarGainedLabel" type="Label" parent="Panel/MarginContainer/VBoxContainer/Progression/StarSection"]
-layout_mode = 2
-text = "Stars gained: +500"
 
 [node name="StarLabel" type="Label" parent="Panel/MarginContainer/VBoxContainer/Progression/StarSection"]
 custom_minimum_size = Vector2(70, 0)
@@ -146,6 +139,8 @@ size_flags_vertical = 3
 [node name="ScrollContainer" type="ScrollContainer" parent="Panel/MarginContainer/VBoxContainer/Events"]
 layout_mode = 2
 size_flags_vertical = 3
+horizontal_scroll_mode = 3
+vertical_scroll_mode = 3
 
 [node name="HBoxContainer" type="HBoxContainer" parent="Panel/MarginContainer/VBoxContainer/Events/ScrollContainer"]
 layout_mode = 2

@@ -1,15 +1,6 @@
-[gd_scene load_steps=7 format=3 uid="uid://brjmkufs3cwdu"]
+[gd_scene load_steps=3 format=3 uid="uid://brjmkufs3cwdu"]
 
 [ext_resource type="Texture2D" uid="uid://d3x0wjesgb1su" path="res://Magic-Castle/assets/ui/menu/play.png" id="1_nm0fl"]
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xksow"]
-content_margin_top = 0.0
-content_margin_bottom = 3.0
-bg_color = Color(0.721569, 0.52549, 0.0431373, 1)
-corner_radius_top_left = 20
-corner_radius_top_right = 20
-corner_radius_bottom_right = 20
-corner_radius_bottom_left = 20
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_5jycp"]
 bg_color = Color(0.956863, 0.643137, 0.376471, 1)
@@ -23,61 +14,25 @@ corner_radius_top_right = 20
 corner_radius_bottom_right = 20
 corner_radius_bottom_left = 20
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_jdb5k"]
-bg_color = Color(0.960784, 0.870588, 0.701961, 1)
-border_width_left = 3
-border_width_top = 3
-border_width_right = 3
-border_width_bottom = 3
-border_color = Color(0.545098, 0.270588, 0.0745098, 1)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_kyice"]
-bg_color = Color(0.95856, 0.633489, 0.373819, 1)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.537847, 0.368501, 0.25918, 1)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_rs4xa"]
-bg_color = Color(0.685145, 0.466083, 0.232658, 1)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-
 [node name="ButtonLayout" type="Button"]
 self_modulate = Color(1, 1, 1, 0)
-custom_minimum_size = Vector2(250, 70)
 offset_right = 250.0
 offset_bottom = 80.0
 
-[node name="ShadowPanelContainer" type="PanelContainer" parent="."]
+[node name="MainPanel" type="PanelContainer" parent="."]
 layout_mode = 1
-anchors_preset = 15
+anchors_preset = 14
+anchor_top = 0.5
 anchor_right = 1.0
-anchor_bottom = 1.0
-offset_top = -4.5
-offset_bottom = -6.5
+anchor_bottom = 0.5
+offset_top = -27.0
+offset_bottom = 27.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_xksow")
-
-[node name="MainPanelContainer" type="PanelContainer" parent="ShadowPanelContainer"]
-layout_mode = 2
-mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_5jycp")
 
-[node name="MarginContainer" type="MarginContainer" parent="ShadowPanelContainer/MainPanelContainer"]
+[node name="MarginContainer" type="MarginContainer" parent="MainPanel"]
 layout_mode = 2
 mouse_filter = 2
 theme_override_constants/margin_left = 15
@@ -85,72 +40,20 @@ theme_override_constants/margin_top = 6
 theme_override_constants/margin_right = 12
 theme_override_constants/margin_bottom = 6
 
-[node name="HBoxContainer" type="HBoxContainer" parent="ShadowPanelContainer/MainPanelContainer/MarginContainer"]
+[node name="Icon" type="TextureRect" parent="MainPanel/MarginContainer"]
 layout_mode = 2
-mouse_filter = 2
-
-[node name="IconContainer" type="PanelContainer" parent="ShadowPanelContainer/MainPanelContainer/MarginContainer/HBoxContainer"]
-layout_mode = 2
-mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_jdb5k")
-
-[node name="MarginContainer" type="MarginContainer" parent="ShadowPanelContainer/MainPanelContainer/MarginContainer/HBoxContainer/IconContainer"]
-custom_minimum_size = Vector2(50, 0)
-layout_mode = 2
-mouse_filter = 2
-theme_override_constants/margin_left = 5
-theme_override_constants/margin_top = 5
-theme_override_constants/margin_right = 5
-theme_override_constants/margin_bottom = 5
-
-[node name="Icon" type="TextureRect" parent="ShadowPanelContainer/MainPanelContainer/MarginContainer/HBoxContainer/IconContainer/MarginContainer"]
-layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 4
 mouse_filter = 2
 texture = ExtResource("1_nm0fl")
 expand_mode = 3
+stretch_mode = 5
 
-[node name="VSeparator" type="VSeparator" parent="ShadowPanelContainer/MainPanelContainer/MarginContainer/HBoxContainer"]
-modulate = Color(1, 1, 1, 0)
-custom_minimum_size = Vector2(10, 0)
-layout_mode = 2
-mouse_filter = 2
-
-[node name="LabelContainer" type="VBoxContainer" parent="ShadowPanelContainer/MainPanelContainer/MarginContainer/HBoxContainer"]
+[node name="Label" type="Label" parent="MainPanel/MarginContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_vertical = 4
-mouse_filter = 2
-
-[node name="ButtonLabel" type="Label" parent="ShadowPanelContainer/MainPanelContainer/MarginContainer/HBoxContainer/LabelContainer"]
-layout_mode = 2
-size_flags_horizontal = 0
-size_flags_vertical = 2
+size_flags_vertical = 6
 theme_override_colors/font_color = Color(0, 0, 0, 1)
 theme_override_font_sizes/font_size = 24
 text = "Play"
-
-[node name="ProgressBar" type="ProgressBar" parent="ShadowPanelContainer/MainPanelContainer/MarginContainer/HBoxContainer/LabelContainer"]
-custom_minimum_size = Vector2(0, 20)
-layout_mode = 2
-mouse_filter = 2
-theme_override_styles/background = SubResource("StyleBoxFlat_kyice")
-theme_override_styles/fill = SubResource("StyleBoxFlat_rs4xa")
-max_value = 5.0
-step = 1.0
-value = 3.0
-show_percentage = false
-
-[node name="ProgressBarLabel" type="Label" parent="ShadowPanelContainer/MainPanelContainer/MarginContainer/HBoxContainer/LabelContainer/ProgressBar"]
-layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -12.5
-offset_top = -11.5
-offset_right = 12.5
-offset_bottom = 11.5
-grow_horizontal = 2
-grow_vertical = 2
-text = "3/5"
+horizontal_alignment = 1

@@ -148,66 +148,14 @@ var version_tap_timer: Timer
 
 # Button configurations
 var button_configs = [
-	{"name": "Play", "position": Vector2(930, 110), "has_progress": false, "theme": "Play", "icon": "res://Magic-Castle/assets/ui/menu/play.png"},
-	{"name": "Shop", "position": Vector2(930, 195), "has_progress": false, "theme": "Shop", "icon": "res://Magic-Castle/assets/ui/menu/play.png"},
-	{"name": "Missions", "position": Vector2(930, 280), "has_progress": true, "theme": "Missions", "icon": "res://Magic-Castle/assets/ui/menu/play.png"},
-	{"name": "Season Pass", "position": Vector2(930, 365), "has_progress": true, "theme": "Season Pass", "icon": "res://Magic-Castle/assets/ui/menu/play.png"},
-	{"name": "Holiday", "position": Vector2(930, 450), "has_progress": true, "theme": "Holiday", "icon": "res://Magic-Castle/assets/ui/menu/play.png"}
+	{"name": "Play", "position": Vector2(880, 185), "icon": "res://Magic-Castle/assets/ui/menu/play.png"},
+	{"name": "Shop", "position": Vector2(880, 275), "icon": "res://Magic-Castle/assets/ui/menu/play.png"},
+	{"name": "Missions", "position": Vector2(880, 335), "icon": "res://Magic-Castle/assets/ui/menu/play.png"},
+	{"name": "Season Pass", "position": Vector2(880, 395), "icon": "res://Magic-Castle/assets/ui/menu/play.png"},
+	{"name": "Holiday", "position": Vector2(880, 455), "icon": "res://Magic-Castle/assets/ui/menu/play.png"}
 ]
 
-# Color themes for each button type
-var button_themes = {
-	"Play": {
-		"shadow": Color(0.1, 0.3, 0.1),        # Dark green
-		"main_bg": Color(0.2, 0.5, 0.2),      # Green
-		"main_border": Color(0.3, 0.7, 0.3),   # Bright green
-		"icon_bg": Color.TRANSPARENT,         # Transparent for Play
-		"icon_border": Color.TRANSPARENT,     # Transparent for Play
-		"progress_bg": Color(0.4, 0.7, 0.4),   # Light green (not used)
-		"progress_fill": Color(0.5, 0.9, 0.5), # Bright green (not used)
-		"transparent_icon": true               # Flag for special handling
-	},
-	"Shop": {
-		"shadow": Color(0.4, 0.3, 0.1),        # Dark gold/brown
-		"main_bg": Color(0.6, 0.5, 0.2),      # Gold
-		"main_border": Color(0.8, 0.6, 0.2),   # Bright gold
-		"icon_bg": Color(0.7, 0.6, 0.3),      # Light gold
-		"icon_border": Color(0.3, 0.2, 0.05),  # Dark brown
-		"progress_bg": Color(0.8, 0.7, 0.4),   # Very light gold
-		"progress_fill": Color(0.9, 0.7, 0.2), # Bright gold
-		"transparent_icon": false
-	},
-	"Missions": {
-		"shadow": Color(0.1, 0.2, 0.4),        # Dark blue
-		"main_bg": Color(0.2, 0.4, 0.6),      # Blue
-		"main_border": Color(0.3, 0.5, 0.8),   # Bright blue
-		"icon_bg": Color.TRANSPARENT,         # Transparent for Missions
-		"icon_border": Color.TRANSPARENT,     # Transparent for Missions
-		"progress_bg": Color(0.4, 0.6, 0.8),   # Very light blue
-		"progress_fill": Color(0.4, 0.6, 0.9), # Bright light blue
-		"transparent_icon": true
-	},
-	"Season Pass": {
-		"shadow": Color(0.3, 0.1, 0.3),        # Dark purple
-		"main_bg": Color(0.5, 0.2, 0.5),      # Purple
-		"main_border": Color(0.7, 0.3, 0.7),   # Bright purple
-		"icon_bg": Color(0.6, 0.3, 0.6),      # Light purple
-		"icon_border": Color(0.2, 0.05, 0.2),  # Very dark purple
-		"progress_bg": Color(0.7, 0.4, 0.7),   # Very light purple
-		"progress_fill": Color(0.8, 0.4, 0.8), # Bright light purple
-		"transparent_icon": false
-	},
-	"Holiday": {
-		"shadow": Color(0.5, 0.1, 0.1),        # Dark red
-		"main_bg": Color(0.7, 0.2, 0.2),      # Red
-		"main_border": Color(0.9, 0.3, 0.3),   # Bright red
-		"icon_bg": Color(0.8, 0.3, 0.3),      # Light red
-		"icon_border": Color(0.4, 0.05, 0.05), # Very dark red
-		"progress_bg": Color(0.9, 0.4, 0.4),   # Very light red
-		"progress_fill": Color(0.2, 0.6, 0.2), # Green (festive contrast)
-		"transparent_icon": false
-	}
-}
+var currently_selected_button: Button = null
 
 func _ready() -> void:
 	if not get_node_or_null("/root/UIManager"):
@@ -237,81 +185,6 @@ func _ready() -> void:
 	else:
 		pass
 
-func _apply_button_theme(button_instance: Button, config: Dictionary) -> void:
-	var theme_name = config.theme
-	if not theme_name or not button_themes.has(theme_name):
-		return
-	
-	var theme = button_themes[theme_name]
-	
-	# Get all the panels and elements
-	var shadow_panel = button_instance.get_node("ShadowPanelContainer")
-	var main_panel = button_instance.get_node("ShadowPanelContainer/MainPanelContainer")
-	var icon_container = button_instance.get_node("ShadowPanelContainer/MainPanelContainer/MarginContainer/HBoxContainer/IconContainer")
-	var icon_margin = button_instance.get_node("ShadowPanelContainer/MainPanelContainer/MarginContainer/HBoxContainer/IconContainer/MarginContainer")
-	var icon_texture = button_instance.get_node("ShadowPanelContainer/MainPanelContainer/MarginContainer/HBoxContainer/IconContainer/MarginContainer/Icon")
-	var progress_bar = button_instance.get_node("ShadowPanelContainer/MainPanelContainer/MarginContainer/HBoxContainer/LabelContainer/ProgressBar")
-	
-	# Apply shadow panel style
-	if shadow_panel and shadow_panel.has_theme_stylebox_override("panel"):
-		var shadow_style = shadow_panel.get_theme_stylebox("panel").duplicate()
-		shadow_style.bg_color = theme.shadow
-		shadow_panel.add_theme_stylebox_override("panel", shadow_style)
-	
-	# Apply main panel style
-	if main_panel and main_panel.has_theme_stylebox_override("panel"):
-		var main_style = main_panel.get_theme_stylebox("panel").duplicate()
-		main_style.bg_color = theme.main_bg
-		main_style.border_color = theme.main_border
-		main_panel.add_theme_stylebox_override("panel", main_style)
-	
-	# Handle icon container based on transparent_icon flag
-	if icon_container and icon_container.has_theme_stylebox_override("panel"):
-		var icon_style = icon_container.get_theme_stylebox("panel").duplicate()
-		
-		if theme.transparent_icon:
-			# For Play and Missions - transparent background
-			icon_style.bg_color = Color.TRANSPARENT
-			icon_style.border_color = Color.TRANSPARENT
-			icon_style.border_width_top = 0
-			icon_style.border_width_bottom = 0
-			icon_style.border_width_left = 0
-			icon_style.border_width_right = 0
-			
-			# Set margins to 0
-			if icon_margin:
-				icon_margin.add_theme_constant_override("margin_top", 3)
-				icon_margin.add_theme_constant_override("margin_bottom", 3)
-				icon_margin.add_theme_constant_override("margin_left", 6)
-				icon_margin.add_theme_constant_override("margin_right", 0)
-		else:
-			# For Shop, Season Pass, Holiday - colored background
-			icon_style.bg_color = theme.icon_bg
-			icon_style.border_color = theme.icon_border
-		
-		icon_container.add_theme_stylebox_override("panel", icon_style)
-	
-	# Set the icon texture and size
-	if icon_texture:
-		
-		# Load and set the texture
-		if config.has("icon") and config.icon:
-			var texture = load(config.icon)
-			if texture:
-				icon_texture.texture = texture
-				icon_texture.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
-				icon_texture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	
-	# Apply progress bar styles
-	if progress_bar and progress_bar.visible:
-		var base_style = progress_bar.get_theme_stylebox("background").duplicate()
-		base_style.bg_color = theme.progress_bg
-		progress_bar.add_theme_stylebox_override("background", base_style)
-		
-		var fill_style = progress_bar.get_theme_stylebox("fill").duplicate()
-		fill_style.bg_color = theme.progress_fill
-		progress_bar.add_theme_stylebox_override("fill", fill_style)
-
 func _create_buttons() -> void:
 	for i in range(button_configs.size()):
 		var config = button_configs[i]
@@ -322,41 +195,47 @@ func _create_buttons() -> void:
 		# Set position
 		button_instance.position = config.position
 		
-		# Get nodes
-		var button_label = button_instance.get_node("ShadowPanelContainer/MainPanelContainer/MarginContainer/HBoxContainer/LabelContainer/ButtonLabel")
-		var progress_bar = button_instance.get_node("ShadowPanelContainer/MainPanelContainer/MarginContainer/HBoxContainer/LabelContainer/ProgressBar")
+		# Get nodes from the simplified structure
+		var label = button_instance.get_node_or_null("MainPanel/MarginContainer/Label")
+		var icon = button_instance.get_node_or_null("MainPanel/MarginContainer/Icon")
 		
-		if button_label:
-			button_label.text = config.name
+		if label:
+			label.text = config.name
+		
+		# Set icon if it exists
+		if icon and config.has("icon"):
+			var texture = load(config.icon)
+			if texture:
+				icon.texture = texture
+				# These will be overridden by apply_menu_button_style
+				icon.expand_mode = TextureRect.EXPAND_FIT_HEIGHT
+				icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		
+		# Apply the appropriate style
+		if config.name == "Play":
+			UIStyleManager.apply_menu_button_style(button_instance, "play")
+			play_button = button_instance
 		else:
-			continue
+			UIStyleManager.apply_menu_button_style(button_instance, "default")
+			
+			# Store button references
+			match config.name:
+				"Shop":
+					shop_button = button_instance
+				"Missions":
+					daily_mission_button = button_instance
+				"Season Pass":
+					season_pass_button = button_instance
+				"Holiday":
+					holiday_button = button_instance
+			
+			# Set toggle mode for non-play buttons
+			button_instance.toggle_mode = true
 		
-		# Apply theme to all buttons
-		_apply_button_theme(button_instance, config)
+		# Move to top
+		move_child(button_instance, get_child_count() - 1)
 		
-		# Handle each button specifics
-		match config.name:
-			"Play":
-				button_label.add_theme_font_size_override("font_size", 36)
-				play_button = button_instance
-				if progress_bar:
-					progress_bar.visible = false
-			"Shop":
-				button_label.add_theme_font_size_override("font_size", 36)
-				shop_button = button_instance
-				if progress_bar:
-					progress_bar.visible = false
-			"Missions":
-				daily_mission_button = button_instance
-			"Season Pass":
-				season_pass_button = button_instance
-			"Holiday":
-				holiday_button = button_instance
-
-		for button in [play_button, shop_button, daily_mission_button, season_pass_button, holiday_button]:
-			if button:
-				move_child(button, get_child_count() - 1)
-		# Connect button signal - FIXED VERSION
+		# Connect button signal
 		button_instance.pressed.connect(_on_button_pressed.bind(config.name))
 
 func _create_ui_elements() -> void:
@@ -376,16 +255,23 @@ func _create_ui_elements() -> void:
 	star_box.position = Vector2(1000.0, 30.0)
 
 func _on_button_pressed(button_name: String) -> void:
+	# Get the button that was pressed
+	var pressed_button: Button = null
 	match button_name:
 		"Play":
 			_on_play_pressed()
+			return  # Play doesn't toggle, just starts game
 		"Shop":
+			pressed_button = shop_button
 			_on_shop_pressed()
 		"Missions":
+			pressed_button = daily_mission_button
 			_on_daily_mission_pressed()
 		"Season Pass":
+			pressed_button = season_pass_button
 			_on_season_pass_pressed()
 		"Holiday":
+			pressed_button = holiday_button
 			_on_holiday_pressed()
 
 func _hide_menu_buttons():
@@ -682,10 +568,46 @@ func _connect_ui_manager():
 		print("UIManager not available for connection!")
 
 func _on_ui_panel_opened(panel_name: String):
-	pass
+	# When a panel opens, select the corresponding button
+	var button_to_select: Button = null
+	match panel_name:
+		"shop":
+			button_to_select = shop_button
+		"missions":
+			button_to_select = daily_mission_button
+		"season_pass":
+			button_to_select = season_pass_button
+		"holiday":
+			button_to_select = holiday_button
+	
+	if button_to_select:
+		# Deselect previous button if any
+		if currently_selected_button and currently_selected_button != button_to_select:
+			currently_selected_button.button_pressed = false
+			_apply_button_state(currently_selected_button, false)
+		
+		# Select the new button
+		currently_selected_button = button_to_select
+		button_to_select.button_pressed = true
+		_apply_button_state(button_to_select, true)
 
-func _on_ui_panel_closed(panel_name: String):
-	pass
+func _on_ui_panel_closed(panel_name: String) -> void:
+	# When a panel closes, deselect the corresponding button
+	var button_to_deselect: Button = null
+	match panel_name:
+		"shop":
+			button_to_deselect = shop_button
+		"missions":
+			button_to_deselect = daily_mission_button
+		"season_pass":
+			button_to_deselect = season_pass_button
+		"holiday":
+			button_to_deselect = holiday_button
+	
+	if button_to_deselect and button_to_deselect == currently_selected_button:
+		button_to_deselect.button_pressed = false
+		_apply_button_state(button_to_deselect, false)
+		currently_selected_button = null
 
 func _on_profile_closed():
 	pass
@@ -704,3 +626,22 @@ func _on_followers_closed():
 
 func _on_referral_closed():
 	pass
+
+func _handle_button_toggle(button: Button) -> void:
+	pass
+
+# Add function to apply visual states:
+func _apply_button_state(button: Button, is_selected: bool) -> void:
+	"""Apply visual state to button based on selection"""
+	var main_panel = button.get_node_or_null("MainPanel")
+	if not main_panel:
+		return
+	
+	if is_selected:
+		var pressed_style = button.get_meta("pressed_style", null)
+		if pressed_style:
+			main_panel.add_theme_stylebox_override("panel", pressed_style)
+	else:
+		var normal_style = button.get_meta("normal_style", null)
+		if normal_style:
+			main_panel.add_theme_stylebox_override("panel", normal_style)

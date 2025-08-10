@@ -56,8 +56,9 @@ func _ready():
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
 	
 	# Configure scroll container for horizontal scrolling only
-	scroll_container.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll_container.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	scroll_container.horizontal_scroll_mode = ScrollContainer.ScrollMode.SCROLL_MODE_SHOW_NEVER
+	scroll_container.vertical_scroll_mode = ScrollContainer.ScrollMode.SCROLL_MODE_SHOW_NEVER
+
 	
 	# Setup countdown timer
 	countdown_timer = Timer.new()
