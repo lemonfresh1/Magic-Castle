@@ -251,6 +251,9 @@ func setup_mobile_board() -> void:
 	await get_tree().physics_frame
 	await get_tree().physics_frame
 	update_all_cards()
+	
+	_debug_card_sizes()
+
 
 func calculate_mobile_card_positions() -> Array[Vector2]:
 	var positions: Array[Vector2] = []
@@ -440,3 +443,30 @@ func _apply_legacy_background() -> void:
 	rect.z_index = -10
 	add_child(rect)
 	move_child(rect, 0)
+
+func _debug_card_sizes() -> void:
+	print("=== CARD SIZE DEBUG ===")
+	
+	var scale_factor = _calculate_mobile_card_scale()
+	print("Scale Factor: ", scale_factor)
+	
+	var container_size = cards_container.size
+	print("Container: ", container_size.x, "x", container_size.y, "px")
+	
+	# Debug card #0 (first card)
+	if board_card_nodes.size() > 0 and board_card_nodes[0]:
+		var card_0 = board_card_nodes[0]
+		var actual_size_0 = card_0.get_rect().size
+		print("Card #0: ", actual_size_0.x, "x", actual_size_0.y, "px (base: ", MOBILE_CARD_WIDTH, "x", MOBILE_CARD_HEIGHT, "px)")
+	else:
+		print("Card #0: Not available")
+	
+	# Debug card #4 (fifth card)
+	if board_card_nodes.size() > 4 and board_card_nodes[4]:
+		var card_4 = board_card_nodes[4]
+		var actual_size_4 = card_4.get_rect().size
+		print("Card #4: ", actual_size_4.x, "x", actual_size_4.y, "px (base: ", MOBILE_CARD_WIDTH, "x", MOBILE_CARD_HEIGHT, "px)")
+	else:
+		print("Card #4: Not available")
+	
+	print("=== END CARD DEBUG ===")
