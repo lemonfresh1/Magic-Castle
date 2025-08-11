@@ -1,8 +1,8 @@
 [gd_scene load_steps=5 format=3 uid="uid://bfafex20pw1ne"]
 
-[ext_resource type="StyleBox" uid="uid://bsrpgd3orlj87" path="res://Magic-Castle/res/PanelStandardLayout.tres" id="1_u3bpe"]
-[ext_resource type="Script" uid="uid://d1p1kmmnbsfd2" path="res://Magic-Castle/scripts/ui/inventory/InventoryItemCard.gd" id="2_owoh8"]
-[ext_resource type="StyleBox" uid="uid://bs6thwrafwg3w" path="res://Magic-Castle/res/NamePanel.tres" id="3_nr4ik"]
+[ext_resource type="StyleBox" uid="uid://bsrpgd3orlj87" path="res://Pyramids/res/PanelStandardLayout.tres" id="1_u3bpe"]
+[ext_resource type="Script" uid="uid://d1p1kmmnbsfd2" path="res://Pyramids/scripts/ui/inventory/InventoryItemCard.gd" id="2_owoh8"]
+[ext_resource type="StyleBox" uid="uid://bs6thwrafwg3w" path="res://Pyramids/res/NamePanel.tres" id="3_nr4ik"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_2pvj5"]
 bg_color = Color(0.882353, 1, 1, 1)

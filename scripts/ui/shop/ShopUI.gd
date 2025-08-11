@@ -1,5 +1,5 @@
 # ShopUI.gd - Main shop interface controller using MenuBox template
-# Location: res://Magic-Castle/scripts/ui/shop/ShopUI.gd
+# Location: res://Pyramids/scripts/ui/shop/ShopUI.gd
 # Last Updated: Minimal cleanup - panel styling and filter buttons only [Date]
 
 extends PanelContainer
@@ -8,7 +8,7 @@ signal shop_closed
 signal item_purchased(item_id: String)
 
 @onready var tab_container: TabContainer = $MarginContainer/TabContainer
-@onready var shop_item_card_scene = preload("res://Magic-Castle/scenes/ui/shop/ShopItemCard.tscn")
+@onready var shop_item_card_scene = preload("res://Pyramids/scenes/ui/shop/ShopItemCard.tscn")
 
 # Tab references mapped by category id
 var tabs = {}
@@ -64,6 +64,7 @@ func _setup_tabs():
 		"highlights": tab_container.get_node_or_null("Highlights"),
 		"all": tab_container.get_node_or_null("All"),
 		"card_skins": tab_container.get_node_or_null("Cards"),
+		"card_backs": tab_container.get_node_or_null("Card Backs"),
 		"board_skins": tab_container.get_node_or_null("Boards"),
 		"avatars": tab_container.get_node_or_null("Avatars"),
 		"frames": tab_container.get_node_or_null("Frames"),

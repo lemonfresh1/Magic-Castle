@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://hreymngbcvj0"
-path="res://.godot/imported/79_pancakes.png-c839990c9afd3843166c0b8c97a11d2a.ctex"
+path="res://.godot/imported/79_pancakes.png-830ba5d614831eca7c43187d6186c6ab.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/placeholder/food/79_pancakes.png"
-dest_files=["res://.godot/imported/79_pancakes.png-c839990c9afd3843166c0b8c97a11d2a.ctex"]
+source_file="res://Pyramids/assets/placeholder/food/79_pancakes.png"
+dest_files=["res://.godot/imported/79_pancakes.png-830ba5d614831eca7c43187d6186c6ab.ctex"]
 
 [params]
 

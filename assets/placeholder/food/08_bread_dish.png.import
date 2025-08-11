@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b44d87akkjboi"
-path="res://.godot/imported/08_bread_dish.png-fbfc43e1a8b235707ba13fa4811d1f25.ctex"
+path="res://.godot/imported/08_bread_dish.png-50e3a6a8cdcc87e389f516516c48b887.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/placeholder/food/08_bread_dish.png"
-dest_files=["res://.godot/imported/08_bread_dish.png-fbfc43e1a8b235707ba13fa4811d1f25.ctex"]
+source_file="res://Pyramids/assets/placeholder/food/08_bread_dish.png"
+dest_files=["res://.godot/imported/08_bread_dish.png-50e3a6a8cdcc87e389f516516c48b887.ctex"]
 
 [params]
 

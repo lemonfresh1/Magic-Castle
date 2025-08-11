@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://1va3wi3o4dk7"
-path="res://.godot/imported/48_garlicbread.png-c61127b6744aa9ed5a1d993ca18884ad.ctex"
+path="res://.godot/imported/48_garlicbread.png-a8818dccec08b781160415e342b6a4af.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/placeholder/food/48_garlicbread.png"
-dest_files=["res://.godot/imported/48_garlicbread.png-c61127b6744aa9ed5a1d993ca18884ad.ctex"]
+source_file="res://Pyramids/assets/placeholder/food/48_garlicbread.png"
+dest_files=["res://.godot/imported/48_garlicbread.png-a8818dccec08b781160415e342b6a4af.ctex"]
 
 [params]
 

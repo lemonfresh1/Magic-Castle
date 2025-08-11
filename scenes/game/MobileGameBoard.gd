@@ -1,5 +1,5 @@
 # MobileGameBoard.gd - Mobile-optimized game board
-# Path: res://Magic-Castle/scenes/game/MobileGameBoard.gd
+# Path: res://Pyramids/scenes/game/MobileGameBoard.gd
 # Last Updated: Removed draw zone labels and debug output [Date]
 
 extends Control
@@ -11,8 +11,8 @@ extends Control
 @onready var right_draw_zone: Control = $BoardArea/RightDrawZone
 
 # === PRELOADS ===
-var card_scene = preload("res://Magic-Castle/scenes/game/Card.tscn")
-var mobile_topbar_scene = preload("res://Magic-Castle/scenes/ui/game_ui/MobileTopBar.tscn")
+var card_scene = preload("res://Pyramids/scenes/game/Card.tscn")
+var mobile_topbar_scene = preload("res://Pyramids/scenes/ui/game_ui/MobileTopBar.tscn")
 
 # === MOBILE LAYOUT CONSTANTS ===
 const MOBILE_CARD_WIDTH: int = 50

@@ -1,5 +1,5 @@
 # TestMode.gd - Quick 2-round mode for testing
-# Path: res://Magic-Castle/scripts/game_modes/TestMode.gd
+# Path: res://Pyramids/scripts/game_modes/TestMode.gd
 class_name TestMode
 extends GameModeBase
 

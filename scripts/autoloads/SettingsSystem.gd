@@ -1,5 +1,5 @@
 # SettingsSystem.gd - Autoload for game settings and preferences
-# Path: res://Magic-Castle/scripts/autoloads/SettingsSystem.gd
+# Path: res://Pyramids/scripts/autoloads/SettingsSystem.gd
 extends Node
 
 # === DRAW PILE PREFERENCES ===

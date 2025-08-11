@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://cxtuomugpxbb8"
-path="res://.godot/imported/PeakClear2.wav-2505113d6102399349a62e2760bf7d4a.sample"
+path="res://.godot/imported/PeakClear2.wav-04d0a9cb221d960162af44b47b190a04.sample"
 
 [deps]
 
-source_file="res://Magic-Castle/assets/sound/soundeffects/PeakClear2.wav"
-dest_files=["res://.godot/imported/PeakClear2.wav-2505113d6102399349a62e2760bf7d4a.sample"]
+source_file="res://Pyramids/assets/sound/soundeffects/PeakClear2.wav"
+dest_files=["res://.godot/imported/PeakClear2.wav-04d0a9cb221d960162af44b47b190a04.sample"]
 
 [params]
 

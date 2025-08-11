@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://dyylxxxuk4fse"]
 
-[ext_resource type="Script" uid="uid://wuvklj3s24lu" path="res://Magic-Castle/scripts/ui/popups/RewardClaimPopup.gd" id="1_txops"]
+[ext_resource type="Script" uid="uid://wuvklj3s24lu" path="res://Pyramids/scripts/ui/popups/RewardClaimPopup.gd" id="1_txops"]
 
 [node name="RewardClaimPopup" type="PanelContainer"]
 offset_right = 40.0

@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ddwh1k26kralu"
-path="res://.godot/imported/ace_of_hearts.png-65346194f16fc4bebb7e9a7088c79845.ctex"
+path="res://.godot/imported/ace_of_hearts.png-620087d1c41650f1b8e2c76e964c8fea.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/cards/ace_of_hearts.png"
-dest_files=["res://.godot/imported/ace_of_hearts.png-65346194f16fc4bebb7e9a7088c79845.ctex"]
+source_file="res://Pyramids/assets/cards/ace_of_hearts.png"
+dest_files=["res://.godot/imported/ace_of_hearts.png-620087d1c41650f1b8e2c76e964c8fea.ctex"]
 
 [params]
 

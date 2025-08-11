@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c3slj4xwjmxbn"
-path="res://.godot/imported/seven_of_spades.png-33b999f0ebcb5b90f1bb2554d71b6a51.ctex"
+path="res://.godot/imported/seven_of_spades.png-04a8a8f5caec488bc4e344a5bd2c252a.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/cards/seven_of_spades.png"
-dest_files=["res://.godot/imported/seven_of_spades.png-33b999f0ebcb5b90f1bb2554d71b6a51.ctex"]
+source_file="res://Pyramids/assets/cards/seven_of_spades.png"
+dest_files=["res://.godot/imported/seven_of_spades.png-04a8a8f5caec488bc4e344a5bd2c252a.ctex"]
 
 [params]
 

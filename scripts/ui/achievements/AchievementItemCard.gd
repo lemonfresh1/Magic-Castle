@@ -1,5 +1,5 @@
 # AchievementItemCard.gd - Achievement display card with flip-to-description functionality
-# Location: res://Magic-Castle/scripts/ui/achievements/AchievementItemCard.gd
+# Location: res://Pyramids/scripts/ui/achievements/AchievementItemCard.gd
 # Last Updated: Removed ProgressInfoLabel and cleaned up duplicates [Date]
 
 extends PanelContainer
@@ -51,7 +51,7 @@ func setup(id: String):
 func _setup_front_side():
 	# Load icon
 	if icon_texture:
-		var icon_path = "res://Magic-Castle/assets/icons/achievements/" + achievement_data.icon
+		var icon_path = "res://Pyramids/assets/icons/achievements/" + achievement_data.icon
 		if FileAccess.file_exists(icon_path):
 			icon_texture.texture = load(icon_path)
 	

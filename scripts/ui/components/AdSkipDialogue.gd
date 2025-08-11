@@ -1,5 +1,5 @@
 # AdSkipDialog.gd
-# Path: res://Magic-Castle/scripts/ui/components/AdSkipDialog.gd
+# Path: res://Pyramids/scripts/ui/components/AdSkipDialog.gd
 extends Control
 
 @onready var info_label: Label = $Panel/VBoxContainer/Info

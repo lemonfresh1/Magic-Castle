@@ -1,5 +1,5 @@
 # SettingsMenu.gd - Updated with correct paths
-# Path: res://Magic-Castle/scripts/ui/menus/SettingsMenu.gd
+# Path: res://Pyramids/scripts/ui/menus/SettingsMenu.gd
 extends Control
 
 # Main structure
@@ -318,7 +318,7 @@ func _create_card_previews() -> void:
 	
 	for i in range(preview_cards.size()):
 		var card_data = preview_cards[i]
-		var card_preview = preload("res://Magic-Castle/scenes/ui/components/CardPreview.tscn").instantiate()
+		var card_preview = preload("res://Pyramids/scenes/ui/components/CardPreview.tscn").instantiate()
 		card_preview_container.add_child(card_preview)
 		card_preview.set_card(card_data.rank, card_data.suit)
 		card_preview.set_skin(available_card_skins[current_card_skin_index].name, SettingsSystem.high_contrast)
@@ -336,7 +336,7 @@ func _create_board_preview() -> void:
 		child.queue_free()
 	
 	# Create board preview
-	board_preview_instance = preload("res://Magic-Castle/scenes/ui/components/BoardPreview.tscn").instantiate()
+	board_preview_instance = preload("res://Pyramids/scenes/ui/components/BoardPreview.tscn").instantiate()
 	board_preview_container.add_child(board_preview_instance)
 	board_preview_instance.set_skin(available_board_skins[current_board_skin_index].name)
 	

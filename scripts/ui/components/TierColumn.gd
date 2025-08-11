@@ -1,5 +1,5 @@
 # TierColumn.gd - Individual tier column for season/event passes
-# Location: res://Magic-Castle/scripts/ui/components/TierColumn.gd
+# Location: res://Pyramids/scripts/ui/components/TierColumn.gd
 # Last Updated: Fixed lock visibility to properly hide when unlocked [Date]
 
 extends VBoxContainer
@@ -43,7 +43,7 @@ var current_theme: String = "battle_pass"
 # Add these after existing variables
 var free_reward_data: Dictionary = {}
 var premium_reward_data: Dictionary = {}
-var popup_scene = preload("res://Magic-Castle/scenes/ui/popups/RewardClaimPopup.tscn")
+var popup_scene = preload("res://Pyramids/scenes/ui/popups/RewardClaimPopup.tscn")
 
 func _ready():
 	# Track instance creation
@@ -307,7 +307,7 @@ func claim_reward(is_free: bool):
 
 func _get_reward_icon_path(reward_type: String, amount: int = 1) -> String:
 	"""Get placeholder icon path based on reward type"""
-	var base_path = "res://Magic-Castle/assets/placeholder/food/"
+	var base_path = "res://Pyramids/assets/placeholder/food/"
 	
 	# Map reward types to food icons for now
 	match reward_type:

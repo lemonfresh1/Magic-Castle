@@ -1,5 +1,5 @@
 # GameModeBase.gd - Base class for game modes
-# Path: res://Magic-Castle/scripts/game/GameModeBase.gd
+# Path: res://Pyramids/scripts/game/GameModeBase.gd
 class_name GameModeBase
 extends Resource
 

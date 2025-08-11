@@ -1,5 +1,5 @@
 # StarManager.gd - Autoload for star currency management
-# Path: res://Magic-Castle/scripts/autoloads/StarManager.gd
+# Path: res://Pyramids/scripts/autoloads/StarManager.gd
 # Manages star currency earning, spending, and tracking
 extends Node
 

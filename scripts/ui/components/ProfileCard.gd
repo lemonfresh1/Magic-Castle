@@ -1,5 +1,5 @@
 # ProfileCard.gd - Minimal script for ProfileCard UI interaction
-# Path: res://Magic-Castle/scripts/ui/components/ProfileCard.gd
+# Path: res://Pyramids/scripts/ui/components/ProfileCard.gd
 # Handles displaying player info and navigation buttons
 extends PanelContainer
 
@@ -81,12 +81,12 @@ func _on_button_pressed(section: String, button: Button) -> void:
 			# This changes scene, so close any open panels first
 			if ui_manager:
 				ui_manager.close_current_panel()
-			get_tree().change_scene_to_file("res://Magic-Castle/scenes/ui/menus/MenuProfile.tscn")
+			get_tree().change_scene_to_file("res://Pyramids/scenes/ui/menus/MenuProfile.tscn")
 		"achievements":
 			# This changes scene, so close any open panels first
 			if ui_manager:
 				ui_manager.close_current_panel()
-			get_tree().change_scene_to_file("res://Magic-Castle/scenes/ui/menus/AchievementsScreen.tscn")
+			get_tree().change_scene_to_file("res://Pyramids/scenes/ui/menus/AchievementsScreen.tscn")
 		"inventory":
 			# Don't change scene, just emit signal for MainMenu to handle with UIManager
 			pass

@@ -1,5 +1,5 @@
 # BoardPreview.gd
-# Path: res://Magic-Castle/scripts/ui/components/BoardPreview.gd
+# Path: res://Pyramids/scripts/ui/components/BoardPreview.gd
 extends Panel
 
 var current_skin: String = "green"
@@ -82,7 +82,7 @@ func _create_color_style_from_item(item: ItemData) -> StyleBoxFlat:
 
 func _apply_legacy_preview() -> void:
 	# First check for sprite (your existing code)
-	var sprite_path = "res://Magic-Castle/assets/backgrounds/%s_bg.png" % current_skin
+	var sprite_path = "res://Pyramids/assets/backgrounds/%s_bg.png" % current_skin
 	
 	if ResourceLoader.exists(sprite_path):
 		# Use sprite background

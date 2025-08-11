@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c1qt6gx75nug"
-path="res://.godot/imported/14_bacon_dish.png-b0fd8f09f1c21d373fa03dd7bba1e390.ctex"
+path="res://.godot/imported/14_bacon_dish.png-e9c74f1ff67d029f3358a957ebeb07cb.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/placeholder/food/14_bacon_dish.png"
-dest_files=["res://.godot/imported/14_bacon_dish.png-b0fd8f09f1c21d373fa03dd7bba1e390.ctex"]
+source_file="res://Pyramids/assets/placeholder/food/14_bacon_dish.png"
+dest_files=["res://.godot/imported/14_bacon_dish.png-e9c74f1ff67d029f3358a957ebeb07cb.ctex"]
 
 [params]
 

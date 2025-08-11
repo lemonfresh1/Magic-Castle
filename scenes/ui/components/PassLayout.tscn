@@ -1,6 +1,6 @@
 [gd_scene load_steps=8 format=3 uid="uid://bkb0n764fl27o"]
 
-[ext_resource type="Script" uid="uid://si3bh232ycyx" path="res://Magic-Castle/scripts/ui/components/PassLayout.gd" id="1_b3wnk"]
+[ext_resource type="Script" uid="uid://si3bh232ycyx" path="res://Pyramids/scripts/ui/components/PassLayout.gd" id="1_b3wnk"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_jj5f8"]
 bg_color = Color(1, 1, 1, 0.847059)

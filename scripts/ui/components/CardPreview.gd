@@ -1,5 +1,5 @@
 # CardPreview.gd - A lightweight card display for menus using CardSkinManager
-# Path: res://Magic-Castle/scripts/ui/components/CardPreview.gd
+# Path: res://Pyramids/scripts/ui/components/CardPreview.gd
 # Last Updated: Fixed font sizing and positioning for preview cards [Date]
 
 extends Control
@@ -135,7 +135,7 @@ func _show_sprite_card(skin: CardSkinBase) -> void:
 		# Fallback path construction
 		var rank_name = _get_rank_name_for_sprite(current_rank)
 		var suit_name = _get_suit_name(current_suit)
-		texture_path = "res://Magic-Castle/assets/cards/%s_of_%s.png" % [rank_name, suit_name]
+		texture_path = "res://Pyramids/assets/cards/%s_of_%s.png" % [rank_name, suit_name]
 	
 	var texture = load(texture_path) if ResourceLoader.exists(texture_path) else null
 	if texture:

@@ -1,13 +1,13 @@
 # MainMenu.gd - Main menu with hidden debug panel access
-# Path: res://Magic-Castle/scripts/ui/menus/MainMenu.gd
+# Path: res://Pyramids/scripts/ui/menus/MainMenu.gd
 # Updated with ButtonLayout instances and new UI elements
 extends Control
 
 # Preload scenes
-const ButtonLayoutScene = preload("res://Magic-Castle/scenes/ui/components/ButtonLayout.tscn")
-const CogBoxScene = preload("res://Magic-Castle/scenes/ui/components/CogBox.tscn")
-const StarBoxScene = preload("res://Magic-Castle/scenes/ui/components/StarBox.tscn")
-const ShopUIScene = preload("res://Magic-Castle/scenes/ui/shop/ShopUI.tscn")
+const ButtonLayoutScene = preload("res://Pyramids/scenes/ui/components/ButtonLayout.tscn")
+const CogBoxScene = preload("res://Pyramids/scenes/ui/components/CogBox.tscn")
+const StarBoxScene = preload("res://Pyramids/scenes/ui/components/StarBox.tscn")
+const ShopUIScene = preload("res://Pyramids/scenes/ui/shop/ShopUI.tscn")
 
 # Overlay References
 @onready var settings_overlay: Control = $SettingsOverlay
@@ -24,8 +24,8 @@ var menu_instances = {}
 # Configuration for all menu panels
 var menu_configs = {
 	"shop": {
-		"scene": "res://Magic-Castle/scenes/ui/shop/ShopUI.tscn",
-		"script": "res://Magic-Castle/scripts/ui/shop/ShopUI.gd",
+		"scene": "res://Pyramids/scenes/ui/shop/ShopUI.tscn",
+		"script": "res://Pyramids/scripts/ui/shop/ShopUI.gd",
 		"signals": {
 			"shop_closed": "_on_shop_closed",
 			"item_purchased": "_on_shop_item_purchased"
@@ -33,72 +33,72 @@ var menu_configs = {
 		"show_method": "show_shop"
 	},
 	"inventory": {
-		"scene": "res://Magic-Castle/scenes/ui/inventory/InventoryUI.tscn",
-		"script": "res://Magic-Castle/scripts/ui/inventory/InventoryUI.gd",
+		"scene": "res://Pyramids/scenes/ui/inventory/InventoryUI.tscn",
+		"script": "res://Pyramids/scripts/ui/inventory/InventoryUI.gd",
 		"signals": {
 			"inventory_closed": "_on_inventory_closed"
 		},
 		"show_method": "show_inventory"
 	},
 	"profile": {
-		"scene": "res://Magic-Castle/scenes/ui/profile/ProfileUI.tscn",
-		"script": "res://Magic-Castle/scripts/ui/profile/ProfileUI.gd",
+		"scene": "res://Pyramids/scenes/ui/profile/ProfileUI.tscn",
+		"script": "res://Pyramids/scripts/ui/profile/ProfileUI.gd",
 		"signals": {
 			"profile_closed": "_on_profile_closed"
 		},
 		"show_method": "show_profile"
 	},
 	"achievements": {
-		"scene": "res://Magic-Castle/scenes/ui/achievements/AchievementsUI.tscn",
-		"script": "res://Magic-Castle/scripts/ui/achievements/AchievementsUI.gd",
+		"scene": "res://Pyramids/scenes/ui/achievements/AchievementsUI.tscn",
+		"script": "res://Pyramids/scripts/ui/achievements/AchievementsUI.gd",
 		"signals": {
 			"achievements_closed": "_on_achievements_closed"
 		},
 		"show_method": "show_achievements"
 	},
 	"inbox": {
-		"scene": "res://Magic-Castle/scenes/ui/inbox/InboxUI.tscn",
-		"script": "res://Magic-Castle/scripts/ui/inbox/InboxUI.gd",
+		"scene": "res://Pyramids/scenes/ui/inbox/InboxUI.tscn",
+		"script": "res://Pyramids/scripts/ui/inbox/InboxUI.gd",
 		"signals": {
 			"inbox_closed": "_on_inbox_closed"
 		},
 		"show_method": "show_inbox"
 	},
 	"stats": {
-		"scene": "res://Magic-Castle/scenes/ui/stats/StatsUI.tscn",
-		"script": "res://Magic-Castle/scripts/ui/stats/StatsUI.gd",
+		"scene": "res://Pyramids/scenes/ui/stats/StatsUI.tscn",
+		"script": "res://Pyramids/scripts/ui/stats/StatsUI.gd",
 		"signals": {
 			"stats_closed": "_on_stats_closed"
 		},
 		"show_method": "show_stats"
 	},
 	"clan": {
-		"scene": "res://Magic-Castle/scenes/ui/clan/ClanUI.tscn",
-		"script": "res://Magic-Castle/scripts/ui/clan/ClanUI.gd",
+		"scene": "res://Pyramids/scenes/ui/clan/ClanUI.tscn",
+		"script": "res://Pyramids/scripts/ui/clan/ClanUI.gd",
 		"signals": {
 			"clan_closed": "_on_clan_closed"
 		},
 		"show_method": "show_clan"
 	},
 	"followers": {
-		"scene": "res://Magic-Castle/scenes/ui/followers/FollowersUI.tscn",
-		"script": "res://Magic-Castle/scripts/ui/followers/FollowersUI.gd",
+		"scene": "res://Pyramids/scenes/ui/followers/FollowersUI.tscn",
+		"script": "res://Pyramids/scripts/ui/followers/FollowersUI.gd",
 		"signals": {
 			"followers_closed": "_on_followers_closed"
 		},
 		"show_method": "show_followers"
 	},
 	"referral": {
-		"scene": "res://Magic-Castle/scenes/ui/referral/ReferralUI.tscn",
-		"script": "res://Magic-Castle/scripts/ui/referral/ReferralUI.gd",
+		"scene": "res://Pyramids/scenes/ui/referral/ReferralUI.tscn",
+		"script": "res://Pyramids/scripts/ui/referral/ReferralUI.gd",
 		"signals": {
 			"referral_closed": "_on_referral_closed"
 		},
 		"show_method": "show_referral"
 	},
 	"missions": {
-		"scene": "res://Magic-Castle/scenes/ui/missions/MissionUI.tscn",
-		"script": "res://Magic-Castle/scripts/ui/missions/MissionUI.gd", 
+		"scene": "res://Pyramids/scenes/ui/missions/MissionUI.tscn",
+		"script": "res://Pyramids/scripts/ui/missions/MissionUI.gd", 
 		"signals": {
 			"mission_completed": "_on_mission_completed",
 			"missions_closed": "_on_missions_closed"
@@ -106,8 +106,8 @@ var menu_configs = {
 		"show_method": "refresh_missions"
 	},
 	"season_pass": {
-		"scene": "res://Magic-Castle/scenes/ui/seasonpass/SeasonPassUI.tscn",
-		"script": "res://Magic-Castle/scripts/ui/seasonpass/SeasonPassUI.gd",
+		"scene": "res://Pyramids/scenes/ui/seasonpass/SeasonPassUI.tscn",
+		"script": "res://Pyramids/scripts/ui/seasonpass/SeasonPassUI.gd",
 		"signals": {
 			"tier_claimed": "_on_tier_claimed",
 			"season_pass_closed": "_on_season_pass_closed"
@@ -115,8 +115,8 @@ var menu_configs = {
 		"show_method": "show_season_pass"
 	},
 	"holiday": {
-		"scene": "res://Magic-Castle/scenes/ui/holiday/HolidayUI.tscn", 
-		"script": "res://Magic-Castle/scripts/ui/holiday/HolidayUI.gd",
+		"scene": "res://Pyramids/scenes/ui/holiday/HolidayUI.tscn", 
+		"script": "res://Pyramids/scripts/ui/holiday/HolidayUI.gd",
 		"signals": {
 			"event_completed": "_on_holiday_event_completed",
 			"holiday_closed": "_on_holiday_closed"
@@ -124,7 +124,7 @@ var menu_configs = {
 		"show_method": "show_holiday_event"
 	},
 	"settings": {
-	"scene": "res://Magic-Castle/scenes/ui/settings/SettingsUI.tscn",
+	"scene": "res://Pyramids/scenes/ui/settings/SettingsUI.tscn",
 	"script": "",  # Empty string - scene already has script
 	"signals": {
 		"settings_closed": "_on_settings_closed"
@@ -148,11 +148,11 @@ var version_tap_timer: Timer
 
 # Button configurations
 var button_configs = [
-	{"name": "Play", "position": Vector2(880, 185), "icon": "res://Magic-Castle/assets/ui/menu/play.png"},
-	{"name": "Shop", "position": Vector2(880, 275), "icon": "res://Magic-Castle/assets/ui/menu/play.png"},
-	{"name": "Missions", "position": Vector2(880, 335), "icon": "res://Magic-Castle/assets/ui/menu/play.png"},
-	{"name": "Season Pass", "position": Vector2(880, 395), "icon": "res://Magic-Castle/assets/ui/menu/play.png"},
-	{"name": "Holiday", "position": Vector2(880, 455), "icon": "res://Magic-Castle/assets/ui/menu/play.png"}
+	{"name": "Play", "position": Vector2(880, 185), "icon": "res://Pyramids/assets/ui/menu/play.png"},
+	{"name": "Shop", "position": Vector2(880, 275), "icon": "res://Pyramids/assets/ui/menu/play.png"},
+	{"name": "Missions", "position": Vector2(880, 335), "icon": "res://Pyramids/assets/ui/menu/play.png"},
+	{"name": "Season Pass", "position": Vector2(880, 395), "icon": "res://Pyramids/assets/ui/menu/play.png"},
+	{"name": "Holiday", "position": Vector2(880, 455), "icon": "res://Pyramids/assets/ui/menu/play.png"}
 ]
 
 var currently_selected_button: Button = null
@@ -287,7 +287,7 @@ func _show_menu_buttons():
 func _on_play_pressed() -> void:
 	GameState.reset_game_completely()
 	GameModeManager._load_current_mode()
-	get_tree().change_scene_to_file("res://Magic-Castle/scenes/game/MobileGameBoard.tscn")
+	get_tree().change_scene_to_file("res://Pyramids/scenes/game/MobileGameBoard.tscn")
 
 func _on_shop_pressed() -> void:
 	_toggle_menu_panel("shop", shop_button)
@@ -410,7 +410,7 @@ func _setup_version_label():
 func _setup_debug_panel():
 	# Create if doesn't exist
 	if not debug_panel:
-		var debug_scene = preload("res://Magic-Castle/scenes/ui/debug/DebugPanel.tscn")
+		var debug_scene = preload("res://Pyramids/scenes/ui/debug/DebugPanel.tscn")
 		debug_panel = debug_scene.instantiate()
 		add_child(debug_panel)
 		move_child(debug_panel, get_child_count() - 1)  # On top
@@ -448,7 +448,7 @@ func _on_achievements_closed() -> void:
 
 func _setup_profile_card():
 	if not profile_card:
-		var profile_card_scene = preload("res://Magic-Castle/scenes/ui/components/ProfileCard.tscn")
+		var profile_card_scene = preload("res://Pyramids/scenes/ui/components/ProfileCard.tscn")
 		profile_card = profile_card_scene.instantiate()
 		profile_card.name = "ProfileCard"
 		add_child(profile_card)

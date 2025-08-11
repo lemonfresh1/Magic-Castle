@@ -1,5 +1,5 @@
 # MobileTopBar.gd - Mobile-optimized top bar with UIStyleManager integration
-# Path: res://Magic-Castle/scripts/game/MobileTopBar.gd
+# Path: res://Pyramids/scripts/game/MobileTopBar.gd
 # Last Updated: Panel moved to CenterSection only
 
 extends Control
@@ -43,8 +43,8 @@ extends Control
 # State
 var is_paused: bool = false
 var slot_cards: Array[Control] = []
-var card_scene = preload("res://Magic-Castle/scenes/game/Card.tscn")
-var card_back_texture = preload("res://Magic-Castle/assets/cards/card_back.png")
+var card_scene = preload("res://Pyramids/scenes/game/Card.tscn")
+var card_back_texture = preload("res://Pyramids/assets/cards/card_back.png")
 
 func _ready() -> void:
 	# Set up proportional sizing
@@ -280,7 +280,7 @@ func _on_menu_pressed() -> void:
 		get_tree().paused = false
 		pause_button.text = "Pause"
 	GameState.reset_game_completely()
-	get_tree().change_scene_to_file("res://Magic-Castle/scenes/ui/menus/MainMenu.tscn")
+	get_tree().change_scene_to_file("res://Pyramids/scenes/ui/menus/MainMenu.tscn")
 
 func _on_pause_pressed() -> void:
 	is_paused = not is_paused

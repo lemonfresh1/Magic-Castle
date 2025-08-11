@@ -1,6 +1,6 @@
 [gd_scene load_steps=3 format=3 uid="uid://dvo715rwd65h0"]
 
-[ext_resource type="Script" uid="uid://n6phwtiseq65" path="res://Magic-Castle/scenes/game/Card.gd" id="1_xmut4"]
+[ext_resource type="Script" uid="uid://n6phwtiseq65" path="res://Pyramids/scenes/game/Card.gd" id="1_xmut4"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_xmut4"]
 size = Vector2(88, 124.5)

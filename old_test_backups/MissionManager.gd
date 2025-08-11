@@ -1,5 +1,5 @@
 # MissionManager.gd - Manages daily and weekly missions
-# Location: res://Magic-Castle/scripts/autoloads/MissionManager.gd
+# Location: res://Pyramids/scripts/autoloads/MissionManager.gd
 # Last Updated: Refactored to handle only daily/weekly missions [Date]
 
 extends Node

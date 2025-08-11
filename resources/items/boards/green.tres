@@ -1,9 +1,9 @@
 [gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
 
-[ext_resource type="Script" path="res://Magic-Castle/scripts/resources/ItemData.gd" id="1_wwus6"]
+[ext_resource type="Script" path="res://Pyramids/scripts/resources/ItemData.gd" id="1_sfslp"]
 
 [resource]
-script = ExtResource("1_wwus6")
+script = ExtResource("1_sfslp")
 id = "board_green"
 display_name = "Classic Green"
 description = "The classic green felt board"
@@ -24,6 +24,8 @@ texture_path = ""
 preview_texture_path = ""
 is_animated = false
 animation_frames = 0
+background_scene_path = ""
+background_type = "color"
 sort_order = 0
 is_new = false
 is_limited = false

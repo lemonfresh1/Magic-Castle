@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://dipxnrqnjgexs"]
 
-[ext_resource type="Script" uid="uid://6uyhh6wt01ko" path="res://Magic-Castle/scenes/game/MobileGameBoard.gd" id="1_2be8g"]
+[ext_resource type="Script" uid="uid://6uyhh6wt01ko" path="res://Pyramids/scenes/game/MobileGameBoard.gd" id="1_2be8g"]
 
 [node name="MobileGameBoard" type="Control"]
 layout_mode = 3

@@ -1,5 +1,5 @@
 # AudioSystem.gd - Autoload for game audio management
-# Path: res://Magic-Castle/scripts/autoloads/AudioSystem.gd
+# Path: res://Pyramids/scripts/autoloads/AudioSystem.gd
 extends Node
 
 # === AUDIO PLAYERS ===
@@ -33,19 +33,19 @@ func _create_audio_players() -> void:
 func _load_sound_effects() -> void:
 	# Load all sound effects from the soundeffects folder
 	var sound_files = {
-		"CardDraw1": "res://Magic-Castle/assets/sound/soundeffects/CardDraw1.wav",
-		"CardDraw2": "res://Magic-Castle/assets/sound/soundeffects/CardDraw2.wav", 
-		"CardDraw3": "res://Magic-Castle/assets/sound/soundeffects/CardDraw3.wav",
-		"Connect": "res://Magic-Castle/assets/sound/soundeffects/Connect.wav",
-		"Error1": "res://Magic-Castle/assets/sound/soundeffects/Error1.wav",
-		"Error2": "res://Magic-Castle/assets/sound/soundeffects/Error2.wav",
-		"Error3": "res://Magic-Castle/assets/sound/soundeffects/Error3.wav",
-		"PeakClear1": "res://Magic-Castle/assets/sound/soundeffects/PeakClear1.wav",
-		"PeakClear2": "res://Magic-Castle/assets/sound/soundeffects/PeakClear2.wav",
-		"SadTrombone": "res://Magic-Castle/assets/sound/soundeffects/SadTrombone.wav",
-		"Success": "res://Magic-Castle/assets/sound/soundeffects/Success.wav",
-		"WinScreen1": "res://Magic-Castle/assets/sound/soundeffects/WinScreen1.wav",
-		"WinScreen2": "res://Magic-Castle/assets/sound/soundeffects/WinScreen2.wav"
+		"CardDraw1": "res://Pyramids/assets/sound/soundeffects/CardDraw1.wav",
+		"CardDraw2": "res://Pyramids/assets/sound/soundeffects/CardDraw2.wav", 
+		"CardDraw3": "res://Pyramids/assets/sound/soundeffects/CardDraw3.wav",
+		"Connect": "res://Pyramids/assets/sound/soundeffects/Connect.wav",
+		"Error1": "res://Pyramids/assets/sound/soundeffects/Error1.wav",
+		"Error2": "res://Pyramids/assets/sound/soundeffects/Error2.wav",
+		"Error3": "res://Pyramids/assets/sound/soundeffects/Error3.wav",
+		"PeakClear1": "res://Pyramids/assets/sound/soundeffects/PeakClear1.wav",
+		"PeakClear2": "res://Pyramids/assets/sound/soundeffects/PeakClear2.wav",
+		"SadTrombone": "res://Pyramids/assets/sound/soundeffects/SadTrombone.wav",
+		"Success": "res://Pyramids/assets/sound/soundeffects/Success.wav",
+		"WinScreen1": "res://Pyramids/assets/sound/soundeffects/WinScreen1.wav",
+		"WinScreen2": "res://Pyramids/assets/sound/soundeffects/WinScreen2.wav"
 	}
 	
 	for sound_name in sound_files:

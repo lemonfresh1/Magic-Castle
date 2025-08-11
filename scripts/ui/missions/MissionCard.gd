@@ -1,5 +1,5 @@
 # MissionCard.gd - Individual mission card display with claim overlay
-# Location: res://Magic-Castle/scripts/ui/missions/MissionCard.gd
+# Location: res://Pyramids/scripts/ui/missions/MissionCard.gd
 # Last Updated: Added claim overlay functionality [Date]
 
 extends PanelContainer

@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ctoraq5gi6uc8"
-path="res://.godot/imported/87_ramen.png-2bfe8f4f07e69b58b9430cadfebb711e.ctex"
+path="res://.godot/imported/87_ramen.png-d4b9e58029cd76c1a77aa7e29a90647a.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/placeholder/food/87_ramen.png"
-dest_files=["res://.godot/imported/87_ramen.png-2bfe8f4f07e69b58b9430cadfebb711e.ctex"]
+source_file="res://Pyramids/assets/placeholder/food/87_ramen.png"
+dest_files=["res://.godot/imported/87_ramen.png-d4b9e58029cd76c1a77aa7e29a90647a.ctex"]
 
 [params]
 

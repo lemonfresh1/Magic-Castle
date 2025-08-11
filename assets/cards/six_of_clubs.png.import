@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cif834252ydj5"
-path="res://.godot/imported/six_of_clubs.png-60416fc15a294be954b73c3019477696.ctex"
+path="res://.godot/imported/six_of_clubs.png-8a5159ef6e92a81e42edc5801fb004cc.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/cards/six_of_clubs.png"
-dest_files=["res://.godot/imported/six_of_clubs.png-60416fc15a294be954b73c3019477696.ctex"]
+source_file="res://Pyramids/assets/cards/six_of_clubs.png"
+dest_files=["res://.godot/imported/six_of_clubs.png-8a5159ef6e92a81e42edc5801fb004cc.ctex"]
 
 [params]
 

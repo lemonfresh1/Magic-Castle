@@ -1,5 +1,5 @@
 # InboxUI.gd - Inbox interface placeholder
-# Location: res://Magic-Castle/scripts/ui/inbox/InboxUI.gd
+# Location: res://Pyramids/scripts/ui/inbox/InboxUI.gd
 # Last Updated: Integrated with UIStyleManager [Date]
 
 extends PanelContainer

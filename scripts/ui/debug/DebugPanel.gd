@@ -1,5 +1,5 @@
 # DebugPanel.gd - Debug panel with tabbed interface
-# Path: res://Magic-Castle/scripts/ui/debug/DebugPanel.gd
+# Path: res://Pyramids/scripts/ui/debug/DebugPanel.gd
 # Last Updated: Converted to tabbed interface [Date]
 
 extends Panel
@@ -156,7 +156,10 @@ func _create_clear_tab():
 	
 	var reset_inventory_btn = _create_button("Reset Inventory", _reset_inventory_with_confirm, Color(1, 0.8, 0.8))
 	inner_content.add_child(reset_inventory_btn)
-	
+
+	var reset_owned_items_btn = _create_button("Reset Owned Items (Shop & ItemManager)", _reset_owned_items_with_confirm, Color(1, 0.8, 0.8))
+	inner_content.add_child(reset_owned_items_btn)
+
 	var reset_stats_btn = _create_button("Reset All Stats", _reset_stats_with_confirm, Color(1, 0.8, 0.8))
 	inner_content.add_child(reset_stats_btn)
 	
@@ -604,8 +607,9 @@ func _reset_achievements():
 	print("Achievements reset!")
 
 func _reset_inventory():
-	# TODO: Implement when InventoryManager is available
-	print("Inventory reset! (Not implemented)")
+	# Now properly implemented
+	_reset_owned_items()
+	print("Inventory reset!")
 
 func _reset_stats():
 	if StatsManager:
@@ -675,7 +679,7 @@ func _reset_stars():
 func _reset_all():
 	_reset_stats()
 	_reset_achievements()
-	_reset_inventory()
+	_reset_owned_items()  # Changed from _reset_inventory()
 	_reset_xp()
 	_reset_stars()
 	_reset_missions()
@@ -831,3 +835,21 @@ func _complete_all_missions():
 		print("All missions completed!")
 	else:
 		print("UnifiedMissionManager not available")
+
+func _reset_owned_items_with_confirm():
+	_show_confirm_dialog("Reset all owned items?\n\nThis will:\n• Remove all purchased items\n• Keep only default items\n• Reset equipped items to defaults", _reset_owned_items)
+	
+func _reset_owned_items():
+	print("Resetting all owned items...")
+	
+	# Reset ItemManager items
+	if ItemManager:
+		ItemManager.reset_all_items()
+		print("  ✓ ItemManager items reset to defaults")
+	
+	# Reset ShopManager items
+	if ShopManager:
+		ShopManager.reset_shop_data()
+		print("  ✓ ShopManager items reset to defaults")
+	
+	print("All owned items reset! Only default items remain.")

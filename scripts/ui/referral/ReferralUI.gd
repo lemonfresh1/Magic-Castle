@@ -1,5 +1,5 @@
 # ReferralUI.gd - Referral interface placeholder
-# Location: res://Magic-Castle/scripts/ui/referral/ReferralUI.gd
+# Location: res://Pyramids/scripts/ui/referral/ReferralUI.gd
 # Last Updated: Integrated with UIStyleManager [Date]
 
 extends PanelContainer

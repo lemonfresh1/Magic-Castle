@@ -1,5 +1,5 @@
 # ScoreScreen.gd - Round completion score display
-# Path: res://Magic-Castle/scripts/game/ScoreScreen.gd
+# Path: res://Pyramids/scripts/game/ScoreScreen.gd
 # Last Updated: Applied UIStyleManager styling [Date]
 
 extends Control
@@ -224,7 +224,7 @@ func _on_continue_pressed() -> void:
 		GameState._continue_to_next_round()
 		
 		# Show post-game summary
-		var summary_scene = preload("res://Magic-Castle/scenes/ui/game_ui/PostGameSummary.tscn")
+		var summary_scene = preload("res://Pyramids/scenes/ui/game_ui/PostGameSummary.tscn")
 		var summary = summary_scene.instantiate()
 		summary.add_to_group("post_game_summary")
 		get_tree().root.add_child(summary)

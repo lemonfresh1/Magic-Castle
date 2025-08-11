@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dawh12ceveet8"
-path="res://.godot/imported/99_taco.png-e1ca36f5ba0417abdc35fb7b5072743c.ctex"
+path="res://.godot/imported/99_taco.png-4386dd3cea71b2980acf2cf3a0c4a133.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/placeholder/food/99_taco.png"
-dest_files=["res://.godot/imported/99_taco.png-e1ca36f5ba0417abdc35fb7b5072743c.ctex"]
+source_file="res://Pyramids/assets/placeholder/food/99_taco.png"
+dest_files=["res://.godot/imported/99_taco.png-4386dd3cea71b2980acf2cf3a0c4a133.ctex"]
 
 [params]
 

@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://b1gr5pe7ttu7j"
-path="res://.godot/imported/SadTrombone.wav-8e6598aeff948ba7287e08eabaecbdf0.sample"
+path="res://.godot/imported/SadTrombone.wav-a6de606d83b67ec467cb32b4d2e28252.sample"
 
 [deps]
 
-source_file="res://Magic-Castle/assets/sound/soundeffects/SadTrombone.wav"
-dest_files=["res://.godot/imported/SadTrombone.wav-8e6598aeff948ba7287e08eabaecbdf0.sample"]
+source_file="res://Pyramids/assets/sound/soundeffects/SadTrombone.wav"
+dest_files=["res://.godot/imported/SadTrombone.wav-a6de606d83b67ec467cb32b4d2e28252.sample"]
 
 [params]
 

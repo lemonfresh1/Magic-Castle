@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ddmgort4xvge3"
-path="res://.godot/imported/71_nacho.png-3766260de9c9cfd9975b91c3b072b8dd.ctex"
+path="res://.godot/imported/71_nacho.png-8d046d2fb4e69ee5810d7521e05cfdc5.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/placeholder/food/71_nacho.png"
-dest_files=["res://.godot/imported/71_nacho.png-3766260de9c9cfd9975b91c3b072b8dd.ctex"]
+source_file="res://Pyramids/assets/placeholder/food/71_nacho.png"
+dest_files=["res://.godot/imported/71_nacho.png-8d046d2fb4e69ee5810d7521e05cfdc5.ctex"]
 
 [params]
 

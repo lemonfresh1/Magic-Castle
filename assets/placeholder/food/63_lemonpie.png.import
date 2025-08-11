@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bwkt28gglbfdj"
-path="res://.godot/imported/63_lemonpie.png-577a94786f5644b913e49a3641f24cc9.ctex"
+path="res://.godot/imported/63_lemonpie.png-c47576773464f75a23df2f1161e3834c.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/placeholder/food/63_lemonpie.png"
-dest_files=["res://.godot/imported/63_lemonpie.png-577a94786f5644b913e49a3641f24cc9.ctex"]
+source_file="res://Pyramids/assets/placeholder/food/63_lemonpie.png"
+dest_files=["res://.godot/imported/63_lemonpie.png-c47576773464f75a23df2f1161e3834c.ctex"]
 
 [params]
 

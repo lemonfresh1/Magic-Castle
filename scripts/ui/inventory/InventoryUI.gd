@@ -1,5 +1,5 @@
 # InventoryUI.gd - Inventory interface showing owned items
-# Location: res://Magic-Castle/scripts/ui/inventory/InventoryUI.gd
+# Location: res://Pyramids/scripts/ui/inventory/InventoryUI.gd
 # Last Updated: Minimal cleanup - panel styling and filter buttons only [Date]
 
 extends PanelContainer
@@ -7,7 +7,7 @@ extends PanelContainer
 signal inventory_closed
 
 @onready var tab_container: TabContainer = $MarginContainer/TabContainer
-@onready var inventory_item_card_scene = preload("res://Magic-Castle/scenes/ui/inventory/InventoryItemCard.tscn")
+@onready var inventory_item_card_scene = preload("res://Pyramids/scenes/ui/inventory/InventoryItemCard.tscn")
 
 # Tab references mapped by category id
 var tabs = {}
@@ -37,6 +37,7 @@ func _setup_tabs():
 	tabs = {
 		"all": tab_container.get_node_or_null("All"),
 		"card_skins": tab_container.get_node_or_null("Cards"),
+		"card_backs": tab_container.get_node_or_null("Card Backs"),
 		"board_skins": tab_container.get_node_or_null("Boards"),
 		"avatars": tab_container.get_node_or_null("Avatars"),
 		"frames": tab_container.get_node_or_null("Frames"),
@@ -303,7 +304,7 @@ func _on_item_clicked(item: ShopManager.ShopItem):
 		return  # Don't show dialog
 	
 	# Create equip dialog
-	var dialog = preload("res://Magic-Castle/scripts/ui/dialogs/EquipDialog.gd").new()
+	var dialog = preload("res://Pyramids/scripts/ui/dialogs/EquipDialog.gd").new()
 	get_tree().root.add_child(dialog)
 	
 	dialog.setup_for_item(item)

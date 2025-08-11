@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://barv7qrqvp6nk"
-path="res://.godot/imported/FloppyDisk.png-39f04f1dd2d48d097c3a5ec64bdc8513.ctex"
+path="res://.godot/imported/FloppyDisk.png-8d430e0c7aecef0ad18c0287f0d72a42.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/icons/achievements/FloppyDisk.png"
-dest_files=["res://.godot/imported/FloppyDisk.png-39f04f1dd2d48d097c3a5ec64bdc8513.ctex"]
+source_file="res://Pyramids/assets/icons/achievements/FloppyDisk.png"
+dest_files=["res://.godot/imported/FloppyDisk.png-8d430e0c7aecef0ad18c0287f0d72a42.ctex"]
 
 [params]
 

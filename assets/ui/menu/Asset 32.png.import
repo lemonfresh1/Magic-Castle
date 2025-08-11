@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://d2q553e4gp8n2"
-path="res://.godot/imported/Asset 32.png-fd2588d64cde7796c5c6fe921c767779.ctex"
+path="res://.godot/imported/Asset 32.png-e4cecdd33a481467144ec216531e76f8.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/ui/menu/Asset 32.png"
-dest_files=["res://.godot/imported/Asset 32.png-fd2588d64cde7796c5c6fe921c767779.ctex"]
+source_file="res://Pyramids/assets/ui/menu/Asset 32.png"
+dest_files=["res://.godot/imported/Asset 32.png-e4cecdd33a481467144ec216531e76f8.ctex"]
 
 [params]
 

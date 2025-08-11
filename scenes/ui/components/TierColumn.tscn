@@ -1,8 +1,8 @@
 [gd_scene load_steps=5 format=3 uid="uid://lk64ibsfx7d"]
 
-[ext_resource type="Script" uid="uid://dkqk8x3ax10ye" path="res://Magic-Castle/scripts/ui/components/TierColumn.gd" id="1_14o0l"]
-[ext_resource type="Texture2D" uid="uid://crfks5swpko4o" path="res://Magic-Castle/assets/placeholder/food/69_meatball.png" id="2_27q2n"]
-[ext_resource type="Texture2D" uid="uid://ba71mi2y0y8s6" path="res://Magic-Castle/assets/ui/menu/referral.png" id="3_o0ql5"]
+[ext_resource type="Script" uid="uid://dkqk8x3ax10ye" path="res://Pyramids/scripts/ui/components/TierColumn.gd" id="1_14o0l"]
+[ext_resource type="Texture2D" uid="uid://crfks5swpko4o" path="res://Pyramids/assets/placeholder/food/69_meatball.png" id="2_27q2n"]
+[ext_resource type="Texture2D" uid="uid://ba71mi2y0y8s6" path="res://Pyramids/assets/ui/menu/referral.png" id="3_o0ql5"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_fa87p"]
 

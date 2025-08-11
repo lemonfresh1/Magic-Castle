@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dvu1hu65nop6f"
-path="res://.godot/imported/58_icecream_bowl.png-76f3b22df1bae65c71284731f5960da1.ctex"
+path="res://.godot/imported/58_icecream_bowl.png-02e788af845b38b4a582eafbd49fa8cf.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/placeholder/food/58_icecream_bowl.png"
-dest_files=["res://.godot/imported/58_icecream_bowl.png-76f3b22df1bae65c71284731f5960da1.ctex"]
+source_file="res://Pyramids/assets/placeholder/food/58_icecream_bowl.png"
+dest_files=["res://.godot/imported/58_icecream_bowl.png-02e788af845b38b4a582eafbd49fa8cf.ctex"]
 
 [params]
 

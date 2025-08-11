@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://chfjlnyxcefk7"
-path="res://.godot/imported/24_cheesepuff.png-1e41b8c0420e59c85c6da1644672476c.ctex"
+path="res://.godot/imported/24_cheesepuff.png-646de541cc431a7eefbb342fb9b01738.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/placeholder/food/24_cheesepuff.png"
-dest_files=["res://.godot/imported/24_cheesepuff.png-1e41b8c0420e59c85c6da1644672476c.ctex"]
+source_file="res://Pyramids/assets/placeholder/food/24_cheesepuff.png"
+dest_files=["res://.godot/imported/24_cheesepuff.png-646de541cc431a7eefbb342fb9b01738.ctex"]
 
 [params]
 

@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cylv4wcmcej2g"
-path="res://.godot/imported/MagnifyingGlass.png-0d1c52d6a2be2b9f9b9d35ba0c7423f0.ctex"
+path="res://.godot/imported/MagnifyingGlass.png-d641574bac6cd70ec862748b841a9804.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/icons/achievements/MagnifyingGlass.png"
-dest_files=["res://.godot/imported/MagnifyingGlass.png-0d1c52d6a2be2b9f9b9d35ba0c7423f0.ctex"]
+source_file="res://Pyramids/assets/icons/achievements/MagnifyingGlass.png"
+dest_files=["res://.godot/imported/MagnifyingGlass.png-d641574bac6cd70ec862748b841a9804.ctex"]
 
 [params]
 

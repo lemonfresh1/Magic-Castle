@@ -1,5 +1,5 @@
 # GameState.gd - Autoload for game state management
-# Path: res://Magic-Castle/scripts/autoloads/GameState.gd
+# Path: res://Pyramids/scripts/autoloads/GameState.gd
 # Last Updated: Cleaned debug output while maintaining functionality [Date]
 
 extends Node
@@ -197,7 +197,7 @@ func _show_score_screen(scores: Dictionary) -> void:
 	"""Display the score screen"""
 	var score_screen = get_tree().get_first_node_in_group("score_screen")
 	if not score_screen:
-		var score_scene = load("res://Magic-Castle/scenes/ui/game_ui/ScoreScreen.tscn")
+		var score_scene = load("res://Pyramids/scenes/ui/game_ui/ScoreScreen.tscn")
 		if score_scene:
 			score_screen = score_scene.instantiate()
 			score_screen.add_to_group("score_screen")
@@ -361,7 +361,7 @@ func _return_to_menu() -> void:
 	reset_game_completely()
 	
 	# Then return to main menu
-	get_tree().change_scene_to_file("res://Magic-Castle/scenes/ui/menus/MainMenu.tscn")
+	get_tree().change_scene_to_file("res://Pyramids/scenes/ui/menus/MainMenu.tscn")
 
 func _unhandled_key_input(event: InputEvent) -> void:
 	# TODO: Remove before release - Press E to instantly end round

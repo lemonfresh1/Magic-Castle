@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://df83gmf2pu36n"
-path="res://.godot/imported/Chili.png-886c0988309f9121d98e8bbb38025439.ctex"
+path="res://.godot/imported/Chili.png-5cd7b7bcb55e4a4d4497e1eb87dd9624.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/icons/achievements/Chili.png"
-dest_files=["res://.godot/imported/Chili.png-886c0988309f9121d98e8bbb38025439.ctex"]
+source_file="res://Pyramids/assets/icons/achievements/Chili.png"
+dest_files=["res://.godot/imported/Chili.png-5cd7b7bcb55e4a4d4497e1eb87dd9624.ctex"]
 
 [params]
 

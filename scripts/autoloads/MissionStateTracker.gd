@@ -1,5 +1,5 @@
 # MissionStateTracker.gd - Tracks mission state at game start for comparison
-# Location: res://Magic-Castle/scripts/autoloads/MissionStateTracker.gd
+# Location: res://Pyramids/scripts/autoloads/MissionStateTracker.gd
 # Last Updated: Cleaned debug output while maintaining functionality [Date]
 
 extends Node

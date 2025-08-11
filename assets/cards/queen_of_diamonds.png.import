@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bgkrllohydtbu"
-path="res://.godot/imported/queen_of_diamonds.png-c9515f3f55cdc69b2da8bea0bd0f23c4.ctex"
+path="res://.godot/imported/queen_of_diamonds.png-dbc06a99e07fa995a186cdc2fb3f0331.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/cards/queen_of_diamonds.png"
-dest_files=["res://.godot/imported/queen_of_diamonds.png-c9515f3f55cdc69b2da8bea0bd0f23c4.ctex"]
+source_file="res://Pyramids/assets/cards/queen_of_diamonds.png"
+dest_files=["res://.godot/imported/queen_of_diamonds.png-dbc06a99e07fa995a186cdc2fb3f0331.ctex"]
 
 [params]
 

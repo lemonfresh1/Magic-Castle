@@ -1,5 +1,5 @@
 # CardData.gd - Resource class for individual cards
-# Path: res://Magic-Castle/scripts/game/CardData.gd
+# Path: res://Pyramids/scripts/game/CardData.gd
 extends Resource
 class_name CardData
 
@@ -79,10 +79,10 @@ func get_color_name() -> String:
 
 # === CARD IMAGE HELPERS ===
 func get_card_image_path() -> String:
-	return "res://Magic-Castle/assets/cards/%s_of_%s.png" % [get_rank_name(), get_suit_name()]
+	return "res://Pyramids/assets/cards/%s_of_%s.png" % [get_rank_name(), get_suit_name()]
 
 func get_card_back_path() -> String:
-	return "res://Magic-Castle/assets/cards/pink_backing.png"
+	return "res://Pyramids/assets/cards/pink_backing.png"
 
 # === GAME LOGIC ===
 func is_valid_next_card(other_card: CardData) -> bool:

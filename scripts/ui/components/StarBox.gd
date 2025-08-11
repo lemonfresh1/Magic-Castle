@@ -1,5 +1,5 @@
 # StarBox.gd - Star display component that auto-updates
-# Location: res://Magic-Castle/scripts/ui/components/StarBox.gd
+# Location: res://Pyramids/scripts/ui/components/StarBox.gd
 # Last Updated: Fixed signal reconnection issue [Date]
 
 extends PanelContainer

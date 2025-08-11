@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://crfks5swpko4o"
-path="res://.godot/imported/69_meatball.png-ae50f94599c7e3d8f22ef4c14e66c0d1.ctex"
+path="res://.godot/imported/69_meatball.png-5c174bedb5d70bbe3ee20f428c4dd943.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/placeholder/food/69_meatball.png"
-dest_files=["res://.godot/imported/69_meatball.png-ae50f94599c7e3d8f22ef4c14e66c0d1.ctex"]
+source_file="res://Pyramids/assets/placeholder/food/69_meatball.png"
+dest_files=["res://.godot/imported/69_meatball.png-5c174bedb5d70bbe3ee20f428c4dd943.ctex"]
 
 [params]
 

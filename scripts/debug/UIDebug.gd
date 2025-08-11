@@ -1,5 +1,5 @@
 # UIDebug.gd - Debug utility for inspecting UI nodes
-# Location: res://Magic-Castle/scripts/debug/UIDebug.gd
+# Location: res://Pyramids/scripts/debug/UIDebug.gd
 # Last Updated: Fixed string operations for Godot 4 [Date]
 
 class_name UIDebug

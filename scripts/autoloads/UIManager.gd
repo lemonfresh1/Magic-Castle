@@ -1,5 +1,5 @@
 # UIManager.gd - Manages all UI panels and ensures only one is open at a time
-# Location: res://Magic-Castle/scripts/autoloads/UIManager.gd
+# Location: res://Pyramids/scripts/autoloads/UIManager.gd
 # Last Updated: Added button toggle state management [Date]
 
 extends Node

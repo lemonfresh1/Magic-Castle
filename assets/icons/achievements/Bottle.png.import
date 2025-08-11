@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dm78fo43ydgdj"
-path="res://.godot/imported/Bottle.png-5082f60b3e3047ceab8d4d685ab48131.ctex"
+path="res://.godot/imported/Bottle.png-2fa9f0204182d32c9d1619afefaf9498.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/icons/achievements/Bottle.png"
-dest_files=["res://.godot/imported/Bottle.png-5082f60b3e3047ceab8d4d685ab48131.ctex"]
+source_file="res://Pyramids/assets/icons/achievements/Bottle.png"
+dest_files=["res://.godot/imported/Bottle.png-2fa9f0204182d32c9d1619afefaf9498.ctex"]
 
 [params]
 

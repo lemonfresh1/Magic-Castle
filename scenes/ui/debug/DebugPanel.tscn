@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://gdph14nnvjwm"]
 
-[ext_resource type="Script" uid="uid://jmc3grmd541r" path="res://Magic-Castle/scripts/ui/debug/DebugPanel.gd" id="1_ls3ug"]
+[ext_resource type="Script" uid="uid://jmc3grmd541r" path="res://Pyramids/scripts/ui/debug/DebugPanel.gd" id="1_ls3ug"]
 
 [node name="DebugPanel" type="Panel"]
 custom_minimum_size = Vector2(300, 300)

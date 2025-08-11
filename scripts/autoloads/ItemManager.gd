@@ -1,5 +1,5 @@
 # ItemManager.gd - Central registry for all cosmetic items in the game
-# Location: res://Magic-Castle/scripts/autoloads/ItemManager.gd
+# Location: res://Pyramids/scripts/autoloads/ItemManager.gd
 # Last Updated: Refactored to use Resource files [Date]
 
 extends Node
@@ -12,8 +12,8 @@ signal bundle_purchased(bundle_id: String, items: Array)
 signal items_loaded(count: int)
 
 # Paths
-const ITEMS_PATH = "res://Magic-Castle/resources/items/"
-const BUNDLES_PATH = "res://Magic-Castle/resources/bundles/"
+const ITEMS_PATH = "res://Pyramids/resources/items/"
+const BUNDLES_PATH = "res://Pyramids/resources/bundles/"
 const SAVE_PATH = "user://player_items.save"
 const SAVE_VERSION = 1
 
@@ -493,7 +493,7 @@ func debug_pyramid_board():
 	print("\n=== PYRAMID BOARD DEBUG ===")
 	
 	# 1. Check if the file exists
-	var pyramid_path = "res://Magic-Castle/resources/items/boards/pyramids.tres"
+	var pyramid_path = "res://Pyramids/resources/items/boards/pyramids.tres"
 	if ResourceLoader.exists(pyramid_path):
 		print("✓ File exists at: ", pyramid_path)
 	else:

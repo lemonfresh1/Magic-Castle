@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://brafio80vtmr5"
-path="res://.godot/imported/Cutlery.png-88d5674a71e55663e4b867f0faa2f32f.ctex"
+path="res://.godot/imported/Cutlery.png-8cb7833350a1820d9910271cfdc9bc73.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/icons/achievements/Cutlery.png"
-dest_files=["res://.godot/imported/Cutlery.png-88d5674a71e55663e4b867f0faa2f32f.ctex"]
+source_file="res://Pyramids/assets/icons/achievements/Cutlery.png"
+dest_files=["res://.godot/imported/Cutlery.png-8cb7833350a1820d9910271cfdc9bc73.ctex"]
 
 [params]
 

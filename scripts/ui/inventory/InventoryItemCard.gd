@@ -1,5 +1,5 @@
 # InventoryItemCard.gd - Individual inventory item display component
-# Location: res://Magic-Castle/scripts/ui/inventory/InventoryItemCard.gd
+# Location: res://Pyramids/scripts/ui/inventory/InventoryItemCard.gd
 # Last Updated: Updated to use icons from ItemData [Date]
 
 extends PanelContainer
@@ -34,7 +34,7 @@ func setup(item: ShopManager.ShopItem):
 		
 		# Fallback to placeholder icon if no actual icon
 		if not icon_loaded and item.placeholder_icon != "":
-			var placeholder_path = "res://Magic-Castle/assets/placeholder/food/" + item.placeholder_icon
+			var placeholder_path = "res://Pyramids/assets/placeholder/food/" + item.placeholder_icon
 			if ResourceLoader.exists(placeholder_path):
 				icon_texture.texture = load(placeholder_path)
 	

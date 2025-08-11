@@ -1,5 +1,5 @@
 # SeasonPassManager.gd - Manages season pass progression and rewards
-# Location: res://Magic-Castle/scripts/autoloads/SeasonPassManager.gd
+# Location: res://Pyramids/scripts/autoloads/SeasonPassManager.gd
 # Last Updated: Removed mission logic, focused on tier progression [Date]
 
 extends Node

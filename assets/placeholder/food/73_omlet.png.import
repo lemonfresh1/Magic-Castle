@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://rwwu7rimm2x"
-path="res://.godot/imported/73_omlet.png-8a5880b703e9903cdad3fa80d56bfa7c.ctex"
+path="res://.godot/imported/73_omlet.png-9d31380ca17aedd3daca547927d24fab.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/placeholder/food/73_omlet.png"
-dest_files=["res://.godot/imported/73_omlet.png-8a5880b703e9903cdad3fa80d56bfa7c.ctex"]
+source_file="res://Pyramids/assets/placeholder/food/73_omlet.png"
+dest_files=["res://.godot/imported/73_omlet.png-9d31380ca17aedd3daca547927d24fab.ctex"]
 
 [params]
 

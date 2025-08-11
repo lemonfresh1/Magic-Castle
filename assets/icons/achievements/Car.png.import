@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://de3vy1l51mo7e"
-path="res://.godot/imported/Car.png-a48342d17b6170ea25cfad19762c8f06.ctex"
+path="res://.godot/imported/Car.png-fafd17d953eeedc7accc50d7d9ad8042.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/icons/achievements/Car.png"
-dest_files=["res://.godot/imported/Car.png-a48342d17b6170ea25cfad19762c8f06.ctex"]
+source_file="res://Pyramids/assets/icons/achievements/Car.png"
+dest_files=["res://.godot/imported/Car.png-fafd17d953eeedc7accc50d7d9ad8042.ctex"]
 
 [params]
 

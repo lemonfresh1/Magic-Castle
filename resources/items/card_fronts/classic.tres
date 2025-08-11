@@ -1,9 +1,9 @@
 [gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
 
-[ext_resource type="Script" path="res://Magic-Castle/scripts/resources/ItemData.gd" id="1_wksqv"]
+[ext_resource type="Script" path="res://Pyramids/scripts/resources/ItemData.gd" id="1_7mbnt"]
 
 [resource]
-script = ExtResource("1_wksqv")
+script = ExtResource("1_7mbnt")
 id = "card_classic"
 display_name = "Classic Cards"
 description = "The original card design"
@@ -24,6 +24,8 @@ texture_path = ""
 preview_texture_path = ""
 is_animated = false
 animation_frames = 0
+background_scene_path = ""
+background_type = "color"
 sort_order = 0
 is_new = false
 is_limited = false

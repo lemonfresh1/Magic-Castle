@@ -1,5 +1,5 @@
 # TriPeaksMode.gd - Standard tri-peaks game mode
-# Path: res://Magic-Castle/scripts/game/TriPeaksMode.gd
+# Path: res://Pyramids/scripts/game/TriPeaksMode.gd
 class_name TriPeaksMode
 extends GameModeBase
 

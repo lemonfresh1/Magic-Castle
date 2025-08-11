@@ -1,9 +1,9 @@
 [gd_scene load_steps=5 format=3 uid="uid://bupx7dubvtmh5"]
 
-[ext_resource type="StyleBox" uid="uid://dk212xk0jrtpc" path="res://Magic-Castle/res/PopupPanelLayout.tres" id="1_0x1kt"]
-[ext_resource type="Script" uid="uid://c8ev4gttsxqap" path="res://Magic-Castle/scripts/ui/game_ui/PostGameSummary.gd" id="1_qxkxq"]
-[ext_resource type="StyleBox" uid="uid://cf4gwa8xipnwh" path="res://Magic-Castle/res/XPBarLayout.tres" id="2_qxkxq"]
-[ext_resource type="StyleBox" uid="uid://bdt87hqe856cv" path="res://Magic-Castle/res/XPBarFillLayout.tres" id="3_qxbof"]
+[ext_resource type="StyleBox" uid="uid://dk212xk0jrtpc" path="res://Pyramids/res/PopupPanelLayout.tres" id="1_0x1kt"]
+[ext_resource type="Script" uid="uid://c8ev4gttsxqap" path="res://Pyramids/scripts/ui/game_ui/PostGameSummary.gd" id="1_qxkxq"]
+[ext_resource type="StyleBox" uid="uid://cf4gwa8xipnwh" path="res://Pyramids/res/XPBarLayout.tres" id="2_qxkxq"]
+[ext_resource type="StyleBox" uid="uid://bdt87hqe856cv" path="res://Pyramids/res/XPBarFillLayout.tres" id="3_qxbof"]
 
 [node name="PostGameSummary" type="Control"]
 z_index = 1000

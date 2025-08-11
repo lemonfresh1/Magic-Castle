@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dermthmdgejw2"
-path="res://.godot/imported/six_of_diamonds.png-f924b04b61b835cb36c09ff729c6ccef.ctex"
+path="res://.godot/imported/six_of_diamonds.png-984bfb0e498a18067e7acee86dc3b193.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/cards/six_of_diamonds.png"
-dest_files=["res://.godot/imported/six_of_diamonds.png-f924b04b61b835cb36c09ff729c6ccef.ctex"]
+source_file="res://Pyramids/assets/cards/six_of_diamonds.png"
+dest_files=["res://.godot/imported/six_of_diamonds.png-984bfb0e498a18067e7acee86dc3b193.ctex"]
 
 [params]
 

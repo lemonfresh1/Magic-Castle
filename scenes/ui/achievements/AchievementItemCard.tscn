@@ -1,10 +1,10 @@
 [gd_scene load_steps=8 format=3 uid="uid://cy7ikwxlewmvr"]
 
-[ext_resource type="StyleBox" uid="uid://bsrpgd3orlj87" path="res://Magic-Castle/res/PanelStandardLayout.tres" id="1_odw5b"]
-[ext_resource type="Script" uid="uid://qmounl0hkhyn" path="res://Magic-Castle/scripts/ui/achievements/AchievementItemCard.gd" id="2_vjuql"]
-[ext_resource type="StyleBox" uid="uid://bs6thwrafwg3w" path="res://Magic-Castle/res/NamePanel.tres" id="3_vq1p0"]
-[ext_resource type="StyleBox" uid="uid://cf4gwa8xipnwh" path="res://Magic-Castle/res/XPBarLayout.tres" id="4_7mce4"]
-[ext_resource type="StyleBox" uid="uid://bdt87hqe856cv" path="res://Magic-Castle/res/XPBarFillLayout.tres" id="5_gnuli"]
+[ext_resource type="StyleBox" uid="uid://bsrpgd3orlj87" path="res://Pyramids/res/PanelStandardLayout.tres" id="1_odw5b"]
+[ext_resource type="Script" uid="uid://qmounl0hkhyn" path="res://Pyramids/scripts/ui/achievements/AchievementItemCard.gd" id="2_vjuql"]
+[ext_resource type="StyleBox" uid="uid://bs6thwrafwg3w" path="res://Pyramids/res/NamePanel.tres" id="3_vq1p0"]
+[ext_resource type="StyleBox" uid="uid://cf4gwa8xipnwh" path="res://Pyramids/res/XPBarLayout.tres" id="4_7mce4"]
+[ext_resource type="StyleBox" uid="uid://bdt87hqe856cv" path="res://Pyramids/res/XPBarFillLayout.tres" id="5_gnuli"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_c74os"]
 bg_color = Color(1, 1, 1, 1)

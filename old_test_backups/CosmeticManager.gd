@@ -1,5 +1,5 @@
 # CosmeticManager.gd - Autoload for cosmetic management
-# Path: res://Magic-Castle/scripts/autoloads/CosmeticManager.gd
+# Path: res://Pyramids/scripts/autoloads/CosmeticManager.gd
 extends Node
 
 # Cosmetic definitions

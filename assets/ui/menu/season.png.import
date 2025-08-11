@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bryw27d3bygco"
-path="res://.godot/imported/season.png-d853220e7cb8fc7e865f39bbd3a7c57f.ctex"
+path="res://.godot/imported/season.png-ed29948f53ea6fbe20297d03a601f94e.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/ui/menu/season.png"
-dest_files=["res://.godot/imported/season.png-d853220e7cb8fc7e865f39bbd3a7c57f.ctex"]
+source_file="res://Pyramids/assets/ui/menu/season.png"
+dest_files=["res://.godot/imported/season.png-ed29948f53ea6fbe20297d03a601f94e.ctex"]
 
 [params]
 

@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c4t5tyvjocc30"
-path="res://.godot/imported/FlowerPot.png-1daf49d3c09f4f84c26484474ed7e40e.ctex"
+path="res://.godot/imported/FlowerPot.png-0f46586fca02118f1ab8ef1e6fc9148e.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/icons/achievements/FlowerPot.png"
-dest_files=["res://.godot/imported/FlowerPot.png-1daf49d3c09f4f84c26484474ed7e40e.ctex"]
+source_file="res://Pyramids/assets/icons/achievements/FlowerPot.png"
+dest_files=["res://.godot/imported/FlowerPot.png-0f46586fca02118f1ab8ef1e6fc9148e.ctex"]
 
 [params]
 

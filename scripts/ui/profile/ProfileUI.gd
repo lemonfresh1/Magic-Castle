@@ -1,5 +1,5 @@
 # ProfileUI.gd - Profile interface showing player overview and owned skins
-# Location: res://Magic-Castle/scripts/ui/profile/ProfileUI.gd
+# Location: res://Pyramids/scripts/ui/profile/ProfileUI.gd
 # Last Updated: Added ItemManager support for equipping items [Date]
 
 extends PanelContainer
@@ -7,7 +7,7 @@ extends PanelContainer
 signal profile_closed
 
 @onready var tab_container: TabContainer = $MarginContainer/TabContainer
-@onready var inventory_item_card_scene = preload("res://Magic-Castle/scenes/ui/inventory/InventoryItemCard.tscn")
+@onready var inventory_item_card_scene = preload("res://Pyramids/scenes/ui/inventory/InventoryItemCard.tscn")
 
 var current_filter: String = "all"
 var skin_cards = []
@@ -113,8 +113,8 @@ func _populate_skins():
 func _get_all_owned_skins() -> Array:
 	var skins = []
 	
-	# Get owned items from all skin categories
-	var categories = ["card_skins", "board_skins", "avatars", "frames", "emojis"]
+	# Get owned items from all skin categories - UPDATED CATEGORIES
+	var categories = ["card_fronts", "card_backs", "board_skins", "avatars", "frames", "emojis"]
 	for category in categories:
 		var items = ShopManager.get_items_by_category(category)
 		for item in items:
@@ -155,7 +155,7 @@ func _populate_skins_grid(grid: GridContainer, skins: Array):
 
 func _is_item_equipped(item: ShopManager.ShopItem) -> bool:
 	# Check with ItemManager first for ItemManager items
-	if ItemManager and (item.id.begins_with("board_") or item.id.begins_with("card_")):
+	if ItemManager:
 		var category = _get_item_category(item.category)
 		if category != -1:
 			var equipped_id = ItemManager.get_equipped_item(category)
@@ -165,8 +165,10 @@ func _is_item_equipped(item: ShopManager.ShopItem) -> bool:
 	var equipped = ShopManager.shop_data.equipped
 	
 	match item.category:
-		"card_skins":
-			return equipped.card_skin == item.id
+		"card_fronts":  # UPDATED
+			return equipped.get("card_front", "") == item.id
+		"card_backs":   # NEW
+			return equipped.get("card_back", "") == item.id
 		"board_skins":
 			return equipped.board_skin == item.id
 		"avatars":
@@ -180,7 +182,8 @@ func _is_item_equipped(item: ShopManager.ShopItem) -> bool:
 
 func _get_item_category(shop_category: String) -> ItemData.Category:
 	match shop_category:
-		"card_skins": return ItemData.Category.CARD_FRONT
+		"card_fronts": return ItemData.Category.CARD_FRONT  # UPDATED
+		"card_backs": return ItemData.Category.CARD_BACK    # NEW
 		"board_skins": return ItemData.Category.BOARD
 		"avatars": return ItemData.Category.AVATAR
 		"frames": return ItemData.Category.FRAME
@@ -205,7 +208,7 @@ func _on_skin_clicked(item: ShopManager.ShopItem):
 		return  # Don't show dialog
 	
 	# Create equip dialog using the new custom dialog
-	var dialog = preload("res://Magic-Castle/scripts/ui/dialogs/EquipDialog.gd").new()
+	var dialog = preload("res://Pyramids/scripts/ui/dialogs/EquipDialog.gd").new()
 	get_tree().root.add_child(dialog)
 	
 	dialog.setup_for_item(item)
@@ -234,7 +237,8 @@ func _direct_equip(item: ShopManager.ShopItem):
 
 func _get_shop_equipped_key(category: String) -> String:
 	match category:
-		"card_skins": return "card_skin"
+		"card_fronts": return "card_front"  # UPDATED
+		"card_backs": return "card_back"    # NEW
 		"board_skins": return "board_skin"
 		"avatars": return "avatar"
 		"frames": return "frame"

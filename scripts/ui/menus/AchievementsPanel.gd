@@ -1,5 +1,5 @@
 # AchievementsPanel.gd
-# res://Magic-Castle/scripts/ui/menus/AchievementsPanel.gd
+# res://Pyramids/scripts/ui/menus/AchievementsPanel.gd
 extends Control
 
 @onready var back_button: Button = $Panel/MarginContainer/VBoxContainer/Header/BackButton
@@ -24,7 +24,7 @@ func _load_achievements() -> void:
 	]
 	
 	for achievement in achievements:
-		var item = preload("res://Magic-Castle/scenes/ui/components/AchievementItem.tscn").instantiate()
+		var item = preload("res://Pyramids/scenes/ui/components/AchievementItem.tscn").instantiate()
 		item.setup(achievement)
 		achievements_list.add_child(item)
 

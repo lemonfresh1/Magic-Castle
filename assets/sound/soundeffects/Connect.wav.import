@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://37x3tvf3cas1"
-path="res://.godot/imported/Connect.wav-fc4af6143713c232c4cdb77f36cc8aa8.sample"
+path="res://.godot/imported/Connect.wav-6229b054cc40b2e83e4485593cabe25b.sample"
 
 [deps]
 
-source_file="res://Magic-Castle/assets/sound/soundeffects/Connect.wav"
-dest_files=["res://.godot/imported/Connect.wav-fc4af6143713c232c4cdb77f36cc8aa8.sample"]
+source_file="res://Pyramids/assets/sound/soundeffects/Connect.wav"
+dest_files=["res://.godot/imported/Connect.wav-6229b054cc40b2e83e4485593cabe25b.sample"]
 
 [params]
 

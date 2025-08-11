@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ch7o5npt01rt3"
-path="res://.godot/imported/jack_of_diamonds.png-9e0c1ee2a9ba0f7fb7a66ba4985972af.ctex"
+path="res://.godot/imported/jack_of_diamonds.png-7f53f4b1ae83b224014c6c0cf87042f6.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/cards/jack_of_diamonds.png"
-dest_files=["res://.godot/imported/jack_of_diamonds.png-9e0c1ee2a9ba0f7fb7a66ba4985972af.ctex"]
+source_file="res://Pyramids/assets/cards/jack_of_diamonds.png"
+dest_files=["res://.godot/imported/jack_of_diamonds.png-7f53f4b1ae83b224014c6c0cf87042f6.ctex"]
 
 [params]
 

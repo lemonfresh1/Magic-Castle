@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c2ur418t7kt3x"
-path="res://.godot/imported/Hammer.png-3498d9169091cbae3d0ee4e8f05fc318.ctex"
+path="res://.godot/imported/Hammer.png-d68f44b62759528f417be1874661bfc5.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/icons/achievements/Hammer.png"
-dest_files=["res://.godot/imported/Hammer.png-3498d9169091cbae3d0ee4e8f05fc318.ctex"]
+source_file="res://Pyramids/assets/icons/achievements/Hammer.png"
+dest_files=["res://.godot/imported/Hammer.png-d68f44b62759528f417be1874661bfc5.ctex"]
 
 [params]
 

@@ -1,5 +1,5 @@
 # AchievementManager.gd - Enhanced achievement system with progress tracking
-# Path: res://Magic-Castle/scripts/autoloads/AchievementManager.gd
+# Path: res://Pyramids/scripts/autoloads/AchievementManager.gd
 # Added 9 new long-term achievements, "new" badge system, rarity tiers
 extends Node
 

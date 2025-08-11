@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dgql35xyf7vpq"
-path="res://.godot/imported/41_eggsalad_bowl.png-8c3e7244049d1f7532f5f94c1eabc21a.ctex"
+path="res://.godot/imported/41_eggsalad_bowl.png-5d1dcca59ac39bcd6b666a2c6ed7c649.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/placeholder/food/41_eggsalad_bowl.png"
-dest_files=["res://.godot/imported/41_eggsalad_bowl.png-8c3e7244049d1f7532f5f94c1eabc21a.ctex"]
+source_file="res://Pyramids/assets/placeholder/food/41_eggsalad_bowl.png"
+dest_files=["res://.godot/imported/41_eggsalad_bowl.png-5d1dcca59ac39bcd6b666a2c6ed7c649.ctex"]
 
 [params]
 

@@ -1,7 +1,7 @@
 [gd_scene load_steps=13 format=3 uid="uid://bj8fxqgd8l6gj"]
 
-[ext_resource type="Script" uid="uid://bkv1lbgcdpaeh" path="res://Magic-Castle/scripts/ui/seasonpass/SeasonPassUI.gd" id="1_l5b6o"]
-[ext_resource type="StyleBox" uid="uid://bsrpgd3orlj87" path="res://Magic-Castle/res/PanelStandardLayout.tres" id="1_n3c8n"]
+[ext_resource type="Script" uid="uid://bkv1lbgcdpaeh" path="res://Pyramids/scripts/ui/seasonpass/SeasonPassUI.gd" id="1_l5b6o"]
+[ext_resource type="StyleBox" uid="uid://bsrpgd3orlj87" path="res://Pyramids/res/PanelStandardLayout.tres" id="1_n3c8n"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_0keu4"]
 content_margin_left = 15.0

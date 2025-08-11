@@ -1,6 +1,6 @@
 [gd_scene load_steps=13 format=3 uid="uid://c56too8bhv6lb"]
 
-[ext_resource type="Script" uid="uid://cyr6670s0jo4t" path="res://Magic-Castle/scripts/ui/achievements/AchievementsUI.gd" id="1_mqtjw"]
+[ext_resource type="Script" uid="uid://cyr6670s0jo4t" path="res://Pyramids/scripts/ui/achievements/AchievementsUI.gd" id="1_mqtjw"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_c3481"]
 bg_color = Color(1, 1, 1, 0.847059)

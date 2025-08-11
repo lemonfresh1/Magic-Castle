@@ -1,5 +1,5 @@
 # PostGameSummary.gd - Comprehensive post-game progression screen
-# Path: res://Magic-Castle/scripts/ui/game_ui/PostGameSummary.gd
+# Path: res://Pyramids/scripts/ui/game_ui/PostGameSummary.gd
 # Last Updated: Cleaned debug output while maintaining functionality [Date]
 
 extends Control
@@ -29,8 +29,8 @@ extends Control
 @onready var holiday_event_container: VBoxContainer = $Panel/MarginContainer/VBoxContainer/Events/ScrollContainer/HBoxContainer/HolidayEventContainer
 
 # Preload scenes
-const AchievementUnlocked = preload("res://Magic-Castle/scenes/ui/components/AchievementUnlocked.tscn")
-const MiniMission = preload("res://Magic-Castle/scenes/ui/components/MiniMission.tscn")
+const AchievementUnlocked = preload("res://Pyramids/scenes/ui/components/AchievementUnlocked.tscn")
+const MiniMission = preload("res://Pyramids/scenes/ui/components/MiniMission.tscn")
 
 # Game data
 var starting_xp: int = 0

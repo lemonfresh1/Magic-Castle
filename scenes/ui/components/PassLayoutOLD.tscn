@@ -1,7 +1,7 @@
 [gd_scene load_steps=12 format=3 uid="uid://bkb0n764fl27o"]
 
-[ext_resource type="Script" uid="uid://si3bh232ycyx" path="res://Magic-Castle/scripts/ui/components/PassLayout.gd" id="1_22vl6"]
-[ext_resource type="Texture2D" uid="uid://cqa0do7fwvyaf" path="res://Magic-Castle/assets/placeholder/star.png" id="2_h4wxi"]
+[ext_resource type="Script" uid="uid://si3bh232ycyx" path="res://Pyramids/scripts/ui/components/PassLayout.gd" id="1_22vl6"]
+[ext_resource type="Texture2D" uid="uid://cqa0do7fwvyaf" path="res://Pyramids/assets/placeholder/star.png" id="2_h4wxi"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_jj5f8"]
 bg_color = Color(1, 1, 1, 1)

@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=3 uid="uid://cx5g3kc4exfiu"]
 
-[ext_resource type="Script" uid="uid://dk6dwuaw8owyj" path="res://Magic-Castle/scripts/ui/effects/LevelUpCelebration.gd" id="1_j7rw7"]
-[ext_resource type="StyleBox" uid="uid://dk212xk0jrtpc" path="res://Magic-Castle/res/PopupPanelLayout.tres" id="2_ioo47"]
+[ext_resource type="Script" uid="uid://dk6dwuaw8owyj" path="res://Pyramids/scripts/ui/effects/LevelUpCelebration.gd" id="1_j7rw7"]
+[ext_resource type="StyleBox" uid="uid://dk212xk0jrtpc" path="res://Pyramids/res/PopupPanelLayout.tres" id="2_ioo47"]
 
 [node name="LevelUpCelebration" type="Control"]
 layout_mode = 3

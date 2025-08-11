@@ -1,5 +1,5 @@
 # AchievementUnlocked.gd - Displays unlocked achievement with rarity border
-# Path: res://Magic-Castle/scripts/ui/components/AchievementUnlocked.gd
+# Path: res://Pyramids/scripts/ui/components/AchievementUnlocked.gd
 # Shows achievement icon, name, and rarity-colored border
 
 extends PanelContainer
@@ -53,7 +53,7 @@ func _apply_setup() -> void:
 	
 	# Set icon
 	if icon_rect:
-		var icon_path = "res://Magic-Castle/assets/icons/achievements/" + achievement_data.get("icon", "")
+		var icon_path = "res://Pyramids/assets/icons/achievements/" + achievement_data.get("icon", "")
 		if ResourceLoader.exists(icon_path):
 			icon_rect.texture = load(icon_path)
 	

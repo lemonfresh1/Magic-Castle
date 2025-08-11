@@ -1,5 +1,5 @@
 # SignalBus.gd - Autoload for centralized game signals
-# Path: res://Magic-Castle/scripts/autoloads/SignalBus.gd
+# Path: res://Pyramids/scripts/autoloads/SignalBus.gd
 # Last Updated: Added mission and achievement tracking signals [Date]
 
 extends Node

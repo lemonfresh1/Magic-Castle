@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dhffpgj4hguge"
-path="res://.godot/imported/PotionRed.png-47bc45c5b3ecb7d8fd760427e690b222.ctex"
+path="res://.godot/imported/PotionRed.png-59072a10292e546ac40a9b9a63e7b183.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/icons/achievements/PotionRed.png"
-dest_files=["res://.godot/imported/PotionRed.png-47bc45c5b3ecb7d8fd760427e690b222.ctex"]
+source_file="res://Pyramids/assets/icons/achievements/PotionRed.png"
+dest_files=["res://.godot/imported/PotionRed.png-59072a10292e546ac40a9b9a63e7b183.ctex"]
 
 [params]
 

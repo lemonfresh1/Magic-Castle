@@ -1,5 +1,5 @@
 # FollowersUI.gd - Followers interface placeholder
-# Location: res://Magic-Castle/scripts/ui/followers/FollowersUI.gd
+# Location: res://Pyramids/scripts/ui/followers/FollowersUI.gd
 # Last Updated: Integrated with UIStyleManager [Date]
 
 extends PanelContainer

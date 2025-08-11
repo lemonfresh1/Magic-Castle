@@ -1,5 +1,5 @@
 # CardManager.gd - Autoload for card and deck management
-# Path: res://Magic-Castle/scripts/autoloads/CardManager.gd
+# Path: res://Pyramids/scripts/autoloads/CardManager.gd
 # Core card management - tracking for achievement system
 extends Node
 

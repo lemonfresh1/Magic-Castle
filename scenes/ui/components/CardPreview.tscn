@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://dmfvvabe6rfa3"]
 
-[ext_resource type="Script" uid="uid://tybu7o8n2klx" path="res://Magic-Castle/scripts/ui/components/CardPreview.gd" id="1_an6kt"]
+[ext_resource type="Script" uid="uid://tybu7o8n2klx" path="res://Pyramids/scripts/ui/components/CardPreview.gd" id="1_an6kt"]
 
 [node name="CardPreview" type="Control"]
 custom_minimum_size = Vector2(60, 84)

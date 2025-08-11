@@ -1,5 +1,5 @@
 # ModernCardSkin.gd - Modern card skin
-# Path: res://Magic-Castle/scripts/card_skins/ModernCardSkin.gd
+# Path: res://Pyramids/scripts/items/card_skins/ModernCardSkin.gd
 class_name ModernCardSkin
 extends CardSkinBase
 

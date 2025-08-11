@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://brt3s25i8gawn"
-path="res://.godot/imported/clouds_4.png-31fbdb92944d19c31a95f6a33a939c9e.ctex"
+path="res://.godot/imported/clouds_4.png-0aa09964be90b34c90142d22b036338e.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/scenes/items/boards/1_pyramids/clouds_4.png"
-dest_files=["res://.godot/imported/clouds_4.png-31fbdb92944d19c31a95f6a33a939c9e.ctex"]
+source_file="res://Pyramids/scenes/items/boards/1_pyramids/clouds_4.png"
+dest_files=["res://.godot/imported/clouds_4.png-0aa09964be90b34c90142d22b036338e.ctex"]
 
 [params]
 

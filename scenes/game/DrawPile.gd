@@ -1,11 +1,11 @@
 # DrawPile.gd
-# Path: res://Magic-Castle/scenes/game/DrawPile.gd
+# Path: res://Pyramids/scenes/game/DrawPile.gd
 extends Control
 
 @onready var card_back: TextureRect = $CardBack
 @onready var count_label: Label = $CountLabel
 
-var sprite_sheet: Texture2D = preload("res://Magic-Castle/assets/cards/cards_spritesheet.png")
+var sprite_sheet: Texture2D = preload("res://Pyramids/assets/cards/cards_spritesheet.png")
 const CARD_WIDTH = 57
 const CARD_HEIGHT = 80
 const CARD_GAP = 2

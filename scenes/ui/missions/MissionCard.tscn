@@ -1,9 +1,9 @@
 [gd_scene load_steps=6 format=3 uid="uid://dkmygtqqnryn8"]
 
-[ext_resource type="StyleBox" uid="uid://bsrpgd3orlj87" path="res://Magic-Castle/res/PanelStandardLayout.tres" id="1_m2oud"]
-[ext_resource type="Script" uid="uid://crk860bjh0ng6" path="res://Magic-Castle/scripts/ui/missions/MissionCard.gd" id="2_6qnpd"]
-[ext_resource type="StyleBox" uid="uid://cf4gwa8xipnwh" path="res://Magic-Castle/res/XPBarLayout.tres" id="3_xcphm"]
-[ext_resource type="StyleBox" uid="uid://bdt87hqe856cv" path="res://Magic-Castle/res/XPBarFillLayout.tres" id="4_fak5g"]
+[ext_resource type="StyleBox" uid="uid://bsrpgd3orlj87" path="res://Pyramids/res/PanelStandardLayout.tres" id="1_m2oud"]
+[ext_resource type="Script" uid="uid://crk860bjh0ng6" path="res://Pyramids/scripts/ui/missions/MissionCard.gd" id="2_6qnpd"]
+[ext_resource type="StyleBox" uid="uid://cf4gwa8xipnwh" path="res://Pyramids/res/XPBarLayout.tres" id="3_xcphm"]
+[ext_resource type="StyleBox" uid="uid://bdt87hqe856cv" path="res://Pyramids/res/XPBarFillLayout.tres" id="4_fak5g"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_6qnpd"]
 bg_color = Color(0.568627, 1, 0.67451, 0.721569)

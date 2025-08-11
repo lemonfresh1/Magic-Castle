@@ -1,6 +1,6 @@
 [gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3 uid="uid://co0v2o2x4aths"]
 
-[ext_resource type="Script" uid="uid://c20023uxgvdij" path="res://Magic-Castle/scripts/resources/ItemData.gd" id="1_mwrvu"]
+[ext_resource type="Script" uid="uid://c20023uxgvdij" path="res://Pyramids/scripts/resources/ItemData.gd" id="1_mwrvu"]
 
 [resource]
 script = ExtResource("1_mwrvu")

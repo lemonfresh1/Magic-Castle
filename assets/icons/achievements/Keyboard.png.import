@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c86r83bl8rupx"
-path="res://.godot/imported/Keyboard.png-9f9a05b442698ea69497389848f56760.ctex"
+path="res://.godot/imported/Keyboard.png-23444faee6547c53c76fac18106969f4.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/icons/achievements/Keyboard.png"
-dest_files=["res://.godot/imported/Keyboard.png-9f9a05b442698ea69497389848f56760.ctex"]
+source_file="res://Pyramids/assets/icons/achievements/Keyboard.png"
+dest_files=["res://.godot/imported/Keyboard.png-23444faee6547c53c76fac18106969f4.ctex"]
 
 [params]
 

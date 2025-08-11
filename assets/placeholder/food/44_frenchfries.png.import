@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dvu154o8sxpte"
-path="res://.godot/imported/44_frenchfries.png-be12cdd71bcc529fb743579f71592ba5.ctex"
+path="res://.godot/imported/44_frenchfries.png-dc11c1491a68caaa003e45e2fbc31fda.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/placeholder/food/44_frenchfries.png"
-dest_files=["res://.godot/imported/44_frenchfries.png-be12cdd71bcc529fb743579f71592ba5.ctex"]
+source_file="res://Pyramids/assets/placeholder/food/44_frenchfries.png"
+dest_files=["res://.godot/imported/44_frenchfries.png-dc11c1491a68caaa003e45e2fbc31fda.ctex"]
 
 [params]
 

@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://crahrxhkipbk7"
-path="res://.godot/imported/59_jelly.png-74b33b1bc53b4aa349fe8a16ba8ffa03.ctex"
+path="res://.godot/imported/59_jelly.png-efc23dfa8eee133995194548ec061cb3.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/placeholder/food/59_jelly.png"
-dest_files=["res://.godot/imported/59_jelly.png-74b33b1bc53b4aa349fe8a16ba8ffa03.ctex"]
+source_file="res://Pyramids/assets/placeholder/food/59_jelly.png"
+dest_files=["res://.godot/imported/59_jelly.png-efc23dfa8eee133995194548ec061cb3.ctex"]
 
 [params]
 

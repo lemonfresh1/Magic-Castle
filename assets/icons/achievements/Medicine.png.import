@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c8q0ofwqp5ygf"
-path="res://.godot/imported/Medicine.png-72085d7019c041388fda5c7b62f5be9c.ctex"
+path="res://.godot/imported/Medicine.png-b3ebde05dcd20fb44c5cccd5527cc808.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/icons/achievements/Medicine.png"
-dest_files=["res://.godot/imported/Medicine.png-72085d7019c041388fda5c7b62f5be9c.ctex"]
+source_file="res://Pyramids/assets/icons/achievements/Medicine.png"
+dest_files=["res://.godot/imported/Medicine.png-b3ebde05dcd20fb44c5cccd5527cc808.ctex"]
 
 [params]
 

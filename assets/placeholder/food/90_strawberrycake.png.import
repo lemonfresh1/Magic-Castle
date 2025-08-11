@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bxokihun7amkr"
-path="res://.godot/imported/90_strawberrycake.png-49bb1b15ec266fbe993e021ef7abc86c.ctex"
+path="res://.godot/imported/90_strawberrycake.png-bbe9259ef30943f87a924140d76d1950.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/placeholder/food/90_strawberrycake.png"
-dest_files=["res://.godot/imported/90_strawberrycake.png-49bb1b15ec266fbe993e021ef7abc86c.ctex"]
+source_file="res://Pyramids/assets/placeholder/food/90_strawberrycake.png"
+dest_files=["res://.godot/imported/90_strawberrycake.png-bbe9259ef30943f87a924140d76d1950.ctex"]
 
 [params]
 

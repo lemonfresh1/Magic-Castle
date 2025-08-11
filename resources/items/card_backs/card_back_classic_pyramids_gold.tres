@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3 uid="uid://h28pfo3qw3jm"]
+
+[ext_resource type="Script" uid="uid://c20023uxgvdij" path="res://Pyramids/scripts/resources/ItemData.gd" id="1_cs8a8"]
+
+[resource]
+script = ExtResource("1_cs8a8")
+id = "card_back_classic_pyramids_gold"
+display_name = "Classic Pyramids Gold"
+description = "Procedurally generated Classic Pyramids card back design"
+category = 1
+rarity = 3
+subcategory = "classic pyramids"
+tags = Array[String]([])
+set_name = "Classic Pyramids Collection"
+source = 1
+base_price = 500
+currency_type = "stars"
+bundle_id = ""
+unlock_level = 0
+is_purchasable = true
+is_tradeable = false
+icon_path = ""
+texture_path = ""
+preview_texture_path = ""
+is_animated = true
+animation_frames = 0
+background_scene_path = ""
+background_type = "color"
+sort_order = 0
+is_new = false
+is_limited = false
+available_until = ""
+effects = {}
+colors = {}
+stats = {}
+metadata = {}

@@ -1,5 +1,5 @@
 # SpriteCardSkin.gd - Sprite-based card skin
-# Path: res://Magic-Castle/scripts/card_skins/SpriteCardSkin.gd
+# Path: res://Pyramids/scripts/items/card_skins/SpriteCardSkin.gd
 class_name SpriteCardSkin
 extends CardSkinBase
 
@@ -14,7 +14,7 @@ func apply_to_card(card_panel: Panel, rank: String, suit: int) -> void:
 
 func get_card_texture_path(rank: int, suit: int, face_up: bool) -> String:
 	if not face_up:
-		return "res://Magic-Castle/assets/cards/pink_backing.png"
+		return "res://Pyramids/assets/cards/pink_backing.png"
 	
 	# Convert rank to name
 	var rank_name = ""
@@ -41,7 +41,7 @@ func get_card_texture_path(rank: int, suit: int, face_up: bool) -> String:
 		CardData.Suit.CLUBS: suit_name = "clubs"
 		CardData.Suit.DIAMONDS: suit_name = "diamonds"
 	
-	return "res://Magic-Castle/assets/cards/%s_of_%s.png" % [rank_name, suit_name]
+	return "res://Pyramids/assets/cards/%s_of_%s.png" % [rank_name, suit_name]
 
 func uses_sprites() -> bool:
 	return true

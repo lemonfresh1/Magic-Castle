@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://fg2ere7xi3qv"
-path="res://.godot/imported/CookingPot.png-7fe8d4cd33839e700b72af9bea3f5c1f.ctex"
+path="res://.godot/imported/CookingPot.png-bd8403effdd4b0fb567f4a0784e42053.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/icons/achievements/CookingPot.png"
-dest_files=["res://.godot/imported/CookingPot.png-7fe8d4cd33839e700b72af9bea3f5c1f.ctex"]
+source_file="res://Pyramids/assets/icons/achievements/CookingPot.png"
+dest_files=["res://.godot/imported/CookingPot.png-bd8403effdd4b0fb567f4a0784e42053.ctex"]
 
 [params]
 

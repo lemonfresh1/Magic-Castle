@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ccwy3dmjxgbgs"
-path="res://.godot/imported/83_popcorn.png-4603c16c8c7471942c3262781812f05a.ctex"
+path="res://.godot/imported/83_popcorn.png-6f6fb3eda14e7ddff2044436a816b0ca.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/placeholder/food/83_popcorn.png"
-dest_files=["res://.godot/imported/83_popcorn.png-4603c16c8c7471942c3262781812f05a.ctex"]
+source_file="res://Pyramids/assets/placeholder/food/83_popcorn.png"
+dest_files=["res://.godot/imported/83_popcorn.png-6f6fb3eda14e7ddff2044436a816b0ca.ctex"]
 
 [params]
 

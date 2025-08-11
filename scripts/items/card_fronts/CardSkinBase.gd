@@ -1,5 +1,5 @@
 # CardSkinBase.gd - Base class for all card skins
-# Path: res://Magic-Castle/scripts/card_skins/CardSkinBase.gd
+# Path: res://Pyramids/scripts/items/card_skins/CardSkinBase.gd
 class_name CardSkinBase
 extends Resource
 

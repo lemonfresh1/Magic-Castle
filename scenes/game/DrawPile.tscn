@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://duckl53erfucg"]
 
-[ext_resource type="Script" uid="uid://dkxtt01fvh6fq" path="res://Magic-Castle/scenes/game/DrawPile.gd" id="1_36wqi"]
+[ext_resource type="Script" uid="uid://dkxtt01fvh6fq" path="res://Pyramids/scenes/game/DrawPile.gd" id="1_36wqi"]
 
 [node name="DrawPile" type="Control"]
 custom_minimum_size = Vector2(80, 100)

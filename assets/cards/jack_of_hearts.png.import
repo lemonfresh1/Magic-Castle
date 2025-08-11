@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://8cmdysb4lxmx"
-path="res://.godot/imported/jack_of_hearts.png-10d1493ca40e34ee897e828b9ec6ec4e.ctex"
+path="res://.godot/imported/jack_of_hearts.png-48096091ef6392343490f1b2732da013.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/cards/jack_of_hearts.png"
-dest_files=["res://.godot/imported/jack_of_hearts.png-10d1493ca40e34ee897e828b9ec6ec4e.ctex"]
+source_file="res://Pyramids/assets/cards/jack_of_hearts.png"
+dest_files=["res://.godot/imported/jack_of_hearts.png-48096091ef6392343490f1b2732da013.ctex"]
 
 [params]
 

@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://brp3loi3wrgfi"
-path="res://.godot/imported/66_loafbread_dish.png-bc82716d9bb26a75d6a661725e6f09c6.ctex"
+path="res://.godot/imported/66_loafbread_dish.png-4cbc26b283481e1e10024a7b0b42ae64.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/placeholder/food/66_loafbread_dish.png"
-dest_files=["res://.godot/imported/66_loafbread_dish.png-bc82716d9bb26a75d6a661725e6f09c6.ctex"]
+source_file="res://Pyramids/assets/placeholder/food/66_loafbread_dish.png"
+dest_files=["res://.godot/imported/66_loafbread_dish.png-4cbc26b283481e1e10024a7b0b42ae64.ctex"]
 
 [params]
 

@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cms5jmhb3ymqx"
-path="res://.godot/imported/97_sushi.png-14f82757c238c831c4ab0397bacfe3fc.ctex"
+path="res://.godot/imported/97_sushi.png-daddc89464d3c08a55a7e0187e312260.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/placeholder/food/97_sushi.png"
-dest_files=["res://.godot/imported/97_sushi.png-14f82757c238c831c4ab0397bacfe3fc.ctex"]
+source_file="res://Pyramids/assets/placeholder/food/97_sushi.png"
+dest_files=["res://.godot/imported/97_sushi.png-daddc89464d3c08a55a7e0187e312260.ctex"]
 
 [params]
 

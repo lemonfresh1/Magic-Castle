@@ -1,5 +1,5 @@
 # TransitionScreen.gd
-# Path: res://Magic-Castle/scripts/ui/components/TransitionScreen.gd
+# Path: res://Pyramids/scripts/ui/components/TransitionScreen.gd
 extends ColorRect
 
 signal fade_complete

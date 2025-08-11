@@ -1,5 +1,5 @@
 # EquipDialog.gd - Dialog for equipping items using CustomDialog
-# Location: res://Magic-Castle/scripts/ui/dialogs/EquipDialog.gd
+# Location: res://Pyramids/scripts/ui/dialogs/EquipDialog.gd
 # Last Updated: Converted to use CustomDialog [Date]
 
 extends CustomDialog
@@ -25,7 +25,7 @@ func setup_for_item(item: ShopManager.ShopItem):
 	
 	# Fallback to placeholder icon if no actual icon
 	if not icon_loaded and item.placeholder_icon != "":
-		var placeholder_path = "res://Magic-Castle/assets/placeholder/food/" + item.placeholder_icon
+		var placeholder_path = "res://Pyramids/assets/placeholder/food/" + item.placeholder_icon
 		if ResourceLoader.exists(placeholder_path):
 			icon = load(placeholder_path)
 	

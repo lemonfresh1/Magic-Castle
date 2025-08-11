@@ -1,5 +1,5 @@
 # HolidayUI.gd - Holiday event interface with pass and missions
-# Location: res://Magic-Castle/scripts/ui/holiday/HolidayUI.gd
+# Location: res://Pyramids/scripts/ui/holiday/HolidayUI.gd
 # Last Updated: Fixed references to HolidayEventManager and applied holiday styling [Date]
 
 extends PanelContainer
@@ -7,8 +7,8 @@ extends PanelContainer
 signal holiday_ui_closed
 
 @onready var tab_container: TabContainer = $MarginContainer/TabContainer
-@onready var mission_card_scene = preload("res://Magic-Castle/scenes/ui/missions/MissionCard.tscn")
-@onready var pass_layout_scene = preload("res://Magic-Castle/scenes/ui/components/PassLayout.tscn")
+@onready var mission_card_scene = preload("res://Pyramids/scenes/ui/missions/MissionCard.tscn")
+@onready var pass_layout_scene = preload("res://Pyramids/scenes/ui/components/PassLayout.tscn")
 
 var filter_mode: String = "all"  # all, completed, open
 var pass_layout: PassLayout

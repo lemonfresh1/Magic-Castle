@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://b7h5y3nj7qhnv"]
 
-[ext_resource type="Script" uid="uid://cnugnum3le6bt" path="res://Magic-Castle/scripts/ui/components/BoardPreview.gd" id="1_git47"]
+[ext_resource type="Script" uid="uid://cnugnum3le6bt" path="res://Pyramids/scripts/ui/components/BoardPreview.gd" id="1_git47"]
 
 [node name="BoardPreview" type="Panel"]
 offset_right = 40.0

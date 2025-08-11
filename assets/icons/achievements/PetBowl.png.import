@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://d2rnsco3i60co"
-path="res://.godot/imported/PetBowl.png-043df965ca8628ae68233b82895ad1ed.ctex"
+path="res://.godot/imported/PetBowl.png-e3a92afbb38e1a0f1d514e1a6bb890e5.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/icons/achievements/PetBowl.png"
-dest_files=["res://.godot/imported/PetBowl.png-043df965ca8628ae68233b82895ad1ed.ctex"]
+source_file="res://Pyramids/assets/icons/achievements/PetBowl.png"
+dest_files=["res://.godot/imported/PetBowl.png-e3a92afbb38e1a0f1d514e1a6bb890e5.ctex"]
 
 [params]
 

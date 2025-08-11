@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://djxgf7vr63kij"]
 
-[ext_resource type="Script" uid="uid://n8ole5iubk0s" path="res://Magic-Castle/scripts/ui/menus/AchievementsPanel.gd" id="1_0aona"]
+[ext_resource type="Script" uid="uid://n8ole5iubk0s" path="res://Pyramids/scripts/ui/menus/AchievementsPanel.gd" id="1_0aona"]
 
 [node name="AchievementsPanel" type="Control"]
 layout_mode = 3

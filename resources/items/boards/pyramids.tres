@@ -1,6 +1,6 @@
 [gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3 uid="uid://me06n8mp2qu4"]
 
-[ext_resource type="Script" uid="uid://c20023uxgvdij" path="res://Magic-Castle/scripts/resources/ItemData.gd" id="1_y6fh1"]
+[ext_resource type="Script" uid="uid://c20023uxgvdij" path="res://Pyramids/scripts/resources/ItemData.gd" id="1_y6fh1"]
 
 [resource]
 script = ExtResource("1_y6fh1")
@@ -24,7 +24,7 @@ texture_path = ""
 preview_texture_path = ""
 is_animated = true
 animation_frames = 0
-background_scene_path = "res://Magic-Castle/scenes/items/boards/1_pyramids/PyramidsBackground.tscn"
+background_scene_path = "res://Pyramids/scenes/items/boards/1_pyramids/PyramidsBackground.tscn"
 background_type = "scene"
 sort_order = 0
 is_new = false

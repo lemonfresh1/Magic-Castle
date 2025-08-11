@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://wtdyh726ilwf"
-path="res://.godot/imported/GUI Sound Effects_026.wav-8fc73312dd5a016ef32f3501dda1657d.sample"
+path="res://.godot/imported/GUI Sound Effects_026.wav-8c288d029d365384c0ad3c54483b2fb8.sample"
 
 [deps]
 
-source_file="res://Magic-Castle/assets/sound/findguisound/GUI Sound Effects_026.wav"
-dest_files=["res://.godot/imported/GUI Sound Effects_026.wav-8fc73312dd5a016ef32f3501dda1657d.sample"]
+source_file="res://Pyramids/assets/sound/findguisound/GUI Sound Effects_026.wav"
+dest_files=["res://.godot/imported/GUI Sound Effects_026.wav-8c288d029d365384c0ad3c54483b2fb8.sample"]
 
 [params]
 

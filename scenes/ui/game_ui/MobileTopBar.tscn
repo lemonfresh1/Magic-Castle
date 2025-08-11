@@ -1,7 +1,7 @@
 [gd_scene load_steps=4 format=3 uid="uid://craksy104deun"]
 
-[ext_resource type="Script" uid="uid://d2b04oak45xe4" path="res://Magic-Castle/scripts/game/MobileTopBar.gd" id="1_gi1i6"]
-[ext_resource type="Texture2D" uid="uid://8myvx8qs5e06" path="res://Magic-Castle/assets/cards/card_back.png" id="2_vlixn"]
+[ext_resource type="Script" uid="uid://d2b04oak45xe4" path="res://Pyramids/scripts/game/MobileTopBar.gd" id="1_gi1i6"]
+[ext_resource type="Texture2D" uid="uid://8myvx8qs5e06" path="res://Pyramids/assets/cards/card_back.png" id="2_vlixn"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_vlixn"]
 

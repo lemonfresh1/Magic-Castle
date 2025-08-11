@@ -1,5 +1,5 @@
 # BundleData.gd - Resource class for bundle definitions
-# Location: res://Magic-Castle/scripts/resources/BundleData.gd
+# Location: res://Pyramids/scripts/resources/BundleData.gd
 # Last Updated: Created as resource for bundle system [Date]
 
 class_name BundleData

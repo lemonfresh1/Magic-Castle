@@ -1,5 +1,5 @@
 # AchievementsUI.gd - Achievements interface with 4 per row layout
-# Location: res://Magic-Castle/scripts/ui/achievements/AchievementsUI.gd
+# Location: res://Pyramids/scripts/ui/achievements/AchievementsUI.gd
 # Last Updated: Following InventoryUI pattern exactly [Date]
 
 extends PanelContainer
@@ -7,7 +7,7 @@ extends PanelContainer
 signal achievements_closed
 
 @onready var tab_container: TabContainer = $MarginContainer/TabContainer
-@onready var achievement_item_scene = preload("res://Magic-Castle/scenes/ui/achievements/AchievementItemCard.tscn")
+@onready var achievement_item_scene = preload("res://Pyramids/scenes/ui/achievements/AchievementItemCard.tscn")
 
 var sort_mode: String = "rarity_low"  # rarity_low, rarity_high, alphabetical
 var filter_mode: String = "all"  # all, completed, open

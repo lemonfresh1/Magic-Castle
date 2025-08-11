@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://hp5mntcfta8v"
-path="res://.godot/imported/Screenshot 2025-08-07 at 14.58.55.png-8ed129672e8645c524e64fcbe1141273.ctex"
+uid="uid://dxd00kwni6532"
+path="res://.godot/imported/test_export_classic_pyramids_gold.png-f5f9057795a21c7223be4b1e25434e76.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/deprecated/Screenshot 2025-08-07 at 14.58.55.png"
-dest_files=["res://.godot/imported/Screenshot 2025-08-07 at 14.58.55.png-8ed129672e8645c524e64fcbe1141273.ctex"]
+source_file="res://Pyramids/old_test_backups/test_export_classic_pyramids_gold.png"
+dest_files=["res://.godot/imported/test_export_classic_pyramids_gold.png-f5f9057795a21c7223be4b1e25434e76.ctex"]
 
 [params]
 

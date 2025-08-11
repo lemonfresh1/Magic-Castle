@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cupn6n5lklm1m"
-path="res://.godot/imported/19_burrito_dish.png-a16ece40943472e1e668627e13a573da.ctex"
+path="res://.godot/imported/19_burrito_dish.png-9ceac6ba31b1ae70110d8aeb383e1846.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/placeholder/food/19_burrito_dish.png"
-dest_files=["res://.godot/imported/19_burrito_dish.png-a16ece40943472e1e668627e13a573da.ctex"]
+source_file="res://Pyramids/assets/placeholder/food/19_burrito_dish.png"
+dest_files=["res://.godot/imported/19_burrito_dish.png-9ceac6ba31b1ae70110d8aeb383e1846.ctex"]
 
 [params]
 

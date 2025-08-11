@@ -1,5 +1,5 @@
 # AdManager.gd - Autoload for ad management
-# Path: res://Magic-Castle/scripts/autoloads/AdManager.gd
+# Path: res://Pyramids/scripts/autoloads/AdManager.gd
 extends Node
 
 signal ad_completed
@@ -30,7 +30,7 @@ func show_rewarded_ad() -> void:
 
 func _show_skip_option() -> void:
 	# Create skip dialog
-	var dialog = preload("res://Magic-Castle/scenes/ui/components/AdSkipDialog.tscn").instantiate()
+	var dialog = preload("res://Pyramids/scenes/ui/components/AdSkipDialog.tscn").instantiate()
 	get_tree().root.add_child(dialog)
 	
 	dialog.skip_pressed.connect(func():

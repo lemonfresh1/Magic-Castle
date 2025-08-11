@@ -1,5 +1,5 @@
 # PassLayout.gd - Controls the season/event pass horizontal scrolling layout
-# Location: res://Magic-Castle/scripts/ui/components/PassLayout.gd
+# Location: res://Pyramids/scripts/ui/components/PassLayout.gd
 # Last Updated: Fixed claim all crash and buy premium button behavior [Date]
 
 extends PanelContainer
@@ -10,7 +10,7 @@ signal reward_claimed(tier_number: int, is_premium: bool)
 signal pass_refreshed()
 
 # Scene references
-@export var tier_column_scene: PackedScene = preload("res://Magic-Castle/scenes/ui/components/TierColumn.tscn")
+@export var tier_column_scene: PackedScene = preload("res://Pyramids/scenes/ui/components/TierColumn.tscn")
 
 # Node references - Updated to match actual scene structure
 @onready var progress_bar: ProgressBar = $VBoxContainer/HeaderContainer/ProgressBar

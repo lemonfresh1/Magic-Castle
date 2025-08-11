@@ -1,5 +1,5 @@
 # ItemData.gd - Resource class for item definitions
-# Location: res://Magic-Castle/scripts/resources/ItemData.gd
+# Location: res://Pyramids/scripts/resources/ItemData.gd
 # Last Updated: Created as resource for item system [Date]
 
 class_name ItemData

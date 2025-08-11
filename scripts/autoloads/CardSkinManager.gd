@@ -1,5 +1,5 @@
 # CardSkinManager.gd - Autoload for card skin management
-# Path: res://Magic-Castle/scripts/autoloads/CardSkinManager.gd
+# Path: res://Pyramids/scripts/autoloads/CardSkinManager.gd
 extends Node
 
 var available_skins: Dictionary = {}

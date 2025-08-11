@@ -1,5 +1,5 @@
 # LevelUpCelebration.gd - Simplified level up notification with confetti
-# Path: res://Magic-Castle/scripts/ui/effects/LevelUpCelebration.gd
+# Path: res://Pyramids/scripts/ui/effects/LevelUpCelebration.gd
 # Shows minimal celebration overlay when player levels up
 extends Control
 

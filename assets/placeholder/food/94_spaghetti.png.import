@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b0m5fq78w5q6n"
-path="res://.godot/imported/94_spaghetti.png-1217d2032e32cda83f6ecbcdee309089.ctex"
+path="res://.godot/imported/94_spaghetti.png-c8a90a8f16c6cf26a976baa254433707.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/placeholder/food/94_spaghetti.png"
-dest_files=["res://.godot/imported/94_spaghetti.png-1217d2032e32cda83f6ecbcdee309089.ctex"]
+source_file="res://Pyramids/assets/placeholder/food/94_spaghetti.png"
+dest_files=["res://.godot/imported/94_spaghetti.png-c8a90a8f16c6cf26a976baa254433707.ctex"]
 
 [params]
 

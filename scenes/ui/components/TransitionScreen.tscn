@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://brlf3484ymssy"]
 
-[ext_resource type="Script" uid="uid://cevig0akt25pg" path="res://Magic-Castle/scripts/ui/components/TransitionScreen.gd" id="1_3lb22"]
+[ext_resource type="Script" uid="uid://cevig0akt25pg" path="res://Pyramids/scripts/ui/components/TransitionScreen.gd" id="1_3lb22"]
 
 [node name="TransitionScreen" type="ColorRect"]
 z_index = 1000

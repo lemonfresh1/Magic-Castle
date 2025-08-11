@@ -1,5 +1,5 @@
 # XPManager.gd - Autoload for XP and level progression
-# Path: res://Magic-Castle/scripts/autoloads/XPManager.gd
+# Path: res://Pyramids/scripts/autoloads/XPManager.gd
 # Manages player XP, levels, and progression rewards
 extends Node
 
@@ -372,7 +372,7 @@ func _show_level_up_celebration(old_level: int, new_level: int, rewards: Diction
 		existing.queue_free()
 	
 	# Create and show new celebration
-	var celebration_scene = preload("res://Magic-Castle/scenes/ui/effects/LevelUpCelebration.tscn")
+	var celebration_scene = preload("res://Pyramids/scenes/ui/effects/LevelUpCelebration.tscn")
 	var celebration = celebration_scene.instantiate()
 	celebration.name = "LevelUpCelebration"
 	get_tree().root.add_child(celebration)

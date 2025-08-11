@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dsjubhqqo3vpo"
-path="res://.godot/imported/Power.png-fe00db619055dc307ad9bf4f0d8b93a7.ctex"
+path="res://.godot/imported/Power.png-78edcbedbf199f64006cfb1b21d1496e.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/icons/achievements/Power.png"
-dest_files=["res://.godot/imported/Power.png-fe00db619055dc307ad9bf4f0d8b93a7.ctex"]
+source_file="res://Pyramids/assets/icons/achievements/Power.png"
+dest_files=["res://.godot/imported/Power.png-78edcbedbf199f64006cfb1b21d1496e.ctex"]
 
 [params]
 

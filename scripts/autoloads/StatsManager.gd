@@ -1,5 +1,5 @@
 # StatsManager.gd - Enhanced statistics tracking for achievements
-# Path: res://Magic-Castle/scripts/autoloads/StatsManager.gd  
+# Path: res://Pyramids/scripts/autoloads/StatsManager.gd  
 # Added tracking for aces, kings, total peaks cleared, and more granular stats
 extends Node
 

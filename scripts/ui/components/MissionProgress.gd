@@ -1,5 +1,5 @@
 # MissionProgress.gd - Displays mission progress with animation
-# Path: res://Magic-Castle/scripts/ui/components/MissionProgress.gd
+# Path: res://Pyramids/scripts/ui/components/MissionProgress.gd
 # Shows mission title, description, and animated progress
 extends PanelContainer
 

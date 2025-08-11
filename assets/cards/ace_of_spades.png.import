@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c8qeam56vfegj"
-path="res://.godot/imported/ace_of_spades.png-49f710b4a0a95860e324e4ceae829740.ctex"
+path="res://.godot/imported/ace_of_spades.png-303daacbad706e052b879ef43fa68de8.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/cards/ace_of_spades.png"
-dest_files=["res://.godot/imported/ace_of_spades.png-49f710b4a0a95860e324e4ceae829740.ctex"]
+source_file="res://Pyramids/assets/cards/ace_of_spades.png"
+dest_files=["res://.godot/imported/ace_of_spades.png-303daacbad706e052b879ef43fa68de8.ctex"]
 
 [params]
 

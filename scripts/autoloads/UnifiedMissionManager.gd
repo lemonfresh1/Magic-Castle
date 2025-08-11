@@ -1,5 +1,5 @@
 # UnifiedMissionManager.gd - Single manager for all mission types
-# Location: res://Magic-Castle/scripts/autoloads/UnifiedMissionManager.gd
+# Location: res://Pyramids/scripts/autoloads/UnifiedMissionManager.gd
 # Last Updated: Cleaned debug output while maintaining functionality [Date]
 
 extends Node

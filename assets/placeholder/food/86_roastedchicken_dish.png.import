@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://byqfy0ajurdwy"
-path="res://.godot/imported/86_roastedchicken_dish.png-a82379574f6ea7ed0e81a5397b915fb1.ctex"
+path="res://.godot/imported/86_roastedchicken_dish.png-f8c909da4e997ac4f06535a8234bf2b0.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/placeholder/food/86_roastedchicken_dish.png"
-dest_files=["res://.godot/imported/86_roastedchicken_dish.png-a82379574f6ea7ed0e81a5397b915fb1.ctex"]
+source_file="res://Pyramids/assets/placeholder/food/86_roastedchicken_dish.png"
+dest_files=["res://.godot/imported/86_roastedchicken_dish.png-f8c909da4e997ac4f06535a8234bf2b0.ctex"]
 
 [params]
 

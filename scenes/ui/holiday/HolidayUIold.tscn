@@ -1,6 +1,6 @@
 [gd_scene load_steps=13 format=3 uid="uid://btdob2wmqlrnx"]
 
-[ext_resource type="Script" uid="uid://5ubwwgjwb0fu" path="res://Magic-Castle/scripts/ui/holiday/HolidayUI.gd" id="1_63scp"]
+[ext_resource type="Script" uid="uid://5ubwwgjwb0fu" path="res://Pyramids/scripts/ui/holiday/HolidayUI.gd" id="1_63scp"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_c3481"]
 bg_color = Color(1, 1, 1, 0.847059)

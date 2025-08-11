@@ -1,5 +1,5 @@
 # ShopManager.gd - Manages shop inventory, purchases, sales, and multi-currency support
-# Location: res://Magic-Castle/scripts/autoloads/ShopManager.gd
+# Location: res://Pyramids/scripts/autoloads/ShopManager.gd
 # Last Updated: Integrated with ItemManager, removed CosmeticManager dependency [Date]
 
 extends Node
@@ -114,7 +114,10 @@ func _initialize_shop_inventory():
 	# Emojis (50% price)
 	_add_item("emoji_smile", "Smile", "emojis", Rarity.COMMON, "57_icecream.png")
 	_add_item("emoji_frown", "Frown", "emojis", Rarity.COMMON, "58_icecream_bowl.png")
-	
+
+	# card bacls
+	_add_item("card_back_classic_pyramids_gold", "Classic Pyramids Gold", "card_backs", Rarity.EPIC, "04_bowl.png")
+
 	# Set some defaults as owned
 	shop_data.owned_items.append("card_classic")
 	shop_data.owned_items.append("board_green")
@@ -404,9 +407,10 @@ func _sync_with_item_manager():
 	if not ItemManager:
 		return
 	
-	# Sync all categories
+	# Sync all categories INCLUDING CARD_BACK
+	_sync_category(ItemData.Category.CARD_FRONT, "card_fronts")
+	_sync_category(ItemData.Category.CARD_BACK, "card_backs")  # ADD THIS
 	_sync_category(ItemData.Category.BOARD, "board_skins")
-	_sync_category(ItemData.Category.CARD_FRONT, "card_skins")
 	_sync_category(ItemData.Category.AVATAR, "avatars")
 	_sync_category(ItemData.Category.FRAME, "frames")
 	_sync_category(ItemData.Category.EMOJI, "emojis")
@@ -470,8 +474,8 @@ func _create_shop_item_from_itemdata(item_data: ItemData) -> ShopItem:
 
 func _get_shop_category_from_itemdata(category: ItemData.Category) -> String:
 	match category:
-		ItemData.Category.CARD_FRONT: return "card_skins"
-		ItemData.Category.CARD_BACK: return "card_backs"
+		ItemData.Category.CARD_FRONT: return "card_fronts"  # Changed from card_skins
+		ItemData.Category.CARD_BACK: return "card_backs"   # This is correct
 		ItemData.Category.BOARD: return "board_skins"
 		ItemData.Category.FRAME: return "frames"
 		ItemData.Category.AVATAR: return "avatars"

@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://roc82s2rf1n3"
-path="res://.godot/imported/Wheat.png-fe6168c416a54106bb9dc432959a496b.ctex"
+path="res://.godot/imported/Wheat.png-b8df71f6c22983446434477def076bb6.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/icons/achievements/Wheat.png"
-dest_files=["res://.godot/imported/Wheat.png-fe6168c416a54106bb9dc432959a496b.ctex"]
+source_file="res://Pyramids/assets/icons/achievements/Wheat.png"
+dest_files=["res://.godot/imported/Wheat.png-b8df71f6c22983446434477def076bb6.ctex"]
 
 [params]
 

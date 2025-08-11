@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b73jox0xk4jyf"
-path="res://.godot/imported/26_chocolate.png-51e99f1bf57bb13a66df8973715faef5.ctex"
+path="res://.godot/imported/26_chocolate.png-18d7fadc6d2556370cb5ebd41819349f.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/placeholder/food/26_chocolate.png"
-dest_files=["res://.godot/imported/26_chocolate.png-51e99f1bf57bb13a66df8973715faef5.ctex"]
+source_file="res://Pyramids/assets/placeholder/food/26_chocolate.png"
+dest_files=["res://.godot/imported/26_chocolate.png-18d7fadc6d2556370cb5ebd41819349f.ctex"]
 
 [params]
 

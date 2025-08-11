@@ -1,8 +1,8 @@
 [gd_scene load_steps=5 format=3 uid="uid://ctvg3ohtigck5"]
 
-[ext_resource type="Script" uid="uid://dg7xstg7m7x8r" path="res://Magic-Castle/scripts/ui/components/MissionProgress.gd" id="1_ni3ei"]
-[ext_resource type="StyleBox" uid="uid://cf4gwa8xipnwh" path="res://Magic-Castle/res/XPBarLayout.tres" id="1_swjqd"]
-[ext_resource type="StyleBox" uid="uid://bdt87hqe856cv" path="res://Magic-Castle/res/XPBarFillLayout.tres" id="2_ni3ei"]
+[ext_resource type="Script" uid="uid://dg7xstg7m7x8r" path="res://Pyramids/scripts/ui/components/MissionProgress.gd" id="1_ni3ei"]
+[ext_resource type="StyleBox" uid="uid://cf4gwa8xipnwh" path="res://Pyramids/res/XPBarLayout.tres" id="1_swjqd"]
+[ext_resource type="StyleBox" uid="uid://bdt87hqe856cv" path="res://Pyramids/res/XPBarFillLayout.tres" id="2_ni3ei"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bq4uv"]
 bg_color = Color(0.242966, 0.242966, 0.242966, 1)

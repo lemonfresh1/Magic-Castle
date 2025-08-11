@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://d0u037bx6gbys"
-path="res://.godot/imported/Microphone.png-3c93fc9b43c12aa10df36737b0927256.ctex"
+path="res://.godot/imported/Microphone.png-25f324c5376d2cd9e9647b944118b141.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/icons/achievements/Microphone.png"
-dest_files=["res://.godot/imported/Microphone.png-3c93fc9b43c12aa10df36737b0927256.ctex"]
+source_file="res://Pyramids/assets/icons/achievements/Microphone.png"
+dest_files=["res://.godot/imported/Microphone.png-25f324c5376d2cd9e9647b944118b141.ctex"]
 
 [params]
 

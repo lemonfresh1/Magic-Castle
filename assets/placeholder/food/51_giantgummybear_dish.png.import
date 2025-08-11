@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://d3iqv7jdpffcb"
-path="res://.godot/imported/51_giantgummybear_dish.png-cbc9448047fdbbb8ac190e4554d484b9.ctex"
+path="res://.godot/imported/51_giantgummybear_dish.png-f9d7da1a7cfa4716c88a85e3689f3985.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/placeholder/food/51_giantgummybear_dish.png"
-dest_files=["res://.godot/imported/51_giantgummybear_dish.png-cbc9448047fdbbb8ac190e4554d484b9.ctex"]
+source_file="res://Pyramids/assets/placeholder/food/51_giantgummybear_dish.png"
+dest_files=["res://.godot/imported/51_giantgummybear_dish.png-f9d7da1a7cfa4716c88a85e3689f3985.ctex"]
 
 [params]
 

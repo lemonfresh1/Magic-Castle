@@ -1,5 +1,5 @@
 # RewardClaimPopup.gd - Popup for confirming reward claims
-# Location: res://Magic-Castle/scripts/ui/popups/RewardClaimPopup.gd
+# Location: res://Pyramids/scripts/ui/popups/RewardClaimPopup.gd
 # Last Updated: Fixed null button reference [Date]
 
 extends PanelContainer

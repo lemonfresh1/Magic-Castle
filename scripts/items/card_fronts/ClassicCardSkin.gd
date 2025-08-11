@@ -1,5 +1,5 @@
 # ClassicCardSkin.gd - Classic card skin
-# Path: res://Magic-Castle/scripts/card_skins/ClassicCardSkin.gd
+# Path: res://Pyramids/scripts/items/card_skins/ClassicCardSkin.gd
 class_name ClassicCardSkin
 extends CardSkinBase
 

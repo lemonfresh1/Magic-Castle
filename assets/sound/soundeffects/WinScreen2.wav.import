@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://ddtdrqr8kjpjw"
-path="res://.godot/imported/WinScreen2.wav-25211c69848c117b73860fb0601391fd.sample"
+path="res://.godot/imported/WinScreen2.wav-de2214e0777922a04df1812bfb7fdff8.sample"
 
 [deps]
 
-source_file="res://Magic-Castle/assets/sound/soundeffects/WinScreen2.wav"
-dest_files=["res://.godot/imported/WinScreen2.wav-25211c69848c117b73860fb0601391fd.sample"]
+source_file="res://Pyramids/assets/sound/soundeffects/WinScreen2.wav"
+dest_files=["res://.godot/imported/WinScreen2.wav-de2214e0777922a04df1812bfb7fdff8.sample"]
 
 [params]
 

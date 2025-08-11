@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://3bl2ltuf1cde"
-path="res://.godot/imported/CardDraw1.wav-e35009a8feac8e42726afb8f1f172219.sample"
+path="res://.godot/imported/CardDraw1.wav-edd672e25d114092924490168afeaa18.sample"
 
 [deps]
 
-source_file="res://Magic-Castle/assets/sound/soundeffects/CardDraw1.wav"
-dest_files=["res://.godot/imported/CardDraw1.wav-e35009a8feac8e42726afb8f1f172219.sample"]
+source_file="res://Pyramids/assets/sound/soundeffects/CardDraw1.wav"
+dest_files=["res://.godot/imported/CardDraw1.wav-edd672e25d114092924490168afeaa18.sample"]
 
 [params]
 

@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://do5onjmfbdlxf"
-path="res://.godot/imported/20_bagel.png-02d32f9ae305c3c7ce7b7bf6713c06ed.ctex"
+path="res://.godot/imported/20_bagel.png-31af578813d789b74bad55416fa59185.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/placeholder/food/20_bagel.png"
-dest_files=["res://.godot/imported/20_bagel.png-02d32f9ae305c3c7ce7b7bf6713c06ed.ctex"]
+source_file="res://Pyramids/assets/placeholder/food/20_bagel.png"
+dest_files=["res://.godot/imported/20_bagel.png-31af578813d789b74bad55416fa59185.ctex"]
 
 [params]
 

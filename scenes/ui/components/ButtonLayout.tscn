@@ -1,6 +1,6 @@
 [gd_scene load_steps=3 format=3 uid="uid://brjmkufs3cwdu"]
 
-[ext_resource type="Texture2D" uid="uid://d3x0wjesgb1su" path="res://Magic-Castle/assets/ui/menu/play.png" id="1_nm0fl"]
+[ext_resource type="Texture2D" uid="uid://d3x0wjesgb1su" path="res://Pyramids/assets/ui/menu/play.png" id="1_nm0fl"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_5jycp"]
 bg_color = Color(0.956863, 0.643137, 0.376471, 1)

@@ -1,10 +1,10 @@
 [gd_scene load_steps=6 format=3 uid="uid://dy00idd03kvbr"]
 
-[ext_resource type="Script" uid="uid://pxarcdjucinc" path="res://Magic-Castle/scenes/items/boards/1_pyramids/PyramidsBackground.gd" id="1_aiud0"]
-[ext_resource type="Texture2D" uid="uid://bpajg7kbj7b64" path="res://Magic-Castle/scenes/items/boards/1_pyramids/clouds_1.png" id="2_xpm1m"]
-[ext_resource type="Texture2D" uid="uid://dgtra21qpv6mj" path="res://Magic-Castle/scenes/items/boards/1_pyramids/clouds_2.png" id="3_5gdpf"]
-[ext_resource type="Texture2D" uid="uid://d2kqg1o8js41k" path="res://Magic-Castle/scenes/items/boards/1_pyramids/clouds_3.png" id="4_m0vnv"]
-[ext_resource type="Texture2D" uid="uid://brt3s25i8gawn" path="res://Magic-Castle/scenes/items/boards/1_pyramids/clouds_4.png" id="5_v7pwm"]
+[ext_resource type="Script" uid="uid://pxarcdjucinc" path="res://Pyramids/scenes/items/boards/1_pyramids/PyramidsBackground.gd" id="1_aiud0"]
+[ext_resource type="Texture2D" uid="uid://bpajg7kbj7b64" path="res://Pyramids/scenes/items/boards/1_pyramids/clouds_1.png" id="2_xpm1m"]
+[ext_resource type="Texture2D" uid="uid://dgtra21qpv6mj" path="res://Pyramids/scenes/items/boards/1_pyramids/clouds_2.png" id="3_5gdpf"]
+[ext_resource type="Texture2D" uid="uid://d2kqg1o8js41k" path="res://Pyramids/scenes/items/boards/1_pyramids/clouds_3.png" id="4_m0vnv"]
+[ext_resource type="Texture2D" uid="uid://brt3s25i8gawn" path="res://Pyramids/scenes/items/boards/1_pyramids/clouds_4.png" id="5_v7pwm"]
 
 [node name="PyramidsBackground" type="Control"]
 layout_mode = 3

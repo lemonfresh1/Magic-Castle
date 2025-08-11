@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bmjao4wgeq00i"
-path="res://.godot/imported/jack_of_spades.png-e7fee4e7e43617442fad16b612da8e1c.ctex"
+path="res://.godot/imported/jack_of_spades.png-206bc4205f088025cefbfe2e5daf3d3d.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/cards/jack_of_spades.png"
-dest_files=["res://.godot/imported/jack_of_spades.png-e7fee4e7e43617442fad16b612da8e1c.ctex"]
+source_file="res://Pyramids/assets/cards/jack_of_spades.png"
+dest_files=["res://.godot/imported/jack_of_spades.png-206bc4205f088025cefbfe2e5daf3d3d.ctex"]
 
 [params]
 

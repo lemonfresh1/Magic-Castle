@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bg4737sc0d4rj"
-path="res://.godot/imported/Spatula.png-0c7981edd6152fdbd39dcf0b49b12acd.ctex"
+path="res://.godot/imported/Spatula.png-f3cbb6f981304aa8417cb5849b124522.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/icons/achievements/Spatula.png"
-dest_files=["res://.godot/imported/Spatula.png-0c7981edd6152fdbd39dcf0b49b12acd.ctex"]
+source_file="res://Pyramids/assets/icons/achievements/Spatula.png"
+dest_files=["res://.godot/imported/Spatula.png-f3cbb6f981304aa8417cb5849b124522.ctex"]
 
 [params]
 

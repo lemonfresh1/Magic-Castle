@@ -1,5 +1,5 @@
 # DebugPanelV2.gd - Enhanced debug panel with tabs and granular controls
-# Location: res://Magic-Castle/scripts/ui/debug/DebugPanelV2.gd
+# Location: res://Pyramids/scripts/ui/debug/DebugPanelV2.gd
 # Last Updated: Created tabbed interface with mission controls [Date]
 extends Panel
 

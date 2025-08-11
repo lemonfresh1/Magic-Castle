@@ -1,5 +1,5 @@
 # MiniMission.gd - Compact mission display for post-game summary
-# Location: res://Magic-Castle/scripts/ui/components/MiniMission.gd
+# Location: res://Pyramids/scripts/ui/components/MiniMission.gd
 # Last Updated: Redesigned for better mobile readability [Date]
 
 extends PanelContainer

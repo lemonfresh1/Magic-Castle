@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dicaes4geie05"
-path="res://.godot/imported/Cash.png-c1abd729ec302c51e37a18785c68b4f2.ctex"
+path="res://.godot/imported/Cash.png-47d70f7e5ebdeca4e79c350532777c89.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/icons/achievements/Cash.png"
-dest_files=["res://.godot/imported/Cash.png-c1abd729ec302c51e37a18785c68b4f2.ctex"]
+source_file="res://Pyramids/assets/icons/achievements/Cash.png"
+dest_files=["res://.godot/imported/Cash.png-47d70f7e5ebdeca4e79c350532777c89.ctex"]
 
 [params]
 

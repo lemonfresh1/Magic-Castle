@@ -1,5 +1,5 @@
 # CustomDialog.gd - Reusable styled dialog popup
-# Location: res://Magic-Castle/scripts/ui/dialogs/CustomDialog.gd
+# Location: res://Pyramids/scripts/ui/dialogs/CustomDialog.gd
 # Last Updated: Created for consistent dialog styling [Date]
 
 class_name CustomDialog

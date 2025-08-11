@@ -1,5 +1,5 @@
 # MissionUI.gd - Daily and weekly missions interface
-# Location: res://Magic-Castle/scripts/ui/missions/MissionUI.gd
+# Location: res://Pyramids/scripts/ui/missions/MissionUI.gd
 # Last Updated: Refactored to match SeasonPassUI structure [Date]
 
 extends PanelContainer
@@ -7,7 +7,7 @@ extends PanelContainer
 signal mission_ui_closed
 
 @onready var tab_container: TabContainer = $MarginContainer/TabContainer
-@onready var mission_card_scene = preload("res://Magic-Castle/scenes/ui/missions/MissionCard.tscn")
+@onready var mission_card_scene = preload("res://Pyramids/scenes/ui/missions/MissionCard.tscn")
 
 var filter_mode: String = "all"  # all, completed, open - SINGLE filter for both tabs
 var mission_cards = {}  # mission_id -> card instance

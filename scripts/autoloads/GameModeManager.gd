@@ -1,5 +1,5 @@
 # GameModeManager.gd - Autoload for managing game modes
-# Path: res://Magic-Castle/scripts/autoloads/GameModeManager.gd
+# Path: res://Pyramids/scripts/autoloads/GameModeManager.gd
 extends Node
 
 # === AVAILABLE GAME MODES ===

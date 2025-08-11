@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://mxhqjtslwyaa"
-path="res://.godot/imported/88_salmon.png-f6860743c973ea94d076e5af558994d3.ctex"
+path="res://.godot/imported/88_salmon.png-b2e8b89f277c0faec389ee97c498c5e0.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/placeholder/food/88_salmon.png"
-dest_files=["res://.godot/imported/88_salmon.png-f6860743c973ea94d076e5af558994d3.ctex"]
+source_file="res://Pyramids/assets/placeholder/food/88_salmon.png"
+dest_files=["res://.godot/imported/88_salmon.png-b2e8b89f277c0faec389ee97c498c5e0.ctex"]
 
 [params]
 

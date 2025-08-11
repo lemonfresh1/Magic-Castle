@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://dtjxlmhstu4ri"]
 
-[ext_resource type="Script" uid="uid://v7vgh2kybir6" path="res://Magic-Castle/scripts/ui/components/AdSkipDialogue.gd" id="1_mhwop"]
+[ext_resource type="Script" uid="uid://v7vgh2kybir6" path="res://Pyramids/scripts/ui/components/AdSkipDialogue.gd" id="1_mhwop"]
 
 [node name="AdSkipDialog" type="Control"]
 layout_mode = 3

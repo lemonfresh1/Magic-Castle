@@ -1,5 +1,5 @@
 # SettingsUI.gd - Settings interface using the panel system
-# Location: res://Magic-Castle/scripts/ui/settings/SettingsUI.gd
+# Location: res://Pyramids/scripts/ui/settings/SettingsUI.gd
 # Last Updated: Integrated with UIStyleManager [Date]
 
 extends PanelContainer
@@ -572,7 +572,7 @@ func _create_card_previews():
 	]
 	
 	for card_data in preview_cards:
-		var card_preview = preload("res://Magic-Castle/scenes/ui/components/CardPreview.tscn").instantiate()
+		var card_preview = preload("res://Pyramids/scenes/ui/components/CardPreview.tscn").instantiate()
 		card_preview_container.add_child(card_preview)
 		card_preview.set_card(card_data.rank, card_data.suit)
 		card_preview.set_skin(available_card_skins[current_card_skin_index].name, SettingsSystem.high_contrast)
@@ -585,7 +585,7 @@ func _create_board_preview():
 	for child in board_preview_container.get_children():
 		child.queue_free()
 	
-	board_preview_instance = preload("res://Magic-Castle/scenes/ui/components/BoardPreview.tscn").instantiate()
+	board_preview_instance = preload("res://Pyramids/scenes/ui/components/BoardPreview.tscn").instantiate()
 	board_preview_container.add_child(board_preview_instance)
 	board_preview_instance.set_skin(available_board_skins[current_board_skin_index].name)
 

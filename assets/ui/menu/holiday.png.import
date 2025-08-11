@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://crwh8p6r8smsc"
-path="res://.godot/imported/holiday.png-e89f76d5320b6a5b92a03736876e1848.ctex"
+path="res://.godot/imported/holiday.png-2b10eda5adea914c3602b131e848802d.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/ui/menu/holiday.png"
-dest_files=["res://.godot/imported/holiday.png-e89f76d5320b6a5b92a03736876e1848.ctex"]
+source_file="res://Pyramids/assets/ui/menu/holiday.png"
+dest_files=["res://.godot/imported/holiday.png-2b10eda5adea914c3602b131e848802d.ctex"]
 
 [params]
 

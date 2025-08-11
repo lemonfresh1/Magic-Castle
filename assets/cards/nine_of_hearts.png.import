@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://40jhcj1410vq"
-path="res://.godot/imported/nine_of_hearts.png-00629f6bfa2b1f6362978c295d5c06e6.ctex"
+path="res://.godot/imported/nine_of_hearts.png-899afc9c8f88647dd033ed0dd0ff750d.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/cards/nine_of_hearts.png"
-dest_files=["res://.godot/imported/nine_of_hearts.png-00629f6bfa2b1f6362978c295d5c06e6.ctex"]
+source_file="res://Pyramids/assets/cards/nine_of_hearts.png"
+dest_files=["res://.godot/imported/nine_of_hearts.png-899afc9c8f88647dd033ed0dd0ff750d.ctex"]
 
 [params]
 

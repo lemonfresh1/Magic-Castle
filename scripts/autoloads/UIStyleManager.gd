@@ -1,5 +1,5 @@
 # UIStyleManager.gd - Centralized UI styling and layout management
-# Location: res://Magic-Castle/scripts/autoloads/UIStyleManager.gd
+# Location: res://Pyramids/scripts/autoloads/UIStyleManager.gd
 # Last Updated: Added comprehensive design system [Date]
 
 extends Node
@@ -266,6 +266,25 @@ var game_style = {
 	# Animations
 	"draw_zone_click_scale": 0.95,
 	"draw_zone_click_duration": 0.1
+}
+
+var card_colors = {
+	"pyramid_gold": Color("#FFD700"),          # Classic gold
+	"pyramid_gold_dark": Color("#B8860B"),     # Darker gold
+	"pyramid_gold_light": Color("#FFF8DC"),    # Light gold
+	"pyramid_sand": Color("#F4E4BC"),          # Sand color
+	"pyramid_stone": Color("#8B7355"),         # Stone brown
+	"pyramid_copper": Color("#B87333"),        # Copper bronze
+	"pyramid_turquoise": Color("#40E0D0"),     # Nile turquoise
+	"pyramid_lapis": Color("#26619C"),         # Lapis blue
+	"pyramid_emerald": Color("#50C878"),       # Emerald green
+	"pyramid_ruby": Color("#E0115F"),          # Ruby red
+	"pyramid_obsidian": Color("#2F2F2F"),      # Obsidian black
+	"pyramid_papyrus": Color("#FDF5E6"),       # Papyrus cream
+	"neon_cyan": Color("#00FFFF"),             # Neon cyan
+	"neon_magenta": Color("#FF00FF"),          # Neon magenta
+	"neon_green": Color("#00FF80"),            # Neon green
+	"neon_orange": Color("#FF8000")            # Neon orange
 }
 
 # Dictionary to track styled panels for easy updates
@@ -921,3 +940,6 @@ func apply_menu_button_style(button: Button, button_type: String = "default") ->
 		# Store the styles on the button for toggle functionality
 		button.set_meta("normal_style", panel_style)
 		button.set_meta("pressed_style", pressed_style)
+
+func get_card_color(color_name: String) -> Color:
+	return card_colors.get(color_name, Color.WHITE)

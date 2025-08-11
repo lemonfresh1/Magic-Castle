@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dxgq7picvn4ys"
-path="res://.godot/imported/Sleep.png-afd06fd23cd003e242d75bceb6c4034c.ctex"
+path="res://.godot/imported/Sleep.png-3112e7e6943512c489bcaca2b272641d.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/icons/achievements/Sleep.png"
-dest_files=["res://.godot/imported/Sleep.png-afd06fd23cd003e242d75bceb6c4034c.ctex"]
+source_file="res://Pyramids/assets/icons/achievements/Sleep.png"
+dest_files=["res://.godot/imported/Sleep.png-3112e7e6943512c489bcaca2b272641d.ctex"]
 
 [params]
 

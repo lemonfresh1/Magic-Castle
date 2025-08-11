@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dsd25yljxo1uf"
-path="res://.godot/imported/CatchingNet.png-1080ba51764770904c6b87f9a2b73866.ctex"
+path="res://.godot/imported/CatchingNet.png-da1c8727bdfa51f0217f1d8c49d66f0a.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/icons/achievements/CatchingNet.png"
-dest_files=["res://.godot/imported/CatchingNet.png-1080ba51764770904c6b87f9a2b73866.ctex"]
+source_file="res://Pyramids/assets/icons/achievements/CatchingNet.png"
+dest_files=["res://.godot/imported/CatchingNet.png-da1c8727bdfa51f0217f1d8c49d66f0a.ctex"]
 
 [params]
 

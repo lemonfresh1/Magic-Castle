@@ -1,5 +1,5 @@
 # ChillMode.gd - Relaxed mode with no time pressure
-# Path: res://Magic-Castle/scripts/game_modes/ChillMode.gd
+# Path: res://Pyramids/scripts/game_modes/ChillMode.gd
 class_name ChillMode
 extends GameModeBase
 

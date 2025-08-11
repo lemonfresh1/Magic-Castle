@@ -1,8 +1,8 @@
 # MenuTransition.gd - Autoload for smooth menu transitions
-# Path: res://Magic-Castle/scripts/autoloads/MenuTransition.gd
+# Path: res://Pyramids/scripts/autoloads/MenuTransition.gd
 extends Node
 
-var transition_scene = preload("res://Magic-Castle/scenes/ui/components/TransitionScreen.tscn")
+var transition_scene = preload("res://Pyramids/scenes/ui/components/TransitionScreen.tscn")
 var is_transitioning: bool = false
 
 func change_scene(path: String) -> void:

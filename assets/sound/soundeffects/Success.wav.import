@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://by6fn0kyn4456"
-path="res://.godot/imported/Success.wav-56ff30ee4d8f680ab0ce4a346d8e0e6c.sample"
+path="res://.godot/imported/Success.wav-bf52de6f9eb2c4db34e459e32431e8b7.sample"
 
 [deps]
 
-source_file="res://Magic-Castle/assets/sound/soundeffects/Success.wav"
-dest_files=["res://.godot/imported/Success.wav-56ff30ee4d8f680ab0ce4a346d8e0e6c.sample"]
+source_file="res://Pyramids/assets/sound/soundeffects/Success.wav"
+dest_files=["res://.godot/imported/Success.wav-bf52de6f9eb2c4db34e459e32431e8b7.sample"]
 
 [params]
 

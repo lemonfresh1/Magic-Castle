@@ -1,5 +1,5 @@
 # SeasonPassUI.gd - Season pass interface with tiers and missions (FIXED)
-# Location: res://Magic-Castle/scripts/ui/season_pass/SeasonPassUI.gd
+# Location: res://Pyramids/scripts/ui/season_pass/SeasonPassUI.gd
 # Last Updated: Fixed initialization order to prevent double creation [Date]
 
 extends PanelContainer
@@ -7,8 +7,8 @@ extends PanelContainer
 signal season_pass_ui_closed
 
 @onready var tab_container: TabContainer = $MarginContainer/TabContainer
-@onready var mission_card_scene = preload("res://Magic-Castle/scenes/ui/missions/MissionCard.tscn")
-@onready var pass_layout_scene = preload("res://Magic-Castle/scenes/ui/components/PassLayout.tscn")
+@onready var mission_card_scene = preload("res://Pyramids/scenes/ui/missions/MissionCard.tscn")
+@onready var pass_layout_scene = preload("res://Pyramids/scenes/ui/components/PassLayout.tscn")
 
 var filter_mode: String = "all"  # all, completed, open
 var pass_layout: PassLayout

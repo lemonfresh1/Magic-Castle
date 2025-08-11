@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ct665fwctilxl"
-path="res://.godot/imported/Basket.png-ce12420a156bda750db90d42bdce637d.ctex"
+path="res://.godot/imported/Basket.png-850bf69c53118a71935bd77e50ccb13d.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/icons/achievements/Basket.png"
-dest_files=["res://.godot/imported/Basket.png-ce12420a156bda750db90d42bdce637d.ctex"]
+source_file="res://Pyramids/assets/icons/achievements/Basket.png"
+dest_files=["res://.godot/imported/Basket.png-850bf69c53118a71935bd77e50ccb13d.ctex"]
 
 [params]
 

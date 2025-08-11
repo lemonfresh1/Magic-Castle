@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ch2bwvd4r8smu"
-path="res://.godot/imported/39_friedegg_dish.png-7f516b4b280ffd6014134ee4fb8ec1ac.ctex"
+path="res://.godot/imported/39_friedegg_dish.png-3beb7d7b8a4b6abb15a6937c4d871d7b.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/placeholder/food/39_friedegg_dish.png"
-dest_files=["res://.godot/imported/39_friedegg_dish.png-7f516b4b280ffd6014134ee4fb8ec1ac.ctex"]
+source_file="res://Pyramids/assets/placeholder/food/39_friedegg_dish.png"
+dest_files=["res://.godot/imported/39_friedegg_dish.png-3beb7d7b8a4b6abb15a6937c4d871d7b.ctex"]
 
 [params]
 

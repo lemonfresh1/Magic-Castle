@@ -1,0 +1,22 @@
+[gd_scene load_steps=2 format=3 uid="uid://8gb13xws8vbo"]
+
+[ext_resource type="Texture2D" uid="uid://hp5mntcfta8v" path="res://Pyramids/old_test_backups/Screenshot 2025-08-07 at 14.58.55.png" id="1_m4nu8"]
+
+[node name="Control" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="TextureRect" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("1_m4nu8")
+expand_mode = 5
+stretch_mode = 5

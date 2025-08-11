@@ -1,5 +1,5 @@
 # StatsUI.gd - Statistics interface displaying game stats
-# Location: res://Magic-Castle/scripts/ui/stats/StatsUI.gd
+# Location: res://Pyramids/scripts/ui/stats/StatsUI.gd
 # Last Updated: Integrated with UIStyleManager [Date]
 
 extends PanelContainer

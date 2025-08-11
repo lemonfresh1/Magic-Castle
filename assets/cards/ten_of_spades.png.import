@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dt27cugfe5n2a"
-path="res://.godot/imported/ten_of_spades.png-613a2dd47f1ff7e9e9bc9a34a8a059bc.ctex"
+path="res://.godot/imported/ten_of_spades.png-7f116fc0de900ae19c2d8bba2f67a8db.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/cards/ten_of_spades.png"
-dest_files=["res://.godot/imported/ten_of_spades.png-613a2dd47f1ff7e9e9bc9a34a8a059bc.ctex"]
+source_file="res://Pyramids/assets/cards/ten_of_spades.png"
+dest_files=["res://.godot/imported/ten_of_spades.png-7f116fc0de900ae19c2d8bba2f67a8db.ctex"]
 
 [params]
 

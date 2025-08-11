@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://b3x5wxbgwu7im"
-path="res://.godot/imported/Victory3.wav-b2b0fdb2a63374c2149a7216448d3d16.sample"
+path="res://.godot/imported/Victory3.wav-abc426234c9453f629c095078ebbfcf3.sample"
 
 [deps]
 
-source_file="res://Magic-Castle/assets/sound/soundeffects/Victory3.wav"
-dest_files=["res://.godot/imported/Victory3.wav-b2b0fdb2a63374c2149a7216448d3d16.sample"]
+source_file="res://Pyramids/assets/sound/soundeffects/Victory3.wav"
+dest_files=["res://.godot/imported/Victory3.wav-abc426234c9453f629c095078ebbfcf3.sample"]
 
 [params]
 

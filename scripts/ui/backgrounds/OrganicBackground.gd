@@ -1,5 +1,5 @@
 # OrganicBackground.gd - Noise-based organic morphing with vibrant colors
-# Location: res://Magic-Castle/scripts/ui/backgrounds/OrganicBackground.gd
+# Location: res://Pyramids/scripts/ui/backgrounds/OrganicBackground.gd
 # Last Updated: More vibrant color variations
 
 extends ColorRect

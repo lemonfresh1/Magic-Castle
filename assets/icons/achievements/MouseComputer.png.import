@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ip4g62reelt2"
-path="res://.godot/imported/MouseComputer.png-3ad82178b5bcd294908b90d96be8d509.ctex"
+path="res://.godot/imported/MouseComputer.png-325d54a0ff08a3d9c575b4e2b1d3d8c7.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/icons/achievements/MouseComputer.png"
-dest_files=["res://.godot/imported/MouseComputer.png-3ad82178b5bcd294908b90d96be8d509.ctex"]
+source_file="res://Pyramids/assets/icons/achievements/MouseComputer.png"
+dest_files=["res://.godot/imported/MouseComputer.png-325d54a0ff08a3d9c575b4e2b1d3d8c7.ctex"]
 
 [params]
 

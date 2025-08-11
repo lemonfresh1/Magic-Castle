@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cpl2vt53q2qkw"
-path="res://.godot/imported/52_gingerbreadman.png-952689fbf416ad8546a7ea7b46e74c01.ctex"
+path="res://.godot/imported/52_gingerbreadman.png-128cd137daafe237531ced5b0cbbb91a.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/placeholder/food/52_gingerbreadman.png"
-dest_files=["res://.godot/imported/52_gingerbreadman.png-952689fbf416ad8546a7ea7b46e74c01.ctex"]
+source_file="res://Pyramids/assets/placeholder/food/52_gingerbreadman.png"
+dest_files=["res://.godot/imported/52_gingerbreadman.png-128cd137daafe237531ced5b0cbbb91a.ctex"]
 
 [params]
 

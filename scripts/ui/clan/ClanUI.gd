@@ -1,5 +1,5 @@
 # ClanUI.gd - Clan interface placeholder
-# Location: res://Magic-Castle/scripts/ui/clan/ClanUI.gd
+# Location: res://Pyramids/scripts/ui/clan/ClanUI.gd
 # Last Updated: Integrated with UIStyleManager [Date]
 
 extends PanelContainer

@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bmhnhxe4v7cf7"
-path="res://.godot/imported/Wrench3.png-2008a4c7ff68e2da5719dc6e84a4b08f.ctex"
+path="res://.godot/imported/Wrench3.png-8d55cf447ce7bd0a2998364f62df7183.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/icons/achievements/Wrench3.png"
-dest_files=["res://.godot/imported/Wrench3.png-2008a4c7ff68e2da5719dc6e84a4b08f.ctex"]
+source_file="res://Pyramids/assets/icons/achievements/Wrench3.png"
+dest_files=["res://.godot/imported/Wrench3.png-8d55cf447ce7bd0a2998364f62df7183.ctex"]
 
 [params]
 

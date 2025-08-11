@@ -1,6 +1,6 @@
 [gd_scene load_steps=13 format=3 uid="uid://fctclcng0bx3"]
 
-[ext_resource type="Script" uid="uid://cvcsbwdro8ufi" path="res://Magic-Castle/scripts/ui/profile/ProfileUI.gd" id="1_bkjyc"]
+[ext_resource type="Script" uid="uid://cvcsbwdro8ufi" path="res://Pyramids/scripts/ui/profile/ProfileUI.gd" id="1_bkjyc"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_c3481"]
 bg_color = Color(1, 1, 1, 0.847059)

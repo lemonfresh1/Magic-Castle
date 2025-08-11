@@ -1,5 +1,5 @@
 # AchievementItem.gd - Achievement display with NEW badge and descriptions
-# Path: res://Magic-Castle/scripts/ui/menus/AchievementItem.gd
+# Path: res://Pyramids/scripts/ui/menus/AchievementItem.gd
 # Added NEW badge, click-to-show descriptions, rarity borders, progress display
 extends Panel
 
@@ -40,7 +40,7 @@ func setup(id: String):
 	_apply_rarity_border(border_color)
 	
 	# Set icon
-	var icon_path = "res://Magic-Castle/assets/icons/achievements/" + achievement_data.icon
+	var icon_path = "res://Pyramids/assets/icons/achievements/" + achievement_data.icon
 	if ResourceLoader.exists(icon_path):
 		icon.texture = load(icon_path)
 	

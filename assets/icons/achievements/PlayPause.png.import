@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://hvv7jj05q822"
-path="res://.godot/imported/PlayPause.png-7f94655ab9e1631f72ba731077df9b72.ctex"
+path="res://.godot/imported/PlayPause.png-8614b5c63ae1405fe2a02d1a877ba784.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/icons/achievements/PlayPause.png"
-dest_files=["res://.godot/imported/PlayPause.png-7f94655ab9e1631f72ba731077df9b72.ctex"]
+source_file="res://Pyramids/assets/icons/achievements/PlayPause.png"
+dest_files=["res://.godot/imported/PlayPause.png-8614b5c63ae1405fe2a02d1a877ba784.ctex"]
 
 [params]
 

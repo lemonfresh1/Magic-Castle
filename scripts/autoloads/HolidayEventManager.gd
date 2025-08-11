@@ -1,5 +1,5 @@
 # HolidayEventManager.gd - Manages holiday pass progression and rewards
-# Location: res://Magic-Castle/scripts/autoloads/HolidayPassManager.gd
+# Location: res://Pyramids/scripts/autoloads/HolidayPassManager.gd
 # Last Updated: Created to match SeasonPassManager structure [Date]
 
 extends Node

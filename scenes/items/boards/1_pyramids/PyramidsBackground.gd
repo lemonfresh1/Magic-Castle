@@ -1,6 +1,6 @@
 # PyramidsBackground.gd
-# "res://Magic-Castle/scenes/items/boards/1_pyramids/PyramidsBackground.gd"
-# "res://Magic-Castle/scenes/items/boards/1_pyramids/PyramidsBackground.tscn"
+# "res://Pyramids/scenes/items/boards/1_pyramids/PyramidsBackground.gd"
+# "res://Pyramids/scenes/items/boards/1_pyramids/PyramidsBackground.tscn"
 
 extends Control
 
@@ -134,7 +134,7 @@ func _setup_clouds() -> void:
 			
 			# Load texture if not already loaded
 			if not sprite.texture:
-				var texture_path = "res://Magic-Castle/scenes/items/backgrounds/1_pyramids/clouds_%d.png" % (i + 1)
+				var texture_path = "res://Pyramids/scenes/items/backgrounds/1_pyramids/clouds_%d.png" % (i + 1)
 				if ResourceLoader.exists(texture_path):
 					sprite.texture = load(texture_path)
 			

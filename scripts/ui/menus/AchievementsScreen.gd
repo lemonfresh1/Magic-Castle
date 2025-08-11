@@ -1,5 +1,5 @@
 # AchievementsScreen.gd - Displays achievements and stats
-# res://Magic-Castle/scripts/ui/menus/AchievementsScreen.gd 
+# res://Pyramids/scripts/ui/menus/AchievementsScreen.gd 
 extends Control
 
 @onready var tab_container = $Panel/MarginContainer/VBoxContainer/TabContainer
@@ -10,7 +10,7 @@ extends Control
 @onready var star_display: Label = $Panel/MarginContainer/VBoxContainer/HBoxContainer/StarDisplay
 
 
-var achievement_item_scene = preload("res://Magic-Castle/scenes/ui/menus/AchievementItem.tscn")
+var achievement_item_scene = preload("res://Pyramids/scenes/ui/menus/AchievementItem.tscn")
 
 signal back_pressed
 
@@ -205,7 +205,7 @@ func _on_tab_changed(tab: int):
 
 func _on_back_pressed():
 	back_pressed.emit()
-	get_tree().change_scene_to_file("res://Magic-Castle/scenes/ui/menus/MainMenu.tscn")
+	get_tree().change_scene_to_file("res://Pyramids/scenes/ui/menus/MainMenu.tscn")
 
 func _update_star_display():
 	# Create star display if it doesn't exist

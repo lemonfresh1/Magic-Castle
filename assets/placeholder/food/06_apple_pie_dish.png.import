@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://lkqn6a5mtyu0"
-path="res://.godot/imported/06_apple_pie_dish.png-24dbd54a4989495b799bf18289afcf00.ctex"
+path="res://.godot/imported/06_apple_pie_dish.png-7a7071ffc47a78d926dce9392e730254.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/placeholder/food/06_apple_pie_dish.png"
-dest_files=["res://.godot/imported/06_apple_pie_dish.png-24dbd54a4989495b799bf18289afcf00.ctex"]
+source_file="res://Pyramids/assets/placeholder/food/06_apple_pie_dish.png"
+dest_files=["res://.godot/imported/06_apple_pie_dish.png-7a7071ffc47a78d926dce9392e730254.ctex"]
 
 [params]
 

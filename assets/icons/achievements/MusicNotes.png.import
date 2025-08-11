@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dhe4huaekxoru"
-path="res://.godot/imported/MusicNotes.png-64464d7364ba5f800c4d2f28601482fc.ctex"
+path="res://.godot/imported/MusicNotes.png-f6e1c1a0ec2b6a79591b8af612a8f775.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Magic-Castle/assets/icons/achievements/MusicNotes.png"
-dest_files=["res://.godot/imported/MusicNotes.png-64464d7364ba5f800c4d2f28601482fc.ctex"]
+source_file="res://Pyramids/assets/icons/achievements/MusicNotes.png"
+dest_files=["res://.godot/imported/MusicNotes.png-f6e1c1a0ec2b6a79591b8af612a8f775.ctex"]
 
 [params]
 
