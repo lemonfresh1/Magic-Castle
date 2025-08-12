@@ -35,7 +35,10 @@ func _ready():
 			ItemManager.item_equipped.connect(_on_item_equipped_signal)
 		if not ItemManager.item_unequipped.is_connected(_on_item_unequipped_signal):
 			ItemManager.item_unequipped.connect(_on_item_unequipped_signal)
-		
+
+	_connect_new_equipment_system()
+
+
 	_setup_tabs()
 	_populate_inventory()
 
@@ -406,3 +409,27 @@ func _on_item_unequipped_signal(item_id: String, category: String):
 	print("[InventoryUI] Item unequipped signal received: ", item_id)
 	# Refresh all cards to update equipped status
 	_refresh_all_cards()
+
+func _connect_new_equipment_system():
+	"""Connect to new EquipmentManager - runs alongside old system"""
+	# Only connect if it exists
+	if not EquipmentManager:
+		print("[InventoryUI] TODO: EquipmentManager not found - using old system")
+		return
+	
+	print("[InventoryUI] Connecting to NEW EquipmentManager (parallel to old system)")
+	
+	# Connect to NEW system signals
+	if not EquipmentManager.item_equipped.is_connected(_on_new_equipment_equipped):
+		EquipmentManager.item_equipped.connect(_on_new_equipment_equipped)
+	if not EquipmentManager.item_unequipped.is_connected(_on_new_equipment_unequipped):
+		EquipmentManager.item_unequipped.connect(_on_new_equipment_unequipped)
+
+# NEW handlers that work alongside old ones
+func _on_new_equipment_equipped(item_id: String, category: String):
+	print("[InventoryUI] NEW SYSTEM: Item equipped - ", item_id)
+	# TODO: Once verified working, merge with existing _on_item_equipped_signal
+
+func _on_new_equipment_unequipped(item_id: String, category: String):
+	print("[InventoryUI] NEW SYSTEM: Item unequipped - ", item_id)
+	# TODO: Once verified working, merge with existing _on_item_unequipped_signal

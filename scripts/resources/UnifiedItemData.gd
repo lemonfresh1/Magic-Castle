@@ -97,31 +97,38 @@ func from_item_data(item: ItemData) -> void:
 	category = _map_item_category(item.category)
 	rarity = _map_rarity(item.rarity)
 	
-	set_name = item.set_name
-	subcategory = item.subcategory
+	# Use helper to safely get properties
+	set_name = _safe_get(item, "set_name", "")
+	subcategory = _safe_get(item, "subcategory", "")
 	
-	icon_path = item.icon_path
-	texture_path = item.texture_path
-	preview_texture_path = item.preview_texture_path
+	icon_path = _safe_get(item, "icon_path", "")
+	texture_path = _safe_get(item, "texture_path", "")
+	preview_texture_path = _safe_get(item, "preview_texture_path", "")
 	
-	background_type = item.background_type
-	background_scene_path = item.background_scene_path
-	colors = item.colors
+	background_type = _safe_get(item, "background_type", "color")
+	background_scene_path = _safe_get(item, "background_scene_path", "")
+	colors = _safe_get(item, "colors", {})
 	
 	base_price = item.base_price
 	is_purchasable = item.is_purchasable
-	is_tradeable = item.is_tradeable
-	unlock_level = item.unlock_level
+	is_tradeable = _safe_get(item, "is_tradeable", false)
+	unlock_level = _safe_get(item, "unlock_level", 0)
 	
 	source = _map_source(item.source)
-	achievement_id = item.achievement_id
-	event_id = item.event_id
+	achievement_id = _safe_get(item, "achievement_id", "")
+	event_id = _safe_get(item, "event_id", "")
 	
-	sort_order = item.sort_order
-	tags = item.tags
-	release_date = item.release_date
-	is_limited_time = item.is_limited_time
-	expiry_date = item.expiry_date
+	sort_order = _safe_get(item, "sort_order", 0)
+	tags = _safe_get(item, "tags", [])
+	release_date = _safe_get(item, "release_date", "")
+	is_limited_time = _safe_get(item, "is_limited_time", false)
+	expiry_date = _safe_get(item, "expiry_date", "")
+
+func _safe_get(obj: Object, property: String, default_value):
+	"""Safely get a property from an object, returning default if it doesn't exist"""
+	if obj.has_method("get") and obj.get(property) != null:
+		return obj.get(property)
+	return default_value
 
 func from_shop_item(item: ShopManager.ShopItem) -> void:
 	"""Convert from ShopManager.ShopItem format"""

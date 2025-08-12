@@ -262,18 +262,26 @@ func _apply_programmatic_card_front():
 func _apply_equipped_card_back():
 	"""Apply the equipped card back or use default"""
 	
-	# Get equipped card back from ItemManager
 	var equipped_back_id = ""
-	if ItemManager:
+	
+	# Try NEW system first (if it exists)
+	if EquipmentManager:
+		equipped_back_id = EquipmentManager.get_equipped_item("card_back")
+		if equipped_back_id:
+			print("[Card] Using NEW EquipmentManager: ", equipped_back_id)
+	
+	# Fallback to OLD system if new system didn't provide anything
+	if not equipped_back_id and ItemManager:
 		equipped_back_id = ItemManager.get_equipped_item(ItemData.Category.CARD_BACK)
+		if equipped_back_id:
+			print("[Card] Using OLD ItemManager: ", equipped_back_id)
+	
+	# TODO: Remove ItemManager fallback once EquipmentManager is fully tested
 	
 	if equipped_back_id and equipped_back_id != "":
-		# Try to apply custom card back
 		if not _apply_custom_card_back(equipped_back_id):
-			# Fallback to default if custom fails
 			_apply_default_card_back()
 	else:
-		# No custom back equipped, use default
 		_apply_default_card_back()
 
 func _apply_custom_card_back(back_id: String) -> bool:

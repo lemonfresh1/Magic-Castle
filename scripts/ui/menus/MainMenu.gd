@@ -185,6 +185,9 @@ func _ready() -> void:
 	else:
 		pass
 
+	_test_new_equipment_system()
+
+
 func _create_buttons() -> void:
 	for i in range(button_configs.size()):
 		var config = button_configs[i]
@@ -645,3 +648,26 @@ func _apply_button_state(button: Button, is_selected: bool) -> void:
 		var normal_style = button.get_meta("normal_style", null)
 		if normal_style:
 			main_panel.add_theme_stylebox_override("panel", normal_style)
+
+func _test_new_equipment_system():
+	"""Test the new EquipmentManager and ItemDatabase - safe to remove later"""
+	# Wait for everything to load
+	await get_tree().create_timer(1.0).timeout
+	
+	print("\n=== TESTING NEW EQUIPMENT SYSTEM ===")
+	
+	# Only run if new systems exist
+	if not EquipmentManager or not ItemDatabase:
+		print("New systems not loaded yet - skipping test")
+		return
+	
+	print("EquipmentManager ready: ", EquipmentManager != null)
+	print("ItemDatabase ready: ", ItemDatabase != null)
+	
+	# Test migration
+	ItemDatabase.debug_status()
+	EquipmentManager.debug_status()
+	
+	# TODO: Remove this test function once new system is verified working
+	print("TODO: New equipment system loaded but not integrated yet")
+	print("=========================\n")

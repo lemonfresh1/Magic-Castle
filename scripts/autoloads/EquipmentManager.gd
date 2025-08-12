@@ -490,8 +490,22 @@ func debug_status() -> void:
 	print("Equipped:")
 	for category in save_data.equipped:
 		var value = save_data.equipped[category]
-		if value != "" and value != [] and value != false:
-			print("  %s: %s" % [category, value])
+		
+		# Check if value has meaningful content based on its type
+		match typeof(value):
+			TYPE_STRING:
+				if value != "":
+					print("  %s: %s" % [category, value])
+			TYPE_ARRAY:
+				if value.size() > 0:
+					print("  %s: %s" % [category, value])
+			TYPE_BOOL:
+				if value:
+					print("  %s: %s" % [category, value])
+			_:
+				if value != null:
+					print("  %s: %s" % [category, value])
+	
 	print("Stats:")
 	print("  By category: %s" % save_data.stats.items_by_category)
 	print("  By rarity: %s" % save_data.stats.items_by_rarity)
