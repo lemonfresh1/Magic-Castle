@@ -279,23 +279,30 @@ func _apply_equipped_card_back():
 func _apply_custom_card_back(back_id: String) -> bool:
 	"""Apply a custom card back - returns true if successful"""
 	
-	# First check if it's a procedural card back
+	print("[Card] Attempting to apply custom card back: ", back_id)
+	
+	# FIRST check if it's a procedural card back (for animations)
 	if ProceduralItemRegistry and ProceduralItemRegistry.procedural_items.has(back_id):
+		print("  - Found in ProceduralItemRegistry")
 		var procedural_data = ProceduralItemRegistry.procedural_items[back_id]
 		var instance = procedural_data.instance
 		
 		if instance and instance.has_method("draw_card_back"):
+			print("  - Has draw_card_back method, applying procedural back")
+			
 			# Store the instance for animation
 			current_card_back_instance = instance
 			
 			# Check if it's animated
 			if instance.get("is_animated"):
+				print("  - Card back is ANIMATED")
 				is_animating_back = true
 				# Setup animation on this card node
 				if instance.has_method("setup_animation_on_node"):
 					instance.setup_animation_on_node(self)
 				set_process(true)  # Enable _process for animation updates
 			else:
+				print("  - Card back is NOT animated")
 				is_animating_back = false
 				# Only stop process if front is also not animating
 				if not is_animating_front:
@@ -323,7 +330,11 @@ func _apply_custom_card_back(back_id: String) -> bool:
 			
 			canvas.visible = true
 			canvas.queue_redraw()
+			print("  - Successfully applied procedural card back")
 			return true
+	
+	# If not procedural, THEN check for PNG (for inventory display)
+	print("  - Not in ProceduralItemRegistry, checking for PNG...")
 	
 	# For non-procedural backs, stop back animation
 	is_animating_back = false
@@ -334,6 +345,7 @@ func _apply_custom_card_back(back_id: String) -> bool:
 	# Check for exported PNG
 	var png_path = _get_card_back_png_path(back_id)
 	if ResourceLoader.exists(png_path):
+		print("  - Found PNG at: ", png_path)
 		card_sprite.texture = load(png_path)
 		card_sprite.visible = true
 		card_sprite.modulate = Color.WHITE
@@ -348,6 +360,7 @@ func _apply_custom_card_back(back_id: String) -> bool:
 	# Check if ItemData has a texture path
 	var item = ItemManager.get_item(back_id) if ItemManager else null
 	if item and item.texture_path != "" and ResourceLoader.exists(item.texture_path):
+		print("  - Found texture in ItemData: ", item.texture_path)
 		card_sprite.texture = load(item.texture_path)
 		card_sprite.visible = true
 		card_sprite.modulate = Color.WHITE
@@ -359,6 +372,7 @@ func _apply_custom_card_back(back_id: String) -> bool:
 		
 		return true
 	
+	print("  - No custom back found, will use default")
 	return false
 
 func _apply_default_card_back():

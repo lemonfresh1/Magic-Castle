@@ -22,6 +22,7 @@ enum Source {
 	SHOP,          # Purchased with stars
 	SEASON_PASS,   # Season pass rewards
 	HOLIDAY_EVENT, # Holiday event rewards
+	EVENT,  # ADD THIS LINE
 	ACHIEVEMENT,   # Achievement rewards
 	XP_REWARD,     # Level up rewards
 	REFERRAL,      # Friend referral rewards

@@ -28,6 +28,13 @@ func _ready():
 	
 	# Apply panel styling
 	UIStyleManager.apply_panel_style(self, "inventory_ui")
+	
+	# Connect to ItemManager signals for equipment updates
+	if ItemManager:
+		if not ItemManager.item_equipped.is_connected(_on_item_equipped_signal):
+			ItemManager.item_equipped.connect(_on_item_equipped_signal)
+		if not ItemManager.item_unequipped.is_connected(_on_item_unequipped_signal):
+			ItemManager.item_unequipped.connect(_on_item_unequipped_signal)
 		
 	_setup_tabs()
 	_populate_inventory()
@@ -389,3 +396,13 @@ func show_inventory():
 func hide_inventory():
 	visible = false
 	inventory_closed.emit()
+
+func _on_item_equipped_signal(item_id: String, category: String):
+	print("[InventoryUI] Item equipped signal received: ", item_id)
+	# Refresh all cards to update equipped status
+	_refresh_all_cards()
+
+func _on_item_unequipped_signal(item_id: String, category: String):
+	print("[InventoryUI] Item unequipped signal received: ", item_id)
+	# Refresh all cards to update equipped status
+	_refresh_all_cards()

@@ -158,6 +158,13 @@ func _ready():
 	custom_minimum_size = Vector2(120, 150)
 	size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	
+	# Connect to ItemManager signals for direct updates
+	if ItemManager:
+		if not ItemManager.item_equipped.is_connected(_on_global_item_equipped):
+			ItemManager.item_equipped.connect(_on_global_item_equipped)
+		if not ItemManager.item_unequipped.is_connected(_on_global_item_unequipped):
+			ItemManager.item_unequipped.connect(_on_global_item_unequipped)
 
 func _get_item_category(shop_category: String) -> ItemData.Category:
 	match shop_category:
@@ -167,3 +174,34 @@ func _get_item_category(shop_category: String) -> ItemData.Category:
 		"frames": return ItemData.Category.FRAME
 		"emojis": return ItemData.Category.EMOJI
 		_: return -1
+
+func _on_global_item_equipped(equipped_id: String, category: String):
+	# If this card's item was just equipped, update immediately
+	if item_data and equipped_id == item_data.id:
+		is_equipped = true
+		_update_visual_state()
+	# If another item in same category was equipped, this one is now unequipped
+	elif item_data and _matches_category(category):
+		is_equipped = false
+		_update_visual_state()
+
+func _on_global_item_unequipped(unequipped_id: String, category: String):
+	# If this card's item was just unequipped, update immediately
+	if item_data and unequipped_id == item_data.id:
+		is_equipped = false
+		_update_visual_state()
+
+func _matches_category(category_string: String) -> bool:
+	# Check if this item's category matches the signal's category
+	if not item_data:
+		return false
+	
+	var item_category = _get_item_category(item_data.category)
+	match category_string:
+		"Card Front": return item_category == ItemData.Category.CARD_FRONT
+		"Card Back": return item_category == ItemData.Category.CARD_BACK
+		"Board": return item_category == ItemData.Category.BOARD
+		"Frame": return item_category == ItemData.Category.FRAME
+		"Avatar": return item_category == ItemData.Category.AVATAR
+		"Emoji": return item_category == ItemData.Category.EMOJI
+		_: return false

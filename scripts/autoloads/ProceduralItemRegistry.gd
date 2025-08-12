@@ -23,6 +23,7 @@ const BASE_PATH = "res://Pyramids/scripts/items/"
 
 func _ready():
 	print("ProceduralItemRegistry initializing...")
+	discover_and_register_all()
 
 # Main discovery function
 func discover_and_register_all() -> void:
