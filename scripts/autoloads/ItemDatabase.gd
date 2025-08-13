@@ -43,7 +43,24 @@ func _ready():
 	print("ItemDatabase initializing...")
 	_initialize_categories()
 	load_all_items()
-	print("ItemDatabase ready with %d items" % all_items.size())
+	
+	# DEBUG: Check if your items loaded
+	print("\n=== CHECKING NEW ITEMS ===")
+	var pyramid_board = get_item("board_pyramids")
+	if pyramid_board:
+		print("✓ Board loaded: ", pyramid_board.display_name)
+		print("  - Animated: ", pyramid_board.is_animated)
+		print("  - Scene: ", pyramid_board.background_scene_path)
+	else:
+		print("✗ Board NOT found")
+		
+	var gold_back = get_item("card_back_classic_pyramids_gold")
+	if gold_back:
+		print("✓ Card back loaded: ", gold_back.display_name)
+		print("  - Procedural: ", gold_back.is_procedural)
+		print("  - Script: ", gold_back.procedural_script_path)
+	else:
+		print("✗ Card back NOT found")
 
 func _initialize_categories():
 	"""Initialize empty arrays for all categories"""
@@ -123,24 +140,20 @@ func _load_item_resource(path: String, category: String):
 		push_warning("ItemDatabase: Failed to load resource: " + path)
 		return
 	
-	var unified = UnifiedItemData.new()
+	var unified: UnifiedItemData
 	
-	# Convert based on resource type
-	if resource is ItemData:
-		unified.from_item_data(resource)
-	elif resource is UnifiedItemData:
+	# Check if it's already a UnifiedItemData
+	if resource is UnifiedItemData:
 		unified = resource
 	else:
-		push_warning("ItemDatabase: Unknown resource type: " + path)
+		push_warning("ItemDatabase: Resource is not UnifiedItemData: " + path)
 		return
-	
-	# Ensure category matches folder
-	if unified.category == "":
-		unified.category = category.trim_suffix("s")  # Remove plural 's'
 	
 	# Validate and register
 	if unified.id != "":
 		register_item(unified)
+	else:
+		push_warning("ItemDatabase: Item has no ID: " + path)
 
 func _load_procedural_items():
 	"""Load all procedural item definitions"""
@@ -161,7 +174,10 @@ func _load_procedural_items():
 			continue
 		
 		var unified = UnifiedItemData.new()
-		unified.from_procedural_instance(instance, proc_data.category)
+		
+		# Convert string category to enum
+		var category_enum = _string_to_category(proc_data.category)
+		unified.from_procedural_instance(instance, category_enum)
 		
 		# Ensure ID is set
 		if unified.id == "":
@@ -183,16 +199,16 @@ func _import_from_legacy_systems():
 		for item_id in ItemManager.all_items:
 			if not all_items.has(item_id):
 				var item_data = ItemManager.all_items[item_id]
-				var unified = UnifiedItemData.new()
-				unified.from_item_data(item_data)
-				register_item(unified)
-				imported_count += 1
+				# ItemManager already stores UnifiedItemData
+				if item_data is UnifiedItemData:
+					register_item(item_data)
+					imported_count += 1
 	
 	# Import from ShopManager
-	if ShopManager:
-		var shop_items = ShopManager.get_all_items()
-		for shop_item in shop_items:
-			if not all_items.has(shop_item.id):
+	if ShopManager and ShopManager.shop_inventory:
+		for shop_item_id in ShopManager.shop_inventory:
+			if not all_items.has(shop_item_id):
+				var shop_item = ShopManager.shop_inventory[shop_item_id]
 				var unified = UnifiedItemData.new()
 				unified.from_shop_item(shop_item)
 				register_item(unified)
@@ -209,9 +225,9 @@ func _ensure_default_items():
 		classic_card.id = "card_classic"
 		classic_card.display_name = "Classic Cards"
 		classic_card.description = "The original card design"
-		classic_card.category = "card_front"
-		classic_card.rarity = "common"
-		classic_card.source = "default"
+		classic_card.category = UnifiedItemData.Category.CARD_FRONT
+		classic_card.rarity = UnifiedItemData.Rarity.COMMON
+		classic_card.source = UnifiedItemData.Source.DEFAULT
 		classic_card.base_price = 0
 		classic_card.is_purchasable = false
 		register_item(classic_card)
@@ -223,9 +239,9 @@ func _ensure_default_items():
 		green_board.id = "board_green"
 		green_board.display_name = "Classic Green"
 		green_board.description = "The classic green felt board"
-		green_board.category = "board"
-		green_board.rarity = "common"
-		green_board.source = "default"
+		green_board.category = UnifiedItemData.Category.BOARD
+		green_board.rarity = UnifiedItemData.Rarity.COMMON
+		green_board.source = UnifiedItemData.Source.DEFAULT
 		green_board.base_price = 0
 		green_board.is_purchasable = false
 		green_board.colors = {"primary": Color(0.2, 0.5, 0.2)}
@@ -245,13 +261,15 @@ func _build_indexes():
 	for item_id in all_items:
 		var item = all_items[item_id]
 		
-		# Add to category index
-		if items_by_category.has(item.category):
-			items_by_category[item.category].append(item)
+		# Add to category index - convert enum to string
+		var category_str = _category_to_string(item.category)
+		if items_by_category.has(category_str):
+			items_by_category[category_str].append(item)
 		
-		# Add to rarity index
-		if items_by_rarity.has(item.rarity):
-			items_by_rarity[item.rarity].append(item)
+		# Add to rarity index - convert enum to string
+		var rarity_str = item.get_rarity_name().to_lower()
+		if items_by_rarity.has(rarity_str):
+			items_by_rarity[rarity_str].append(item)
 		
 		# Add to set index
 		if item.set_name != "":
@@ -498,3 +516,56 @@ func debug_future_categories():
 					print("  - Apply to MainMenu")
 	
 	print("================================\n")
+
+func _string_to_category(category_str: String) -> UnifiedItemData.Category:
+	"""Convert string category to enum"""
+	match category_str:
+		"card_fronts", "card_front":
+			return UnifiedItemData.Category.CARD_FRONT
+		"card_backs", "card_back":
+			return UnifiedItemData.Category.CARD_BACK
+		"boards", "board":
+			return UnifiedItemData.Category.BOARD
+		"frames", "frame":
+			return UnifiedItemData.Category.FRAME
+		"avatars", "avatar":
+			return UnifiedItemData.Category.AVATAR
+		"emojis", "emoji":
+			return UnifiedItemData.Category.EMOJI
+		"mini_profiles", "mini_profile":
+			return UnifiedItemData.Category.MINI_PROFILE_CARD
+		"topbars", "topbar":
+			return UnifiedItemData.Category.TOPBAR
+		"combo_effects", "combo_effect":
+			return UnifiedItemData.Category.COMBO_EFFECT
+		"menu_backgrounds", "menu_background":
+			return UnifiedItemData.Category.MENU_BACKGROUND
+		_:
+			push_warning("ItemDatabase: Unknown category string: " + category_str)
+			return UnifiedItemData.Category.CARD_FRONT
+
+func _category_to_string(category: UnifiedItemData.Category) -> String:
+	"""Convert category enum to string for indexing"""
+	match category:
+		UnifiedItemData.Category.CARD_FRONT:
+			return "card_fronts"
+		UnifiedItemData.Category.CARD_BACK:
+			return "card_backs"
+		UnifiedItemData.Category.BOARD:
+			return "boards"
+		UnifiedItemData.Category.FRAME:
+			return "frames"
+		UnifiedItemData.Category.AVATAR:
+			return "avatars"
+		UnifiedItemData.Category.EMOJI:
+			return "emojis"
+		UnifiedItemData.Category.MINI_PROFILE_CARD:
+			return "mini_profiles"
+		UnifiedItemData.Category.TOPBAR:
+			return "topbars"
+		UnifiedItemData.Category.COMBO_EFFECT:
+			return "combo_effects"
+		UnifiedItemData.Category.MENU_BACKGROUND:
+			return "menu_backgrounds"
+		_:
+			return "unknown"

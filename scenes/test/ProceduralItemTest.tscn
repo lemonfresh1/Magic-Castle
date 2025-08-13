@@ -1,0 +1,60 @@
+[gd_scene load_steps=2 format=3 uid="uid://dlq08eu56le7e"]
+
+[ext_resource type="Script" uid="uid://cfnxvbmxjmeiq" path="res://Pyramids/scenes/test/ProceduralItemTest.gd" id="1_3bo2f"]
+
+[node name="ProceduralItemTest" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_3bo2f")
+
+[node name="PreviewContainer" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_vertical = 3
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 20
+
+[node name="Title" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Procedural Item Test Scene"
+
+[node name="Controls" type="HBoxContainer" parent="VBoxContainer"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+
+[node name="ItemTypeButton" type="OptionButton" parent="VBoxContainer/Controls"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+
+[node name="ItemList" type="ItemList" parent="VBoxContainer/Controls"]
+custom_minimum_size = Vector2(300, 100)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="AnimationToggle" type="CheckBox" parent="VBoxContainer/Controls"]
+layout_mode = 2
+button_pressed = true
+text = "Animate"
+
+[node name="ExportButton" type="Button" parent="VBoxContainer/Controls"]
+layout_mode = 2
+text = "Export to PNG"
+
+[node name="InfoLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2

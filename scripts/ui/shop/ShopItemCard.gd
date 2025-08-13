@@ -1,6 +1,6 @@
 # ShopItemCard.gd - Individual shop item display component with rarity borders and pricing
 # Location: res://Pyramids/scripts/ui/shop/ShopItemCard.gd
-# Last Updated: Updated to use icons from ItemData [Date]
+# Last Updated: Updated to use icons from UnifiedItemData [Date]
 
 extends PanelContainer
 
@@ -35,11 +35,11 @@ func setup(item: ShopManager.ShopItem):
 	if not is_node_ready():
 		await ready
 	
-	# Load icon - prefer preview_texture_path (from ItemData.icon_path) over placeholder
+	# Load icon - prefer preview_texture_path (from UnifiedItemData.icon_path) over placeholder
 	if icon_texture:
 		var icon_loaded = false
 		
-		# First try preview_texture_path (actual icon from ItemData)
+		# First try preview_texture_path (actual icon from UnifiedItemData)
 		if item.preview_texture_path != "" and ResourceLoader.exists(item.preview_texture_path):
 			icon_texture.texture = load(item.preview_texture_path)
 			icon_loaded = true

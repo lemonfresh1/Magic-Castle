@@ -39,7 +39,7 @@ func calculate_price(items_dict: Dictionary) -> int:
 	
 	var total_price = 0
 	for item_id in item_ids:
-		var item = items_dict.get(item_id) as ItemData
+		var item = items_dict.get(item_id) as UnifiedItemData
 		if item:
 			total_price += item.base_price
 	
@@ -48,7 +48,7 @@ func calculate_price(items_dict: Dictionary) -> int:
 func calculate_savings(items_dict: Dictionary) -> int:
 	var total_price = 0
 	for item_id in item_ids:
-		var item = items_dict.get(item_id) as ItemData
+		var item = items_dict.get(item_id) as UnifiedItemData
 		if item:
 			total_price += item.base_price
 	

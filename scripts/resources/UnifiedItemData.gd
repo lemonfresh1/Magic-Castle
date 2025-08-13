@@ -1,39 +1,80 @@
 # UnifiedItemData.gd - Unified item data structure for all cosmetic items
 # Location: res://Pyramids/scripts/resources/UnifiedItemData.gd
-# Last Updated: Created with future category placeholders [Date]
+# Last Updated: Reorganized export groups [Date]
 
 class_name UnifiedItemData
 extends Resource
 
-# Core identification
+# Item categories
+enum Category {
+	CARD_FRONT,
+	CARD_BACK,
+	BOARD,
+	FRAME,
+	AVATAR,
+	EMOJI,
+	MINI_PROFILE_CARD,
+	# Future categories
+	TOPBAR,
+	COMBO_EFFECT,
+	MENU_BACKGROUND
+}
+
+# Item rarity
+enum Rarity {
+	COMMON,
+	UNCOMMON,
+	RARE,
+	EPIC,
+	LEGENDARY,
+	MYTHIC
+}
+
+# Item sources for tracking
+enum Source {
+	DEFAULT,        # Starting items
+	SHOP,          # Purchased with stars
+	ACHIEVEMENT,   # Achievement rewards
+	EVENT,         # Event rewards
+	BUNDLE,        # Part of a bundle
+	REFERRAL,      # Friend referral rewards
+	SEASON_PASS,   # Season pass rewards
+	HOLIDAY_EVENT, # Holiday event rewards
+	XP_REWARD,     # Level up rewards
+	GIFT,          # Gifted items
+	# Future sources
+	TOURNAMENT,    # Tournament rewards
+	QUEST         # Quest rewards
+}
+
+@export_group("Core Identity")
 @export var id: String = ""
 @export var display_name: String = ""
 @export var description: String = ""
 
-# Categorization - INCLUDING FUTURE CATEGORIES
-@export_enum("card_front", "card_back", "board", "frame", "avatar", "emoji", "mini_profile", "topbar", "combo_effect", "menu_background") var category: String = "card_front"
-@export_enum("common", "uncommon", "rare", "epic", "legendary", "mythic") var rarity: String = "common"
+@export_group("Categorization")
+@export var category: Category = Category.CARD_FRONT
+@export var rarity: Rarity = Rarity.COMMON
 @export var set_name: String = ""
 @export var subcategory: String = ""
 
-# Visuals
+@export_group("Visuals")
 @export var icon_path: String = ""  # For UI display
 @export var texture_path: String = ""  # For static items
 @export var preview_texture_path: String = ""  # For shop/inventory preview
 
-# Procedural/Animation
+@export_group("Procedural/Animation")
 @export var is_procedural: bool = false
 @export var is_animated: bool = false
 @export var procedural_script_path: String = ""  # Path to procedural generator script
 @export var animation_metadata: Dictionary = {}  # Animation settings
 
-# Board specific (also used for menu_background)
-@export var background_type: String = "color"  # color, sprite, scene
+@export_group("Board Settings")
+@export var background_type: String = "color"  # color, sprite, scene, procedural
 @export var background_scene_path: String = ""
 @export var colors: Dictionary = {}  # primary, secondary, etc.
 @export var can_be_menu_background: bool = false  # TODO: Allow boards to be menu backgrounds
 
-# Mini Profile Card specific - TODO: Implement mini profile system
 @export_group("Mini Profile Settings")
 @export_enum("standard", "compact", "detailed", "animated") var mini_profile_layout: String = "standard"
 @export var showcase_slots: int = 3  # How many items/achievements/stats can be shown
@@ -42,7 +83,6 @@ extends Resource
 @export var item_positions: Dictionary = {}  # Where showcased items appear
 @export var supports_animation: bool = false  # If the mini profile can animate
 
-# TopBar skin specific - TODO: Implement topbar customization
 @export_group("TopBar Settings")
 @export var topbar_gradient: Gradient  # Background gradient for topbar
 @export var topbar_button_style: String = "default"  # Button visual style
@@ -50,7 +90,6 @@ extends Resource
 @export var timer_bar_color: Color = Color.WHITE
 @export var draw_pile_tint: Color = Color.WHITE
 
-# Combo Effect specific - TODO: Implement combo visual effects
 @export_group("Combo Effect Settings")
 @export var combo_threshold: int = 5  # When effect starts
 @export var effect_intensity_curve: Curve  # How effect scales with combo
@@ -60,93 +99,147 @@ extends Resource
 @export_enum("fire", "lightning", "ice", "rainbow", "cosmic") var effect_type: String = "fire"
 @export var max_combo_visuals: int = 20  # Cap for performance
 
-# Economy
+@export_group("Economy")
 @export var base_price: int = 0
+@export var currency_type: String = "stars"  # ADD THIS LINE - stars, event_tokens, etc.
 @export var is_purchasable: bool = true
 @export var is_tradeable: bool = false
 @export var unlock_level: int = 0
 
-# Source and acquisition
-@export_enum("default", "shop", "achievement", "event", "bundle", "referral", "season_pass", "tournament", "quest") var source: String = "shop"
+@export_group("Acquisition")
+@export var source: Source = Source.SHOP
 @export var achievement_id: String = ""  # If from achievement
 @export var event_id: String = ""  # If from event
 @export var quest_id: String = ""  # TODO: If from quest system
+@export var bundle_id: String = ""  # If part of a bundle
 
-# Metadata
+@export_group("Display Metadata")
 @export var sort_order: int = 0
 @export var tags: Array[String] = []
 @export var release_date: String = ""
 @export var is_limited_time: bool = false
 @export var expiry_date: String = ""
+@export var is_new: bool = false  # Show "NEW" badge
+@export var is_limited: bool = false  # Limited availability
 
-# Future features placeholders
+@export_group("Effects & Stats")
+@export var effects: Dictionary = {}  # Visual effects data
+@export var stats: Dictionary = {}  # Any stat modifications
+@export var metadata: Dictionary = {}  # Extra data for specific items
+
 @export_group("Future Features")
 @export var supports_color_customization: bool = false  # TODO: Allow color picker
 @export var supports_user_upload: bool = false  # TODO: Custom avatars/frames
 @export var blockchain_id: String = ""  # TODO: NFT integration (maybe never)
 @export var workshop_id: String = ""  # TODO: Steam Workshop support
 
-# Conversion helpers
-func from_item_data(item: ItemData) -> void:
-	"""Convert from old ItemData format"""
-	id = item.id
-	display_name = item.display_name
-	description = item.description
-	
-	# Map category enum to string
-	category = _map_item_category(item.category)
-	rarity = _map_rarity(item.rarity)
-	
-	# Use helper to safely get properties
-	set_name = _safe_get(item, "set_name", "")
-	subcategory = _safe_get(item, "subcategory", "")
-	
-	icon_path = _safe_get(item, "icon_path", "")
-	texture_path = _safe_get(item, "texture_path", "")
-	preview_texture_path = _safe_get(item, "preview_texture_path", "")
-	
-	background_type = _safe_get(item, "background_type", "color")
-	background_scene_path = _safe_get(item, "background_scene_path", "")
-	colors = _safe_get(item, "colors", {})
-	
-	base_price = item.base_price
-	is_purchasable = item.is_purchasable
-	is_tradeable = _safe_get(item, "is_tradeable", false)
-	unlock_level = _safe_get(item, "unlock_level", 0)
-	
-	source = _map_source(item.source)
-	achievement_id = _safe_get(item, "achievement_id", "")
-	event_id = _safe_get(item, "event_id", "")
-	
-	sort_order = _safe_get(item, "sort_order", 0)
-	tags = _safe_get(item, "tags", [])
-	release_date = _safe_get(item, "release_date", "")
-	is_limited_time = _safe_get(item, "is_limited_time", false)
-	expiry_date = _safe_get(item, "expiry_date", "")
+# Helper functions
+func get_rarity_color() -> Color:
+	match rarity:
+		Rarity.COMMON: return UIStyleManager.get_rarity_color("common")
+		Rarity.UNCOMMON: return UIStyleManager.get_rarity_color("uncommon")
+		Rarity.RARE: return UIStyleManager.get_rarity_color("rare")
+		Rarity.EPIC: return UIStyleManager.get_rarity_color("epic")
+		Rarity.LEGENDARY: return UIStyleManager.get_rarity_color("legendary")
+		Rarity.MYTHIC: return UIStyleManager.get_rarity_color("mythic")
+		_: return Color.WHITE
 
-func _safe_get(obj: Object, property: String, default_value):
-	"""Safely get a property from an object, returning default if it doesn't exist"""
-	if obj.has_method("get") and obj.get(property) != null:
-		return obj.get(property)
-	return default_value
+func get_rarity_name() -> String:
+	return Rarity.keys()[rarity]
 
+func get_category_name() -> String:
+	return Category.keys()[category]
+
+func get_source_name() -> String:
+	return Source.keys()[source]
+
+func get_price_with_rarity_multiplier() -> int:
+	var multiplier = 1.0
+	match rarity:
+		Rarity.UNCOMMON: multiplier = 1.5
+		Rarity.RARE: multiplier = 2.0
+		Rarity.EPIC: multiplier = 3.0
+		Rarity.LEGENDARY: multiplier = 5.0
+		Rarity.MYTHIC: multiplier = 10.0
+	
+	return int(base_price * multiplier)
+
+func can_be_purchased_by_player() -> bool:
+	if not is_purchasable:
+		return false
+	if unlock_level > 0 and XPManager.get_current_level() < unlock_level:
+		return false
+	return true
+
+func is_owned() -> bool:
+	# Check with EquipmentManager
+	if EquipmentManager:
+		return EquipmentManager.is_item_owned(id)
+	return false
+
+func is_equipped() -> bool:
+	# Check with EquipmentManager
+	if EquipmentManager:
+		return EquipmentManager.is_item_equipped(id)
+	return false
+
+# Future category helpers
+func is_future_category() -> bool:
+	"""Check if this item is from a not-yet-implemented category"""
+	return category in [Category.TOPBAR, Category.COMBO_EFFECT, Category.MENU_BACKGROUND]
+
+func get_todo_message() -> String:
+	"""Get the TODO message for this category"""
+	match category:
+		Category.MINI_PROFILE_CARD: return "TODO: Implement mini profile card system"
+		Category.TOPBAR: return "TODO: Implement topbar customization"
+		Category.COMBO_EFFECT: return "TODO: Implement combo visual effects"
+		Category.MENU_BACKGROUND: return "TODO: Implement menu background system"
+		_: return ""
+
+# ShopManager compatibility helpers
 func from_shop_item(item: ShopManager.ShopItem) -> void:
 	"""Convert from ShopManager.ShopItem format"""
 	id = item.id
 	display_name = item.display_name
-	description = item.description
+	description = ""  # ShopItem doesn't have description, use empty or generate one
 	
+	# Map ShopManager category to our category
 	category = _map_shop_category(item.category)
 	rarity = _map_shop_rarity(item.rarity)
 	
 	icon_path = item.preview_texture_path
 	texture_path = item.preview_texture_path
 	
-	base_price = item.price
+	base_price = item.base_price
 	is_purchasable = true
-	unlock_level = item.level_requirement
+	unlock_level = item.unlock_level
 
-func from_procedural_instance(instance: Object, item_category: String) -> void:
+func _map_shop_category(cat: String) -> Category:
+	match cat:
+		"card_skins", "card_fronts": return Category.CARD_FRONT
+		"card_backs": return Category.CARD_BACK
+		"board_skins", "boards": return Category.BOARD
+		"frames": return Category.FRAME
+		"avatars": return Category.AVATAR
+		"emojis": return Category.EMOJI
+		"mini_profiles": return Category.MINI_PROFILE_CARD
+		"topbars": return Category.TOPBAR
+		"combo_effects": return Category.COMBO_EFFECT
+		_: return Category.CARD_FRONT
+
+func _map_shop_rarity(r: ShopManager.Rarity) -> Rarity:
+	match r:
+		ShopManager.Rarity.COMMON: return Rarity.COMMON
+		ShopManager.Rarity.UNCOMMON: return Rarity.UNCOMMON
+		ShopManager.Rarity.RARE: return Rarity.RARE
+		ShopManager.Rarity.EPIC: return Rarity.EPIC
+		ShopManager.Rarity.LEGENDARY: return Rarity.LEGENDARY
+		ShopManager.Rarity.MYTHIC: return Rarity.MYTHIC
+		_: return Rarity.COMMON
+
+# Procedural instance helpers
+func from_procedural_instance(instance: Object, item_category: Category) -> void:
 	"""Convert from procedural item instance"""
 	if not instance:
 		return
@@ -157,198 +250,23 @@ func from_procedural_instance(instance: Object, item_category: String) -> void:
 		category = item_category
 		
 		is_procedural = true
-		is_animated = instance.get("is_animated") if instance.get("is_animated") else false
+		is_animated = instance.get("is_animated") if instance.get("is_animated") != null else false
 		
-		# Store rarity if available
-		if instance.get("item_rarity"):
-			rarity = _map_item_rarity_enum(instance.item_rarity)
+		# Get rarity if available
+		if instance.get("item_rarity") != null:
+			var inst_rarity = instance.get("item_rarity")
+			if typeof(inst_rarity) == TYPE_STRING:
+				rarity = _string_to_rarity(inst_rarity)
+			elif typeof(inst_rarity) == TYPE_INT:
+				rarity = inst_rarity as Rarity
 
-func to_item_data() -> ItemData:
-	"""Convert to old ItemData format for compatibility"""
-	var item = ItemData.new()
-	
-	item.id = id
-	item.display_name = display_name
-	item.description = description
-	
-	item.category = _unmap_item_category(category)
-	item.rarity = _unmap_rarity(rarity)
-	
-	item.set_name = set_name
-	item.subcategory = subcategory
-	
-	item.icon_path = icon_path
-	item.texture_path = texture_path
-	item.preview_texture_path = preview_texture_path
-	
-	item.background_type = background_type
-	item.background_scene_path = background_scene_path
-	item.colors = colors
-	
-	item.base_price = base_price
-	item.is_purchasable = is_purchasable
-	item.is_tradeable = is_tradeable
-	item.unlock_level = unlock_level
-	
-	item.source = _unmap_source(source)
-	item.achievement_id = achievement_id
-	item.event_id = event_id
-	
-	item.sort_order = sort_order
-	item.tags = tags
-	item.release_date = release_date
-	item.is_limited_time = is_limited_time
-	item.expiry_date = expiry_date
-	
-	return item
-
-# Mapping functions
-func _map_item_category(cat: ItemData.Category) -> String:
-	match cat:
-		ItemData.Category.CARD_FRONT: return "card_front"
-		ItemData.Category.CARD_BACK: return "card_back"
-		ItemData.Category.BOARD: return "board"
-		ItemData.Category.FRAME: return "frame"
-		ItemData.Category.AVATAR: return "avatar"
-		ItemData.Category.EMOJI: return "emoji"
-		ItemData.Category.MINI_PROFILE_CARD: return "mini_profile"
-		_: return "card_front"
-
-func _unmap_item_category(cat: String) -> ItemData.Category:
-	match cat:
-		"card_front": return ItemData.Category.CARD_FRONT
-		"card_back": return ItemData.Category.CARD_BACK
-		"board": return ItemData.Category.BOARD
-		"frame": return ItemData.Category.FRAME
-		"avatar": return ItemData.Category.AVATAR
-		"emoji": return ItemData.Category.EMOJI
-		"mini_profile": return ItemData.Category.MINI_PROFILE_CARD
-		# Future categories default to CARD_FRONT for now
-		"topbar", "combo_effect", "menu_background": 
-			push_warning("TODO: Add ItemData.Category for " + cat)
-			return ItemData.Category.CARD_FRONT
-		_: return ItemData.Category.CARD_FRONT
-
-func _map_shop_category(cat: String) -> String:
-	match cat:
-		"card_skins", "card_fronts": return "card_front"
-		"card_backs": return "card_back"
-		"board_skins", "boards": return "board"
-		"frames": return "frame"
-		"avatars": return "avatar"
-		"emojis": return "emoji"
-		"mini_profiles": return "mini_profile"
-		"topbars": return "topbar"
-		"combo_effects": return "combo_effect"
-		_: return "card_front"
-
-func _map_rarity(r: ItemData.Rarity) -> String:
-	match r:
-		ItemData.Rarity.COMMON: return "common"
-		ItemData.Rarity.UNCOMMON: return "uncommon"
-		ItemData.Rarity.RARE: return "rare"
-		ItemData.Rarity.EPIC: return "epic"
-		ItemData.Rarity.LEGENDARY: return "legendary"
-		ItemData.Rarity.MYTHIC: return "mythic"
-		_: return "common"
-
-func _unmap_rarity(r: String) -> ItemData.Rarity:
-	match r:
-		"common": return ItemData.Rarity.COMMON
-		"uncommon": return ItemData.Rarity.UNCOMMON
-		"rare": return ItemData.Rarity.RARE
-		"epic": return ItemData.Rarity.EPIC
-		"legendary": return ItemData.Rarity.LEGENDARY
-		"mythic": return ItemData.Rarity.MYTHIC
-		_: return ItemData.Rarity.COMMON
-
-func _map_shop_rarity(r: ShopManager.Rarity) -> String:
-	match r:
-		ShopManager.Rarity.COMMON: return "common"
-		ShopManager.Rarity.UNCOMMON: return "uncommon"
-		ShopManager.Rarity.RARE: return "rare"
-		ShopManager.Rarity.EPIC: return "epic"
-		ShopManager.Rarity.LEGENDARY: return "legendary"
-		ShopManager.Rarity.MYTHIC: return "mythic"
-		_: return "common"
-
-func _map_item_rarity_enum(r) -> String:
-	if r == ItemData.Rarity.COMMON: return "common"
-	elif r == ItemData.Rarity.UNCOMMON: return "uncommon"
-	elif r == ItemData.Rarity.RARE: return "rare"
-	elif r == ItemData.Rarity.EPIC: return "epic"
-	elif r == ItemData.Rarity.LEGENDARY: return "legendary"
-	elif r == ItemData.Rarity.MYTHIC: return "mythic"
-	else: return "common"
-
-func _map_source(s: ItemData.Source) -> String:
-	match s:
-		ItemData.Source.DEFAULT: return "default"
-		ItemData.Source.SHOP: return "shop"
-		ItemData.Source.ACHIEVEMENT: return "achievement"
-		ItemData.Source.EVENT: return "event"
-		ItemData.Source.BUNDLE: return "bundle"
-		ItemData.Source.REFERRAL: return "referral"
-		ItemData.Source.SEASON_PASS: return "season_pass"
-		_: return "shop"
-
-func _unmap_source(s: String) -> ItemData.Source:
-	match s:
-		"default": return ItemData.Source.DEFAULT
-		"shop": return ItemData.Source.SHOP
-		"achievement": return ItemData.Source.ACHIEVEMENT
-		"event": return ItemData.Source.EVENT
-		"bundle": return ItemData.Source.BUNDLE
-		"referral": return ItemData.Source.REFERRAL
-		"season_pass": return ItemData.Source.SEASON_PASS
-		# Future sources
-		"tournament", "quest":
-			push_warning("TODO: Add ItemData.Source for " + s)
-			return ItemData.Source.SHOP
-		_: return ItemData.Source.SHOP
-
-# Utility functions
-func get_rarity_color() -> Color:
-	match rarity:
-		"common": return UIStyleManager.get_rarity_color("common")
-		"uncommon": return UIStyleManager.get_rarity_color("uncommon")
-		"rare": return UIStyleManager.get_rarity_color("rare")
-		"epic": return UIStyleManager.get_rarity_color("epic")
-		"legendary": return UIStyleManager.get_rarity_color("legendary")
-		"mythic": return UIStyleManager.get_rarity_color("mythic")
-		_: return Color.WHITE
-
-func get_price_with_rarity_multiplier() -> int:
-	var multiplier = 1.0
-	match rarity:
-		"uncommon": multiplier = 1.5
-		"rare": multiplier = 2.0
-		"epic": multiplier = 3.0
-		"legendary": multiplier = 5.0
-		"mythic": multiplier = 10.0
-	
-	return int(base_price * multiplier)
-
-func is_owned() -> bool:
-	# TODO: Check with EquipmentManager when it exists
-	push_warning("TODO: Implement is_owned() with EquipmentManager")
-	return false
-
-func is_equipped() -> bool:
-	# TODO: Check with EquipmentManager when it exists
-	push_warning("TODO: Implement is_equipped() with EquipmentManager")
-	return false
-
-# Future category helpers
-func is_future_category() -> bool:
-	"""Check if this item is from a not-yet-implemented category"""
-	return category in ["topbar", "combo_effect", "menu_background"]
-
-func get_todo_message() -> String:
-	"""Get the TODO message for this category"""
-	match category:
-		"mini_profile": return "TODO: Implement mini profile card system"
-		"topbar": return "TODO: Implement topbar customization"
-		"combo_effect": return "TODO: Implement combo visual effects"
-		"menu_background": return "TODO: Implement menu background system"
-		_: return ""
+func _string_to_rarity(rarity_str: String) -> Rarity:
+	"""Convert string to Rarity enum"""
+	match rarity_str.to_lower():
+		"common": return Rarity.COMMON
+		"uncommon": return Rarity.UNCOMMON
+		"rare": return Rarity.RARE
+		"epic": return Rarity.EPIC
+		"legendary": return Rarity.LEGENDARY
+		"mythic": return Rarity.MYTHIC
+		_: return Rarity.COMMON

@@ -1,4 +1,4 @@
-# ProceduralCardTest.gd - Test scene for procedural card designs
+# ProceduralBoardTest.gd - Test scene for procedural card designs
 # Location: res://Pyramids/scenes/test/ProceduralCardTest.gd
 # Last Updated: Created test scene for procedural cards [Date]
 

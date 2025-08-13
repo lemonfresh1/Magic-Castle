@@ -1,6 +1,6 @@
-# CardPreview.gd - A lightweight card display for menus using CardSkinManager
+# CardPreview.gd - A lightweight card display for menus
 # Path: res://Pyramids/scripts/ui/components/CardPreview.gd
-# Last Updated: Fixed font sizing and positioning for preview cards [Date]
+# Last Updated: Updated to use EquipmentManager instead of CardSkinManager [Date]
 
 extends Control
 
@@ -79,63 +79,57 @@ func set_skin(skin_name: String, high_contrast: bool = false) -> void:
 func _update_display() -> void:
 	if not rank_label or not suit_label:
 		return
-		
-	# Get the skin from CardSkinManager
-	var skin = CardSkinManager.get_skin(current_skin_name)
-	if not skin:
-		skin = CardSkinManager.get_skin("classic")  # Fallback
 	
+	# Simple display based on current settings
+	_update_card_appearance()
+
+func _update_card_appearance() -> void:
 	# Update background style
 	if bg_panel:
 		var style = StyleBoxFlat.new()
-		style.bg_color = skin.card_bg_color
-		style.border_color = skin.card_border_color
-		style.set_border_width_all(max(1, int(skin.card_border_width * PREVIEW_SCALE_FACTOR)))
-		style.set_corner_radius_all(int(skin.card_corner_radius * PREVIEW_SCALE_FACTOR))
+		style.bg_color = Color.WHITE
+		style.border_color = Color.BLACK
+		style.set_border_width_all(1)
+		style.set_corner_radius_all(3)
 		bg_panel.add_theme_stylebox_override("panel", style)
 	
 	# Update rank text
 	var rank_text = _get_rank_text(current_rank)
 	rank_label.text = rank_text
-	
-	# Scale down font sizes for preview cards
-	rank_label.add_theme_font_size_override("font_size", int(skin.rank_font_size * PREVIEW_SCALE_FACTOR))
+	rank_label.add_theme_font_size_override("font_size", 16)
 	
 	# Update suit text
 	var suit_text = _get_suit_symbol(current_suit)
 	suit_label.text = suit_text
-	suit_label.add_theme_font_size_override("font_size", int(skin.suit_font_size * PREVIEW_SCALE_FACTOR))
+	suit_label.add_theme_font_size_override("font_size", 18)
 	
-	# Get color from skin
-	var card_color = skin.get_suit_color(current_suit)
+	# Get color based on suit
+	var card_color = _get_suit_color(current_suit)
 	rank_label.modulate = card_color
 	suit_label.modulate = card_color
 	
-	# Position labels based on skin settings but scaled for preview
-	rank_label.position = skin.rank_position_offset * PREVIEW_SCALE_FACTOR
+	# Position labels
+	rank_label.position = Vector2(5, 5)
 	# Center the suit symbol
-	var suit_x = (size.x - suit_label.get_theme_font("font").get_string_size(suit_text, HORIZONTAL_ALIGNMENT_LEFT, -1, suit_label.get_theme_font_size("font_size")).x) / 2
-	var suit_y = (size.y - suit_label.get_theme_font_size("font_size")) / 2 - 12  # Moved up by 12px
+	var suit_x = (size.x - 10) / 2
+	var suit_y = (size.y - 18) / 2 - 12
 	suit_label.position = Vector2(suit_x, suit_y)
 	
 	# Handle sprite-based skins
-	if skin.uses_sprites() and current_skin_name == "sprites":
-		_show_sprite_card(skin)
+	if SettingsSystem.current_card_skin == "sprites":
+		_show_sprite_card()
 	else:
 		_show_programmatic_card()
 
-func _show_sprite_card(skin: CardSkinBase) -> void:
+func _show_sprite_card() -> void:
 	# Hide programmatic elements
 	rank_label.visible = false
 	suit_label.visible = false
 	
-	# Try to load texture
-	var texture_path = skin.get_card_texture_path(current_rank, current_suit, true)
-	if texture_path == "":
-		# Fallback path construction
-		var rank_name = _get_rank_name_for_sprite(current_rank)
-		var suit_name = _get_suit_name(current_suit)
-		texture_path = "res://Pyramids/assets/cards/%s_of_%s.png" % [rank_name, suit_name]
+	# Build texture path
+	var rank_name = _get_rank_name_for_sprite(current_rank)
+	var suit_name = _get_suit_name(current_suit)
+	var texture_path = "res://Pyramids/assets/cards/%s_of_%s.png" % [rank_name, suit_name]
 	
 	var texture = load(texture_path) if ResourceLoader.exists(texture_path) else null
 	if texture:
@@ -172,6 +166,21 @@ func _get_suit_symbol(suit: int) -> String:
 		CardData.Suit.SPADES: return "♠"
 		_: return "?"
 
+func _get_suit_color(suit: int) -> Color:
+	match suit:
+		CardData.Suit.HEARTS, CardData.Suit.DIAMONDS:
+			if is_high_contrast:
+				return Color(0.92, 0.28, 0.28) if suit == CardData.Suit.HEARTS else Color(0.56, 0.82, 0.52)
+			else:
+				return Color.RED
+		CardData.Suit.CLUBS, CardData.Suit.SPADES:
+			if is_high_contrast:
+				return Color(0.28, 0.55, 0.75) if suit == CardData.Suit.CLUBS else Color(0.2, 0.2, 0.2)
+			else:
+				return Color.BLACK
+		_:
+			return Color.BLACK
+
 func _get_rank_name_for_sprite(rank: int) -> String:
 	match rank:
 		1: return "ace"
@@ -187,7 +196,3 @@ func _get_suit_name(suit: int) -> String:
 		CardData.Suit.DIAMONDS: return "diamonds"
 		CardData.Suit.CLUBS: return "clubs"
 		_: return "unknown"
-
-func _skin_supports_contrast(skin_name: String) -> bool:
-	var skin = CardSkinManager.get_skin(skin_name)
-	return skin.supports_high_contrast if skin else false

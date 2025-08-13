@@ -287,6 +287,59 @@ var card_colors = {
 	"neon_orange": Color("#FF8000")            # Neon orange
 }
 
+var item_card_style = {
+	# Sizes by layout type
+	"size_portrait": Vector2(90, 126),
+	"size_landscape": Vector2(192, 126),  # Changed from 180 to 192 (90*2 + 12 separator)
+	"size_reduction": 0.5,  # 50% of original export size
+
+	# Grid spacing for inventory
+	"grid_separator": 12,  # Space between cards in grid
+
+	# Sizes by display mode
+	"size_showcase": Vector2(60, 80),
+	"size_profile": Vector2(80, 100),
+	"size_inventory": Vector2(120, 160),
+	"size_shop": Vector2(120, 160),
+	
+	# Label positioning (as percentages of card height)
+	"label_slot_1_top": 0.55,
+	"label_slot_1_bottom": 0.85,
+	"label_slot_2_top": 0.85,
+	"label_slot_2_bottom": 1.0,
+	
+	# Font sizes - direct values since typography is defined above
+	"font_size_name": 14,         # typography.size_caption
+	"font_size_price": 16,        # typography.size_body_small
+	"font_size_lock": 16,         # typography.size_body_small
+	"name_size_showcase": 14,     # typography.size_caption
+	"name_size_profile": 16,      # typography.size_body_small
+	"name_size_default": 18,      # typography.size_body
+	
+	# Spacing - direct values since spacing is defined above
+	"card_padding": 8,                    # spacing.space_2
+	"grid_spacing": 12,                   # spacing.space_3
+	"equipped_badge_margin": 4,           # spacing.space_1
+	
+	# Visual properties - direct values
+	"label_bg_alpha": 0.5,               # Was trying to use opacity.strong which doesn't exist
+	"corner_radius": 8,
+	"shadow_size": 4,
+	"shadow_alpha": 0.3,                 # Was trying to use opacity.weak which doesn't exist
+	
+	# Equipped indicator
+	"equipped_badge_size": 24,           # spacing.space_6
+	"equipped_badge_color": Color("#10b981"),  # colors.primary
+	
+	# Lock overlay
+	"lock_overlay_opacity": 0.8,         # opacity.lock_strong exists and is 0.8
+	"lock_text_color": Color.WHITE,      # colors.white
+	
+	# Border widths - direct values
+	"card_border_width_normal": 2,       # borders.width_medium
+	"card_border_width_epic": 3          # borders.width_thick
+}
+
 # Dictionary to track styled panels for easy updates
 var styled_panels = {}
 
@@ -943,3 +996,68 @@ func apply_menu_button_style(button: Button, button_type: String = "default") ->
 
 func get_card_color(color_name: String) -> Color:
 	return card_colors.get(color_name, Color.WHITE)
+
+func apply_item_card_style(card: PanelContainer, mode: String = "inventory") -> void:
+	"""Apply consistent item card styling"""
+	var style = StyleBoxFlat.new()
+	
+	# Background
+	style.bg_color = colors.white
+	
+	# Border
+	style.border_color = colors.gray_200
+	style.set_border_width_all(borders.width_thin)
+	
+	# Corner radius
+	style.set_corner_radius_all(dimensions.corner_radius_medium)
+	
+	# Shadow
+	style.shadow_size = shadows.size_small
+	style.shadow_offset = shadows.offset_small
+	style.shadow_color = shadows.color_default
+	
+	card.add_theme_stylebox_override("panel", style)
+	
+	# Set size based on mode
+	match mode:
+		"showcase":
+			card.custom_minimum_size = item_card_style.size_showcase
+		"profile":
+			card.custom_minimum_size = item_card_style.size_profile
+		_:
+			card.custom_minimum_size = item_card_style.size_inventory
+
+func apply_item_card_rarity_border(card: PanelContainer, rarity: String) -> void:
+	"""Apply rarity-based border glow to item card"""
+	var style = card.get_theme_stylebox("panel").duplicate() as StyleBoxFlat
+	
+	match rarity:
+		"epic", "legendary", "mythic":
+			var color = get_rarity_color(rarity)
+			style.border_color = color
+			style.set_border_width_all(borders.width_medium)
+			# Add glow
+			style.shadow_color = color
+			style.shadow_color.a = 0.3
+			style.shadow_size = shadows.size_medium
+	
+	card.add_theme_stylebox_override("panel", style)
+
+func get_rarity_color(rarity: String) -> Color:
+	"""Get the color for a rarity tier"""
+	match rarity:
+		"common": return colors.gray_500
+		"uncommon": return colors.success
+		"rare": return colors.info
+		"epic": return colors.premium
+		"legendary": return colors.warning
+		"mythic": return colors.error
+		_: return colors.gray_400
+
+func get_item_card_style(key: String):
+	"""Safely get item card style value"""
+	return item_card_style.get(key, null)
+
+func get_border_width(key: String) -> int:
+	"""Get border width value"""
+	return borders.get(key, 2)

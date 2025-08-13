@@ -206,7 +206,7 @@ func purchase_item(item_id: String) -> bool:
 		
 		# Grant item through ItemManager
 		if ItemManager:
-			ItemManager.grant_item(item_id, ItemData.Source.SHOP)
+			ItemManager.grant_item(item_id, UnifiedItemData.Source.SHOP)
 		
 		return true
 	
@@ -218,7 +218,7 @@ func grant_item(item_id: String) -> bool:
 	
 	if ItemManager:
 		# Use SHOP source for backward compatibility
-		return ItemManager.grant_item(item_id, ItemData.Source.SHOP)
+		return ItemManager.grant_item(item_id, UnifiedItemData.Source.SHOP)
 	else:
 		push_error("ShopManager: ItemManager not found!")
 		return false
@@ -289,13 +289,13 @@ func get_items_by_category(category: String) -> Array:
 	
 	# First try to get from ItemManager for accurate data
 	if ItemManager and category == "board_skins":
-		var boards = ItemManager.get_items_by_category(ItemData.Category.BOARD)
+		var boards = ItemManager.get_items_by_category(UnifiedItemData.Category.BOARD)
 		for board in boards:
-			# Convert ItemData to ShopItem for compatibility
+			# Convert UnifiedItemData to ShopItem for compatibility
 			if shop_inventory.has(board.id):
 				items.append(shop_inventory[board.id])
 			else:
-				# Create temporary ShopItem from ItemData
+				# Create temporary ShopItem from UnifiedItemData
 				var shop_item = _create_shop_item_from_itemdata(board)
 				items.append(shop_item)
 		return items
@@ -400,7 +400,7 @@ func reset_shop_data():
 
 # Add this function to ShopManager.gd:
 
-# Update ShopManager.gd to use icons from ItemData:
+# Update ShopManager.gd to use icons from UnifiedItemData:
 
 func _sync_with_item_manager():
 	"""Load items from ItemManager and use their actual icons"""
@@ -408,14 +408,14 @@ func _sync_with_item_manager():
 		return
 	
 	# Sync all categories INCLUDING CARD_BACK
-	_sync_category(ItemData.Category.CARD_FRONT, "card_fronts")
-	_sync_category(ItemData.Category.CARD_BACK, "card_backs")  # ADD THIS
-	_sync_category(ItemData.Category.BOARD, "board_skins")
-	_sync_category(ItemData.Category.AVATAR, "avatars")
-	_sync_category(ItemData.Category.FRAME, "frames")
-	_sync_category(ItemData.Category.EMOJI, "emojis")
+	_sync_category(UnifiedItemData.Category.CARD_FRONT, "card_fronts")
+	_sync_category(UnifiedItemData.Category.CARD_BACK, "card_backs")  # ADD THIS
+	_sync_category(UnifiedItemData.Category.BOARD, "board_skins")
+	_sync_category(UnifiedItemData.Category.AVATAR, "avatars")
+	_sync_category(UnifiedItemData.Category.FRAME, "frames")
+	_sync_category(UnifiedItemData.Category.EMOJI, "emojis")
 
-func _sync_category(item_category: ItemData.Category, shop_category: String):
+func _sync_category(item_category: UnifiedItemData.Category, shop_category: String):
 	"""Sync a specific category from ItemManager"""
 	var items = ItemManager.get_items_by_category(item_category)
 	
@@ -426,18 +426,18 @@ func _sync_category(item_category: ItemData.Category, shop_category: String):
 		
 		# Check if already in shop inventory
 		if shop_inventory.has(item.id):
-			# Update existing item with ItemData info
+			# Update existing item with UnifiedItemData info
 			var shop_item = shop_inventory[item.id]
 			shop_item.preview_texture_path = item.icon_path  # Use actual icon!
 		else:
-			# Create new shop item from ItemData
+			# Create new shop item from UnifiedItemData
 			var shop_item = ShopItem.new()
 			shop_item.id = item.id
 			shop_item.display_name = item.display_name
 			shop_item.category = shop_category
 			shop_item.rarity = item.rarity
 			shop_item.base_price = item.base_price if item.base_price > 0 else _calculate_item_price(shop_category, item.rarity)
-			shop_item.currency_type = item.currency_type
+			shop_item.currency_type = item.currency_type if item.get("currency_type") else "stars"  # SAFE ACCESS WITH FALLBACK
 			shop_item.preview_texture_path = item.icon_path  # Use actual icon!
 			shop_item.unlock_level = item.unlock_level
 			shop_item.is_featured = item.is_new or item.is_limited
@@ -448,36 +448,36 @@ func _sync_category(item_category: ItemData.Category, shop_category: String):
 			
 			shop_inventory[item.id] = shop_item
 
-func _get_placeholder_icon_for_rarity(rarity: ItemData.Rarity) -> String:
+func _get_placeholder_icon_for_rarity(rarity: UnifiedItemData.Rarity) -> String:
 	"""Return placeholder icon based on rarity"""
 	match rarity:
-		ItemData.Rarity.COMMON: return "07_bread.png"
-		ItemData.Rarity.UNCOMMON: return "08_bread_dish.png"
-		ItemData.Rarity.RARE: return "09_baguette.png"
-		ItemData.Rarity.EPIC: return "10_baguette_dish.png"
-		ItemData.Rarity.LEGENDARY: return "11_bun.png"
+		UnifiedItemData.Rarity.COMMON: return "07_bread.png"
+		UnifiedItemData.Rarity.UNCOMMON: return "08_bread_dish.png"
+		UnifiedItemData.Rarity.RARE: return "09_baguette.png"
+		UnifiedItemData.Rarity.EPIC: return "10_baguette_dish.png"
+		UnifiedItemData.Rarity.LEGENDARY: return "11_bun.png"
 		_: return "01_dish.png"
 
-func _create_shop_item_from_itemdata(item_data: ItemData) -> ShopItem:
-	"""Convert ItemData to ShopItem for display"""
+func _create_shop_item_from_itemdata(item_data: UnifiedItemData) -> ShopItem:
+	"""Convert UnifiedItemData to ShopItem for display"""
 	var shop_item = ShopItem.new()
 	shop_item.id = item_data.id
 	shop_item.display_name = item_data.display_name
 	shop_item.category = _get_shop_category_from_itemdata(item_data.category)
 	shop_item.rarity = item_data.rarity
 	shop_item.base_price = item_data.base_price
-	shop_item.currency_type = item_data.currency_type
+	shop_item.currency_type = item_data.currency_type if item_data.get("currency_type") else "stars"  # SAFE ACCESS WITH FALLBACK
 	shop_item.preview_texture_path = item_data.icon_path  # Use the actual icon!
 	shop_item.unlock_level = item_data.unlock_level
 	shop_item.is_featured = item_data.is_new
 	return shop_item
 
-func _get_shop_category_from_itemdata(category: ItemData.Category) -> String:
+func _get_shop_category_from_itemdata(category: UnifiedItemData.Category) -> String:
 	match category:
-		ItemData.Category.CARD_FRONT: return "card_fronts"  # Changed from card_skins
-		ItemData.Category.CARD_BACK: return "card_backs"   # This is correct
-		ItemData.Category.BOARD: return "board_skins"
-		ItemData.Category.FRAME: return "frames"
-		ItemData.Category.AVATAR: return "avatars"
-		ItemData.Category.EMOJI: return "emojis"
+		UnifiedItemData.Category.CARD_FRONT: return "card_fronts"  # Changed from card_skins
+		UnifiedItemData.Category.CARD_BACK: return "card_backs"   # This is correct
+		UnifiedItemData.Category.BOARD: return "board_skins"
+		UnifiedItemData.Category.FRAME: return "frames"
+		UnifiedItemData.Category.AVATAR: return "avatars"
+		UnifiedItemData.Category.EMOJI: return "emojis"
 		_: return "misc"

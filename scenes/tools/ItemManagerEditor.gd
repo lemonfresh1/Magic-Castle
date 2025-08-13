@@ -1,3 +1,4 @@
+#ItemManagerEditor.gd
 extends Control
 
 # Scene references
@@ -14,7 +15,7 @@ extends Control
 
 # Data
 var all_items: Dictionary = {}
-var selected_item: ItemData
+var selected_item: UnifiedItemData
 var category_lists: Dictionary = {}
 
 func _ready():
@@ -31,7 +32,13 @@ func _ready():
 	# Set button texts
 	reload_button.text = "Reload ItemManager"
 	exit_button.text = "Exit"
-	
+
+	# Add new button
+	var generate_button = Button.new()
+	generate_button.text = "Generate All .tres"
+	generate_button.pressed.connect(_generate_all_tres)
+	$VBoxContainer/HeaderContainer/ButtonContainer.add_child(generate_button)
+
 	# Initialize
 	refresh_all()
 
@@ -62,7 +69,7 @@ func _reload_item_manager():
 						if file_name.ends_with(".tres"):
 							var full_path = path + file_name
 							# Force reload from disk (bypass cache)
-							var item = load(full_path) as ItemData
+							var item = load(full_path) as UnifiedItemData
 							if item and item.id != "":
 								item_manager.all_items[item.id] = item
 								print("  Loaded from disk: %s (price: %d)" % [item.display_name, item.base_price])
@@ -185,13 +192,13 @@ func _populate_lists():
 			# Color by rarity
 			list.set_item_custom_fg_color(index, item.get_rarity_color())
 
-func _get_category_name(category: ItemData.Category) -> String:
+func _get_category_name(category: UnifiedItemData.Category) -> String:
 	match category:
-		ItemData.Category.CARD_BACK: return "Card Backs"
-		ItemData.Category.CARD_FRONT: return "Card Fronts"
-		ItemData.Category.BOARD: return "Boards"
-		ItemData.Category.FRAME: return "Frames"
-		ItemData.Category.AVATAR: return "Avatars"
+		UnifiedItemData.Category.CARD_BACK: return "Card Backs"
+		UnifiedItemData.Category.CARD_FRONT: return "Card Fronts"
+		UnifiedItemData.Category.BOARD: return "Boards"
+		UnifiedItemData.Category.FRAME: return "Frames"
+		UnifiedItemData.Category.AVATAR: return "Avatars"
 		_: return "Unknown"
 
 func _on_item_selected(index: int, category_name: String):
@@ -283,15 +290,15 @@ func _show_preview():
 		label.set_anchors_preset(Control.PRESET_CENTER)
 		preview_container.add_child(label)
 
-func _get_item_png_path(item: ItemData) -> String:
+func _get_item_png_path(item: UnifiedItemData) -> String:
 	# Build path like: res://exported_items/card_backs/epic/card_back_classic_pyramids_gold.png
 	var category_folder = ""
 	match item.category:
-		ItemData.Category.CARD_BACK: category_folder = "card_backs"
-		ItemData.Category.CARD_FRONT: category_folder = "card_fronts"
-		ItemData.Category.BOARD: category_folder = "boards"
-		ItemData.Category.FRAME: category_folder = "frames"
-		ItemData.Category.AVATAR: category_folder = "avatars"
+		UnifiedItemData.Category.CARD_BACK: category_folder = "card_backs"
+		UnifiedItemData.Category.CARD_FRONT: category_folder = "card_fronts"
+		UnifiedItemData.Category.BOARD: category_folder = "boards"
+		UnifiedItemData.Category.FRAME: category_folder = "frames"
+		UnifiedItemData.Category.AVATAR: category_folder = "avatars"
 	
 	var rarity_folder = item.get_rarity_name().to_lower()
 	
@@ -326,8 +333,8 @@ func _show_property_editor():
 	_add_property_field(vbox, "Sort Order", "sort_order", true, false, "number")
 	
 	# Add dropdowns for enums
-	_add_enum_field(vbox, "Rarity", "rarity", ItemData.Rarity)
-	_add_enum_field(vbox, "Source", "source", ItemData.Source)
+	_add_enum_field(vbox, "Rarity", "rarity", UnifiedItemData.Rarity)
+	_add_enum_field(vbox, "Source", "source", UnifiedItemData.Source)
 	
 	# Add checkboxes
 	_add_checkbox_field(vbox, "Is Animated", "is_animated")
@@ -476,15 +483,15 @@ func _save_current_item():
 	else:
 		print("✗ Failed to save: %s" % selected_item.display_name)
 
-func _get_item_save_path(item: ItemData) -> String:
+func _get_item_save_path(item: UnifiedItemData) -> String:
 	# Build path like: res://Pyramids/resources/items/card_backs/card_back_classic_pyramids_gold.tres
 	var category_folder = ""
 	match item.category:
-		ItemData.Category.CARD_BACK: category_folder = "card_backs"
-		ItemData.Category.CARD_FRONT: category_folder = "card_fronts"
-		ItemData.Category.BOARD: category_folder = "boards"
-		ItemData.Category.FRAME: category_folder = "frames"
-		ItemData.Category.AVATAR: category_folder = "avatars"
+		UnifiedItemData.Category.CARD_BACK: category_folder = "card_backs"
+		UnifiedItemData.Category.CARD_FRONT: category_folder = "card_fronts"
+		UnifiedItemData.Category.BOARD: category_folder = "boards"
+		UnifiedItemData.Category.FRAME: category_folder = "frames"
+		UnifiedItemData.Category.AVATAR: category_folder = "avatars"
 	
 	return "res://Pyramids/resources/items/%s/%s.tres" % [category_folder, item.id]
 
@@ -507,3 +514,11 @@ func _export_current_item_png():
 			_show_preview()
 	else:
 		print("Item %s is not procedural, cannot export PNG" % selected_item.display_name)
+
+func _generate_all_tres():
+	print("Generating .tres files for all procedural items...")
+	ProceduralItemRegistry.generate_tres_files_for_all()
+	
+	# Reload to show the new items
+	_reload_item_manager()
+	refresh_all()

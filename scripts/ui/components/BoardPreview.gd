@@ -16,14 +16,14 @@ func update_display() -> void:
 	# Check if this is an ItemManager board
 	if current_skin.begins_with("board_"):
 		var item = ItemManager.get_item(current_skin)
-		if item and item is ItemData:
+		if item and item is UnifiedItemData:
 			_apply_item_preview(item)
 			return
 	
 	# Legacy board handling - your existing code
 	_apply_legacy_preview()
 
-func _apply_item_preview(item: ItemData) -> void:
+func _apply_item_preview(item: UnifiedItemData) -> void:
 	var style: StyleBox
 	
 	# Handle different background types
@@ -66,7 +66,7 @@ func _apply_item_preview(item: ItemData) -> void:
 	if style:
 		add_theme_stylebox_override("panel", style)
 
-func _create_color_style_from_item(item: ItemData) -> StyleBoxFlat:
+func _create_color_style_from_item(item: UnifiedItemData) -> StyleBoxFlat:
 	var style = StyleBoxFlat.new()
 	
 	# Use colors from item data

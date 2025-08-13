@@ -180,14 +180,14 @@ func _is_item_equipped(item: ShopManager.ShopItem) -> bool:
 	
 	return false
 
-func _get_item_category(shop_category: String) -> ItemData.Category:
+func _get_item_category(shop_category: String) -> UnifiedItemData.Category:
 	match shop_category:
-		"card_fronts": return ItemData.Category.CARD_FRONT  # UPDATED
-		"card_backs": return ItemData.Category.CARD_BACK    # NEW
-		"board_skins": return ItemData.Category.BOARD
-		"avatars": return ItemData.Category.AVATAR
-		"frames": return ItemData.Category.FRAME
-		"emojis": return ItemData.Category.EMOJI
+		"card_fronts": return UnifiedItemData.Category.CARD_FRONT  # UPDATED
+		"card_backs": return UnifiedItemData.Category.CARD_BACK    # NEW
+		"board_skins": return UnifiedItemData.Category.BOARD
+		"avatars": return UnifiedItemData.Category.AVATAR
+		"frames": return UnifiedItemData.Category.FRAME
+		"emojis": return UnifiedItemData.Category.EMOJI
 		_: return -1
 
 func _on_skins_filter_changed(index: int):

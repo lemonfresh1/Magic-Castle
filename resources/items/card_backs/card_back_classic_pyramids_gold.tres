@@ -1,6 +1,6 @@
-[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3 uid="uid://h28pfo3qw3jm"]
+[gd_resource type="Resource" script_class="UnifiedItemData" load_steps=2 format=3]
 
-[ext_resource type="Script" uid="uid://c20023uxgvdij" path="res://Pyramids/scripts/resources/ItemData.gd" id="1_cs8a8"]
+[ext_resource type="Script" path="res://Pyramids/scripts/resources/UnifiedItemData.gd" id="1_cs8a8"]
 
 [resource]
 script = ExtResource("1_cs8a8")
@@ -9,28 +9,56 @@ display_name = "Classic Pyramids Gold"
 description = "Procedurally generated Classic Pyramids card back design"
 category = 1
 rarity = 3
-subcategory = "classic pyramids"
-tags = Array[String]([])
 set_name = "Classic Pyramids Collection"
-source = 1
+subcategory = "classic pyramids"
+icon_path = "res://Pyramids/assets/icons/card_backs/card_back_classic_pyramids_gold.png"
+texture_path = "res://Pyramids/assets/icons/card_backs/card_back_classic_pyramids_gold.png"
+preview_texture_path = "res://Pyramids/assets/icons/card_backs/card_back_classic_pyramids_gold.png"
+is_procedural = true
+is_animated = true
+procedural_script_path = "res://Pyramids/scripts/items/card_backs/procedural/epic/ClassicPyramidsGold.gd"
+animation_metadata = {}
+background_type = "color"
+background_scene_path = ""
+colors = {}
+can_be_menu_background = false
+mini_profile_layout = "standard"
+showcase_slots = 3
+stat_positions = {}
+achievement_positions = {}
+item_positions = {}
+supports_animation = false
+topbar_button_style = "default"
+topbar_font = ""
+timer_bar_color = Color(1, 1, 1, 1)
+draw_pile_tint = Color(1, 1, 1, 1)
+combo_threshold = 5
+particle_scene_path = ""
+border_shader_path = ""
+sound_effect_path = ""
+effect_type = "fire"
+max_combo_visuals = 20
 base_price = 500
 currency_type = "stars"
-bundle_id = ""
-unlock_level = 0
 is_purchasable = true
 is_tradeable = false
-icon_path = ""
-texture_path = ""
-preview_texture_path = ""
-is_animated = true
-animation_frames = 0
-background_scene_path = ""
-background_type = "color"
+unlock_level = 0
+source = 1
+achievement_id = ""
+event_id = ""
+quest_id = ""
+bundle_id = ""
 sort_order = 0
+tags = Array[String]([])
+release_date = ""
+is_limited_time = false
+expiry_date = ""
 is_new = false
 is_limited = false
-available_until = ""
 effects = {}
-colors = {}
 stats = {}
 metadata = {}
+supports_color_customization = false
+supports_user_upload = false
+blockchain_id = ""
+workshop_id = ""

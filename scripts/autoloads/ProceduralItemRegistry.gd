@@ -1,6 +1,6 @@
 # ProceduralItemRegistry.gd - Auto-discovers and registers all procedural items
 # Location: res://Pyramids/scripts/autoloads/ProceduralItemRegistry.gd
-# Last Updated: Created procedural item auto-discovery system [Date]
+# Last Updated: Removed CardSkinManager dependency [Date]
 
 extends Node
 
@@ -111,10 +111,12 @@ func _process_procedural_script(category: String, script_path: String) -> void:
 func _is_valid_procedural_item(instance, category: String) -> bool:
 	# Check if it's the right base class for the category
 	match category:
-		"card_fronts", "card_backs":
+		"card_fronts":
+			return instance is ProceduralCardFront or instance.has_method("draw_card_front")
+		"card_backs":
 			return instance is ProceduralCardBack or instance.has_method("draw_card_back")
 		"boards":
-			return instance.has_method("draw_board_background")
+			return instance is ProceduralBoard or instance.has_method("draw_board_background")
 		"frames":
 			return instance.has_method("draw_frame")
 		"avatars":
@@ -135,7 +137,7 @@ func _register_with_managers() -> void:
 		var instance = item_data.instance
 		var category = item_data.category
 		
-		# Create ItemData resource
+		# Create UnifiedItemData resource
 		if instance.has_method("create_item_data"):
 			var item_resource = instance.create_item_data()
 			
@@ -144,13 +146,8 @@ func _register_with_managers() -> void:
 				ItemManager.all_items[item_id] = item_resource
 				print("  ✓ Registered %s with ItemManager" % item_id)
 		
-		# Register card skins with CardSkinManager
-		if category in ["card_fronts", "card_backs"] and CardSkinManager:
-			if not CardSkinManager.available_skins.has(item_id):
-				CardSkinManager.available_skins[item_id] = instance
-				print("  ✓ Registered %s with CardSkinManager" % item_id)
+		# NOTE: CardSkinManager removed - EquipmentManager handles this now
 
-# Export all procedural items as PNGs
 # Export all procedural items as PNGs with organized structure
 func export_all_to_png() -> void:
 	print("=== EXPORTING ALL PROCEDURAL ITEMS ===")
@@ -203,3 +200,62 @@ func get_items_by_category(category: String) -> Array:
 		if item_data.category == category:
 			items.append(item_data.instance)
 	return items
+
+# Add this function to ProceduralItemRegistry.gd
+func generate_tres_files_for_all() -> void:
+	"""Generate .tres files for all procedural items"""
+	print("=== GENERATING .TRES FILES ===")
+	
+	var generated_count = 0
+	var failed = []
+	
+	for item_id in procedural_items:
+		var item_data = procedural_items[item_id]
+		var instance = item_data.instance
+		
+		if instance.has_method("create_item_data"):
+			var unified_data = instance.create_item_data()
+			
+			# Set the icon paths based on expected PNG export location
+			var category_folder = _get_category_folder_name(item_data.category)
+			var icon_path = "res://Pyramids/assets/icons/%s/%s.png" % [category_folder, item_id]
+			
+			unified_data.icon_path = icon_path
+			unified_data.texture_path = icon_path
+			unified_data.preview_texture_path = icon_path
+			
+			# Ensure procedural script path is set
+			unified_data.procedural_script_path = item_data.script_path
+			
+			# Save the .tres file
+			var save_path = "res://Pyramids/resources/items/%s/%s.tres" % [category_folder, item_id]
+			
+			# Ensure directory exists
+			var dir_path = save_path.get_base_dir()
+			if not DirAccess.dir_exists_absolute(dir_path):
+				DirAccess.make_dir_recursive_absolute(dir_path)
+			
+			var result = ResourceSaver.save(unified_data, save_path)
+			
+			if result == OK:
+				print("✓ Generated: %s -> %s" % [unified_data.display_name, save_path])
+				generated_count += 1
+			else:
+				print("✗ Failed to save: %s" % unified_data.display_name)
+				failed.append(item_id)
+	
+	print("=== GENERATION COMPLETE ===")
+	print("Successfully generated: %d .tres files" % generated_count)
+	if failed.size() > 0:
+		print("Failed: %s" % failed)
+
+func _get_category_folder_name(category: String) -> String:
+	# Convert category to folder name
+	match category:
+		"card_fronts": return "card_fronts"
+		"card_backs": return "card_backs"
+		"boards": return "boards"
+		"frames": return "frames"
+		"avatars": return "avatars"
+		"emojis": return "emojis"
+		_: return category

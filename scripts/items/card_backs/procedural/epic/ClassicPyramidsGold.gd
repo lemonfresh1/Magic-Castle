@@ -11,7 +11,7 @@ func _init():
 	display_name = "Classic Pyramids Gold"
 	item_id = "card_back_classic_pyramids_gold"
 	theme_name = "Classic Pyramids"
-	item_rarity = ItemData.Rarity.EPIC
+	item_rarity = UnifiedItemData.Rarity.EPIC
 	
 	# Animation properties
 	is_animated = true

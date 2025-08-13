@@ -18,7 +18,7 @@ func setup_for_item(item: ShopManager.ShopItem):
 	var icon: Texture2D = null
 	var icon_loaded = false
 	
-	# First try preview_texture_path (actual icon from ItemData)
+	# First try preview_texture_path (actual icon from UnifiedItemData)
 	if item.preview_texture_path != "" and ResourceLoader.exists(item.preview_texture_path):
 		icon = load(item.preview_texture_path)
 		icon_loaded = true

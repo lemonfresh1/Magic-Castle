@@ -139,7 +139,7 @@ func _apply_card_front():
 	# Check for equipped custom card front
 	var equipped_front_id = ""
 	if ItemManager:
-		equipped_front_id = ItemManager.get_equipped_item(ItemData.Category.CARD_FRONT)
+		equipped_front_id = ItemManager.get_equipped_item(UnifiedItemData.Category.CARD_FRONT)
 	
 	# Check if it's a procedural/animated front
 	if equipped_front_id and ProceduralItemRegistry and ProceduralItemRegistry.procedural_items.has(equipped_front_id):
@@ -263,19 +263,14 @@ func _apply_equipped_card_back():
 	"""Apply the equipped card back or use default"""
 	
 	var equipped_back_id = ""
-	
 	# Try NEW system first (if it exists)
 	if EquipmentManager:
 		equipped_back_id = EquipmentManager.get_equipped_item("card_back")
-		if equipped_back_id:
-			print("[Card] Using NEW EquipmentManager: ", equipped_back_id)
-	
+
 	# Fallback to OLD system if new system didn't provide anything
 	if not equipped_back_id and ItemManager:
-		equipped_back_id = ItemManager.get_equipped_item(ItemData.Category.CARD_BACK)
-		if equipped_back_id:
-			print("[Card] Using OLD ItemManager: ", equipped_back_id)
-	
+		equipped_back_id = ItemManager.get_equipped_item(UnifiedItemData.Category.CARD_BACK)
+
 	# TODO: Remove ItemManager fallback once EquipmentManager is fully tested
 	
 	if equipped_back_id and equipped_back_id != "":
@@ -286,31 +281,25 @@ func _apply_equipped_card_back():
 
 func _apply_custom_card_back(back_id: String) -> bool:
 	"""Apply a custom card back - returns true if successful"""
-	
-	print("[Card] Attempting to apply custom card back: ", back_id)
-	
+
 	# FIRST check if it's a procedural card back (for animations)
 	if ProceduralItemRegistry and ProceduralItemRegistry.procedural_items.has(back_id):
-		print("  - Found in ProceduralItemRegistry")
 		var procedural_data = ProceduralItemRegistry.procedural_items[back_id]
 		var instance = procedural_data.instance
 		
 		if instance and instance.has_method("draw_card_back"):
-			print("  - Has draw_card_back method, applying procedural back")
 			
 			# Store the instance for animation
 			current_card_back_instance = instance
 			
 			# Check if it's animated
 			if instance.get("is_animated"):
-				print("  - Card back is ANIMATED")
 				is_animating_back = true
 				# Setup animation on this card node
 				if instance.has_method("setup_animation_on_node"):
 					instance.setup_animation_on_node(self)
 				set_process(true)  # Enable _process for animation updates
 			else:
-				print("  - Card back is NOT animated")
 				is_animating_back = false
 				# Only stop process if front is also not animating
 				if not is_animating_front:
@@ -338,12 +327,8 @@ func _apply_custom_card_back(back_id: String) -> bool:
 			
 			canvas.visible = true
 			canvas.queue_redraw()
-			print("  - Successfully applied procedural card back")
 			return true
-	
-	# If not procedural, THEN check for PNG (for inventory display)
-	print("  - Not in ProceduralItemRegistry, checking for PNG...")
-	
+
 	# For non-procedural backs, stop back animation
 	is_animating_back = false
 	current_card_back_instance = null
@@ -353,7 +338,6 @@ func _apply_custom_card_back(back_id: String) -> bool:
 	# Check for exported PNG
 	var png_path = _get_card_back_png_path(back_id)
 	if ResourceLoader.exists(png_path):
-		print("  - Found PNG at: ", png_path)
 		card_sprite.texture = load(png_path)
 		card_sprite.visible = true
 		card_sprite.modulate = Color.WHITE
@@ -365,10 +349,9 @@ func _apply_custom_card_back(back_id: String) -> bool:
 		
 		return true
 	
-	# Check if ItemData has a texture path
+	# Check if UnifiedItemData has a texture path
 	var item = ItemManager.get_item(back_id) if ItemManager else null
 	if item and item.texture_path != "" and ResourceLoader.exists(item.texture_path):
-		print("  - Found texture in ItemData: ", item.texture_path)
 		card_sprite.texture = load(item.texture_path)
 		card_sprite.visible = true
 		card_sprite.modulate = Color.WHITE
@@ -380,7 +363,6 @@ func _apply_custom_card_back(back_id: String) -> bool:
 		
 		return true
 	
-	print("  - No custom back found, will use default")
 	return false
 
 func _apply_default_card_back():

@@ -361,20 +361,20 @@ func _apply_board_skin() -> void:
 		await get_tree().process_frame
 	
 	# Get the current equipped board from ItemManager
-	var board_id = ItemManager.get_equipped_item(ItemData.Category.BOARD)
+	var board_id = ItemManager.get_equipped_item(UnifiedItemData.Category.BOARD)
 	var board_item = ItemManager.get_item(board_id) if board_id else null
 	
 	# If no board equipped, use default
 	if not board_item:
 		board_item = ItemManager.get_item("board_green")
 	
-	if board_item and board_item is ItemData:
+	if board_item and board_item is UnifiedItemData:
 		_apply_item_background(board_item)
 	else:
 		# Fallback to legacy system
 		_apply_legacy_background()
 
-func _apply_item_background(item: ItemData) -> void:
+func _apply_item_background(item: UnifiedItemData) -> void:
 	var bg_node: Node
 	
 	# Check for background type
@@ -415,7 +415,7 @@ func _apply_item_background(item: ItemData) -> void:
 			if bg_node.has_method("set_anchors_and_offsets_preset"):
 				bg_node.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
-func _create_color_background(item: ItemData) -> ColorRect:
+func _create_color_background(item: UnifiedItemData) -> ColorRect:
 	var rect = ColorRect.new()
 	# Use the color from item's colors dictionary, or fall back to green
 	var color = item.colors.get("primary", Color(0.15, 0.4, 0.15))

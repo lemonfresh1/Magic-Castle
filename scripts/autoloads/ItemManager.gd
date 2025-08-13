@@ -37,11 +37,11 @@ var save_data = {
 }
 
 # Runtime data (loaded from resources)
-var all_items: Dictionary = {}  # id -> ItemData
+var all_items: Dictionary = {}  # id -> UnifiedItemData
 var all_bundles: Dictionary = {}  # id -> BundleData
-var items_by_category: Dictionary = {}  # category -> Array of ItemData
-var items_by_source: Dictionary = {}  # source -> Array of ItemData
-var items_by_set: Dictionary = {}  # set_name -> Array of ItemData
+var items_by_category: Dictionary = {}  # category -> Array of UnifiedItemData
+var items_by_source: Dictionary = {}  # source -> Array of UnifiedItemData
+var items_by_set: Dictionary = {}  # set_name -> Array of UnifiedItemData
 
 func _ready():
 	print("ItemManager initializing...")
@@ -103,7 +103,7 @@ func _load_items_from_directory(path: String):
 		print("  - Found file: ", file_name)  # ADD THIS
 		if file_name.ends_with(".tres") or file_name.ends_with(".res"):
 			var resource_path = path + file_name
-			var item = load(resource_path) as ItemData
+			var item = load(resource_path) as UnifiedItemData
 			if item and item.id != "":
 				all_items[item.id] = item
 				print("    ✓ Loaded: '%s' (id: %s)" % [item.display_name, item.id])  # MODIFY THIS
@@ -111,7 +111,7 @@ func _load_items_from_directory(path: String):
 				if item:
 					print("    ✗ Invalid: ID is empty for ", file_name)  # ADD THIS
 				else:
-					print("    ✗ Invalid: Not an ItemData resource")  # ADD THIS
+					print("    ✗ Invalid: Not an UnifiedItemData resource")  # ADD THIS
 				push_warning("ItemManager: Invalid item resource at " + resource_path)
 		file_name = dir.get_next()
 
@@ -135,13 +135,13 @@ func _load_all_bundles():
 func _ensure_default_items():
 	# Create default items programmatically if they don't exist as resources
 	if not all_items.has("card_classic"):
-		var classic_cards = ItemData.new()
+		var classic_cards = UnifiedItemData.new()
 		classic_cards.id = "card_classic"
 		classic_cards.display_name = "Classic Cards"
 		classic_cards.description = "The original card design"
-		classic_cards.category = ItemData.Category.CARD_FRONT
-		classic_cards.rarity = ItemData.Rarity.COMMON
-		classic_cards.source = ItemData.Source.DEFAULT
+		classic_cards.category = UnifiedItemData.Category.CARD_FRONT
+		classic_cards.rarity = UnifiedItemData.Rarity.COMMON
+		classic_cards.source = UnifiedItemData.Source.DEFAULT
 		classic_cards.base_price = 0
 		classic_cards.is_purchasable = false
 		all_items["card_classic"] = classic_cards
@@ -151,13 +151,13 @@ func _ensure_default_items():
 		print("ItemManager: Created default card_classic item")
 	
 	if not all_items.has("board_green"):
-		var green_board = ItemData.new()
+		var green_board = UnifiedItemData.new()
 		green_board.id = "board_green"
 		green_board.display_name = "Classic Green"
 		green_board.description = "The classic green felt board"
-		green_board.category = ItemData.Category.BOARD
-		green_board.rarity = ItemData.Rarity.COMMON
-		green_board.source = ItemData.Source.DEFAULT
+		green_board.category = UnifiedItemData.Category.BOARD
+		green_board.rarity = UnifiedItemData.Rarity.COMMON
+		green_board.source = UnifiedItemData.Source.DEFAULT
 		green_board.base_price = 0
 		green_board.is_purchasable = false
 		green_board.colors = {"primary": Color(0.2, 0.5, 0.2)}
@@ -170,11 +170,11 @@ func _ensure_default_items():
 	# Ensure default items are owned
 	if "card_classic" not in save_data.owned_items:
 		save_data.owned_items.append("card_classic")
-		save_data.item_sources["card_classic"] = ItemData.Source.DEFAULT
+		save_data.item_sources["card_classic"] = UnifiedItemData.Source.DEFAULT
 	
 	if "board_green" not in save_data.owned_items:
 		save_data.owned_items.append("board_green")
-		save_data.item_sources["board_green"] = ItemData.Source.DEFAULT
+		save_data.item_sources["board_green"] = UnifiedItemData.Source.DEFAULT
 
 func _organize_items():
 	# Clear existing organization
@@ -183,16 +183,16 @@ func _organize_items():
 	items_by_set.clear()
 	
 	# Initialize category arrays
-	for category in ItemData.Category.values():
+	for category in UnifiedItemData.Category.values():
 		items_by_category[category] = []
 	
 	# Initialize source arrays
-	for source in ItemData.Source.values():
+	for source in UnifiedItemData.Source.values():
 		items_by_source[source] = []
 	
 	# Sort items into categories, sources, and sets
 	for item_id in all_items:
-		var item = all_items[item_id] as ItemData
+		var item = all_items[item_id] as UnifiedItemData
 		
 		# Add to category list
 		items_by_category[item.category].append(item)
@@ -211,7 +211,7 @@ func _organize_items():
 		items_by_category[category].sort_custom(func(a, b): return a.sort_order < b.sort_order)
 
 # === GRANTING ITEMS ===
-func grant_item(item_id: String, source: ItemData.Source = ItemData.Source.SHOP) -> bool:
+func grant_item(item_id: String, source: UnifiedItemData.Source = UnifiedItemData.Source.SHOP) -> bool:
 	print("[ItemManager] grant_item called - item_id: %s, source: %s" % [item_id, source])
 	
 	if not all_items.has(item_id):
@@ -226,7 +226,7 @@ func grant_item(item_id: String, source: ItemData.Source = ItemData.Source.SHOP)
 		push_warning("ItemManager: Item already owned: " + item_id)
 		return false
 	
-	var item = all_items[item_id] as ItemData
+	var item = all_items[item_id] as UnifiedItemData
 	
 	# Check level requirement
 	if item.unlock_level > 0 and XPManager.get_current_level() < item.unlock_level:
@@ -248,18 +248,18 @@ func grant_item(item_id: String, source: ItemData.Source = ItemData.Source.SHOP)
 	print("[ItemManager] Successfully granted item '%s' from %s" % [item.display_name, item.get_source_name()])
 	return true
 
-func should_auto_equip(item: ItemData) -> bool:
+func should_auto_equip(item: UnifiedItemData) -> bool:
 	# Auto-equip if no item of this category is equipped
 	match item.category:
-		ItemData.Category.CARD_FRONT:
+		UnifiedItemData.Category.CARD_FRONT:
 			return save_data.equipped.card_front == ""
-		ItemData.Category.CARD_BACK:
+		UnifiedItemData.Category.CARD_BACK:
 			return save_data.equipped.card_back == ""
-		ItemData.Category.BOARD:
+		UnifiedItemData.Category.BOARD:
 			return save_data.equipped.board == ""
-		ItemData.Category.FRAME:
+		UnifiedItemData.Category.FRAME:
 			return save_data.equipped.frame == ""
-		ItemData.Category.AVATAR:
+		UnifiedItemData.Category.AVATAR:
 			return save_data.equipped.avatar == ""
 		_:
 			return false
@@ -270,7 +270,7 @@ func equip_item(item_id: String) -> bool:
 		push_error("ItemManager: Cannot equip unowned item: " + item_id)
 		return false
 	
-	var item = all_items.get(item_id) as ItemData
+	var item = all_items.get(item_id) as UnifiedItemData
 	if not item:
 		push_error("ItemManager: Item not found: " + item_id)
 		return false
@@ -280,26 +280,26 @@ func equip_item(item_id: String) -> bool:
 	
 	# Update equipped state based on category
 	match item.category:
-		ItemData.Category.CARD_FRONT:
+		UnifiedItemData.Category.CARD_FRONT:
 			old_equipped = save_data.equipped.card_front
 			save_data.equipped.card_front = item_id
-		ItemData.Category.CARD_BACK:
+		UnifiedItemData.Category.CARD_BACK:
 			old_equipped = save_data.equipped.card_back
 			save_data.equipped.card_back = item_id
-		ItemData.Category.BOARD:
+		UnifiedItemData.Category.BOARD:
 			old_equipped = save_data.equipped.board
 			save_data.equipped.board = item_id
-		ItemData.Category.FRAME:
+		UnifiedItemData.Category.FRAME:
 			old_equipped = save_data.equipped.frame
 			save_data.equipped.frame = item_id
-		ItemData.Category.AVATAR:
+		UnifiedItemData.Category.AVATAR:
 			old_equipped = save_data.equipped.avatar
 			save_data.equipped.avatar = item_id
-		ItemData.Category.EMOJI:
+		UnifiedItemData.Category.EMOJI:
 			# Emojis are added to selection, not replaced
 			if item_id not in save_data.equipped.emojis and save_data.equipped.emojis.size() < 8:
 				save_data.equipped.emojis.append(item_id)
-		ItemData.Category.MINI_PROFILE_CARD:
+		UnifiedItemData.Category.MINI_PROFILE_CARD:
 			# Handle mini profile slots separately
 			pass
 	
@@ -315,7 +315,7 @@ func equip_item(item_id: String) -> bool:
 func is_item_owned(item_id: String) -> bool:
 	return item_id in save_data.owned_items
 
-func get_item(item_id: String) -> ItemData:
+func get_item(item_id: String) -> UnifiedItemData:
 	return all_items.get(item_id)
 
 func get_owned_items() -> Array:
@@ -325,27 +325,27 @@ func get_owned_items() -> Array:
 			owned.append(all_items[item_id])
 	return owned
 
-func get_items_by_category(category: ItemData.Category) -> Array:
+func get_items_by_category(category: UnifiedItemData.Category) -> Array:
 	return items_by_category.get(category, [])
 
-func get_owned_items_by_category(category: ItemData.Category) -> Array:
+func get_owned_items_by_category(category: UnifiedItemData.Category) -> Array:
 	var owned = []
 	for item in get_items_by_category(category):
 		if is_item_owned(item.id):
 			owned.append(item)
 	return owned
 
-func get_equipped_item(category: ItemData.Category) -> String:
+func get_equipped_item(category: UnifiedItemData.Category) -> String:
 	match category:
-		ItemData.Category.CARD_FRONT:
+		UnifiedItemData.Category.CARD_FRONT:
 			return save_data.equipped.card_front
-		ItemData.Category.CARD_BACK:
+		UnifiedItemData.Category.CARD_BACK:
 			return save_data.equipped.card_back
-		ItemData.Category.BOARD:
+		UnifiedItemData.Category.BOARD:
 			return save_data.equipped.board
-		ItemData.Category.FRAME:
+		UnifiedItemData.Category.FRAME:
 			return save_data.equipped.frame
-		ItemData.Category.AVATAR:
+		UnifiedItemData.Category.AVATAR:
 			return save_data.equipped.avatar
 		_:
 			return ""
@@ -372,7 +372,7 @@ func purchase_bundle(bundle_id: String) -> bool:
 	var granted_items = []
 	for item_id in bundle.item_ids:
 		if not is_item_owned(item_id):
-			if grant_item(item_id, ItemData.Source.BUNDLE):
+			if grant_item(item_id, UnifiedItemData.Source.BUNDLE):
 				granted_items.append(item_id)
 	
 	# Grant bonus rewards
@@ -438,8 +438,8 @@ func reset_all_items():
 			"mini_profile_slots": {}
 		},
 		"item_sources": {
-			"card_classic": ItemData.Source.DEFAULT,
-			"board_green": ItemData.Source.DEFAULT
+			"card_classic": UnifiedItemData.Source.DEFAULT,
+			"board_green": UnifiedItemData.Source.DEFAULT
 		},
 		"unlock_dates": {},
 		"bundle_history": [],
@@ -451,24 +451,24 @@ func reset_all_items():
 func debug_create_sample_items():
 	"""Create sample items for testing"""
 	# Create a sample card front
-	var neon_card = ItemData.new()
+	var neon_card = UnifiedItemData.new()
 	neon_card.id = "card_neon"
 	neon_card.display_name = "Neon Cards"
 	neon_card.description = "Futuristic neon glow cards"
-	neon_card.category = ItemData.Category.CARD_FRONT
-	neon_card.rarity = ItemData.Rarity.RARE
+	neon_card.category = UnifiedItemData.Category.CARD_FRONT
+	neon_card.rarity = UnifiedItemData.Rarity.RARE
 	neon_card.base_price = 250
 	neon_card.subcategory = "futuristic"
 	neon_card.set_name = "Cyberpunk Collection"
 	ResourceSaver.save(neon_card, ITEMS_PATH + "card_fronts/neon.tres")
 	
 	# Create a sample board
-	var sunset_board = ItemData.new()
+	var sunset_board = UnifiedItemData.new()
 	sunset_board.id = "board_sunset"
 	sunset_board.display_name = "Sunset Board"
 	sunset_board.description = "Beautiful sunset gradient"
-	sunset_board.category = ItemData.Category.BOARD
-	sunset_board.rarity = ItemData.Rarity.UNCOMMON
+	sunset_board.category = UnifiedItemData.Category.BOARD
+	sunset_board.rarity = UnifiedItemData.Rarity.UNCOMMON
 	sunset_board.base_price = 150
 	sunset_board.colors = {"primary": Color(1.0, 0.5, 0.2), "secondary": Color(0.8, 0.2, 0.4)}
 	ResourceSaver.save(sunset_board, ITEMS_PATH + "boards/sunset.tres")
@@ -506,10 +506,10 @@ func debug_pyramid_board():
 		print("✓ Resource loads successfully")
 		print("  - Resource type: ", pyramid_resource.get_class())
 		
-		# 3. Check if it's an ItemData
-		if pyramid_resource is ItemData:
-			print("✓ Resource is ItemData")
-			var item = pyramid_resource as ItemData
+		# 3. Check if it's an UnifiedItemData
+		if pyramid_resource is UnifiedItemData:
+			print("✓ Resource is UnifiedItemData")
+			var item = pyramid_resource as UnifiedItemData
 			print("  - ID: ", item.id)
 			print("  - Display Name: ", item.display_name)
 			print("  - Category: ", item.category)
@@ -531,8 +531,8 @@ func debug_pyramid_board():
 				if all_items.has(item.id):
 					print("  ✓ Manual registration successful!")
 		else:
-			print("✗ Resource is NOT ItemData, it's: ", pyramid_resource.get_class())
-			print("  FIX: Make sure the resource has ItemData as its script")
+			print("✗ Resource is NOT UnifiedItemData, it's: ", pyramid_resource.get_class())
+			print("  FIX: Make sure the resource has UnifiedItemData as its script")
 	else:
 		print("✗ Failed to load resource")
 	

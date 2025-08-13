@@ -1,0 +1,41 @@
+[gd_scene load_steps=2 format=3 uid="uid://2xr0kfn8p60p"]
+
+[ext_resource type="Script" uid="uid://bs0880r6rtl56" path="res://Pyramids/scenes/test/ProceduralBoardTest.gd" id="1_m6mw4"]
+
+[node name="ProceduralCardTest" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_m6mw4")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="CardDisplay" type="Control" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="TitleLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="HSeparator" type="HSeparator" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="TestButton" type="Button" parent="VBoxContainer/HBoxContainer"]
+layout_mode = 2
+
+[node name="ExportButton" type="Button" parent="VBoxContainer/HBoxContainer"]
+layout_mode = 2
+
+[node name="DiscoverButton" type="Button" parent="VBoxContainer/HBoxContainer"]
+layout_mode = 2
+
+[node name="HSeparator2" type="HSeparator" parent="VBoxContainer"]
+layout_mode = 2

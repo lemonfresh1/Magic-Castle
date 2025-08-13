@@ -1,6 +1,6 @@
 # InventoryItemCard.gd - Individual inventory item display component
 # Location: res://Pyramids/scripts/ui/inventory/InventoryItemCard.gd
-# Last Updated: Updated to use icons from ItemData [Date]
+# Last Updated: Updated to use icons from UnifiedItemData [Date]
 
 extends PanelContainer
 
@@ -23,11 +23,11 @@ func setup(item: ShopManager.ShopItem):
 	if not is_node_ready():
 		await ready
 	
-	# Load icon - prefer preview_texture_path (from ItemData.icon_path) over placeholder
+	# Load icon - prefer preview_texture_path (from UnifiedItemData.icon_path) over placeholder
 	if icon_texture:
 		var icon_loaded = false
 		
-		# First try preview_texture_path (actual icon from ItemData)
+		# First try preview_texture_path (actual icon from UnifiedItemData)
 		if item.preview_texture_path != "" and ResourceLoader.exists(item.preview_texture_path):
 			icon_texture.texture = load(item.preview_texture_path)
 			icon_loaded = true
@@ -166,13 +166,13 @@ func _ready():
 		if not ItemManager.item_unequipped.is_connected(_on_global_item_unequipped):
 			ItemManager.item_unequipped.connect(_on_global_item_unequipped)
 
-func _get_item_category(shop_category: String) -> ItemData.Category:
+func _get_item_category(shop_category: String) -> UnifiedItemData.Category:
 	match shop_category:
-		"card_skins": return ItemData.Category.CARD_FRONT
-		"board_skins": return ItemData.Category.BOARD
-		"avatars": return ItemData.Category.AVATAR
-		"frames": return ItemData.Category.FRAME
-		"emojis": return ItemData.Category.EMOJI
+		"card_skins": return UnifiedItemData.Category.CARD_FRONT
+		"board_skins": return UnifiedItemData.Category.BOARD
+		"avatars": return UnifiedItemData.Category.AVATAR
+		"frames": return UnifiedItemData.Category.FRAME
+		"emojis": return UnifiedItemData.Category.EMOJI
 		_: return -1
 
 func _on_global_item_equipped(equipped_id: String, category: String):
@@ -198,10 +198,10 @@ func _matches_category(category_string: String) -> bool:
 	
 	var item_category = _get_item_category(item_data.category)
 	match category_string:
-		"Card Front": return item_category == ItemData.Category.CARD_FRONT
-		"Card Back": return item_category == ItemData.Category.CARD_BACK
-		"Board": return item_category == ItemData.Category.BOARD
-		"Frame": return item_category == ItemData.Category.FRAME
-		"Avatar": return item_category == ItemData.Category.AVATAR
-		"Emoji": return item_category == ItemData.Category.EMOJI
+		"Card Front": return item_category == UnifiedItemData.Category.CARD_FRONT
+		"Card Back": return item_category == UnifiedItemData.Category.CARD_BACK
+		"Board": return item_category == UnifiedItemData.Category.BOARD
+		"Frame": return item_category == UnifiedItemData.Category.FRAME
+		"Avatar": return item_category == UnifiedItemData.Category.AVATAR
+		"Emoji": return item_category == UnifiedItemData.Category.EMOJI
 		_: return false

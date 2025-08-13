@@ -1,6 +1,6 @@
 # ProceduralCardBack.gd - Base class for procedurally generated card back designs
 # Location: res://Pyramids/scripts/items/card_backs/procedural/ProceduralCardBack.gd
-# Last Updated: Created procedural card back foundation [Date]
+# Last Updated: Updated to use UnifiedItemData exclusively [Date]
 
 class_name ProceduralCardBack
 extends CardSkinBase
@@ -19,7 +19,7 @@ const RENDER_HEIGHT: int = 126
 # Design properties
 @export var theme_name: String = ""
 @export var item_id: String = ""
-@export var item_rarity: ItemData.Rarity = ItemData.Rarity.COMMON
+@export var item_rarity: UnifiedItemData.Rarity = UnifiedItemData.Rarity.COMMON
 
 # Animation state (will be used by Node-based instances)
 var animation_phase: float = 0.0
@@ -72,22 +72,12 @@ func export_to_png(custom_output_path: String = "") -> bool:
 	# Cleanup
 	viewport.queue_free()
 	
-	print("Exported card to: %s" % output_path)
+	print("Exported card back to: %s" % output_path)
 	return success == OK
 
 func _generate_export_path() -> String:
-	# Create organized folder structure
-	var base_path = "res://exported_items/"
-	var category_folder = "card_backs/"
-	var rarity_folder = ItemData.Rarity.keys()[item_rarity].to_lower() + "/"
-	var filename = item_id + ".png"
-	
-	return base_path + category_folder + rarity_folder + filename
-
-# Example output paths:
-# res://exported_items/card_backs/epic/card_back_classic_pyramids_gold.png
-# res://exported_items/card_backs/rare/card_back_mystic_pyramids.png
-# res://exported_items/boards/common/board_simple_sand.png
+	# Export to assets/icons/card_backs/
+	return "res://Pyramids/assets/icons/card_backs/%s.png" % item_id
 
 func _on_export_draw():
 	# Get the canvas control
@@ -106,29 +96,32 @@ func setup_animation_on_node(node: Node) -> void:
 func _update_animation_phase(phase: float) -> void:
 	animation_phase = phase
 
-# Create ItemData for this skin
-func create_item_data() -> ItemData:
-	var item = ItemData.new()
+# Create UnifiedItemData for this skin
+func create_item_data() -> UnifiedItemData:
+	var item = UnifiedItemData.new()
 	item.id = item_id
 	item.display_name = display_name
 	item.description = "Procedurally generated " + theme_name + " card back design"
-	item.category = ItemData.Category.CARD_BACK
+	item.category = UnifiedItemData.Category.CARD_BACK
 	item.rarity = item_rarity
-	item.source = ItemData.Source.SHOP
+	item.source = UnifiedItemData.Source.SHOP
 	item.base_price = _calculate_price_by_rarity(item_rarity)
 	item.subcategory = theme_name.to_lower()
 	item.set_name = theme_name + " Collection"
 	item.is_animated = is_animated
+	item.is_procedural = true
+	item.procedural_script_path = get_script().resource_path
 	
 	return item
 
-func _calculate_price_by_rarity(rarity: ItemData.Rarity) -> int:
+func _calculate_price_by_rarity(rarity: UnifiedItemData.Rarity) -> int:
 	match rarity:
-		ItemData.Rarity.COMMON: return 50
-		ItemData.Rarity.UNCOMMON: return 100
-		ItemData.Rarity.RARE: return 250
-		ItemData.Rarity.EPIC: return 500
-		ItemData.Rarity.LEGENDARY: return 1000
+		UnifiedItemData.Rarity.COMMON: return 50
+		UnifiedItemData.Rarity.UNCOMMON: return 100
+		UnifiedItemData.Rarity.RARE: return 250
+		UnifiedItemData.Rarity.EPIC: return 500
+		UnifiedItemData.Rarity.LEGENDARY: return 1000
+		UnifiedItemData.Rarity.MYTHIC: return 2000
 		_: return 0
 
 # Get animation elements for Epic tier

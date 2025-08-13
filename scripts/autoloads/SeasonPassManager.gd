@@ -233,7 +233,7 @@ func _grant_rewards(rewards: Dictionary):
 			rewards.cosmetic_type
 		])
 		if item_manager:
-			var success = item_manager.grant_item(rewards.cosmetic_id, ItemData.Source.SEASON_PASS)
+			var success = item_manager.grant_item(rewards.cosmetic_id, UnifiedItemData.Source.SEASON_PASS)
 			if success:
 				print("[SeasonPassManager] Cosmetic granted successfully")
 			else:

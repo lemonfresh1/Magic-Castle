@@ -247,7 +247,7 @@ func _grant_rewards(rewards: Dictionary):
 			rewards.cosmetic_type
 		])
 		if item_manager:
-			var success = item_manager.grant_item(rewards.cosmetic_id, ItemData.Source.HOLIDAY_EVENT)
+			var success = item_manager.grant_item(rewards.cosmetic_id, UnifiedItemData.Source.HOLIDAY_EVENT)
 			if success:
 				print("[HolidayEventManager] Cosmetic granted successfully")
 			else:

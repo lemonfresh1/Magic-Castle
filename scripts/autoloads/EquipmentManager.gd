@@ -76,8 +76,9 @@ func _build_cache():
 	for item_id in save_data.owned_items:
 		var item = get_item_data(item_id)
 		if item:
-			if items_by_category.has(item.category):
-				items_by_category[item.category].append(item_id)
+			var category_key = _get_category_key(item.category)
+			if items_by_category.has(category_key):
+				items_by_category[category_key].append(item_id)
 
 # === CORE FUNCTIONS ===
 
@@ -102,7 +103,7 @@ func equip_item(item_id: String) -> bool:
 	
 	# Handle different category types
 	match category:
-		"emoji":
+		UnifiedItemData.Category.EMOJI:
 			# Emojis can have multiple equipped
 			if not item_id in save_data.equipped.emoji:
 				if save_data.equipped.emoji.size() < 8:  # Max 8 emojis
@@ -111,25 +112,25 @@ func equip_item(item_id: String) -> bool:
 					push_warning("EquipmentManager: Max emojis equipped")
 					return false
 		
-		"mini_profile":
+		UnifiedItemData.Category.MINI_PROFILE_CARD:
 			# TODO: Special handling for mini profile
 			old_equipped = save_data.equipped.mini_profile
 			save_data.equipped.mini_profile = item_id
 			push_warning("TODO: Implement mini profile showcase UI")
 		
-		"combo_effect":
+		UnifiedItemData.Category.COMBO_EFFECT:
 			# TODO: Apply combo effect to game
 			old_equipped = save_data.equipped.combo_effect
 			save_data.equipped.combo_effect = item_id
 			push_warning("TODO: Apply combo effect in CardManager")
 		
-		"topbar":
+		UnifiedItemData.Category.TOPBAR:
 			# TODO: Apply topbar skin
 			old_equipped = save_data.equipped.topbar
 			save_data.equipped.topbar = item_id
 			push_warning("TODO: Apply topbar skin to MobileTopBar")
 		
-		"menu_background":
+		UnifiedItemData.Category.MENU_BACKGROUND:
 			# TODO: Apply menu background
 			old_equipped = save_data.equipped.menu_background
 			save_data.equipped.menu_background = item_id
@@ -137,11 +138,13 @@ func equip_item(item_id: String) -> bool:
 		
 		_:
 			# Standard single-equip categories
-			old_equipped = save_data.equipped.get(category, "")
-			save_data.equipped[category] = item_id
+			var category_key = _get_category_key(category)
+			old_equipped = save_data.equipped.get(category_key, "")
+			save_data.equipped[category_key] = item_id
 	
 	# Update history
-	_add_to_history(category, item_id)
+	var category_key = _get_category_key(category)
+	_add_to_history(category_key, item_id)
 	
 	# Track equipped time
 	if not save_data.stats.total_equipped_time.has(item_id):
@@ -151,41 +154,25 @@ func equip_item(item_id: String) -> bool:
 	save_data_to_file()
 	
 	if old_equipped != "" and old_equipped != item_id:
-		item_unequipped.emit(old_equipped, category)
+		item_unequipped.emit(old_equipped, category_key)
 	
-	item_equipped.emit(item_id, category)
-	equipment_changed.emit(category)
+	item_equipped.emit(item_id, category_key)
+	equipment_changed.emit(category_key)
 	
-	print("EquipmentManager: Equipped %s in category %s" % [item_id, category])
+	print("EquipmentManager: Equipped %s in category %s" % [item_id, category_key])
 	return true
 
-func unequip_item(item_id: String) -> bool:
-	"""Unequip an item - returns true if successful"""
+func is_item_equipped(item_id: String) -> bool:
 	var item = get_item_data(item_id)
 	if not item:
 		return false
 	
-	var category = item.category
-	
-	match category:
-		"emoji":
-			save_data.equipped.emoji.erase(item_id)
-		"mini_profile":
-			if save_data.equipped.mini_profile == item_id:
-				save_data.equipped.mini_profile = ""
-				# Also clear showcased items
-				save_data.equipped.mini_profile_showcased_items.clear()
-				save_data.equipped.mini_profile_showcased_stats.clear()
-				save_data.equipped.mini_profile_showcased_achievements.clear()
+	match item.category:
+		UnifiedItemData.Category.EMOJI:
+			return item_id in save_data.equipped.emoji
 		_:
-			if save_data.equipped.get(category, "") == item_id:
-				save_data.equipped[category] = ""
-	
-	save_data_to_file()
-	item_unequipped.emit(item_id, category)
-	equipment_changed.emit(category)
-	
-	return true
+			var category_key = _get_category_key(item.category)
+			return save_data.equipped.get(category_key, "") == item_id
 
 func grant_item(item_id: String, source: String = "shop") -> bool:
 	"""Grant an item to the player"""
@@ -202,19 +189,22 @@ func grant_item(item_id: String, source: String = "shop") -> bool:
 	
 	var item = get_item_data(item_id)
 	if item:
+		var category_key = _get_category_key(item.category)
+		
 		# Update category stats
-		if not save_data.stats.items_by_category.has(item.category):
-			save_data.stats.items_by_category[item.category] = 0
-		save_data.stats.items_by_category[item.category] += 1
+		if not save_data.stats.items_by_category.has(category_key):
+			save_data.stats.items_by_category[category_key] = 0
+		save_data.stats.items_by_category[category_key] += 1
 		
 		# Update rarity stats
-		if not save_data.stats.items_by_rarity.has(item.rarity):
-			save_data.stats.items_by_rarity[item.rarity] = 0
-		save_data.stats.items_by_rarity[item.rarity] += 1
+		var rarity_key = item.get_rarity_name().to_lower()
+		if not save_data.stats.items_by_rarity.has(rarity_key):
+			save_data.stats.items_by_rarity[rarity_key] = 0
+		save_data.stats.items_by_rarity[rarity_key] += 1
 		
 		# Update cache
-		if items_by_category.has(item.category):
-			items_by_category[item.category].append(item_id)
+		if items_by_category.has(category_key):
+			items_by_category[category_key].append(item_id)
 		
 		# Auto-equip if first of category
 		if should_auto_equip(item):
@@ -230,17 +220,6 @@ func grant_item(item_id: String, source: String = "shop") -> bool:
 
 func is_item_owned(item_id: String) -> bool:
 	return item_id in save_data.owned_items
-
-func is_item_equipped(item_id: String) -> bool:
-	var item = get_item_data(item_id)
-	if not item:
-		return false
-	
-	match item.category:
-		"emoji":
-			return item_id in save_data.equipped.emoji
-		_:
-			return save_data.equipped.get(item.category, "") == item_id
 
 func get_equipped_item(category: String) -> String:
 	"""Get the currently equipped item for a category"""
@@ -320,10 +299,11 @@ func get_menu_background() -> String:
 
 func should_auto_equip(item: UnifiedItemData) -> bool:
 	"""Check if an item should auto-equip when granted"""
-	if item.category == "emoji":
+	if item.category == UnifiedItemData.Category.EMOJI:
 		return save_data.equipped.emoji.size() < 8
 	
-	return save_data.equipped.get(item.category, "") == ""
+	var category_key = _get_category_key(item.category)
+	return save_data.equipped.get(category_key, "") == ""
 
 func _add_to_history(category: String, item_id: String) -> void:
 	"""Add item to equipment history for quick swap"""
@@ -344,24 +324,31 @@ func _add_to_history(category: String, item_id: String) -> void:
 
 func _load_item_from_sources(item_id: String) -> UnifiedItemData:
 	"""Try to load item data from various sources"""
-	var unified = UnifiedItemData.new()
 	
-	# Try ItemManager first
+	# Try ItemManager first - it already stores UnifiedItemData objects
 	if ItemManager and ItemManager.all_items.has(item_id):
-		unified.from_item_data(ItemManager.all_items[item_id])
-		return unified
+		var item = ItemManager.all_items[item_id]
+		# ItemManager already stores UnifiedItemData, just return it
+		if item is UnifiedItemData:
+			return item
+		else:
+			push_warning("EquipmentManager: Item in ItemManager is not UnifiedItemData: " + item_id)
 	
-	# Try ShopManager
-	if ShopManager:
-		var shop_item = ShopManager.get_item_by_id(item_id)
-		if shop_item:
-			unified.from_shop_item(shop_item)
-			return unified
+	# Try ShopManager - need to convert from ShopItem
+	if ShopManager and ShopManager.shop_inventory.has(item_id):
+		var shop_item = ShopManager.shop_inventory[item_id]
+		var unified = UnifiedItemData.new()
+		unified.from_shop_item(shop_item)
+		return unified
 	
 	# Try ProceduralItemRegistry
 	if ProceduralItemRegistry and ProceduralItemRegistry.procedural_items.has(item_id):
 		var proc_data = ProceduralItemRegistry.procedural_items[item_id]
-		unified.from_procedural_instance(proc_data.instance, proc_data.category)
+		var unified = UnifiedItemData.new()
+		
+		# Map string category to enum
+		var category_enum = _string_to_category(proc_data.category)
+		unified.from_procedural_instance(proc_data.instance, category_enum)
 		return unified
 	
 	return null
@@ -510,3 +497,85 @@ func debug_status() -> void:
 	print("  By category: %s" % save_data.stats.items_by_category)
 	print("  By rarity: %s" % save_data.stats.items_by_rarity)
 	print("================================\n")
+
+func _get_category_key(category: UnifiedItemData.Category) -> String:
+	"""Convert enum category to string key for save data"""
+	match category:
+		UnifiedItemData.Category.CARD_FRONT:
+			return "card_front"
+		UnifiedItemData.Category.CARD_BACK:
+			return "card_back"
+		UnifiedItemData.Category.BOARD:
+			return "board"
+		UnifiedItemData.Category.FRAME:
+			return "frame"
+		UnifiedItemData.Category.AVATAR:
+			return "avatar"
+		UnifiedItemData.Category.EMOJI:
+			return "emoji"
+		UnifiedItemData.Category.MINI_PROFILE_CARD:
+			return "mini_profile"
+		UnifiedItemData.Category.TOPBAR:
+			return "topbar"
+		UnifiedItemData.Category.COMBO_EFFECT:
+			return "combo_effect"
+		UnifiedItemData.Category.MENU_BACKGROUND:
+			return "menu_background"
+		_:
+			return ""
+
+func _string_to_category(category_str: String) -> UnifiedItemData.Category:
+	"""Convert string category to enum"""
+	match category_str:
+		"card_fronts", "card_front":
+			return UnifiedItemData.Category.CARD_FRONT
+		"card_backs", "card_back":
+			return UnifiedItemData.Category.CARD_BACK
+		"boards", "board", "board_skins":
+			return UnifiedItemData.Category.BOARD
+		"frames", "frame":
+			return UnifiedItemData.Category.FRAME
+		"avatars", "avatar":
+			return UnifiedItemData.Category.AVATAR
+		"emojis", "emoji":
+			return UnifiedItemData.Category.EMOJI
+		"mini_profile_boards", "mini_profile", "mini_profiles":
+			return UnifiedItemData.Category.MINI_PROFILE_CARD
+		"topbar", "topbars":
+			return UnifiedItemData.Category.TOPBAR
+		"combo_effect", "combo_effects":
+			return UnifiedItemData.Category.COMBO_EFFECT
+		"menu_background", "menu_backgrounds":
+			return UnifiedItemData.Category.MENU_BACKGROUND
+		_:
+			push_warning("EquipmentManager: Unknown category string: " + category_str)
+			return UnifiedItemData.Category.CARD_FRONT
+			
+func unequip_item(item_id: String) -> bool:
+	"""Unequip an item - returns true if successful"""
+	var item = get_item_data(item_id)
+	if not item:
+		return false
+	
+	var category = item.category
+	var category_key = _get_category_key(category)
+	
+	match category:
+		UnifiedItemData.Category.EMOJI:
+			save_data.equipped.emoji.erase(item_id)
+		UnifiedItemData.Category.MINI_PROFILE_CARD:
+			if save_data.equipped.mini_profile == item_id:
+				save_data.equipped.mini_profile = ""
+				# Also clear showcased items
+				save_data.equipped.mini_profile_showcased_items.clear()
+				save_data.equipped.mini_profile_showcased_stats.clear()
+				save_data.equipped.mini_profile_showcased_achievements.clear()
+		_:
+			if save_data.equipped.get(category_key, "") == item_id:
+				save_data.equipped[category_key] = ""
+	
+	save_data_to_file()
+	item_unequipped.emit(item_id, category_key)
+	equipment_changed.emit(category_key)
+	
+	return true
