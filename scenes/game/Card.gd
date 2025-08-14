@@ -1,6 +1,6 @@
 # Card.gd - Individual playing card for the game board and slots
 # Location: res://Pyramids/scenes/game/Card.gd
-# Last Updated: Refactored to use new equipment system, simplified display flow [Date]
+# Last Updated: Refactored to use GameModeManager for visibility rules
 #
 # Card handles:
 # - Displaying card front/back with sprites or procedural rendering
@@ -9,7 +9,7 @@
 # - Collision detection for pyramid layout
 # - Input handling for card selection
 #
-# Flow: CardManager → Card → EquipmentManager (for skins) → ItemManager (for procedural instances)
+# Flow: CardManager → Card → EquipmentManager (for skins) → ItemManager (procedural instances)
 # Dependencies: CardData (for rank/suit), EquipmentManager (equipped items), ItemManager (procedural instances), CardManager (game logic)
 
 extends Control
@@ -71,13 +71,9 @@ func setup(data: CardData, index: int = -1) -> void:
 		is_on_board = true
 		_setup_collision_layers(index)
 		
-		# Set initial visibility
-		if GameState.current_round % 2 == 0:  # EVEN rounds
-			is_face_up = true
-			has_been_revealed = true
-		else:  # ODD rounds
-			is_face_up = (index >= 18)
-			has_been_revealed = is_face_up
+		# Use GameModeManager for initial visibility
+		is_face_up = GameModeManager.should_card_start_face_up(index, GameState.current_round)
+		has_been_revealed = is_face_up
 		
 		await get_tree().physics_frame
 		await get_tree().physics_frame
@@ -384,32 +380,40 @@ func _on_area_exited(area: Area2D) -> void:
 		_check_visibility()
 
 func _check_visibility() -> void:
+	"""Check and update card visibility based on game rules"""
 	if board_index < 0 or not is_on_board:
-		set_face_up(true)
-		return
-	
-	if board_index >= 18:
 		set_face_up(true)
 		return
 	
 	# Clean invalid blockers
 	cards_blocking_me = cards_blocking_me.filter(func(b): return is_instance_valid(b) and b.is_on_board)
 	
-	var is_blocked = not cards_blocking_me.is_empty()
+	# Let GameModeManager decide visibility
+	var should_be_visible = GameModeManager.should_card_be_visible(board_index, GameState.current_round)
 	
-	if GameState.current_round % 2 == 0:
+	if should_be_visible:
+		# All visible mode - always face up
 		set_face_up(true)
-		update_selectability()
 	else:
-		set_face_up(not is_blocked)
+		# Progressive mode - check if can reveal
+		var can_reveal = GameModeManager.can_reveal_card(board_index, cards_blocking_me)
+		set_face_up(can_reveal)
+	
+	update_selectability()
 
 func update_selectability() -> void:
-	if is_face_up and board_index >= 0 and is_on_board:
-		var is_blocked = not cards_blocking_me.is_empty()
-		if not is_blocked:
-			is_selectable = CardManager.get_valid_slot_for_card(card_data) != -1
-		else:
-			is_selectable = false
+	"""Update whether this card can be selected"""
+	if not is_face_up or board_index < 0 or not is_on_board:
+		is_selectable = false
+		return
+	
+	# Clean invalid blockers
+	cards_blocking_me = cards_blocking_me.filter(func(b): return is_instance_valid(b) and b.is_on_board)
+	
+	# Card must be unblocked and have a valid slot to go to
+	var is_blocked = not cards_blocking_me.is_empty()
+	if not is_blocked:
+		is_selectable = CardManager.get_valid_slot_for_card(card_data) != -1
 	else:
 		is_selectable = false
 

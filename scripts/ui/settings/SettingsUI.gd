@@ -406,7 +406,7 @@ func _get_current_equipped_board_skin() -> String:
 func _get_current_equipped_card_skin() -> String:
 	# Check ItemManager first for card skins
 	if ItemManager:
-		var equipped_card = ItemManager.get_equipped_item(UnifiedItemData.Category.CARD_FRONT)
+		var equipped_card = ItemManager.get_equipped_items()
 		if equipped_card != "":
 			# Map ItemManager ID to settings name if needed
 			return equipped_card.trim_prefix("card_")
