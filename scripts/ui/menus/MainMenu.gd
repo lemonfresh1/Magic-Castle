@@ -1,6 +1,25 @@
-# MainMenu.gd - Main menu with hidden debug panel access
-# Path: res://Pyramids/scripts/ui/menus/MainMenu.gd
-# Updated with ButtonLayout instances and new UI elements
+# MainMenu.gd - Main menu with hidden debug panel access and integrated menu system
+# Location: res://Pyramids/scripts/ui/menus/MainMenu.gd
+# Last Updated: Fixed ItemDatabase references to use ItemManager [Date]
+#
+# MainMenu handles:
+# - Main game menu with Play, Shop, Missions, Season Pass, Holiday buttons
+# - Profile card display with player stats
+# - Settings (cog) and star display in top-right
+# - Hidden debug panel (triple-tap version label)
+# - Dynamic menu panel system for all UI overlays
+# - Button state management (selected/deselected)
+# - Background gradient rendering
+#
+# Menu Panel System:
+# - All UI panels (shop, inventory, profile, etc.) are managed through menu_configs
+# - Panels are created on-demand and cached in menu_instances
+# - UIManager handles the open/close state and animations
+# - Buttons automatically toggle based on panel state
+#
+# Flow: MainMenu → UIManager → Individual UI Panels (ShopUI, ProfileUI, etc.)
+# Dependencies: UIManager (for panel management), StarManager (for currency), ProfileManager (for stats)
+
 extends Control
 
 # Preload scenes
@@ -124,13 +143,13 @@ var menu_configs = {
 		"show_method": "show_holiday_event"
 	},
 	"settings": {
-	"scene": "res://Pyramids/scenes/ui/settings/SettingsUI.tscn",
-	"script": "",  # Empty string - scene already has script
-	"signals": {
-		"settings_closed": "_on_settings_closed"
-	},
-	"show_method": "show_settings"
-}
+		"scene": "res://Pyramids/scenes/ui/settings/SettingsUI.tscn",
+		"script": "",  # Empty string - scene already has script
+		"signals": {
+			"settings_closed": "_on_settings_closed"
+		},
+		"show_method": "show_settings"
+	}
 }
 
 # Button instances
@@ -650,24 +669,22 @@ func _apply_button_state(button: Button, is_selected: bool) -> void:
 			main_panel.add_theme_stylebox_override("panel", normal_style)
 
 func _test_new_equipment_system():
-	"""Test the new EquipmentManager and ItemDatabase - safe to remove later"""
+	"""Test the new EquipmentManager and ItemManager - safe to remove later"""
 	# Wait for everything to load
 	await get_tree().create_timer(1.0).timeout
 	
 	print("\n=== TESTING NEW EQUIPMENT SYSTEM ===")
 	
 	# Only run if new systems exist
-	if not EquipmentManager or not ItemDatabase:
+	if not EquipmentManager or not ItemManager:
 		print("New systems not loaded yet - skipping test")
 		return
 	
 	print("EquipmentManager ready: ", EquipmentManager != null)
-	print("ItemDatabase ready: ", ItemDatabase != null)
+	print("ItemManager ready: ", ItemManager != null)
 	
-	# Test migration
-	ItemDatabase.debug_status()
+	# Test status
+	ItemManager.debug_status()
 	EquipmentManager.debug_status()
 	
-	# TODO: Remove this test function once new system is verified working
-	print("TODO: New equipment system loaded but not integrated yet")
 	print("=========================\n")

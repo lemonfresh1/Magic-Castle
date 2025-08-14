@@ -1,13 +1,22 @@
 # InventoryUI.gd - Inventory interface showing owned items
-# Location: res://Pyramids/scripts/ui/inventory/InventoryUI.gd
-# Last Updated: Minimal cleanup - panel styling and filter buttons only [Date]
+# Location: res://Pyramids/scripts/ui/inventory/InventoryUI.gd  
+# Last Updated: Refactored to use EquipmentManager [Date]
+#
+# InventoryUI handles:
+# - Displaying owned items from EquipmentManager
+# - Filtering owned items by category/equipped status
+# - Initiating equip/unequip actions
+# - Showing item details and equipped status
+#
+# Flow: EquipmentManager → InventoryUI → EquipDialog → EquipmentManager (equip)
+# Dependencies: EquipmentManager (for ownership/equipped state), ItemManager (for item data)
 
 extends PanelContainer
 
 signal inventory_closed
 
 @onready var tab_container: TabContainer = $MarginContainer/TabContainer
-@onready var inventory_item_card_scene = preload("res://Pyramids/scenes/ui/inventory/InventoryItemCard.tscn")
+@onready var unified_item_card_scene = preload("res://Pyramids/scenes/ui/items/UnifiedItemCard.tscn")
 
 # Tab references mapped by category id
 var tabs = {}
@@ -29,16 +38,7 @@ func _ready():
 	# Apply panel styling
 	UIStyleManager.apply_panel_style(self, "inventory_ui")
 	
-	# Connect to ItemManager signals for equipment updates
-	if ItemManager:
-		if not ItemManager.item_equipped.is_connected(_on_item_equipped_signal):
-			ItemManager.item_equipped.connect(_on_item_equipped_signal)
-		if not ItemManager.item_unequipped.is_connected(_on_item_unequipped_signal):
-			ItemManager.item_unequipped.connect(_on_item_unequipped_signal)
-
 	_connect_new_equipment_system()
-
-
 	_setup_tabs()
 	_populate_inventory()
 
@@ -105,43 +105,75 @@ func _setup_tabs():
 			scroll_container.custom_minimum_size = Vector2(600, 300)
 
 func _populate_inventory():
-	# Populate each tab with owned items only
 	for category_id in tabs:
 		if category_id == "sounds":
 			continue
-			
+		
 		var items = _get_owned_items_for_category(category_id)
 		var tab = tabs[category_id]
 		if not tab:
 			continue
-			
-		var scroll_container = tab.find_child("ScrollContainer", true, false)
 		
-		if scroll_container:
-			# Create grid if it doesn't exist
-			var grid = scroll_container.get_child(0) if scroll_container.get_child_count() > 0 else null
-			if not grid:
-				grid = GridContainer.new()
-				grid.name = "ItemGrid"
-				grid.columns = 4
-				grid.add_theme_constant_override("h_separation", 10)
-				grid.add_theme_constant_override("v_separation", 10)
-				grid.self_modulate.a = 0
-				scroll_container.add_child(grid)
-			
+		var scroll_container = tab.find_child("ScrollContainer", true, false)
+		if not scroll_container:
+			continue
+		
+		# Clear existing
+		for child in scroll_container.get_children():
+			child.queue_free()
+		
+		# Use flow container for "all" tab, grid for others
+		if category_id == "all":
+			var container = _create_flow_container()
+			scroll_container.add_child(container)
+			_populate_flow_container(container, items, category_id)
+		else:
+			var grid = GridContainer.new()
+			grid.name = "ItemGrid"
+			grid.columns = 4 if category_id != "boards" and category_id != "board_skins" else 2
+			grid.add_theme_constant_override("h_separation", 10)
+			grid.add_theme_constant_override("v_separation", 10)
+			scroll_container.add_child(grid)
 			_populate_grid(grid, items, category_id)
 
 func _get_owned_items_for_category(category_id: String) -> Array:
-	var all_items = []
+	"""Get owned items as UnifiedItemData objects"""
+	if not EquipmentManager or not ItemManager:
+		return []
 	
-	match category_id:
-		"all":
-			all_items = ShopManager.get_all_items()
-		_:
-			all_items = ShopManager.get_items_by_category(category_id)
+	# Map UI category names to actual category names
+	var category_map = {
+		"all": "",  # Empty string for all
+		"card_skins": "card_front",
+		"card_backs": "card_back",
+		"board_skins": "board",
+		"boards": "board",
+		"avatars": "avatar",
+		"frames": "frame",
+		"emojis": "emoji"
+	}
 	
-	# Filter to only owned items
-	return all_items.filter(func(item): return ShopManager.is_item_owned(item.id))
+	var category_key = category_map.get(category_id, category_id)
+	
+	# Get owned item IDs
+	var owned_ids = []
+	if category_key == "":  # All items
+		owned_ids = EquipmentManager.save_data.owned_items
+	else:
+		# Filter by category
+		for item_id in EquipmentManager.save_data.owned_items:
+			var item = ItemManager.get_item(item_id)
+			if item and item.get_category_name() == category_key:
+				owned_ids.append(item_id)
+	
+	# Convert to UnifiedItemData objects
+	var result = []
+	for item_id in owned_ids:
+		var item = ItemManager.get_item(item_id)
+		if item:
+			result.append(item)
+	
+	return result
 
 func _populate_grid(grid: GridContainer, items: Array, tab_id: String):
 	# Clear existing items
@@ -226,36 +258,31 @@ func _add_grid_spacer_row(grid: GridContainer):
 
 func _get_type_display_name(type: String) -> String:
 	match type:
-		"card_skins": return "Card Skins"
-		"board_skins": return "Board Skins"
-		"avatars": return "Avatars"
-		"frames": return "Frames"
-		"emojis": return "Emojis"
-		_: return type.capitalize()
+		"card_front": return "Card Fronts"
+		"card_back": return "Card Backs"
+		"board": return "Boards"
+		"avatar": return "Avatars"
+		"frame": return "Frames"
+		"emoji": return "Emojis"
+		_: return type.capitalize().replace("_", " ")
 
-func _get_rarity_display_name(rarity: ShopManager.Rarity) -> String:
-	match rarity:
-		ShopManager.Rarity.COMMON: return "Common"
-		ShopManager.Rarity.UNCOMMON: return "Uncommon"
-		ShopManager.Rarity.RARE: return "Rare"
-		ShopManager.Rarity.EPIC: return "Epic"
-		ShopManager.Rarity.LEGENDARY: return "Legendary"
-		ShopManager.Rarity.MYTHIC: return "Mythic"
-		_: return "Unknown"
-
-func _create_inventory_card(item: ShopManager.ShopItem, tab_id: String):
-	var card = inventory_item_card_scene.instantiate()
+func _create_inventory_card(item, tab_id: String):
+	"""Create a UnifiedItemCard for inventory display"""
+	if not item is UnifiedItemData:
+		return null
+	
+	var card = unified_item_card_scene.instantiate()
 	
 	# Set metadata
 	card.set_meta("tab_id", tab_id)
 	card.set_meta("item_data", item)
 	
-	# Setup the card
-	card.setup(item)
+	# Setup with INVENTORY mode
+	card.setup(item, UnifiedItemCard.DisplayMode.INVENTORY)
 	
-	# Connect for equip functionality
-	if not card.item_clicked.is_connected(_on_item_clicked):
-		card.item_clicked.connect(_on_item_clicked)
+	# Connect for equip functionality - try without bind first
+	if not card.clicked.is_connected(_on_item_clicked):
+		card.clicked.connect(func(clicked_item): _on_item_clicked(item))  # Use closure instead
 	
 	return card
 
@@ -307,52 +334,61 @@ func _apply_filters(tab_id: String):
 		
 		card.visible = should_show
 
-func _on_item_clicked(item: ShopManager.ShopItem):
+func _on_item_clicked(item: UnifiedItemData):
+	"""Handle item click - equip/unequip like ProfileUI does"""
+	if not item or not EquipmentManager:
+		return
+	
 	# Check if item is already equipped
-	if _is_item_already_equipped(item):
+	if EquipmentManager.is_item_equipped(item.id):
 		print("Item already equipped: ", item.display_name)
-		return  # Don't show dialog
+		
+		# Show unequip dialog
+		var dialog = AcceptDialog.new()
+		dialog.title = "Item Equipped"
+		dialog.dialog_text = "%s is already equipped.\nWould you like to unequip it?" % item.display_name
+		dialog.ok_button_text = "Unequip"
+		dialog.add_cancel_button("Keep Equipped")
+		
+		dialog.get_ok_button().pressed.connect(func():
+			EquipmentManager.unequip_item(item.id)
+			_refresh_all_cards()
+		)
+		
+		get_viewport().add_child(dialog)
+		dialog.popup_centered()
+		return
 	
-	# Create equip dialog
-	var dialog = preload("res://Pyramids/scripts/ui/dialogs/EquipDialog.gd").new()
-	get_tree().root.add_child(dialog)
-	
-	dialog.setup_for_item(item)
-	dialog.item_equipped.connect(_on_item_equipped)
-	dialog.popup()
+	# Equip the item
+	var success = EquipmentManager.equip_item(item.id)
+	if success:
+		print("Item equipped: ", item.display_name)
+		_refresh_all_cards()
+		
+		# Show success feedback
+		var dialog = AcceptDialog.new()
+		dialog.title = "Item Equipped"
+		dialog.dialog_text = "%s has been equipped!" % item.display_name
+		dialog.ok_button_text = "OK"
+		get_viewport().add_child(dialog)
+		dialog.popup_centered()
+	else:
+		push_warning("Failed to equip item: " + item.id)
 
-func _is_item_already_equipped(item: ShopManager.ShopItem) -> bool:
-	# Check with ItemManager first for ItemManager items
-	if ItemManager and (item.id.begins_with("board_") or item.id.begins_with("card_")):
-		var category = _get_item_category(item.category)
-		if category != -1:
-			var equipped_id = ItemManager.get_equipped_item(category)
-			return equipped_id == item.id
+func _is_item_equipped(item) -> bool:
+	"""Check if item is equipped"""
+	if not EquipmentManager:
+		return false
 	
-	# Fallback to ShopManager data
-	var equipped = ShopManager.shop_data.equipped
-	match item.category:
-		"card_skins":
-			return equipped.card_skin == item.id
-		"board_skins":
-			return equipped.board_skin == item.id
-		"avatars":
-			return equipped.avatar == item.id
-		"frames":
-			return equipped.frame == item.id
-		"emojis":
-			return item.id in equipped.selected_emojis
+	var item_id = ""
+	if item is UnifiedItemData:
+		item_id = item.id
+	elif item is Dictionary and item.has("id"):
+		item_id = item.id
+	else:
+		return false
 	
-	return false
-
-func _get_item_category(shop_category: String) -> UnifiedItemData.Category:
-	match shop_category:
-		"card_skins": return UnifiedItemData.Category.CARD_FRONT
-		"board_skins": return UnifiedItemData.Category.BOARD
-		"avatars": return UnifiedItemData.Category.AVATAR
-		"frames": return UnifiedItemData.Category.FRAME
-		"emojis": return UnifiedItemData.Category.EMOJI
-		_: return -1
+	return EquipmentManager.is_item_equipped(item_id) if item_id != "" else false
 
 func _on_item_equipped(item_id: String):
 	print("Item equipped: ", item_id)
@@ -365,14 +401,9 @@ func _on_item_unequipped(item_id: String):
 	_refresh_all_cards()
 
 func _refresh_all_cards():
-	# Refresh equipped status on all visible cards
-	for card in item_cards:
-		if card and is_instance_valid(card) and card.has_method("refresh_equipped_status"):
-			card.refresh_equipped_status()
-	
-	# If showing equipped filter, refresh the grid
-	if current_filter == "equipped":
-		_refresh_current_tab()
+	"""Refresh the current view"""
+	# Just repopulate current tab - simpler and more reliable
+	_refresh_current_tab()
 
 func _refresh_current_tab():
 	var current_tab_idx = tab_container.current_tab
@@ -411,25 +442,156 @@ func _on_item_unequipped_signal(item_id: String, category: String):
 	_refresh_all_cards()
 
 func _connect_new_equipment_system():
-	"""Connect to new EquipmentManager - runs alongside old system"""
-	# Only connect if it exists
+	"""Connect to EquipmentManager signals"""
 	if not EquipmentManager:
-		print("[InventoryUI] TODO: EquipmentManager not found - using old system")
+		print("[InventoryUI] EquipmentManager not found")
 		return
 	
-	print("[InventoryUI] Connecting to NEW EquipmentManager (parallel to old system)")
+	print("[InventoryUI] Connecting to EquipmentManager")
 	
-	# Connect to NEW system signals
-	if not EquipmentManager.item_equipped.is_connected(_on_new_equipment_equipped):
-		EquipmentManager.item_equipped.connect(_on_new_equipment_equipped)
-	if not EquipmentManager.item_unequipped.is_connected(_on_new_equipment_unequipped):
-		EquipmentManager.item_unequipped.connect(_on_new_equipment_unequipped)
+	# Connect to EquipmentManager signals
+	if not EquipmentManager.item_equipped.is_connected(_on_item_equipped_signal):
+		EquipmentManager.item_equipped.connect(_on_item_equipped_signal)
+	if not EquipmentManager.item_unequipped.is_connected(_on_item_unequipped_signal):
+		EquipmentManager.item_unequipped.connect(_on_item_unequipped_signal)
 
-# NEW handlers that work alongside old ones
-func _on_new_equipment_equipped(item_id: String, category: String):
-	print("[InventoryUI] NEW SYSTEM: Item equipped - ", item_id)
-	# TODO: Once verified working, merge with existing _on_item_equipped_signal
+func _create_flow_container() -> Control:
+	"""Create a container that handles mixed-size items in rows"""
+	var container = VBoxContainer.new()
+	container.name = "FlowContainer"
+	container.add_theme_constant_override("separation", 10)
+	container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	container.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	return container
 
-func _on_new_equipment_unequipped(item_id: String, category: String):
-	print("[InventoryUI] NEW SYSTEM: Item unequipped - ", item_id)
-	# TODO: Once verified working, merge with existing _on_item_unequipped_signal
+func _populate_flow_container(container: VBoxContainer, items: Array, tab_id: String):
+	"""Populate container with items using proper row/column logic"""
+	# Clear existing
+	for child in container.get_children():
+		child.queue_free()
+	
+	# Clear tracked cards
+	item_cards = item_cards.filter(func(card): return card.get_meta("tab_id", "") != tab_id)
+	
+	var current_row = null
+	var current_columns_used = 0
+	var MAX_COLUMNS = 4
+	
+	# Apply filter/sort first
+	match current_filter:
+		"type":
+			# Group by type - handled separately
+			_populate_flow_container_by_type(container, items, tab_id)
+			return
+		"rarity":
+			items.sort_custom(func(a, b):
+				return a.rarity > b.rarity if a is UnifiedItemData and b is UnifiedItemData else false
+			)
+		"equipped":
+			items = items.filter(func(item): return _is_item_equipped(item))
+		_:  # "all"
+			items.sort_custom(func(a, b):
+				return a.display_name < b.display_name if a is UnifiedItemData and b is UnifiedItemData else false
+			)
+	
+	for item in items:
+		if not item is UnifiedItemData:
+			continue
+		
+		var columns_needed = 2 if item.category == UnifiedItemData.Category.BOARD else 1
+		
+		# Check if we need a new row
+		if current_row == null or current_columns_used + columns_needed > MAX_COLUMNS:
+			current_row = HBoxContainer.new()
+			current_row.add_theme_constant_override("separation", 10)
+			current_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			container.add_child(current_row)
+			current_columns_used = 0
+		
+		var card = _create_inventory_card(item, tab_id)
+		if card:
+			if columns_needed == 2:
+				card.custom_minimum_size = Vector2(192, 126)
+			else:
+				card.custom_minimum_size = Vector2(90, 126)
+			
+			card.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+			current_row.add_child(card)
+			item_cards.append(card)
+			current_columns_used += columns_needed
+	
+	# Fill remaining space in last row
+	if current_row and current_columns_used < MAX_COLUMNS:
+		var spacer = Control.new()
+		spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		current_row.add_child(spacer)
+
+func _populate_flow_container_by_type(container: VBoxContainer, items: Array, tab_id: String):
+	"""Populate flow container grouped by type"""
+	# Group items by category
+	var items_by_type = {}
+	for item in items:
+		if not item is UnifiedItemData:
+			continue
+		
+		var cat_name = item.get_category_name()
+		if not items_by_type.has(cat_name):
+			items_by_type[cat_name] = []
+		items_by_type[cat_name].append(item)
+	
+	# Add each category with headers
+	var first_category = true
+	for category in ["card_front", "card_back", "board", "avatar", "frame", "emoji"]:
+		if not items_by_type.has(category):
+			continue
+		
+		# Add category header
+		var header = Label.new()
+		header.text = _get_type_display_name(category)
+		header.add_theme_font_size_override("font_size", 16)
+		header.add_theme_color_override("font_color", Color("#a487ff"))
+		container.add_child(header)
+		
+		# Sort items in this category
+		items_by_type[category].sort_custom(func(a, b): 
+			return a.display_name < b.display_name
+		)
+		
+		# Create rows for this category
+		var current_row = null
+		var current_columns_used = 0
+		var MAX_COLUMNS = 4
+		
+		for item in items_by_type[category]:
+			var columns_needed = 2 if item.category == UnifiedItemData.Category.BOARD else 1
+			
+			if current_row == null or current_columns_used + columns_needed > MAX_COLUMNS:
+				current_row = HBoxContainer.new()
+				current_row.add_theme_constant_override("separation", 10)
+				current_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				container.add_child(current_row)
+				current_columns_used = 0
+			
+			var card = _create_inventory_card(item, tab_id)
+			if card:
+				if columns_needed == 2:
+					card.custom_minimum_size = Vector2(192, 126)
+				else:
+					card.custom_minimum_size = Vector2(90, 126)
+				
+				card.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+				current_row.add_child(card)
+				item_cards.append(card)
+				current_columns_used += columns_needed
+		
+		# Fill last row if needed
+		if current_row and current_columns_used < MAX_COLUMNS:
+			var spacer = Control.new()
+			spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			current_row.add_child(spacer)
+		
+		# Add spacing between categories
+		if not first_category:
+			var separator = HSeparator.new()
+			container.add_child(separator)
+		first_category = false

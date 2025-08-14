@@ -1,5 +1,17 @@
-# SettingsMenu.gd - Updated with correct paths
-# Path: res://Pyramids/scripts/ui/menus/SettingsMenu.gd
+# SettingsMenu.gd - Settings interface for game preferences and equipped cosmetics
+# Location: res://Pyramids/scripts/ui/menus/SettingsMenu.gd
+# Last Updated: Refactored to pull from EquipmentManager [Date]
+#
+# SettingsMenu handles:
+# - Game mode selection
+# - Audio settings
+# - Input preferences  
+# - Quick cosmetic switching (card fronts, backs, boards)
+# - Applying equipped items to game
+#
+# Flow: EquipmentManager → SettingsMenu → Direct equip → EquipmentManager
+# Dependencies: EquipmentManager (for owned/equipped items), GameModeManager, SettingsSystem
+
 extends Control
 
 # Main structure

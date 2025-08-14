@@ -1,6 +1,16 @@
 # EquipmentManager.gd - Single source of truth for ALL equipment management
 # Location: res://Pyramids/scripts/autoloads/EquipmentManager.gd
-# Last Updated: Created with future category support [Date]
+# Last Updated: Removed legacy code, streamlined with ItemManager [Date]
+#
+# EquipmentManager handles:
+# - Item ownership tracking
+# - Equipment state management
+# - Save/load of player's collection
+# - Equipment history and favorites
+# - Statistics tracking
+#
+# Flow: ItemManager (definitions) → EquipmentManager (ownership) → UIs
+# Dependencies: ItemManager (for item data), UnifiedItemData (for item structure)
 
 extends Node
 
@@ -9,10 +19,11 @@ signal item_equipped(item_id: String, category: String)
 signal item_unequipped(item_id: String, category: String)
 signal equipment_changed(category: String)
 signal ownership_changed(item_id: String, owned: bool)
+signal item_granted(item_id: String, source: String)
 
 # Save data
 const SAVE_PATH = "user://equipment_data.save"
-const SAVE_VERSION = 1
+const SAVE_VERSION = 2  # Incremented for clean break from old data
 
 var save_data = {
 	"version": SAVE_VERSION,
@@ -40,25 +51,25 @@ var save_data = {
 	"favorites": {},  # category -> [item_ids] for quick swap
 	"history": {},  # category -> [last 5 equipped items]
 	"unlock_dates": {},  # item_id -> timestamp when unlocked
-	"item_sources": {},  # item_id -> how it was obtained
+	"item_sources": {},  # item_id -> how it was obtained (string)
 	"stats": {
 		"total_items_owned": 0,
 		"items_by_category": {},
 		"items_by_rarity": {},
-		"total_equipped_time": {}  # item_id -> seconds equipped
+		"total_equipped_time": {},  # item_id -> seconds equipped
+		"times_equipped": {}  # item_id -> count
 	}
 }
 
 # Runtime cache
 var items_by_category: Dictionary = {}  # category -> [item_ids]
-var unified_items: Dictionary = {}  # item_id -> UnifiedItemData
 
 func _ready():
 	print("EquipmentManager initializing...")
 	load_save_data()
-	_migrate_from_old_systems()
 	_ensure_defaults()
 	_build_cache()
+	_validate_equipped_items()
 	print("EquipmentManager ready - %d items owned" % save_data.owned_items.size())
 
 func _build_cache():
@@ -74,11 +85,33 @@ func _build_cache():
 	
 	# Sort owned items into categories
 	for item_id in save_data.owned_items:
-		var item = get_item_data(item_id)
+		if not ItemManager:
+			continue
+			
+		var item = ItemManager.get_item(item_id)
 		if item:
 			var category_key = _get_category_key(item.category)
 			if items_by_category.has(category_key):
 				items_by_category[category_key].append(item_id)
+
+func _validate_equipped_items():
+	"""Ensure all equipped items are actually owned"""
+	for category in save_data.equipped:
+		var value = save_data.equipped[category]
+		
+		match typeof(value):
+			TYPE_STRING:
+				if value != "" and not is_item_owned(value):
+					push_warning("EquipmentManager: Unequipping unowned item %s from %s" % [value, category])
+					save_data.equipped[category] = ""
+			TYPE_ARRAY:
+				var valid_items = []
+				for item_id in value:
+					if is_item_owned(item_id):
+						valid_items.append(item_id)
+					else:
+						push_warning("EquipmentManager: Removing unowned item %s from %s" % [item_id, category])
+				save_data.equipped[category] = valid_items
 
 # === CORE FUNCTIONS ===
 
@@ -88,18 +121,23 @@ func equip_item(item_id: String) -> bool:
 		push_error("EquipmentManager: Cannot equip unowned item: " + item_id)
 		return false
 	
-	var item = get_item_data(item_id)
+	if not ItemManager:
+		push_error("EquipmentManager: ItemManager not available")
+		return false
+	
+	var item = ItemManager.get_item(item_id)
 	if not item:
 		push_error("EquipmentManager: Item not found: " + item_id)
 		return false
 	
 	# Handle future categories
-	if item.is_future_category():
-		push_warning("EquipmentManager: " + item.get_todo_message())
+	if item.has_method("is_future_category") and item.is_future_category():
+		push_warning("EquipmentManager: Future category - " + item.get_todo_message())
 		# Still allow equipping for testing
 	
 	var old_equipped = ""
 	var category = item.category
+	var category_key = _get_category_key(category)
 	
 	# Handle different category types
 	match category:
@@ -113,40 +151,38 @@ func equip_item(item_id: String) -> bool:
 					return false
 		
 		UnifiedItemData.Category.MINI_PROFILE_CARD:
-			# TODO: Special handling for mini profile
 			old_equipped = save_data.equipped.mini_profile
 			save_data.equipped.mini_profile = item_id
-			push_warning("TODO: Implement mini profile showcase UI")
+			# TODO: Implement mini profile showcase UI
 		
 		UnifiedItemData.Category.COMBO_EFFECT:
-			# TODO: Apply combo effect to game
 			old_equipped = save_data.equipped.combo_effect
 			save_data.equipped.combo_effect = item_id
-			push_warning("TODO: Apply combo effect in CardManager")
+			# TODO: Apply combo effect in CardManager
 		
 		UnifiedItemData.Category.TOPBAR:
-			# TODO: Apply topbar skin
 			old_equipped = save_data.equipped.topbar
 			save_data.equipped.topbar = item_id
-			push_warning("TODO: Apply topbar skin to MobileTopBar")
+			# TODO: Apply topbar skin to MobileTopBar
 		
 		UnifiedItemData.Category.MENU_BACKGROUND:
-			# TODO: Apply menu background
 			old_equipped = save_data.equipped.menu_background
 			save_data.equipped.menu_background = item_id
-			push_warning("TODO: Apply background to MainMenu")
+			# TODO: Apply background to MainMenu
 		
 		_:
 			# Standard single-equip categories
-			var category_key = _get_category_key(category)
 			old_equipped = save_data.equipped.get(category_key, "")
 			save_data.equipped[category_key] = item_id
 	
 	# Update history
-	var category_key = _get_category_key(category)
 	_add_to_history(category_key, item_id)
 	
-	# Track equipped time
+	# Track equipment stats
+	if not save_data.stats.times_equipped.has(item_id):
+		save_data.stats.times_equipped[item_id] = 0
+	save_data.stats.times_equipped[item_id] += 1
+	
 	if not save_data.stats.total_equipped_time.has(item_id):
 		save_data.stats.total_equipped_time[item_id] = 0
 	
@@ -162,8 +198,138 @@ func equip_item(item_id: String) -> bool:
 	print("EquipmentManager: Equipped %s in category %s" % [item_id, category_key])
 	return true
 
+func unequip_item(item_id: String) -> bool:
+	"""Unequip an item - returns true if successful"""
+	if not ItemManager:
+		return false
+		
+	var item = ItemManager.get_item(item_id)
+	if not item:
+		return false
+	
+	var category = item.category
+	var category_key = _get_category_key(category)
+	
+	match category:
+		UnifiedItemData.Category.EMOJI:
+			save_data.equipped.emoji.erase(item_id)
+		UnifiedItemData.Category.MINI_PROFILE_CARD:
+			if save_data.equipped.mini_profile == item_id:
+				save_data.equipped.mini_profile = ""
+				# Also clear showcased items
+				save_data.equipped.mini_profile_showcased_items.clear()
+				save_data.equipped.mini_profile_showcased_stats.clear()
+				save_data.equipped.mini_profile_showcased_achievements.clear()
+		_:
+			if save_data.equipped.get(category_key, "") == item_id:
+				save_data.equipped[category_key] = ""
+	
+	save_data_to_file()
+	item_unequipped.emit(item_id, category_key)
+	equipment_changed.emit(category_key)
+	
+	return true
+
+func grant_item(item_id: String, source: String = "shop") -> bool:
+	"""Grant an item to the player"""
+	if is_item_owned(item_id):
+		push_warning("EquipmentManager: Item already owned: " + item_id)
+		return false
+	
+	if not ItemManager:
+		push_error("EquipmentManager: ItemManager not available")
+		return false
+	
+	var item = ItemManager.get_item(item_id)
+	if not item:
+		push_error("EquipmentManager: Item not found in ItemManager: " + item_id)
+		return false
+	
+	# Add to owned items
+	save_data.owned_items.append(item_id)
+	save_data.unlock_dates[item_id] = Time.get_unix_time_from_system()
+	save_data.item_sources[item_id] = source
+	
+	# Update stats
+	save_data.stats.total_items_owned += 1
+	
+	var category_key = _get_category_key(item.category)
+	
+	# Update category stats
+	if not save_data.stats.items_by_category.has(category_key):
+		save_data.stats.items_by_category[category_key] = 0
+	save_data.stats.items_by_category[category_key] += 1
+	
+	# Update rarity stats
+	var rarity_key = item.get_rarity_name().to_lower()
+	if not save_data.stats.items_by_rarity.has(rarity_key):
+		save_data.stats.items_by_rarity[rarity_key] = 0
+	save_data.stats.items_by_rarity[rarity_key] += 1
+	
+	# Update cache
+	if items_by_category.has(category_key):
+		items_by_category[category_key].append(item_id)
+	
+	# Auto-equip if first of category
+	if should_auto_equip(item):
+		equip_item(item_id)
+	
+	save_data_to_file()
+	ownership_changed.emit(item_id, true)
+	item_granted.emit(item_id, source)
+	
+	print("EquipmentManager: Granted item %s from %s" % [item_id, source])
+	return true
+
+func revoke_item(item_id: String) -> bool:
+	"""Remove an item from player's collection (for testing/admin)"""
+	if not is_item_owned(item_id):
+		return false
+	
+	# Unequip if equipped
+	if is_item_equipped(item_id):
+		unequip_item(item_id)
+	
+	# Remove from owned items
+	save_data.owned_items.erase(item_id)
+	
+	# Update stats
+	save_data.stats.total_items_owned = max(0, save_data.stats.total_items_owned - 1)
+	
+	if ItemManager:
+		var item = ItemManager.get_item(item_id)
+		if item:
+			var category_key = _get_category_key(item.category)
+			if save_data.stats.items_by_category.has(category_key):
+				save_data.stats.items_by_category[category_key] = max(0, save_data.stats.items_by_category[category_key] - 1)
+			
+			# Update cache
+			if items_by_category.has(category_key):
+				items_by_category[category_key].erase(item_id)
+	
+	# Remove from favorites and history
+	for category in save_data.favorites:
+		save_data.favorites[category].erase(item_id)
+	for category in save_data.history:
+		save_data.history[category].erase(item_id)
+	
+	save_data_to_file()
+	ownership_changed.emit(item_id, false)
+	
+	return true
+
+# === QUERY FUNCTIONS ===
+
+func is_item_owned(item_id: String) -> bool:
+	"""Check if player owns an item"""
+	return item_id in save_data.owned_items
+
 func is_item_equipped(item_id: String) -> bool:
-	var item = get_item_data(item_id)
+	"""Check if an item is currently equipped"""
+	if not ItemManager:
+		return false
+		
+	var item = ItemManager.get_item(item_id)
 	if not item:
 		return false
 	
@@ -173,53 +339,6 @@ func is_item_equipped(item_id: String) -> bool:
 		_:
 			var category_key = _get_category_key(item.category)
 			return save_data.equipped.get(category_key, "") == item_id
-
-func grant_item(item_id: String, source: String = "shop") -> bool:
-	"""Grant an item to the player"""
-	if is_item_owned(item_id):
-		push_warning("EquipmentManager: Item already owned: " + item_id)
-		return false
-	
-	save_data.owned_items.append(item_id)
-	save_data.unlock_dates[item_id] = Time.get_unix_time_from_system()
-	save_data.item_sources[item_id] = source
-	
-	# Update stats
-	save_data.stats.total_items_owned += 1
-	
-	var item = get_item_data(item_id)
-	if item:
-		var category_key = _get_category_key(item.category)
-		
-		# Update category stats
-		if not save_data.stats.items_by_category.has(category_key):
-			save_data.stats.items_by_category[category_key] = 0
-		save_data.stats.items_by_category[category_key] += 1
-		
-		# Update rarity stats
-		var rarity_key = item.get_rarity_name().to_lower()
-		if not save_data.stats.items_by_rarity.has(rarity_key):
-			save_data.stats.items_by_rarity[rarity_key] = 0
-		save_data.stats.items_by_rarity[rarity_key] += 1
-		
-		# Update cache
-		if items_by_category.has(category_key):
-			items_by_category[category_key].append(item_id)
-		
-		# Auto-equip if first of category
-		if should_auto_equip(item):
-			equip_item(item_id)
-	
-	save_data_to_file()
-	ownership_changed.emit(item_id, true)
-	
-	print("EquipmentManager: Granted item %s from %s" % [item_id, source])
-	return true
-
-# === QUERY FUNCTIONS ===
-
-func is_item_owned(item_id: String) -> bool:
-	return item_id in save_data.owned_items
 
 func get_equipped_item(category: String) -> String:
 	"""Get the currently equipped item for a category"""
@@ -237,26 +356,69 @@ func get_equipped_items() -> Dictionary:
 	return save_data.equipped.duplicate(true)
 
 func get_owned_items(category: String = "") -> Array:
-	"""Get all owned items, optionally filtered by category"""
+	"""Get all owned item IDs, optionally filtered by category"""
 	if category == "":
 		return save_data.owned_items.duplicate()
 	
 	return items_by_category.get(category, []).duplicate()
 
-func get_item_data(item_id: String) -> UnifiedItemData:
-	"""Get UnifiedItemData for an item"""
-	# Check cache first
-	if unified_items.has(item_id):
-		return unified_items[item_id]
-	
-	# Try to load from various sources
-	var item_data = _load_item_from_sources(item_id)
-	if item_data:
-		unified_items[item_id] = item_data
-	
-	return item_data
+func get_owned_count() -> int:
+	"""Get total number of owned items"""
+	return save_data.owned_items.size()
 
-# === MINI PROFILE SPECIFIC === TODO: Implement UI for these
+func get_owned_count_by_category(category: String) -> int:
+	"""Get number of owned items in a category"""
+	return items_by_category.get(category, []).size()
+
+# === FAVORITES & HISTORY ===
+
+func add_to_favorites(item_id: String) -> bool:
+	"""Add an item to favorites for quick access"""
+	if not is_item_owned(item_id):
+		return false
+	
+	if not ItemManager:
+		return false
+		
+	var item = ItemManager.get_item(item_id)
+	if not item:
+		return false
+	
+	var category_key = _get_category_key(item.category)
+	
+	if not save_data.favorites.has(category_key):
+		save_data.favorites[category_key] = []
+	
+	if not item_id in save_data.favorites[category_key]:
+		save_data.favorites[category_key].append(item_id)
+		save_data_to_file()
+	
+	return true
+
+func remove_from_favorites(item_id: String) -> bool:
+	"""Remove an item from favorites"""
+	for category in save_data.favorites:
+		if item_id in save_data.favorites[category]:
+			save_data.favorites[category].erase(item_id)
+			save_data_to_file()
+			return true
+	return false
+
+func get_favorites(category: String = "") -> Array:
+	"""Get favorite items, optionally filtered by category"""
+	if category != "":
+		return save_data.favorites.get(category, []).duplicate()
+	
+	var all_favorites = []
+	for cat in save_data.favorites:
+		all_favorites.append_array(save_data.favorites[cat])
+	return all_favorites
+
+func get_history(category: String) -> Array:
+	"""Get equipment history for a category"""
+	return save_data.history.get(category, []).duplicate()
+
+# === MINI PROFILE SPECIFIC ===
 
 func set_mini_profile_showcase(items: Array, stats: Array, achievements: Array) -> void:
 	"""Set what's displayed on the mini profile card"""
@@ -264,30 +426,26 @@ func set_mini_profile_showcase(items: Array, stats: Array, achievements: Array) 
 		push_warning("No mini profile equipped")
 		return
 	
-	var profile = get_item_data(save_data.equipped.mini_profile)
-	if not profile:
-		return
-	
-	# Validate limits
-	var max_slots = profile.showcase_slots if profile else 3
-	
-	save_data.equipped.mini_profile_showcased_items = items.slice(0, min(items.size(), max_slots))
-	save_data.equipped.mini_profile_showcased_stats = stats.slice(0, min(stats.size(), max_slots))
-	save_data.equipped.mini_profile_showcased_achievements = achievements.slice(0, min(achievements.size(), max_slots))
-	
-	save_data_to_file()
-	equipment_changed.emit("mini_profile_showcase")
-	
-	push_warning("TODO: Update mini profile display in UI")
+	if ItemManager:
+		var profile = ItemManager.get_item(save_data.equipped.mini_profile)
+		if profile:
+			# Validate limits (default to 3 if property doesn't exist)
+			var max_slots = profile.get("showcase_slots") if profile.has("showcase_slots") else 3
+			
+			save_data.equipped.mini_profile_showcased_items = items.slice(0, min(items.size(), max_slots))
+			save_data.equipped.mini_profile_showcased_stats = stats.slice(0, min(stats.size(), max_slots))
+			save_data.equipped.mini_profile_showcased_achievements = achievements.slice(0, min(achievements.size(), max_slots))
+			
+			save_data_to_file()
+			equipment_changed.emit("mini_profile_showcase")
 
-# === MENU BACKGROUND SPECIFIC === TODO: Implement in MainMenu
+# === MENU BACKGROUND SPECIFIC ===
 
 func toggle_board_as_menu_background(enabled: bool) -> void:
 	"""Toggle using the game board as menu background"""
 	save_data.equipped.use_board_as_menu_bg = enabled
 	save_data_to_file()
 	equipment_changed.emit("menu_background")
-	push_warning("TODO: Apply to MainMenu scene")
 
 func get_menu_background() -> String:
 	"""Get the current menu background (board or dedicated background)"""
@@ -322,67 +480,6 @@ func _add_to_history(category: String, item_id: String) -> void:
 	if history.size() > 5:
 		history.resize(5)
 
-func _load_item_from_sources(item_id: String) -> UnifiedItemData:
-	"""Try to load item data from various sources"""
-	
-	# Try ItemManager first - it already stores UnifiedItemData objects
-	if ItemManager and ItemManager.all_items.has(item_id):
-		var item = ItemManager.all_items[item_id]
-		# ItemManager already stores UnifiedItemData, just return it
-		if item is UnifiedItemData:
-			return item
-		else:
-			push_warning("EquipmentManager: Item in ItemManager is not UnifiedItemData: " + item_id)
-	
-	# Try ShopManager - need to convert from ShopItem
-	if ShopManager and ShopManager.shop_inventory.has(item_id):
-		var shop_item = ShopManager.shop_inventory[item_id]
-		var unified = UnifiedItemData.new()
-		unified.from_shop_item(shop_item)
-		return unified
-	
-	# Try ProceduralItemRegistry
-	if ProceduralItemRegistry and ProceduralItemRegistry.procedural_items.has(item_id):
-		var proc_data = ProceduralItemRegistry.procedural_items[item_id]
-		var unified = UnifiedItemData.new()
-		
-		# Map string category to enum
-		var category_enum = _string_to_category(proc_data.category)
-		unified.from_procedural_instance(proc_data.instance, category_enum)
-		return unified
-	
-	return null
-
-func _migrate_from_old_systems() -> void:
-	"""Migrate data from ItemManager and ShopManager"""
-	var migrated = false
-	
-	# Migrate from ItemManager
-	if ItemManager and ItemManager.save_data:
-		for item_id in ItemManager.save_data.owned_items:
-			if not item_id in save_data.owned_items:
-				save_data.owned_items.append(item_id)
-				migrated = true
-		
-		# Migrate equipped items
-		if ItemManager.save_data.equipped.card_front:
-			save_data.equipped.card_front = ItemManager.save_data.equipped.card_front
-		if ItemManager.save_data.equipped.card_back:
-			save_data.equipped.card_back = ItemManager.save_data.equipped.card_back
-		if ItemManager.save_data.equipped.board:
-			save_data.equipped.board = ItemManager.save_data.equipped.board
-	
-	# Migrate from ShopManager
-	if ShopManager and ShopManager.shop_data:
-		for item_id in ShopManager.shop_data.owned_items:
-			if not item_id in save_data.owned_items:
-				save_data.owned_items.append(item_id)
-				migrated = true
-	
-	if migrated:
-		print("EquipmentManager: Migrated data from old systems")
-		save_data_to_file()
-
 func _ensure_defaults() -> void:
 	"""Ensure default items are owned and equipped"""
 	# Default items that should always be owned
@@ -398,6 +495,7 @@ func _ensure_defaults() -> void:
 		if not item_id in save_data.owned_items:
 			save_data.owned_items.append(item_id)
 			save_data.item_sources[item_id] = "default"
+			save_data.stats.total_items_owned += 1
 		
 		# Ensure equipped if nothing else is
 		if save_data.equipped.get(category, "") == "":
@@ -406,12 +504,14 @@ func _ensure_defaults() -> void:
 # === PERSISTENCE ===
 
 func save_data_to_file() -> void:
+	"""Save equipment data to disk"""
 	var file = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file:
 		file.store_var(save_data)
 		file.close()
 
 func load_save_data() -> void:
+	"""Load equipment data from disk"""
 	if not FileAccess.file_exists(SAVE_PATH):
 		print("EquipmentManager: No save file found, using defaults")
 		return
@@ -424,16 +524,35 @@ func load_save_data() -> void:
 		if loaded_data and loaded_data.has("version"):
 			if loaded_data.version == SAVE_VERSION:
 				save_data = loaded_data
-			else:
+			elif loaded_data.version < SAVE_VERSION:
 				_migrate_save_data(loaded_data)
 
 func _migrate_save_data(old_data: Dictionary) -> void:
 	"""Handle save data migration from older versions"""
 	print("EquipmentManager: Migrating save from version %d to %d" % [old_data.get("version", 0), SAVE_VERSION])
-	# Add migration logic as needed
+	
+	# Preserve owned items and equipped state
+	if old_data.has("owned_items"):
+		save_data.owned_items = old_data.owned_items
+	if old_data.has("equipped"):
+		save_data.equipped = old_data.equipped
+	if old_data.has("favorites"):
+		save_data.favorites = old_data.favorites
+	if old_data.has("history"):
+		save_data.history = old_data.history
+	if old_data.has("unlock_dates"):
+		save_data.unlock_dates = old_data.unlock_dates
+	if old_data.has("item_sources"):
+		save_data.item_sources = old_data.item_sources
+	if old_data.has("stats"):
+		save_data.stats = old_data.stats
+	
+	# Update version
+	save_data.version = SAVE_VERSION
+	save_data_to_file()
 
 func reset_all_equipment() -> void:
-	"""Reset to default state"""
+	"""Reset to default state (for testing or new game)"""
 	save_data = {
 		"version": SAVE_VERSION,
 		"owned_items": ["card_classic", "board_green"],
@@ -455,7 +574,10 @@ func reset_all_equipment() -> void:
 		},
 		"favorites": {},
 		"history": {},
-		"unlock_dates": {},
+		"unlock_dates": {
+			"card_classic": Time.get_unix_time_from_system(),
+			"board_green": Time.get_unix_time_from_system()
+		},
 		"item_sources": {
 			"card_classic": "default",
 			"board_green": "default"
@@ -464,21 +586,59 @@ func reset_all_equipment() -> void:
 			"total_items_owned": 2,
 			"items_by_category": {"card_front": 1, "board": 1},
 			"items_by_rarity": {"common": 2},
-			"total_equipped_time": {}
+			"total_equipped_time": {},
+			"times_equipped": {}
 		}
 	}
 	save_data_to_file()
+	_build_cache()
+
+# === CATEGORY CONVERSION ===
+
+func _get_category_key(category) -> String:
+	"""Convert enum category to string key for save data"""
+	# Handle if already a string
+	if typeof(category) == TYPE_STRING:
+		return category
+	
+	# Handle enum (int) conversion
+	if typeof(category) == TYPE_INT:
+		match category:
+			UnifiedItemData.Category.CARD_FRONT:
+				return "card_front"
+			UnifiedItemData.Category.CARD_BACK:
+				return "card_back"
+			UnifiedItemData.Category.BOARD:
+				return "board"
+			UnifiedItemData.Category.FRAME:
+				return "frame"
+			UnifiedItemData.Category.AVATAR:
+				return "avatar"
+			UnifiedItemData.Category.EMOJI:
+				return "emoji"
+			UnifiedItemData.Category.MINI_PROFILE_CARD:
+				return "mini_profile"
+			UnifiedItemData.Category.TOPBAR:
+				return "topbar"
+			UnifiedItemData.Category.COMBO_EFFECT:
+				return "combo_effect"
+			UnifiedItemData.Category.MENU_BACKGROUND:
+				return "menu_background"
+			_:
+				return ""
+	
+	return ""
 
 # === DEBUG ===
 
 func debug_status() -> void:
+	"""Print comprehensive equipment status"""
 	print("\n=== EQUIPMENT MANAGER STATUS ===")
 	print("Owned items: %d" % save_data.owned_items.size())
-	print("Equipped:")
+	print("\nEquipped items:")
 	for category in save_data.equipped:
 		var value = save_data.equipped[category]
 		
-		# Check if value has meaningful content based on its type
 		match typeof(value):
 			TYPE_STRING:
 				if value != "":
@@ -489,93 +649,50 @@ func debug_status() -> void:
 			TYPE_BOOL:
 				if value:
 					print("  %s: %s" % [category, value])
-			_:
-				if value != null:
-					print("  %s: %s" % [category, value])
 	
-	print("Stats:")
+	print("\nStatistics:")
+	print("  Total owned: %d" % save_data.stats.total_items_owned)
 	print("  By category: %s" % save_data.stats.items_by_category)
 	print("  By rarity: %s" % save_data.stats.items_by_rarity)
+	
+	if save_data.favorites.size() > 0:
+		print("\nFavorites:")
+		for category in save_data.favorites:
+			if save_data.favorites[category].size() > 0:
+				print("  %s: %s" % [category, save_data.favorites[category]])
+	
 	print("================================\n")
 
-func _get_category_key(category: UnifiedItemData.Category) -> String:
-	"""Convert enum category to string key for save data"""
-	match category:
-		UnifiedItemData.Category.CARD_FRONT:
-			return "card_front"
-		UnifiedItemData.Category.CARD_BACK:
-			return "card_back"
-		UnifiedItemData.Category.BOARD:
-			return "board"
-		UnifiedItemData.Category.FRAME:
-			return "frame"
-		UnifiedItemData.Category.AVATAR:
-			return "avatar"
-		UnifiedItemData.Category.EMOJI:
-			return "emoji"
-		UnifiedItemData.Category.MINI_PROFILE_CARD:
-			return "mini_profile"
-		UnifiedItemData.Category.TOPBAR:
-			return "topbar"
-		UnifiedItemData.Category.COMBO_EFFECT:
-			return "combo_effect"
-		UnifiedItemData.Category.MENU_BACKGROUND:
-			return "menu_background"
-		_:
-			return ""
+func debug_grant_all_items() -> void:
+	"""Grant all items for testing (debug only)"""
+	if not ItemManager:
+		push_error("ItemManager not available")
+		return
+	
+	var granted = 0
+	for item_id in ItemManager.all_items:
+		if not is_item_owned(item_id):
+			if grant_item(item_id, "debug"):
+				granted += 1
+	
+	print("EquipmentManager: Granted %d items for debug" % granted)
 
-func _string_to_category(category_str: String) -> UnifiedItemData.Category:
-	"""Convert string category to enum"""
-	match category_str:
-		"card_fronts", "card_front":
-			return UnifiedItemData.Category.CARD_FRONT
-		"card_backs", "card_back":
-			return UnifiedItemData.Category.CARD_BACK
-		"boards", "board", "board_skins":
-			return UnifiedItemData.Category.BOARD
-		"frames", "frame":
-			return UnifiedItemData.Category.FRAME
-		"avatars", "avatar":
-			return UnifiedItemData.Category.AVATAR
-		"emojis", "emoji":
-			return UnifiedItemData.Category.EMOJI
-		"mini_profile_boards", "mini_profile", "mini_profiles":
-			return UnifiedItemData.Category.MINI_PROFILE_CARD
-		"topbar", "topbars":
-			return UnifiedItemData.Category.TOPBAR
-		"combo_effect", "combo_effects":
-			return UnifiedItemData.Category.COMBO_EFFECT
-		"menu_background", "menu_backgrounds":
-			return UnifiedItemData.Category.MENU_BACKGROUND
-		_:
-			push_warning("EquipmentManager: Unknown category string: " + category_str)
-			return UnifiedItemData.Category.CARD_FRONT
-			
-func unequip_item(item_id: String) -> bool:
-	"""Unequip an item - returns true if successful"""
-	var item = get_item_data(item_id)
-	if not item:
-		return false
+func debug_grant_random_items(count: int = 5) -> void:
+	"""Grant random items for testing"""
+	if not ItemManager:
+		push_error("ItemManager not available")
+		return
 	
-	var category = item.category
-	var category_key = _get_category_key(category)
+	var available = []
+	for item_id in ItemManager.all_items:
+		if not is_item_owned(item_id):
+			available.append(item_id)
 	
-	match category:
-		UnifiedItemData.Category.EMOJI:
-			save_data.equipped.emoji.erase(item_id)
-		UnifiedItemData.Category.MINI_PROFILE_CARD:
-			if save_data.equipped.mini_profile == item_id:
-				save_data.equipped.mini_profile = ""
-				# Also clear showcased items
-				save_data.equipped.mini_profile_showcased_items.clear()
-				save_data.equipped.mini_profile_showcased_stats.clear()
-				save_data.equipped.mini_profile_showcased_achievements.clear()
-		_:
-			if save_data.equipped.get(category_key, "") == item_id:
-				save_data.equipped[category_key] = ""
+	available.shuffle()
 	
-	save_data_to_file()
-	item_unequipped.emit(item_id, category_key)
-	equipment_changed.emit(category_key)
+	var granted = 0
+	for i in min(count, available.size()):
+		if grant_item(available[i], "debug"):
+			granted += 1
 	
-	return true
+	print("EquipmentManager: Granted %d random items for debug" % granted)

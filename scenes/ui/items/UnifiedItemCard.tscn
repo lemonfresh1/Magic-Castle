@@ -8,6 +8,7 @@ offset_right = 90.0
 offset_bottom = 126.0
 size_flags_horizontal = 0
 size_flags_vertical = 0
+mouse_filter = 1
 script = ExtResource("1_5i2ii")
 
 [node name="BackgroundTexture" type="TextureRect" parent="."]
@@ -25,11 +26,12 @@ size_flags_vertical = 0
 
 [node name="ProceduralCanvas" type="Control" parent="."]
 layout_mode = 2
-mouse_filter = 2
+mouse_filter = 1
 
 [node name="OverlayContainer" type="Control" parent="."]
 self_modulate = Color(1, 1, 1, 0)
 layout_mode = 2
+mouse_filter = 1
 
 [node name="NameLabel" type="Label" parent="OverlayContainer"]
 layout_mode = 1
@@ -41,6 +43,7 @@ offset_top = -11.5
 offset_bottom = 11.5
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 1
 theme_override_constants/line_spacing = -6
 text = "NameLabel"
 horizontal_alignment = 1
@@ -55,6 +58,7 @@ anchor_bottom = 1.0
 offset_top = -23.0
 grow_horizontal = 2
 grow_vertical = 0
+mouse_filter = 1
 text = "PriceLabel"
 horizontal_alignment = 1
 vertical_alignment = 2
@@ -68,4 +72,4 @@ offset_bottom = 40.0
 [node name="LockedOverlay" type="Control" parent="."]
 custom_minimum_size = Vector2(24, 24)
 layout_mode = 2
-mouse_filter = 2
+mouse_filter = 1

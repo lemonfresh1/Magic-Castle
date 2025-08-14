@@ -129,6 +129,7 @@ func _generate_id_from_path(script_path: String) -> String:
 	var file_name = script_path.get_file().get_basename()
 	return file_name.to_snake_case()
 
+# In _register_with_managers() around line 117
 func _register_with_managers() -> void:
 	print("Registering with managers...")
 	
@@ -138,15 +139,26 @@ func _register_with_managers() -> void:
 		var category = item_data.category
 		
 		# Create UnifiedItemData resource
-		if instance.has_method("create_item_data"):
-			var item_resource = instance.create_item_data()
-			
-			# Register with ItemManager
-			if ItemManager and item_resource:
-				ItemManager.all_items[item_id] = item_resource
-				print("  ✓ Registered %s with ItemManager" % item_id)
+		var item_resource: UnifiedItemData
 		
-		# NOTE: CardSkinManager removed - EquipmentManager handles this now
+		if instance.has_method("create_item_data"):
+			item_resource = instance.create_item_data()
+		else:
+			# Fallback: Create UnifiedItemData manually
+			item_resource = UnifiedItemData.new()
+			item_resource.id = instance.get("item_id") if instance.get("item_id") else item_id
+			item_resource.display_name = instance.get("display_name") if instance.get("display_name") else ""
+			item_resource.description = instance.get("description") if instance.get("description") else ""
+			item_resource.category = _category_string_to_enum(category)
+			item_resource.rarity = instance.get("item_rarity") if instance.get("item_rarity") else UnifiedItemData.Rarity.COMMON
+			item_resource.is_procedural = true
+			item_resource.is_animated = instance.get("is_animated") if instance.get("is_animated") else false
+			item_resource.procedural_script_path = item_data.script_path
+			
+		# Register with ItemManager if available
+		if ItemManager and item_resource:
+			ItemManager.register_item(item_resource)
+			print("  ✓ Registered %s with ItemManager" % item_id)
 
 # Export all procedural items as PNGs with organized structure
 func export_all_to_png() -> void:
@@ -259,3 +271,13 @@ func _get_category_folder_name(category: String) -> String:
 		"avatars": return "avatars"
 		"emojis": return "emojis"
 		_: return category
+
+func _category_string_to_enum(category: String) -> UnifiedItemData.Category:
+	match category:
+		"card_fronts": return UnifiedItemData.Category.CARD_FRONT
+		"card_backs": return UnifiedItemData.Category.CARD_BACK
+		"boards": return UnifiedItemData.Category.BOARD
+		"frames": return UnifiedItemData.Category.FRAME
+		"avatars": return UnifiedItemData.Category.AVATAR
+		"emojis": return UnifiedItemData.Category.EMOJI
+		_: return UnifiedItemData.Category.CARD_FRONT

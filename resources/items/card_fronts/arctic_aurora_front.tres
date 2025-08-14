@@ -1,6 +1,6 @@
-[gd_resource type="Resource" script_class="UnifiedItemData" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="UnifiedItemData" load_steps=2 format=3 uid="uid://b1nvbkg5ygrof"]
 
-[ext_resource type="Script" path="res://Pyramids/scripts/resources/UnifiedItemData.gd" id="1_f13nm"]
+[ext_resource type="Script" uid="uid://d0xqbrsva3nam" path="res://Pyramids/scripts/resources/UnifiedItemData.gd" id="1_f13nm"]
 
 [resource]
 script = ExtResource("1_f13nm")

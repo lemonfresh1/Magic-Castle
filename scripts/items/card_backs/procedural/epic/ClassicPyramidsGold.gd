@@ -6,12 +6,16 @@ class_name ClassicPyramidsGold
 extends ProceduralCardBack
 
 func _init():
-	# Basic properties
-	skin_name = "classic_pyramids_gold"
-	display_name = "Classic Pyramids Gold"
+	# Single identifier
 	item_id = "card_back_classic_pyramids_gold"
+	
+	# Display properties
+	display_name = "Classic Pyramids Gold"
 	theme_name = "Classic Pyramids"
 	item_rarity = UnifiedItemData.Rarity.EPIC
+	
+	# Sync with parent's skin_name
+	skin_name = item_id
 	
 	# Animation properties
 	is_animated = true

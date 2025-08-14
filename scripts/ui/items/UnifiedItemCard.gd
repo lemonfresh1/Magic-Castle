@@ -1,5 +1,17 @@
 # UnifiedItemCard.gd - Universal item card for ALL UI displays
-# UnifiedItemCard.gd - Universal item card for ALL UI displays
+# Location: res://Pyramids/scripts/ui/UnifiedItemCard.gd
+# Last Updated: Fixed type handling for categories and rarities [Date]
+#
+# UnifiedItemCard handles:
+# - Displaying any item type in any UI context
+# - Procedural/animated item rendering
+# - Ownership and equipped state badges
+# - Lock state for level-restricted items
+# - Responsive layout (portrait vs landscape)
+#
+# Flow: UnifiedItemData → UnifiedItemCard → UI Display
+# Dependencies: UnifiedItemData (for item), EquipmentManager (for state), UIStyleManager (for styling)
+
 class_name UnifiedItemCard
 extends PanelContainer
 
@@ -22,8 +34,6 @@ enum LayoutType {
 	LANDSCAPE     # Boards, Mini profiles
 }
 
-# NO MORE CONSTANTS - everything from UIStyleManager
-
 # Node references (from scene)
 var background_texture: TextureRect
 var icon_texture: TextureRect
@@ -32,7 +42,7 @@ var overlay_container: Control
 var name_label: Label
 var price_label: Label
 var equipped_badge: TextureRect
-var locked_overlay: Control  # Changed from ColorRect to Control
+var locked_overlay: Control
 
 # Data
 var item_data: UnifiedItemData
@@ -100,6 +110,18 @@ func setup(item: UnifiedItemData, mode: DisplayMode = DisplayMode.INVENTORY):
 	print("  Status - Owned: %s, Equipped: %s, Locked: %s" % [is_owned, is_equipped, is_locked])
 	print("  Animated: %s, Procedural: %s" % [item.is_animated, item.is_procedural])
 	
+	if display_mode == DisplayMode.SHOP:
+		var final_size = _get_card_size()
+		custom_minimum_size = final_size
+		size = final_size
+		
+		# Make sure procedural canvas doesn't expand
+		if procedural_canvas:
+			procedural_canvas.custom_minimum_size = final_size - Vector2(4, 4)
+			procedural_canvas.size = final_size - Vector2(4, 4)
+		
+		print("  FORCED final size: (%s)" % final_size)
+	
 	# Setup the visual display
 	_setup_card_size()
 	_setup_panel_style()
@@ -111,10 +133,11 @@ func setup(item: UnifiedItemData, mode: DisplayMode = DisplayMode.INVENTORY):
 	print("  Final size: %s" % size)
 	print("=== SETUP COMPLETE ===\n")
 
+
 func _get_layout_type() -> LayoutType:
 	"""Determine layout type from item category"""
 	match item_data.category:
-		"board", "mini_profile":
+		UnifiedItemData.Category.BOARD, UnifiedItemData.Category.MINI_PROFILE_CARD:
 			return LayoutType.LANDSCAPE
 		_:
 			return LayoutType.PORTRAIT
@@ -140,8 +163,9 @@ func _setup_card_size():
 	
 	# BORDER FIX: Inset ProceduralCanvas by border width from UIStyleManager
 	if procedural_canvas:
-		# Get border width from UIStyleManager
-		var border_width = UIStyleManager.get_item_card_style("card_border_width_epic") if item_data.rarity in ["epic", "legendary", "mythic"] else UIStyleManager.get_item_card_style("card_border_width_normal")
+		# Get border width from UIStyleManager - fix the rarity check
+		var rarity_str = item_data.get_rarity_name().to_lower()
+		var border_width = UIStyleManager.get_item_card_style("card_border_width_epic") if rarity_str in ["epic", "legendary", "mythic"] else UIStyleManager.get_item_card_style("card_border_width_normal")
 		
 		procedural_canvas.clip_contents = true
 		# Inset the canvas to not cover the border
@@ -155,18 +179,19 @@ func _setup_card_size():
 		print("  ProceduralCanvas inset by: %spx" % border_width)
 
 func _setup_panel_style():
-	"""Setup panel style with rarity-colored border - FIX BORDER DISPLAY"""
+	"""Setup panel style with rarity-colored border"""
 	var style = StyleBoxFlat.new()
 	
 	# Transparent background (let texture/procedural show through)
 	style.bg_color = Color(0, 0, 0, 0)
 	
-	# Rarity border
-	var rarity_color = UIStyleManager.get_rarity_color(item_data.rarity)
+	# Rarity border - use the item's helper method
+	var rarity_color = item_data.get_rarity_color()
 	style.border_color = rarity_color
 	
 	# Get border width from UIStyleManager
-	var border_width = UIStyleManager.get_item_card_style("card_border_width_epic") if item_data.rarity in ["epic", "legendary", "mythic"] else UIStyleManager.get_item_card_style("card_border_width_normal")
+	var rarity_str = item_data.get_rarity_name().to_lower()
+	var border_width = UIStyleManager.get_item_card_style("card_border_width_epic") if rarity_str in ["epic", "legendary", "mythic"] else UIStyleManager.get_item_card_style("card_border_width_normal")
 	
 	style.set_border_width_all(border_width)
 	
@@ -238,10 +263,11 @@ func _try_load_texture() -> bool:
 		paths_to_try.append(item_data.icon_path)
 		print("  - Will check icon path: ", item_data.icon_path)
 	
-	# Add fallback paths for common locations
+	# Add fallback paths for common locations - use the item's helper method
+	var category_folder = item_data.get_category_folder()
 	var fallback_paths = [
-		"res://Magic-Castle/assets/%s/%s.png" % [_get_category_folder(item_data.category), item_data.id],
-		"res://Pyramids/assets/%s/%s.png" % [_get_category_folder(item_data.category), item_data.id],
+		"res://Pyramids/assets/icons/%s/%s.png" % [category_folder, item_data.id],
+		"res://Magic-Castle/assets/%s/%s.png" % [category_folder, item_data.id],
 	]
 	
 	for fallback in fallback_paths:
@@ -277,7 +303,7 @@ func _try_load_texture() -> bool:
 func _display_texture(texture: Texture2D):
 	"""Display texture based on item category"""
 	# For emojis, avatars, frames - show as icon
-	if item_data.category in ["emoji", "avatar", "frame"]:
+	if item_data.category in [UnifiedItemData.Category.EMOJI, UnifiedItemData.Category.AVATAR, UnifiedItemData.Category.FRAME]:
 		icon_texture.texture = texture
 		icon_texture.visible = true
 		# Position at top center, 60% of card height
@@ -290,7 +316,7 @@ func _display_texture(texture: Texture2D):
 		background_texture.visible = true
 
 func _setup_overlays():
-	"""Setup text overlays using existing scene nodes - NO BACKGROUND BAR"""
+	"""Setup text overlays using existing scene nodes"""
 	
 	# Clear any existing background from previous setup
 	for child in overlay_container.get_children():
@@ -332,7 +358,12 @@ func _setup_overlays():
 	# Setup Price Label - ALWAYS at slot 2, visible only in shop
 	if display_mode == DisplayMode.SHOP and not is_owned:
 		price_label.visible = true
-		var price = item_data.get_price_with_rarity_multiplier()
+		# Get price from ShopManager if available, otherwise use base price
+		var price = 0
+		if ShopManager and ShopManager.has_method("get_item_price"):
+			price = ShopManager.get_item_price(item_data.id)
+		else:
+			price = item_data.get_price_with_rarity_multiplier()
 		price_label.text = str(price) + " ⭐"
 	else:
 		price_label.visible = false
@@ -397,117 +428,108 @@ func _update_lock_state():
 		for child in locked_overlay.get_children():
 			child.queue_free()
 
-
-# In UnifiedItemCard._setup_procedural_display()
 func _setup_procedural_display():
 	"""Setup procedural animation - with proper size constraints"""
 	print("  Setting up procedural display...")
-	print("    Item animated: %s, procedural: %s" % [item_data.is_animated, item_data.is_procedural])
-	print("    Script path: %s" % item_data.procedural_script_path)
 	
-	if not item_data.is_animated:
-		print("    ✗ Item is not animated, skipping procedural setup")
+	if not item_data.is_animated and not item_data.is_procedural:
+		print("    ✗ Item is not animated/procedural, skipping setup")
 		return
 	
 	# Show procedural canvas, hide background
 	procedural_canvas.visible = true
 	background_texture.visible = false
-	print("    Canvas visible: true, Background visible: false")
 	
 	# Clear any previous children
 	for child in procedural_canvas.get_children():
-		print("    Clearing old child: %s" % child.name)
 		child.queue_free()
 	
-	# Only handle procedural card backs
-	if item_data.is_procedural and item_data.procedural_script_path != "":
-		print("    Loading procedural script...")
-		
-		if not ResourceLoader.exists(item_data.procedural_script_path):
-			print("    ✗ Script not found at path!")
-			return
-			
-		var script = load(item_data.procedural_script_path)
-		var instance = script.new()
-		print("    ✓ Script loaded, instance created")
-		
-		# Create a Control to draw on
-		var draw_canvas = Control.new()
-		draw_canvas.name = "DrawCanvas"
-		draw_canvas.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		draw_canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		
-		# IMPORTANT: Set size explicitly
-		draw_canvas.size = size
-		draw_canvas.custom_minimum_size = size
-		draw_canvas.clip_contents = true
-		print("    DrawCanvas size: %s" % draw_canvas.size)
-		
-		# Store the Resource instance
-		draw_canvas.set_meta("procedural_instance", instance)
-		draw_canvas.set_meta("card_size", size)  # Pass size to drawing
-		
-		# Connect draw signal with size info
-		draw_canvas.draw.connect(func():
-			var inst = draw_canvas.get_meta("procedural_instance")
-			var card_size = draw_canvas.get_meta("card_size")
-			if inst and inst.has_method("draw_card_back"):
-				# Make sure we pass the correct size
-				inst.draw_card_back(draw_canvas, card_size)
-		)
-		
-		procedural_canvas.add_child(draw_canvas)
-		print("    DrawCanvas added to ProceduralCanvas")
-		
-		# ANIMATION FIX: Setup animation tween
-		if instance.get("is_animated") and instance.is_animated:
-			print("    Setting up animation tween...")
-			var tween = create_tween()
-			tween.set_loops()
-			tween.tween_method(
-				func(phase: float): 
-					instance.animation_phase = phase
-					draw_canvas.queue_redraw(),
-				0.0, 
-				1.0, 
-				instance.animation_duration
-			)
-			print("    ✓ Animation tween created with duration: %s" % instance.animation_duration)
-			set_process(false)  # We don't need _process anymore since tween handles it
+	# Get the procedural instance
+	var instance = null
+	
+	# First try to get from ItemManager's cache
+	if ItemManager and ItemManager.has_method("get_procedural_instance"):
+		instance = ItemManager.get_procedural_instance(item_data.id)
+		if instance:
+			print("    ✓ Got cached instance from ItemManager")
+	
+	# If not cached, try ProceduralItemRegistry directly
+	if not instance and ProceduralItemRegistry:
+		instance = ProceduralItemRegistry.get_procedural_item(item_data.id)
+		if instance:
+			print("    ✓ Got instance from ProceduralItemRegistry")
+	
+	# If still no instance, load the script directly
+	if not instance and item_data.procedural_script_path != "":
+		if ResourceLoader.exists(item_data.procedural_script_path):
+			var script = load(item_data.procedural_script_path)
+			instance = script.new()
+			print("    ✓ Created new instance from script")
 		else:
-			print("    ✗ Not animated according to instance")
-		
-		draw_canvas.queue_redraw()
-		print("    ✓ Initial redraw queued")
-	else:
-		print("    ✗ Not procedural or no script path")
+			print("    ✗ Script path doesn't exist: %s" % item_data.procedural_script_path)
+	
+	if not instance:
+		print("    ✗ Could not get procedural instance!")
 		procedural_canvas.visible = false
-
-func _process(delta):
-	"""Update animation if needed - REMOVED, tween handles this now"""
-	pass  # No longer needed, tween handles animation
-
-func _get_category_folder(category: String) -> String:
-	"""Get the folder name for exported items"""
-	match category:
-		"card_front": return "card_fronts"
-		"card_back": return "card_backs"
-		"board": return "boards"
-		_: return category + "s"
-
+		return
+	
+	# Create a Control to draw on
+	var draw_canvas = Control.new()
+	draw_canvas.name = "DrawCanvas"
+	draw_canvas.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	draw_canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	draw_canvas.clip_contents = true
+	
+	procedural_canvas.add_child(draw_canvas)
+	
+	# Setup the draw callback based on item type
+	draw_canvas.draw.connect(func():
+		var canvas_size = draw_canvas.size
+		if instance.has_method("draw_card_back"):
+			instance.draw_card_back(draw_canvas, canvas_size)
+		elif instance.has_method("draw_board_background"):
+			instance.draw_board_background(draw_canvas, canvas_size)
+		elif instance.has_method("draw_card_front"):
+			# For card fronts, draw with example rank/suit
+			instance.draw_card_front(draw_canvas, canvas_size, "A", 0)
+		elif instance.has_method("draw_item"):
+			instance.draw_item(draw_canvas, canvas_size)
+	)
+	
+	# Setup animation if needed
+	if instance.get("is_animated") and instance.is_animated:
+		print("    Setting up animation...")
+		var tween = create_tween()
+		tween.set_loops()
+		
+		var duration = instance.get("animation_duration") if instance.get("animation_duration") else 2.0
+		
+		tween.tween_method(
+			func(phase: float): 
+				instance.animation_phase = phase
+				draw_canvas.queue_redraw(),
+			0.0, 
+			1.0, 
+			duration
+		)
+		print("    ✓ Animation tween created with duration: %s" % duration)
+	
+	draw_canvas.queue_redraw()
+	print("    ✓ Procedural display setup complete")
+	
 func _on_gui_input(event: InputEvent):
-	"""Handle input - only process clicks if not locked or equipped"""
+	"""Handle input - only process clicks if not locked"""
 	if event is InputEventMouseButton and event.pressed:
+		print("UnifiedItemCard: Click detected on %s" % item_data.id)  # Debug
+		
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			# Don't process if locked
 			if is_locked:
+				print("  Item is locked")
 				return
 			
-			# Don't process if already equipped (no action needed)
-			if is_equipped and display_mode == DisplayMode.INVENTORY:
-				return
-			
-			# Emit click for all other cases
+			# Emit click for all cases (except locked)
+			print("  Emitting clicked signal")
 			clicked.emit(item_data)
 
 # Equipment change handlers
@@ -564,7 +586,7 @@ func _draw_badge_icon(badge_node: TextureRect, badge_type: String):
 				])
 				icon_drawer.draw_polyline(check_points, Color.GREEN, 2.0)
 				
-			"owned":  # Empty box - FIX THE VISIBILITY
+			"owned":  # Empty box
 				# Draw box with white color and thicker line
 				var box_size = size * 0.7
 				var box_rect = Rect2((size - box_size) / 2, box_size)
@@ -755,3 +777,17 @@ func _animate_chains_entrance(container: Control):
 	tween.chain().set_loops()
 	tween.tween_property(container, "modulate:a", 0.9, 1.0)
 	tween.tween_property(container, "modulate:a", 1.0, 1.0)
+
+func _get_card_size() -> Vector2:
+	"""Get the appropriate size based on item category and display mode"""
+	var is_landscape = item_data and item_data.category == UnifiedItemData.Category.BOARD
+	
+	match display_mode:
+		DisplayMode.SHOP:
+			return Vector2(192, 126) if is_landscape else Vector2(90, 126)
+		DisplayMode.INVENTORY:
+			return Vector2(192, 126) if is_landscape else Vector2(90, 126)
+		DisplayMode.SHOWCASE:
+			return Vector2(120, 80) if is_landscape else Vector2(60, 80)
+		_:
+			return Vector2(90, 126)

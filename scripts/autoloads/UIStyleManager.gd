@@ -288,56 +288,60 @@ var card_colors = {
 }
 
 var item_card_style = {
-	# Sizes by layout type
+	# === CORE SIZES BY LAYOUT ===
 	"size_portrait": Vector2(90, 126),
-	"size_landscape": Vector2(192, 126),  # Changed from 180 to 192 (90*2 + 12 separator)
+	"size_landscape": Vector2(192, 126),  # 2x portrait width + separator
 	"size_reduction": 0.5,  # 50% of original export size
-
-	# Grid spacing for inventory
-	"grid_separator": 12,  # Space between cards in grid
-
-	# Sizes by display mode
+	
+	# === CONTEXT-SPECIFIC SIZES ===
 	"size_showcase": Vector2(60, 80),
 	"size_profile": Vector2(80, 100),
 	"size_inventory": Vector2(120, 160),
 	"size_shop": Vector2(120, 160),
+	"size_game": Vector2(180, 252),  # Full size cards in game
 	
-	# Label positioning (as percentages of card height)
+	# === GRID CONFIGURATION ===
+	"grid_separator": 12,  # Space between cards in grid
+	"grid_spacing": 12,
+	"grid_slots_card": 1,  # How many columns a card takes
+	"grid_slots_board": 2,  # How many columns a board takes
+	
+	# === LABEL POSITIONING (as percentages of card height) ===
 	"label_slot_1_top": 0.55,
 	"label_slot_1_bottom": 0.85,
 	"label_slot_2_top": 0.85,
 	"label_slot_2_bottom": 1.0,
 	
-	# Font sizes - direct values since typography is defined above
-	"font_size_name": 14,         # typography.size_caption
-	"font_size_price": 16,        # typography.size_body_small
-	"font_size_lock": 16,         # typography.size_body_small
-	"name_size_showcase": 14,     # typography.size_caption
-	"name_size_profile": 16,      # typography.size_body_small
-	"name_size_default": 18,      # typography.size_body
+	# === FONT SIZES ===
+	"font_size_name": 14,
+	"font_size_price": 16,
+	"font_size_lock": 16,
+	"name_size_showcase": 14,
+	"name_size_profile": 16,
+	"name_size_default": 18,
 	
-	# Spacing - direct values since spacing is defined above
-	"card_padding": 8,                    # spacing.space_2
-	"grid_spacing": 12,                   # spacing.space_3
-	"equipped_badge_margin": 4,           # spacing.space_1
+	# === SPACING & PADDING ===
+	"card_padding": 8,
+	"equipped_badge_margin": 4,
 	
-	# Visual properties - direct values
-	"label_bg_alpha": 0.5,               # Was trying to use opacity.strong which doesn't exist
-	"corner_radius": 8,
+	# === VISUAL PROPERTIES ===
+	"label_bg_alpha": 0.5,
+	"corner_radius": 0,  # No rounded corners
 	"shadow_size": 4,
-	"shadow_alpha": 0.3,                 # Was trying to use opacity.weak which doesn't exist
+	"shadow_alpha": 0.3,
 	
-	# Equipped indicator
-	"equipped_badge_size": 24,           # spacing.space_6
-	"equipped_badge_color": Color("#10b981"),  # colors.primary
+	# === EQUIPPED INDICATOR ===
+	"equipped_badge_size": 24,
+	"equipped_badge_color": Color("#10b981"),
 	
-	# Lock overlay
-	"lock_overlay_opacity": 0.8,         # opacity.lock_strong exists and is 0.8
-	"lock_text_color": Color.WHITE,      # colors.white
+	# === LOCK OVERLAY ===
+	"lock_overlay_opacity": 0.8,
+	"lock_text_color": Color.WHITE,
 	
-	# Border widths - direct values
-	"card_border_width_normal": 2,       # borders.width_medium
-	"card_border_width_epic": 3          # borders.width_thick
+	# === BORDERS ===
+	"card_border_width_normal": 2,
+	"card_border_width_epic": 3,
+	"border_use_rounded": false  # Explicitly no rounded corners
 }
 
 # Dictionary to track styled panels for easy updates
@@ -1058,6 +1062,34 @@ func get_item_card_style(key: String):
 	"""Safely get item card style value"""
 	return item_card_style.get(key, null)
 
+func get_item_card_size(context: String, item_category: UnifiedItemData.Category = UnifiedItemData.Category.CARD_FRONT) -> Vector2:
+	"""Get the appropriate card size for a context and item type"""
+	# Determine if landscape or portrait
+	var is_landscape = item_category == UnifiedItemData.Category.BOARD
+	
+	# Get base size based on context
+	match context:
+		"shop":
+			return item_card_style.size_landscape if is_landscape else item_card_style.size_portrait
+		"inventory":
+			return item_card_style.size_landscape if is_landscape else item_card_style.size_portrait
+		"profile":
+			return Vector2(140, 98) if is_landscape else Vector2(70, 98)  # Smaller for profile
+		"showcase":
+			return item_card_style.size_showcase
+		"game":
+			return item_card_style.size_game
+		_:
+			return item_card_style.size_portrait
+
 func get_border_width(key: String) -> int:
 	"""Get border width value"""
 	return borders.get(key, 2)
+
+func get_grid_slots_needed(item_category: UnifiedItemData.Category) -> int:
+	"""How many grid columns does this item category need?"""
+	match item_category:
+		UnifiedItemData.Category.BOARD:
+			return item_card_style.grid_slots_board
+		_:
+			return item_card_style.grid_slots_card

@@ -234,6 +234,60 @@ func _create_unlock_tab():
 	
 	var complete_missions_btn = _create_button("Complete All Active Missions", _complete_all_missions, Color(0.8, 0.8, 1.0))
 	inner_content.add_child(complete_missions_btn)
+	
+	_add_separator(inner_content)
+	
+	# === NEW DEBUG BUTTONS ===
+	# Debug item checks
+	var debug_label = Label.new()
+	debug_label.text = "Debug Item Tools"
+	debug_label.add_theme_font_size_override("font_size", 16)
+	debug_label.add_theme_color_override("font_color", Color(1.0, 1.0, 0.5))
+	inner_content.add_child(debug_label)
+	
+	var check_pyramid_btn = _create_button("Check Pyramid Items Status", debug_check_pyramid_items, Color(1.0, 1.0, 0.5))
+	inner_content.add_child(check_pyramid_btn)
+	
+	var grant_pyramid_btn = _create_button("Grant Pyramid Items", func():
+		if EquipmentManager:
+			var granted = []
+			if EquipmentManager.grant_item("board_pyramids", "debug"):
+				granted.append("board_pyramids")
+			if EquipmentManager.grant_item("card_back_classic_pyramids_gold", "debug"):
+				granted.append("card_back_classic_pyramids_gold")
+			
+			if granted.size() > 0:
+				print("Granted pyramid items: %s" % granted)
+			else:
+				print("Failed to grant pyramid items (might already own them)")
+	, Color(0.8, 1.0, 0.8))
+	inner_content.add_child(grant_pyramid_btn)
+	
+	var equip_pyramid_btn = _create_button("Equip Pyramid Items", func():
+		if EquipmentManager:
+			var equipped = []
+			if EquipmentManager.equip_item("board_pyramids"):
+				equipped.append("board_pyramids")
+			if EquipmentManager.equip_item("card_back_classic_pyramids_gold"):
+				equipped.append("card_back_classic_pyramids_gold")
+			
+			if equipped.size() > 0:
+				print("Equipped pyramid items: %s" % equipped)
+			else:
+				print("Failed to equip pyramid items")
+	, Color(0.8, 0.8, 1.0))
+	inner_content.add_child(equip_pyramid_btn)
+	
+	var list_owned_btn = _create_button("List All Owned Items", func():
+		if EquipmentManager:
+			var owned = EquipmentManager.get_owned_items()
+			print("\n=== OWNED ITEMS (%d) ===" % owned.size())
+			for item in owned:
+				if item is UnifiedItemData:
+					print("  - %s (id: %s)" % [item.display_name, item.id])
+			print("======================\n")
+	, Color(1.0, 1.0, 0.5))
+	inner_content.add_child(list_owned_btn)
 
 func _create_stats_tab():
 	# Create scroll container
@@ -607,7 +661,7 @@ func _reset_achievements():
 	print("Achievements reset!")
 
 func _reset_inventory():
-	# Now properly implemented
+	# Just call the owned items reset
 	_reset_owned_items()
 	print("Inventory reset!")
 
@@ -695,19 +749,22 @@ func _unlock_all_achievements():
 	print("All achievements unlocked!")
 
 func _unlock_all_items():
-	# TODO: When proper inventory system exists, update this
 	print("Unlocking all shop items...")
 	
-	if ShopManager:
-		# Get all items and add to owned
-		var all_items = ShopManager.get_all_items()
-		for item in all_items:
-			if not ShopManager.is_item_owned(item.id):
-				ShopManager.shop_data.owned_items.append(item.id)
-		ShopManager.save_shop_data()
-		print("All shop items unlocked! (%d items)" % all_items.size())
+	# Use the new EquipmentManager system
+	if EquipmentManager and ItemManager:
+		var all_items = ItemManager.get_all_items()
+		var granted = 0
+		
+		for item_id in all_items:
+			var item = all_items[item_id]
+			if item and not EquipmentManager.is_item_owned(item_id):
+				EquipmentManager.grant_item(item_id, "debug")
+				granted += 1
+		
+		print("All items unlocked! (%d items granted)" % granted)
 	else:
-		print("ShopManager not available")
+		print("EquipmentManager or ItemManager not available")
 
 func _unlock_season_pass():
 	if SeasonPassManager:
@@ -842,14 +899,67 @@ func _reset_owned_items_with_confirm():
 func _reset_owned_items():
 	print("Resetting all owned items...")
 	
-	# Reset ItemManager items
-	if ItemManager:
-		ItemManager.reset_all_items()
-		print("  ✓ ItemManager items reset to defaults")
+	# Reset EquipmentManager (this is the new system)
+	if EquipmentManager:
+		EquipmentManager.reset_all_equipment()  # This method exists
+		print("  ✓ EquipmentManager items reset to defaults")
 	
-	# Reset ShopManager items
-	if ShopManager:
-		ShopManager.reset_shop_data()
-		print("  ✓ ShopManager items reset to defaults")
+	# ShopManager doesn't track ownership anymore in the new system
+	# It just provides items from ItemManager
+	print("  ShopManager uses EquipmentManager for ownership")
 	
 	print("All owned items reset! Only default items remain.")
+
+func debug_check_pyramid_items():
+	"""Debug function to check pyramid items status"""
+	print("\n=== PYRAMID ITEMS DEBUG ===")
+	
+	var pyramid_items = ["board_pyramids", "card_back_classic_pyramids_gold"]
+	
+	for item_id in pyramid_items:
+		print("\nChecking: %s" % item_id)
+		
+		# Check ItemManager
+		if ItemManager:
+			var item = ItemManager.get_item(item_id)
+			if item:
+				print("  Found in ItemManager:")
+				print("    - Display name: %s" % item.display_name)
+				print("    - Source: %s" % item.get_source_name())
+				print("    - Is purchasable: %s" % item.is_purchasable)
+				print("    - Base price: %d" % item.base_price)
+			else:
+				print("  NOT in ItemManager!")
+		
+		# Check ownership
+		if EquipmentManager:
+			var is_owned = EquipmentManager.is_item_owned(item_id)
+			print("  Owned: %s" % is_owned)
+			
+			# Check if it's equipped
+			var is_equipped = EquipmentManager.is_item_equipped(item_id)
+			print("  Equipped: %s" % is_equipped)
+		
+		# Check if it's in shop
+		if ShopManager:
+			var shop_items = ShopManager.get_all_shop_items()
+			var in_shop = false
+			for shop_item in shop_items:
+				if shop_item.get("id") == item_id:  # Use .get() for safety
+					in_shop = true
+					break
+			print("  In shop: %s" % in_shop)
+			
+			# Check why not in shop
+			if not in_shop and ItemManager:
+				var item = ItemManager.get_item(item_id)
+				if item:
+					print("  Why not in shop?")
+					if item.source == UnifiedItemData.Source.DEFAULT:
+						print("    - It's a DEFAULT item")
+					if not item.is_purchasable:
+						print("    - It's not purchasable")
+					if EquipmentManager and EquipmentManager.is_item_owned(item_id):
+						print("    - Player owns it")
+	
+	print("================================\n")

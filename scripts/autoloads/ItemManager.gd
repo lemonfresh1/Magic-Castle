@@ -1,121 +1,215 @@
 # ItemManager.gd - Central registry for all cosmetic items in the game
 # Location: res://Pyramids/scripts/autoloads/ItemManager.gd
-# Last Updated: Refactored to use Resource files [Date]
+# Last Updated: Enhanced with procedural caching and better queries, removed legacy code [Date]
+#
+# ItemManager handles:
+# - Loading all item definitions from .tres files
+# - Caching procedural item instances
+# - Providing query interfaces for items
+# - Managing bundles
+# - Item granting (delegates ownership to EquipmentManager)
+#
+# Flow: .tres files → ItemManager → EquipmentManager (ownership) → UIs
+# Dependencies: UnifiedItemData (resource), ProceduralItemRegistry (for procedural items)
 
 extends Node
 
 # Signals for item events
-signal item_granted(item_id: String, source: String)
-signal item_equipped(item_id: String, category: String)
-signal item_unequipped(item_id: String, category: String)
-signal bundle_purchased(bundle_id: String, items: Array)
 signal items_loaded(count: int)
+signal item_registered(item_id: String)
+signal bundle_purchased(bundle_id: String, items: Array)
+signal database_ready()
 
 # Paths
 const ITEMS_PATH = "res://Pyramids/resources/items/"
 const BUNDLES_PATH = "res://Pyramids/resources/bundles/"
-const SAVE_PATH = "user://player_items.save"
-const SAVE_VERSION = 1
+const CACHE_PATH = "user://item_cache.dat"
 
-# Save data structure (minimal - only player data)
-var save_data = {
-	"version": SAVE_VERSION,
-	"owned_items": [],  # Array of item IDs
-	"equipped": {
-		"card_front": "card_classic",
-		"card_back": "",  # Empty means using front's back
-		"board": "board_green",
-		"frame": "",  # Empty means no frame
-		"avatar": "",  # Empty means default
-		"emojis": [],  # Array of equipped emoji IDs (max 8)
-		"mini_profile_slots": {}  # Dict of slot configurations
-	},
-	"item_sources": {},  # Dict of item_id: source (as int)
-	"unlock_dates": {},  # Dict of item_id: timestamp
-	"bundle_history": [],  # Array of purchased bundle IDs
-	"metadata": {}  # Extra data for future use
-}
+# Categories to scan - including future ones
+const CATEGORIES = [
+	"card_fronts",
+	"card_backs",
+	"boards",
+	"frames",
+	"avatars",
+	"emojis",
+	"mini_profiles",     # TODO: Implement mini profile cards
+	"topbars",          # TODO: Implement topbar skins
+	"combo_effects",    # TODO: Implement combo visual effects
+	"menu_backgrounds"  # TODO: Implement menu backgrounds
+]
 
 # Runtime data (loaded from resources)
 var all_items: Dictionary = {}  # id -> UnifiedItemData
 var all_bundles: Dictionary = {}  # id -> BundleData
 var items_by_category: Dictionary = {}  # category -> Array of UnifiedItemData
+var items_by_rarity: Dictionary = {}  # rarity -> Array of UnifiedItemData
 var items_by_source: Dictionary = {}  # source -> Array of UnifiedItemData
 var items_by_set: Dictionary = {}  # set_name -> Array of UnifiedItemData
+var procedural_instances: Dictionary = {}  # item_id -> instance (for animated items)
+
+# Loading state
+var is_loaded: bool = false
+var load_progress: float = 0.0
 
 func _ready():
 	print("ItemManager initializing...")
+	_initialize_collections()
 	_create_directory_structure()
-	_load_all_items()
-	_load_all_bundles()
-	load_player_data()
-	_organize_items()
+	load_all_items()
 	print("ItemManager ready with %d items and %d bundles" % [all_items.size(), all_bundles.size()])
-	items_loaded.emit(all_items.size())
+	
+	# Debug check for specific items
+	_debug_check_items()
+
+func _initialize_collections():
+	"""Initialize empty collections for organization"""
+	# Initialize category arrays
+	for category in CATEGORIES:
+		items_by_category[category] = []
+	
+	# Initialize rarity arrays
+	for rarity in ["common", "uncommon", "rare", "epic", "legendary", "mythic"]:
+		items_by_rarity[rarity] = []
+	
+	# Initialize source arrays
+	for source in UnifiedItemData.Source.values():
+		items_by_source[source] = []
 
 func _create_directory_structure():
-	# Ensure directory structure exists
+	"""Ensure directory structure exists"""
 	var dir = DirAccess.open("res://")
 	if not dir.dir_exists(ITEMS_PATH):
 		dir.make_dir_recursive(ITEMS_PATH)
-		dir.make_dir(ITEMS_PATH + "card_fronts")
-		dir.make_dir(ITEMS_PATH + "card_backs")
-		dir.make_dir(ITEMS_PATH + "boards")
-		dir.make_dir(ITEMS_PATH + "frames")
-		dir.make_dir(ITEMS_PATH + "avatars")
-		dir.make_dir(ITEMS_PATH + "emojis")
-		dir.make_dir(ITEMS_PATH + "mini_profiles")
+		for category in CATEGORIES:
+			var cat_path = ITEMS_PATH + category
+			if not dir.dir_exists(cat_path):
+				dir.make_dir(cat_path)
 		print("ItemManager: Created item directory structure")
 	
 	if not dir.dir_exists(BUNDLES_PATH):
 		dir.make_dir_recursive(BUNDLES_PATH)
 		print("ItemManager: Created bundles directory")
 
-func _load_all_items():
-	# Load items from each category directory
-	var categories = [
-		"card_fronts",
-		"card_backs",
-		"boards",
-		"frames",
-		"avatars",
-		"emojis",
-		"mini_profiles"
-	]
-	
-	for category in categories:
-		_load_items_from_directory(ITEMS_PATH + category + "/")
-	
-	# Create default items if they don't exist
-	_ensure_default_items()
+# === MAIN LOADING ===
 
-func _load_items_from_directory(path: String):
-	print("Loading items from: ", path)  # ADD THIS
+func load_all_items():
+	"""Load all items from resources and procedural sources"""
+	var start_time = Time.get_ticks_msec()
+	
+	# Try to load from cache first
+	if not load_cache():
+		# Load from directories
+		_load_resource_items()
+		# Save cache for next time
+		save_cache()
+	
+	# Load procedural items (always fresh, not cached)
+	_load_procedural_items()
+	
+	# Load bundles
+	_load_all_bundles()
+	
+	# Build indexes
+	_organize_items()
+	
+	# Create default items if missing
+	_ensure_default_items()
+	
+	var load_time = Time.get_ticks_msec() - start_time
+	print("ItemManager: Loaded %d items in %d ms" % [all_items.size(), load_time])
+	
+	is_loaded = true
+	database_ready.emit()
+	items_loaded.emit(all_items.size())
+
+func _load_resource_items():
+	"""Load all .tres item resources"""
+	for category in CATEGORIES:
+		var path = ITEMS_PATH + category + "/"
+		
+		# Skip future categories that don't have folders yet
+		if not DirAccess.dir_exists_absolute(path):
+			if category in ["mini_profiles", "topbars", "combo_effects", "menu_backgrounds"]:
+				print("ItemManager: Skipping future category: %s" % category)
+				continue
+			else:
+				print("ItemManager: Creating missing directory: %s" % path)
+				DirAccess.make_dir_recursive_absolute(path)
+				continue
+		
+		_load_items_from_directory(path, category)
+
+func _load_items_from_directory(path: String, category: String):
+	"""Scan a directory for item resources"""
 	var dir = DirAccess.open(path)
 	if not dir:
-		print("  - Directory not found!")  # ADD THIS
 		return
 	
 	dir.list_dir_begin()
 	var file_name = dir.get_next()
 	
 	while file_name != "":
-		print("  - Found file: ", file_name)  # ADD THIS
 		if file_name.ends_with(".tres") or file_name.ends_with(".res"):
 			var resource_path = path + file_name
 			var item = load(resource_path) as UnifiedItemData
 			if item and item.id != "":
-				all_items[item.id] = item
-				print("    ✓ Loaded: '%s' (id: %s)" % [item.display_name, item.id])  # MODIFY THIS
+				register_item(item)
+				print("  ✓ Loaded: '%s' (id: %s) from %s" % [item.display_name, item.id, category])
 			else:
-				if item:
-					print("    ✗ Invalid: ID is empty for ", file_name)  # ADD THIS
+				if item and item.id == "":
+					push_warning("ItemManager: Item has empty ID in " + resource_path)
 				else:
-					print("    ✗ Invalid: Not an UnifiedItemData resource")  # ADD THIS
-				push_warning("ItemManager: Invalid item resource at " + resource_path)
+					push_warning("ItemManager: Invalid resource type in " + resource_path)
 		file_name = dir.get_next()
 
+func _load_procedural_items():
+	"""Load all procedural item definitions"""
+	if not ProceduralItemRegistry:
+		push_warning("ItemManager: ProceduralItemRegistry not found")
+		return
+	
+	# Ensure ProceduralItemRegistry has discovered items
+	if ProceduralItemRegistry.procedural_items.is_empty():
+		ProceduralItemRegistry.discover_and_register_all()
+	
+	# Import all procedural items
+	for item_id in ProceduralItemRegistry.procedural_items:
+		var proc_data = ProceduralItemRegistry.procedural_items[item_id]
+		var instance = proc_data.instance
+		
+		if not instance:
+			continue
+		
+		# Let the instance create its own UnifiedItemData
+		var unified: UnifiedItemData
+		if instance.has_method("create_item_data"):
+			unified = instance.create_item_data()
+		else:
+			# Fallback: create manually
+			unified = UnifiedItemData.new()
+			unified.id = instance.get("item_id") if instance.get("item_id") else item_id
+			unified.display_name = instance.get("display_name") if instance.get("display_name") else ""
+			
+			# Convert category string to enum
+			if typeof(proc_data.category) == TYPE_STRING:
+				unified.category = _string_to_category(proc_data.category)
+			else:
+				unified.category = proc_data.category
+				
+			unified.is_procedural = true
+			unified.is_animated = instance.get("is_animated") if instance.get("is_animated") != null else false
+			unified.procedural_script_path = proc_data.script_path
+		
+		# Store the instance for later use
+		procedural_instances[unified.id] = instance
+		
+		# Register the item
+		register_item(unified)
+		print("  ✓ Loaded procedural: '%s' (id: %s)" % [unified.display_name, unified.id])
+
 func _load_all_bundles():
+	"""Load bundle definitions"""
 	var dir = DirAccess.open(BUNDLES_PATH)
 	if not dir:
 		return
@@ -133,7 +227,8 @@ func _load_all_bundles():
 		file_name = dir.get_next()
 
 func _ensure_default_items():
-	# Create default items programmatically if they don't exist as resources
+	"""Create default items if they don't exist"""
+	# Card Classic
 	if not all_items.has("card_classic"):
 		var classic_cards = UnifiedItemData.new()
 		classic_cards.id = "card_classic"
@@ -144,12 +239,10 @@ func _ensure_default_items():
 		classic_cards.source = UnifiedItemData.Source.DEFAULT
 		classic_cards.base_price = 0
 		classic_cards.is_purchasable = false
-		all_items["card_classic"] = classic_cards
-		
-		# Save as resource for future
-		ResourceSaver.save(classic_cards, ITEMS_PATH + "card_fronts/classic.tres")
+		register_item(classic_cards)
 		print("ItemManager: Created default card_classic item")
 	
+	# Board Green
 	if not all_items.has("board_green"):
 		var green_board = UnifiedItemData.new()
 		green_board.id = "board_green"
@@ -161,44 +254,42 @@ func _ensure_default_items():
 		green_board.base_price = 0
 		green_board.is_purchasable = false
 		green_board.colors = {"primary": Color(0.2, 0.5, 0.2)}
-		all_items["board_green"] = green_board
-		
-		# Save as resource for future
-		ResourceSaver.save(green_board, ITEMS_PATH + "boards/green.tres")
+		register_item(green_board)
 		print("ItemManager: Created default board_green item")
-	
-	# Ensure default items are owned
-	if "card_classic" not in save_data.owned_items:
-		save_data.owned_items.append("card_classic")
-		save_data.item_sources["card_classic"] = UnifiedItemData.Source.DEFAULT
-	
-	if "board_green" not in save_data.owned_items:
-		save_data.owned_items.append("board_green")
-		save_data.item_sources["board_green"] = UnifiedItemData.Source.DEFAULT
 
 func _organize_items():
+	"""Build category, rarity, source, and set indexes"""
 	# Clear existing organization
-	items_by_category.clear()
-	items_by_source.clear()
+	for category in items_by_category:
+		items_by_category[category].clear()
+	for rarity in items_by_rarity:
+		items_by_rarity[rarity].clear()
+	for source in items_by_source:
+		items_by_source[source].clear()
 	items_by_set.clear()
 	
-	# Initialize category arrays
-	for category in UnifiedItemData.Category.values():
-		items_by_category[category] = []
-	
-	# Initialize source arrays
-	for source in UnifiedItemData.Source.values():
-		items_by_source[source] = []
-	
-	# Sort items into categories, sources, and sets
+	# Sort items into collections
 	for item_id in all_items:
-		var item = all_items[item_id] as UnifiedItemData
+		var item = all_items[item_id]
 		
-		# Add to category list
-		items_by_category[item.category].append(item)
+		# Skip if item is null or not UnifiedItemData
+		if not item or not item is UnifiedItemData:
+			push_warning("ItemManager: Invalid item in collection: " + item_id)
+			continue
+		
+		# Add to category list - convert enum to string
+		var category_str = _category_to_string(item.category)
+		if items_by_category.has(category_str):
+			items_by_category[category_str].append(item)
+		
+		# Add to rarity list - convert enum to string
+		var rarity_str = item.get_rarity_name().to_lower()
+		if items_by_rarity.has(rarity_str):
+			items_by_rarity[rarity_str].append(item)
 		
 		# Add to source list
-		items_by_source[item.source].append(item)
+		if items_by_source.has(item.source):
+			items_by_source[item.source].append(item)
 		
 		# Add to set list
 		if item.set_name != "":
@@ -210,330 +301,401 @@ func _organize_items():
 	for category in items_by_category:
 		items_by_category[category].sort_custom(func(a, b): return a.sort_order < b.sort_order)
 
-# === GRANTING ITEMS ===
-func grant_item(item_id: String, source: UnifiedItemData.Source = UnifiedItemData.Source.SHOP) -> bool:
-	print("[ItemManager] grant_item called - item_id: %s, source: %s" % [item_id, source])
-	
-	if not all_items.has(item_id):
-		push_error("ItemManager: Item not found: " + item_id)
-		# Debug: List what items ARE available
-		print("[ItemManager] Available items:")
-		for id in all_items.keys():
-			print("  - %s" % id)
-		return false
-	
-	if is_item_owned(item_id):
-		push_warning("ItemManager: Item already owned: " + item_id)
-		return false
-	
-	var item = all_items[item_id] as UnifiedItemData
-	
-	# Check level requirement
-	if item.unlock_level > 0 and XPManager.get_current_level() < item.unlock_level:
-		push_warning("ItemManager: Level requirement not met for " + item_id)
-		return false
-	
-	# Add to owned items
-	save_data.owned_items.append(item_id)
-	save_data.item_sources[item_id] = source
-	save_data.unlock_dates[item_id] = Time.get_unix_time_from_system()
-	
-	# Auto-equip if first of its category
-	if should_auto_equip(item):
-		equip_item(item_id)
-	
-	save_player_data()
-	item_granted.emit(item_id, item.get_source_name())
-	
-	print("[ItemManager] Successfully granted item '%s' from %s" % [item.display_name, item.get_source_name()])
-	return true
+# === REGISTRATION ===
 
-func should_auto_equip(item: UnifiedItemData) -> bool:
-	# Auto-equip if no item of this category is equipped
-	match item.category:
-		UnifiedItemData.Category.CARD_FRONT:
-			return save_data.equipped.card_front == ""
-		UnifiedItemData.Category.CARD_BACK:
-			return save_data.equipped.card_back == ""
-		UnifiedItemData.Category.BOARD:
-			return save_data.equipped.board == ""
-		UnifiedItemData.Category.FRAME:
-			return save_data.equipped.frame == ""
-		UnifiedItemData.Category.AVATAR:
-			return save_data.equipped.avatar == ""
-		_:
-			return false
-
-# === EQUIPPING ITEMS ===
-func equip_item(item_id: String) -> bool:
-	if not is_item_owned(item_id):
-		push_error("ItemManager: Cannot equip unowned item: " + item_id)
+func register_item(item: UnifiedItemData) -> bool:
+	"""Register an item in the database"""
+	if item.id == "":
+		push_error("ItemManager: Cannot register item with empty ID")
 		return false
 	
-	var item = all_items.get(item_id) as UnifiedItemData
-	if not item:
-		push_error("ItemManager: Item not found: " + item_id)
+	if all_items.has(item.id):
+		push_warning("ItemManager: Item already registered: " + item.id)
 		return false
 	
-	var old_equipped = ""
-	var category_name = item.get_category_name()
+	all_items[item.id] = item
+	item_registered.emit(item.id)
 	
-	# Update equipped state based on category
-	match item.category:
-		UnifiedItemData.Category.CARD_FRONT:
-			old_equipped = save_data.equipped.card_front
-			save_data.equipped.card_front = item_id
-		UnifiedItemData.Category.CARD_BACK:
-			old_equipped = save_data.equipped.card_back
-			save_data.equipped.card_back = item_id
-		UnifiedItemData.Category.BOARD:
-			old_equipped = save_data.equipped.board
-			save_data.equipped.board = item_id
-		UnifiedItemData.Category.FRAME:
-			old_equipped = save_data.equipped.frame
-			save_data.equipped.frame = item_id
-		UnifiedItemData.Category.AVATAR:
-			old_equipped = save_data.equipped.avatar
-			save_data.equipped.avatar = item_id
-		UnifiedItemData.Category.EMOJI:
-			# Emojis are added to selection, not replaced
-			if item_id not in save_data.equipped.emojis and save_data.equipped.emojis.size() < 8:
-				save_data.equipped.emojis.append(item_id)
-		UnifiedItemData.Category.MINI_PROFILE_CARD:
-			# Handle mini profile slots separately
-			pass
-	
-	save_player_data()
-	
-	if old_equipped != "":
-		item_unequipped.emit(old_equipped, category_name)
-	
-	item_equipped.emit(item_id, category_name)
 	return true
 
 # === QUERIES ===
-func is_item_owned(item_id: String) -> bool:
-	return item_id in save_data.owned_items
 
 func get_item(item_id: String) -> UnifiedItemData:
-	return all_items.get(item_id)
+	"""Get a single item by ID"""
+	var item = all_items.get(item_id)
+	if item and item is UnifiedItemData:
+		return item
+	return null
+
+func get_procedural_instance(item_id: String):
+	"""Get the procedural instance for animated items"""
+	if procedural_instances.has(item_id):
+		return procedural_instances[item_id]
+	
+	# Try to get from ProceduralItemRegistry
+	if ProceduralItemRegistry and ProceduralItemRegistry.procedural_items.has(item_id):
+		var instance = ProceduralItemRegistry.procedural_items[item_id].instance
+		procedural_instances[item_id] = instance
+		return instance
+	
+	return null
+
+func get_all_items() -> Dictionary:
+	"""Get all items as a dictionary"""
+	return all_items.duplicate()
+
+func get_items_by_category(category) -> Array:
+	"""Get all items in a category (accepts enum or string)"""
+	var category_str = ""
+	
+	if category is String:
+		category_str = category
+	elif category is int:  # Enum value
+		category_str = _category_to_string(category)
+	
+	return items_by_category.get(category_str, [])
+
+func get_items_by_rarity(rarity) -> Array:
+	"""Get all items of a specific rarity (accepts enum or string)"""
+	var rarity_str = ""
+	
+	if rarity is String:
+		rarity_str = rarity.to_lower()
+	elif rarity is int:  # Enum value
+		# Convert enum to string
+		match rarity:
+			UnifiedItemData.Rarity.COMMON: rarity_str = "common"
+			UnifiedItemData.Rarity.UNCOMMON: rarity_str = "uncommon"
+			UnifiedItemData.Rarity.RARE: rarity_str = "rare"
+			UnifiedItemData.Rarity.EPIC: rarity_str = "epic"
+			UnifiedItemData.Rarity.LEGENDARY: rarity_str = "legendary"
+			UnifiedItemData.Rarity.MYTHIC: rarity_str = "mythic"
+	
+	return items_by_rarity.get(rarity_str, [])
+
+func get_items_by_source(source: UnifiedItemData.Source) -> Array:
+	"""Get all items from a specific source"""
+	return items_by_source.get(source, [])
+
+func get_items_by_set(set_name: String) -> Array:
+	"""Get all items in a set"""
+	return items_by_set.get(set_name, [])
+
+func search_items(query: String) -> Array:
+	"""Search items by name or description"""
+	var results = []
+	var search_term = query.to_lower()
+	
+	for item_id in all_items:
+		var item = all_items[item_id]
+		if search_term in item.display_name.to_lower() or search_term in item.description.to_lower():
+			results.append(item)
+	
+	return results
 
 func get_owned_items() -> Array:
+	"""Get all items owned by the player (queries EquipmentManager)"""
+	if not EquipmentManager:
+		return []
+	
 	var owned = []
-	for item_id in save_data.owned_items:
-		if all_items.has(item_id):
+	for item_id in all_items:
+		if EquipmentManager.is_item_owned(item_id):
 			owned.append(all_items[item_id])
 	return owned
 
-func get_items_by_category(category: UnifiedItemData.Category) -> Array:
-	return items_by_category.get(category, [])
-
-func get_owned_items_by_category(category: UnifiedItemData.Category) -> Array:
+func get_owned_items_by_category(category) -> Array:
+	"""Get owned items in a category"""
+	if not EquipmentManager:
+		return []
+	
 	var owned = []
 	for item in get_items_by_category(category):
-		if is_item_owned(item.id):
+		if EquipmentManager.is_item_owned(item.id):
 			owned.append(item)
 	return owned
 
-func get_equipped_item(category: UnifiedItemData.Category) -> String:
-	match category:
-		UnifiedItemData.Category.CARD_FRONT:
-			return save_data.equipped.card_front
-		UnifiedItemData.Category.CARD_BACK:
-			return save_data.equipped.card_back
-		UnifiedItemData.Category.BOARD:
-			return save_data.equipped.board
-		UnifiedItemData.Category.FRAME:
-			return save_data.equipped.frame
-		UnifiedItemData.Category.AVATAR:
-			return save_data.equipped.avatar
-		_:
-			return ""
+func get_equipped_items() -> Array:
+	"""Get all currently equipped items (queries EquipmentManager)"""
+	if not EquipmentManager:
+		return []
+	
+	var equipped = []
+	var equipped_data = EquipmentManager.get_equipped_items()
+	
+	for category in equipped_data:
+		var value = equipped_data[category]
+		
+		if value is String and value != "":
+			var item = get_item(value)
+			if item:
+				equipped.append(item)
+		elif value is Array:  # For emojis
+			for item_id in value:
+				var item = get_item(item_id)
+				if item:
+					equipped.append(item)
+	
+	return equipped
 
 # === BUNDLES ===
-func purchase_bundle(bundle_id: String) -> bool:
-	var bundle = all_bundles.get(bundle_id) as BundleData
-	if not bundle:
-		push_error("ItemManager: Bundle not found: " + bundle_id)
-		return false
-	
-	# Check if already purchased
-	if bundle_id in save_data.bundle_history:
-		push_warning("ItemManager: Bundle already purchased: " + bundle_id)
-		return false
-	
-	# Check purchase limit
-	var purchase_count = save_data.bundle_history.count(bundle_id)
-	if bundle.max_purchases > 0 and purchase_count >= bundle.max_purchases:
-		push_warning("ItemManager: Bundle purchase limit reached")
-		return false
-	
-	# Grant all items in bundle
-	var granted_items = []
-	for item_id in bundle.item_ids:
-		if not is_item_owned(item_id):
-			if grant_item(item_id, UnifiedItemData.Source.BUNDLE):
-				granted_items.append(item_id)
-	
-	# Grant bonus rewards
-	if bundle.bonus_stars > 0:
-		StarManager.add_stars(bundle.bonus_stars, "bundle_" + bundle_id)
-	if bundle.bonus_xp > 0:
-		XPManager.add_xp(bundle.bonus_xp, "bundle_" + bundle_id)
-	
-	# Record bundle purchase
-	save_data.bundle_history.append(bundle_id)
-	save_player_data()
-	
-	bundle_purchased.emit(bundle_id, granted_items)
-	return granted_items.size() > 0
+
+func get_bundle(bundle_id: String) -> BundleData:
+	"""Get a bundle by ID"""
+	return all_bundles.get(bundle_id)
+
+func get_all_bundles() -> Array:
+	"""Get all available bundles"""
+	return all_bundles.values()
 
 func get_bundle_price(bundle_id: String) -> int:
+	"""Calculate bundle price"""
 	var bundle = all_bundles.get(bundle_id) as BundleData
 	if not bundle:
 		return -1
 	return bundle.calculate_price(all_items)
 
-# === PERSISTENCE ===
-func save_player_data():
-	var file = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
-	if file:
-		file.store_var(save_data)
-		file.close()
-
-func load_player_data():
-	if not FileAccess.file_exists(SAVE_PATH):
-		print("ItemManager: No save file found, using defaults")
-		_ensure_default_items()  # Make sure defaults are owned
-		return
+func purchase_bundle(bundle_id: String) -> bool:
+	"""Process bundle purchase (delegates to EquipmentManager for ownership)"""
+	var bundle = all_bundles.get(bundle_id) as BundleData
+	if not bundle:
+		push_error("ItemManager: Bundle not found: " + bundle_id)
+		return false
 	
-	var file = FileAccess.open(SAVE_PATH, FileAccess.READ)
-	if file:
-		var loaded_data = file.get_var()
-		file.close()
-		
-		if loaded_data and loaded_data.has("version"):
-			# Check version and migrate if needed
-			if loaded_data.version == SAVE_VERSION:
-				save_data = loaded_data
-			else:
-				_migrate_save_data(loaded_data)
+	if not EquipmentManager:
+		push_error("ItemManager: EquipmentManager not available")
+		return false
+	
+	# Grant all items in bundle through EquipmentManager
+	var granted_items = []
+	for item_id in bundle.item_ids:
+		if not EquipmentManager.is_item_owned(item_id):
+			if EquipmentManager.grant_item(item_id, "bundle"):
+				granted_items.append(item_id)
+	
+	# Grant bonus rewards
+	if bundle.bonus_stars > 0 and StarManager:
+		StarManager.add_stars(bundle.bonus_stars, "bundle_" + bundle_id)
+	if bundle.bonus_xp > 0 and XPManager:
+		XPManager.add_xp(bundle.bonus_xp, "bundle_" + bundle_id)
+	
+	bundle_purchased.emit(bundle_id, granted_items)
+	return granted_items.size() > 0
 
-func _migrate_save_data(old_data: Dictionary):
-	# Handle save migration from older versions
-	print("ItemManager: Migrating save from version %d to %d" % [old_data.get("version", 0), SAVE_VERSION])
-	# Add migration logic here as needed
+# === CACHE MANAGEMENT ===
 
-func reset_all_items():
-	save_data = {
-		"version": SAVE_VERSION,
-		"owned_items": ["card_classic", "board_green"],
-		"equipped": {
-			"card_front": "card_classic",
-			"card_back": "",
-			"board": "board_green",
-			"frame": "",
-			"avatar": "",
-			"emojis": [],
-			"mini_profile_slots": {}
-		},
-		"item_sources": {
-			"card_classic": UnifiedItemData.Source.DEFAULT,
-			"board_green": UnifiedItemData.Source.DEFAULT
-		},
-		"unlock_dates": {},
-		"bundle_history": [],
-		"metadata": {}
+func save_cache():
+	"""Save item cache to disk for faster loading"""
+	var cache_data = {
+		"version": 1,
+		"items": {},
+		"timestamp": Time.get_unix_time_from_system()
 	}
-	save_player_data()
+	
+	# Convert items to saveable format (exclude procedural items)
+	for item_id in all_items:
+		var item = all_items[item_id]
+		if not item.is_procedural:  # Don't cache procedural items
+			cache_data.items[item_id] = item
+	
+	var file = FileAccess.open(CACHE_PATH, FileAccess.WRITE)
+	if file:
+		file.store_var(cache_data)
+		file.close()
+		print("ItemManager: Cache saved with %d items" % cache_data.items.size())
+
+func load_cache() -> bool:
+	"""Load item cache from disk"""
+	if not FileAccess.file_exists(CACHE_PATH):
+		return false
+	
+	var file = FileAccess.open(CACHE_PATH, FileAccess.READ)
+	if not file:
+		return false
+	
+	var cache_data = file.get_var()
+	file.close()
+	
+	if not cache_data or not cache_data.has("version"):
+		return false
+	
+	# Check cache age (invalidate if older than 1 day)
+	var age = Time.get_unix_time_from_system() - cache_data.get("timestamp", 0)
+	if age > 86400:  # 24 hours
+		print("ItemManager: Cache too old, ignoring")
+		return false
+	
+	# Load cached items with type checking
+	for item_id in cache_data.items:
+		var item = cache_data.items[item_id]
+		if item and item is UnifiedItemData:
+			all_items[item_id] = item
+		else:
+			push_warning("ItemManager: Invalid cached item skipped: " + item_id)
+	
+	print("ItemManager: Loaded %d items from cache" % all_items.size())
+	return all_items.size() > 0  # Return false if no valid items loaded
+
+# === EXPORT/IMPORT ===
+
+func export_to_json(path: String = "user://items_export.json"):
+	"""Export all items to JSON for external tools"""
+	var export_data = {}
+	
+	for item_id in all_items:
+		var item = all_items[item_id]
+		export_data[item_id] = {
+			"display_name": item.display_name,
+			"description": item.description,
+			"category": _category_to_string(item.category),
+			"rarity": item.get_rarity_name(),
+			"price": item.base_price,
+			"is_procedural": item.is_procedural,
+			"is_animated": item.is_animated,
+			"is_purchasable": item.is_purchasable
+		}
+	
+	var file = FileAccess.open(path, FileAccess.WRITE)
+	if file:
+		file.store_string(JSON.stringify(export_data, "\t"))
+		file.close()
+		print("ItemManager: Exported %d items to %s" % [export_data.size(), path])
+
+# === CATEGORY HELPERS ===
+
+func _string_to_category(category_str: String) -> UnifiedItemData.Category:
+	"""Convert string category to enum"""
+	match category_str:
+		"card_fronts", "card_front":
+			return UnifiedItemData.Category.CARD_FRONT
+		"card_backs", "card_back":
+			return UnifiedItemData.Category.CARD_BACK
+		"boards", "board":
+			return UnifiedItemData.Category.BOARD
+		"frames", "frame":
+			return UnifiedItemData.Category.FRAME
+		"avatars", "avatar":
+			return UnifiedItemData.Category.AVATAR
+		"emojis", "emoji":
+			return UnifiedItemData.Category.EMOJI
+		"mini_profiles", "mini_profile":
+			return UnifiedItemData.Category.MINI_PROFILE_CARD
+		"topbars", "topbar":
+			return UnifiedItemData.Category.TOPBAR
+		"combo_effects", "combo_effect":
+			return UnifiedItemData.Category.COMBO_EFFECT
+		"menu_backgrounds", "menu_background":
+			return UnifiedItemData.Category.MENU_BACKGROUND
+		_:
+			push_warning("ItemManager: Unknown category string: " + category_str)
+			return UnifiedItemData.Category.CARD_FRONT
+
+func _category_to_string(category: UnifiedItemData.Category) -> String:
+	"""Convert category enum to string for indexing"""
+	match category:
+		UnifiedItemData.Category.CARD_FRONT:
+			return "card_fronts"
+		UnifiedItemData.Category.CARD_BACK:
+			return "card_backs"
+		UnifiedItemData.Category.BOARD:
+			return "boards"
+		UnifiedItemData.Category.FRAME:
+			return "frames"
+		UnifiedItemData.Category.AVATAR:
+			return "avatars"
+		UnifiedItemData.Category.EMOJI:
+			return "emojis"
+		UnifiedItemData.Category.MINI_PROFILE_CARD:
+			return "mini_profiles"
+		UnifiedItemData.Category.TOPBAR:
+			return "topbars"
+		UnifiedItemData.Category.COMBO_EFFECT:
+			return "combo_effects"
+		UnifiedItemData.Category.MENU_BACKGROUND:
+			return "menu_backgrounds"
+		_:
+			return "unknown"
 
 # === DEBUG ===
-func debug_create_sample_items():
-	"""Create sample items for testing"""
-	# Create a sample card front
-	var neon_card = UnifiedItemData.new()
-	neon_card.id = "card_neon"
-	neon_card.display_name = "Neon Cards"
-	neon_card.description = "Futuristic neon glow cards"
-	neon_card.category = UnifiedItemData.Category.CARD_FRONT
-	neon_card.rarity = UnifiedItemData.Rarity.RARE
-	neon_card.base_price = 250
-	neon_card.subcategory = "futuristic"
-	neon_card.set_name = "Cyberpunk Collection"
-	ResourceSaver.save(neon_card, ITEMS_PATH + "card_fronts/neon.tres")
-	
-	# Create a sample board
-	var sunset_board = UnifiedItemData.new()
-	sunset_board.id = "board_sunset"
-	sunset_board.display_name = "Sunset Board"
-	sunset_board.description = "Beautiful sunset gradient"
-	sunset_board.category = UnifiedItemData.Category.BOARD
-	sunset_board.rarity = UnifiedItemData.Rarity.UNCOMMON
-	sunset_board.base_price = 150
-	sunset_board.colors = {"primary": Color(1.0, 0.5, 0.2), "secondary": Color(0.8, 0.2, 0.4)}
-	ResourceSaver.save(sunset_board, ITEMS_PATH + "boards/sunset.tres")
-	
-	print("ItemManager: Created sample items")
 
-func debug_print_status():
+func _debug_check_items():
+	"""Check for specific items we expect to exist"""
+	print("\n=== CHECKING EXPECTED ITEMS ===")
+	
+	# Check pyramid board
+	var pyramid_board = get_item("board_pyramids")
+	if pyramid_board:
+		print("✓ Pyramid board loaded: ", pyramid_board.display_name)
+		print("  - Animated: ", pyramid_board.is_animated)
+		print("  - Scene: ", pyramid_board.background_scene_path)
+	else:
+		print("✗ Pyramid board NOT found")
+	
+	# Check gold card back
+	var gold_back = get_item("card_back_classic_pyramids_gold")
+	if gold_back:
+		print("✓ Gold card back loaded: ", gold_back.display_name)
+		print("  - Procedural: ", gold_back.is_procedural)
+		print("  - Script: ", gold_back.procedural_script_path)
+		if procedural_instances.has(gold_back.id):
+			print("  - Instance cached: Yes")
+	else:
+		print("✗ Gold card back NOT found")
+	
+	print("================================\n")
+
+func debug_status():
+	"""Print comprehensive status"""
 	print("\n=== ITEM MANAGER STATUS ===")
-	print("Total items loaded: %d" % all_items.size())
-	print("Total bundles loaded: %d" % all_bundles.size())
-	print("Owned items: %d" % save_data.owned_items.size())
-	print("Equipped:")
-	for key in save_data.equipped:
-		var value = save_data.equipped[key]
-		if value != "" and value != []:
-			print("  %s: %s" % [key, value])
-	print("===========================\n")
-
-# Add this debug function to ItemManager.gd and call it from _ready():
-
-func debug_pyramid_board():
-	print("\n=== PYRAMID BOARD DEBUG ===")
+	print("Total items: %d" % all_items.size())
+	print("Total bundles: %d" % all_bundles.size())
+	print("Procedural items: %d" % procedural_instances.size())
 	
-	# 1. Check if the file exists
-	var pyramid_path = "res://Pyramids/resources/items/boards/pyramids.tres"
-	if ResourceLoader.exists(pyramid_path):
-		print("✓ File exists at: ", pyramid_path)
-	else:
-		print("✗ File NOT found at: ", pyramid_path)
-		return
+	print("\nBy category:")
+	for category in items_by_category:
+		var count = items_by_category[category].size()
+		if count > 0:
+			print("  %s: %d items" % [category, count])
 	
-	# 2. Try to load it manually
-	var pyramid_resource = load(pyramid_path)
-	if pyramid_resource:
-		print("✓ Resource loads successfully")
-		print("  - Resource type: ", pyramid_resource.get_class())
-		
-		# 3. Check if it's an UnifiedItemData
-		if pyramid_resource is UnifiedItemData:
-			print("✓ Resource is UnifiedItemData")
-			var item = pyramid_resource as UnifiedItemData
-			print("  - ID: ", item.id)
-			print("  - Display Name: ", item.display_name)
-			print("  - Category: ", item.category)
-			print("  - Background Type: ", item.background_type)
-			print("  - Scene Path: ", item.background_scene_path)
-			
-			# 4. Check if ID is empty (common issue)
-			if item.id == "":
-				print("✗ ERROR: Item ID is empty! This prevents loading.")
-				print("  FIX: Set the 'id' field to 'board_pyramids' in the resource")
-			
-			# 5. Check if it's in all_items
-			if all_items.has(item.id):
-				print("✓ Item IS in all_items dictionary")
-			else:
-				print("✗ Item NOT in all_items dictionary")
-				print("  Attempting to register manually...")
-				all_items[item.id] = item
-				if all_items.has(item.id):
-					print("  ✓ Manual registration successful!")
+	print("\nBy rarity:")
+	for rarity in items_by_rarity:
+		var count = items_by_rarity[rarity].size()
+		if count > 0:
+			print("  %s: %d items" % [rarity, count])
+	
+	print("\nSets: %d unique sets" % items_by_set.size())
+	for set_name in items_by_set:
+		print("  %s: %d items" % [set_name, items_by_set[set_name].size()])
+	
+	print("============================\n")
+
+func debug_future_categories():
+	"""Show status of future category implementation"""
+	print("\n=== FUTURE CATEGORIES STATUS ===")
+	
+	var future_cats = ["mini_profiles", "topbars", "combo_effects", "menu_backgrounds"]
+	
+	for category in future_cats:
+		var items = get_items_by_category(category)
+		if items.size() > 0:
+			print("✓ %s: %d items ready" % [category, items.size()])
 		else:
-			print("✗ Resource is NOT UnifiedItemData, it's: ", pyramid_resource.get_class())
-			print("  FIX: Make sure the resource has UnifiedItemData as its script")
-	else:
-		print("✗ Failed to load resource")
+			print("✗ %s: TODO - Not implemented" % category)
+			
+			# Show what needs to be done
+			match category:
+				"mini_profiles":
+					print("  - Create mini profile card designs")
+					print("  - Implement showcase UI")
+					print("  - Add to ProfileUI")
+				"topbars":
+					print("  - Create topbar skin designs")
+					print("  - Apply to MobileTopBar")
+				"combo_effects":
+					print("  - Create effect animations")
+					print("  - Integrate with Card.gd")
+				"menu_backgrounds":
+					print("  - Create background scenes")
+					print("  - Apply to MainMenu")
 	
-	print("=========================\n")
+	print("================================\n")
