@@ -50,9 +50,7 @@ func _ready():
 	total_instances += 1
 	active_instances += 1
 	instance_id = total_instances
-	
-	print("[TierColumn] Instance #", instance_id, " created - Active: ", active_instances, " Total: ", total_instances)
-	
+		
 	custom_minimum_size = Vector2(column_width, column_height)
 	_apply_theme()
 	
@@ -63,7 +61,6 @@ func _ready():
 func _exit_tree():
 	"""Track when instances are destroyed"""
 	active_instances -= 1
-	print("[TierColumn] Instance #", instance_id, " destroyed - Active: ", active_instances)
 
 func setup(tier_data: Dictionary, theme: String = "battle_pass"):
 	current_theme = theme

@@ -65,12 +65,10 @@ var save_data = {
 var items_by_category: Dictionary = {}  # category -> [item_ids]
 
 func _ready():
-	print("EquipmentManager initializing...")
 	load_save_data()
 	_ensure_defaults()
 	_build_cache()
 	_validate_equipped_items()
-	print("EquipmentManager ready - %d items owned" % save_data.owned_items.size())
 
 func _build_cache():
 	"""Build runtime cache of items by category"""
@@ -195,7 +193,6 @@ func equip_item(item_id: String) -> bool:
 	item_equipped.emit(item_id, category_key)
 	equipment_changed.emit(category_key)
 	
-	print("EquipmentManager: Equipped %s in category %s" % [item_id, category_key])
 	return true
 
 func unequip_item(item_id: String) -> bool:
@@ -278,7 +275,6 @@ func grant_item(item_id: String, source: String = "shop") -> bool:
 	ownership_changed.emit(item_id, true)
 	item_granted.emit(item_id, source)
 	
-	print("EquipmentManager: Granted item %s from %s" % [item_id, source])
 	return true
 
 func revoke_item(item_id: String) -> bool:
@@ -513,7 +509,6 @@ func save_data_to_file() -> void:
 func load_save_data() -> void:
 	"""Load equipment data from disk"""
 	if not FileAccess.file_exists(SAVE_PATH):
-		print("EquipmentManager: No save file found, using defaults")
 		return
 	
 	var file = FileAccess.open(SAVE_PATH, FileAccess.READ)
