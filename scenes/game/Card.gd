@@ -1,5 +1,17 @@
-# Card.gd
-# Path: res://Pyramids/scenes/game/Card.gd
+# Card.gd - Individual playing card for the game board and slots
+# Location: res://Pyramids/scenes/game/Card.gd
+# Last Updated: Refactored to use new equipment system, simplified display flow [Date]
+#
+# Card handles:
+# - Displaying card front/back with sprites or procedural rendering
+# - Managing card state (face up/down, selectable, blocked)
+# - Animating procedural card designs
+# - Collision detection for pyramid layout
+# - Input handling for card selection
+#
+# Flow: CardManager → Card → EquipmentManager (for skins) → ItemManager (for procedural instances)
+# Dependencies: CardData (for rank/suit), EquipmentManager (equipped items), ItemManager (procedural instances), CardManager (game logic)
+
 extends Control
 
 @onready var card_sprite: TextureRect = $CardSprite
@@ -13,11 +25,9 @@ var cards_blocking_me: Array[Node] = []
 var has_been_revealed: bool = false
 var is_on_board: bool = true
 
-# Animation support for both fronts and backs
-var current_card_back_instance = null  # Store the procedural instance for animation
-var current_card_front_instance = null # Store the procedural front instance
-var is_animating_back: bool = false
-var is_animating_front: bool = false
+# Animation support
+var current_card_back_instance = null
+var current_card_front_instance = null
 
 # Visual effects
 const INVALID_TINT = Color(1.5, 0.8, 0.8)
@@ -38,29 +48,16 @@ func setup(data: CardData, index: int = -1) -> void:
 	if not is_node_ready():
 		await ready
 	
-	# Set sizes and fix positioning
+	# Set sizes
 	if index == -1:  # Slot card
-		# FORCE proper positioning
-		position = Vector2.ZERO  # Position relative to parent
-		anchor_left = 0.0
-		anchor_top = 0.0
-		anchor_right = 0.0
-		anchor_bottom = 0.0
-		
+		position = Vector2.ZERO
 		custom_minimum_size = Vector2(80, 110)
 		size = Vector2(80, 110)
 		
 		if card_sprite:
-			# RESET anchors for slot cards
-			card_sprite.anchor_left = 0.0
-			card_sprite.anchor_top = 0.0
-			card_sprite.anchor_right = 0.0
-			card_sprite.anchor_bottom = 0.0
-			
 			card_sprite.position = Vector2.ZERO
 			card_sprite.size = Vector2(80, 110)
 			card_sprite.custom_minimum_size = Vector2(80, 110)
-		
 	else:  # Board card
 		custom_minimum_size = Vector2(90, 126)
 		size = Vector2(90, 126)
@@ -69,40 +66,24 @@ func setup(data: CardData, index: int = -1) -> void:
 			card_sprite.custom_minimum_size = Vector2(90, 126)
 			card_sprite.size = Vector2(90, 126)
 	
-	# Only set up collision for board cards
+	# Setup collision for board cards
 	if index >= 0 and area_2d:
 		is_on_board = true
-		if index >= 18:  # Bottom row
-			z_index = 4
-			area_2d.collision_layer = 1
-			area_2d.collision_mask = 0
-		elif index >= 9:  # Row 2
-			z_index = 3
-			area_2d.collision_layer = 2
-			area_2d.collision_mask = 1
-		elif index >= 3:  # Row 3
-			z_index = 2
-			area_2d.collision_layer = 4
-			area_2d.collision_mask = 2
-		else:  # Top row (peaks)
-			z_index = 1
-			area_2d.collision_layer = 8
-			area_2d.collision_mask = 4
+		_setup_collision_layers(index)
 		
-		# Set initial visibility based on round
-		if GameState.current_round % 2 == 0:  # EVEN rounds - all visible
+		# Set initial visibility
+		if GameState.current_round % 2 == 0:  # EVEN rounds
 			is_face_up = true
 			has_been_revealed = true
-		else:  # ODD rounds - progressive reveal
+		else:  # ODD rounds
 			is_face_up = (index >= 18)
 			has_been_revealed = is_face_up
 		
-		# Wait for physics to settle
 		await get_tree().physics_frame
 		await get_tree().physics_frame
 		_check_visibility()
 	else:
-		# Slot cards are always face up
+		# Slot cards
 		is_face_up = true
 		is_on_board = false
 		z_index = 25
@@ -112,145 +93,230 @@ func setup(data: CardData, index: int = -1) -> void:
 	
 	_update_display()
 
+func _setup_collision_layers(index: int) -> void:
+	"""Setup collision layers based on card position"""
+	if index >= 18:  # Bottom row
+		z_index = 4
+		area_2d.collision_layer = 1
+		area_2d.collision_mask = 0
+	elif index >= 9:  # Row 2
+		z_index = 3
+		area_2d.collision_layer = 2
+		area_2d.collision_mask = 1
+	elif index >= 3:  # Row 3
+		z_index = 2
+		area_2d.collision_layer = 4
+		area_2d.collision_mask = 2
+	else:  # Top row
+		z_index = 1
+		area_2d.collision_layer = 8
+		area_2d.collision_mask = 4
+
 func _update_display() -> void:
+	"""Main display update - routes to front or back"""
 	if not card_data:
 		return
 	
+	# Clean up old canvases
+	_cleanup_canvases()
+	
 	if is_face_up:
-		# Hide procedural back canvas if it exists
-		var back_canvas = get_node_or_null("ProceduralCardBack")
-		if back_canvas:
-			back_canvas.visible = false
-		
-		# Apply card front (could be animated in the future)
-		_apply_card_front()
+		_display_card_front()
 	else:
-		# Hide procedural front canvas if it exists
-		var front_canvas = get_node_or_null("ProceduralCardFront")
-		if front_canvas:
-			front_canvas.visible = false
-		
-		# Apply card back
-		_apply_equipped_card_back()
+		_display_card_back()
 
-func _apply_card_front():
-	"""Apply the card front - supports both sprites and procedural/animated fronts"""
+func _cleanup_canvases() -> void:
+	"""Hide and stop animations on procedural canvases"""
+	var front_canvas = get_node_or_null("ProceduralCardFront")
+	if front_canvas:
+		front_canvas.visible = false
 	
-	# Check for equipped custom card front
-	var equipped_front_id = ""
-	if ItemManager:
-		equipped_front_id = ItemManager.get_equipped_item(UnifiedItemData.Category.CARD_FRONT)
+	var back_canvas = get_node_or_null("ProceduralCardBack")
+	if back_canvas:
+		back_canvas.visible = false
 	
-	# Check if it's a procedural/animated front
-	if equipped_front_id and ProceduralItemRegistry and ProceduralItemRegistry.procedural_items.has(equipped_front_id):
-		if _apply_custom_card_front(equipped_front_id):
+	# Kill old animation tween
+	if has_meta("anim_tween"):
+		var old_tween = get_meta("anim_tween")
+		if old_tween and old_tween.is_valid():
+			old_tween.kill()
+
+func _display_card_front() -> void:
+	"""Display the card front"""
+	# Check for equipped custom front
+	var equipped_id = ""
+	if EquipmentManager:
+		var equipped = EquipmentManager.get_equipped_items()
+		equipped_id = equipped.get("card_front", "")
+	
+	# Try procedural/animated
+	if equipped_id and ItemManager:
+		var instance = ItemManager.get_procedural_instance(equipped_id)
+		if instance and instance.has_method("draw_card_front"):
+			_setup_procedural_front(instance)
 			return
 	
-	# Default to current system (sprites or programmatic)
+	# Fallback to default
 	if SettingsSystem.current_card_skin == "sprites":
 		_apply_sprite_card_front()
 	else:
 		_apply_programmatic_card_front()
 
-func _apply_custom_card_front(front_id: String) -> bool:
-	"""Apply a custom procedural card front - returns true if successful"""
+func _display_card_back() -> void:
+	"""Display the card back"""
+	# Check for equipped custom back
+	var equipped_id = ""
+	if EquipmentManager:
+		var equipped = EquipmentManager.get_equipped_items()
+		equipped_id = equipped.get("card_back", "")
 	
-	if ProceduralItemRegistry and ProceduralItemRegistry.procedural_items.has(front_id):
-		var procedural_data = ProceduralItemRegistry.procedural_items[front_id]
-		var instance = procedural_data.instance
+	# Try procedural/animated
+	if equipped_id and ItemManager:
+		var instance = ItemManager.get_procedural_instance(equipped_id)
+		if instance and instance.has_method("draw_card_back"):
+			_setup_procedural_back(instance)
+			return
 		
-		if instance and instance.has_method("draw_card_front"):
-			# Store the instance for animation
-			current_card_front_instance = instance
-			
-			# Check if it's animated
-			if instance.get("is_animated"):
-				is_animating_front = true
-				# Setup animation on this card node
-				if instance.has_method("setup_animation_on_node"):
-					instance.setup_animation_on_node(self)
-				set_process(true)  # Enable _process for animation updates
-			else:
-				is_animating_front = false
-				# Only stop process if back is also not animating
-				if not is_animating_back:
-					set_process(false)
-			
-			# Hide the sprite, we'll draw procedurally
-			card_sprite.visible = false
-			
-			# Create or get the procedural front canvas
-			var canvas = get_node_or_null("ProceduralCardFront")
-			if not canvas:
-				canvas = Control.new()
-				canvas.name = "ProceduralCardFront"
-				canvas.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-				canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE
-				add_child(canvas)
-				move_child(canvas, 0)
-			
-			# Store the instance reference
-			canvas.set_meta("card_front_instance", instance)
-			canvas.set_meta("card_data", card_data)
-			
-			# Connect draw signal if not connected
-			if not canvas.draw.is_connected(_on_procedural_front_draw):
-				canvas.draw.connect(_on_procedural_front_draw)
-			
-			canvas.visible = true
-			canvas.queue_redraw()
-			return true
+		# Try static texture
+		var item = ItemManager.get_item(equipped_id)
+		if item and item.texture_path and ResourceLoader.exists(item.texture_path):
+			card_sprite.texture = load(item.texture_path)
+			card_sprite.visible = true
+			return
 	
-	# Not a procedural front
-	current_card_front_instance = null
-	is_animating_front = false
-	if not is_animating_back:
-		set_process(false)
-	
-	return false
+	# Fallback to default
+	_apply_default_card_back()
 
-func _apply_sprite_card_front():
+func _setup_procedural_front(instance) -> void:
+	"""Setup procedural front with animation"""
+	current_card_front_instance = instance
+	card_sprite.visible = false
+	
+	# Create or get canvas
+	var canvas = get_node_or_null("ProceduralCardFront")
+	if not canvas:
+		canvas = Control.new()
+		canvas.name = "ProceduralCardFront"
+		canvas.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(canvas)
+		move_child(canvas, 0)
+	
+	# Store references
+	canvas.set_meta("instance", instance)
+	canvas.set_meta("card_data", card_data)
+	
+	# Setup animation if needed
+	if instance.get("is_animated"):
+		_setup_animation(instance, true)
+	
+	# Connect draw
+	if not canvas.draw.is_connected(_on_procedural_front_draw):
+		canvas.draw.connect(_on_procedural_front_draw)
+	
+	canvas.visible = true
+	canvas.queue_redraw()
+
+func _setup_procedural_back(instance) -> void:
+	"""Setup procedural back with animation"""
+	current_card_back_instance = instance
+	card_sprite.visible = false
+	
+	# Create or get canvas
+	var canvas = get_node_or_null("ProceduralCardBack")
+	if not canvas:
+		canvas = Control.new()
+		canvas.name = "ProceduralCardBack"
+		canvas.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(canvas)
+		move_child(canvas, 0)
+	
+	# Store reference
+	canvas.set_meta("instance", instance)
+	
+	# Setup animation if needed
+	if instance.get("is_animated"):
+		_setup_animation(instance, false)
+	
+	# Connect draw
+	if not canvas.draw.is_connected(_on_procedural_back_draw):
+		canvas.draw.connect(_on_procedural_back_draw)
+	
+	canvas.visible = true
+	canvas.queue_redraw()
+
+func _setup_animation(instance, is_front: bool) -> void:
+	"""Setup animation tween for procedural items"""
+	# Kill old tween
+	if has_meta("anim_tween"):
+		var old_tween = get_meta("anim_tween")
+		if old_tween and old_tween.is_valid():
+			old_tween.kill()
+	
+	# Create animation tween
+	var tween = create_tween()
+	tween.set_loops()
+	
+	var duration = instance.get("animation_duration") if instance.get("animation_duration") else 2.0
+	var canvas_name = "ProceduralCardFront" if is_front else "ProceduralCardBack"
+	
+	tween.tween_method(
+		func(phase: float):
+			instance.animation_phase = phase
+			var canvas = get_node_or_null(canvas_name)
+			if canvas and canvas.visible:
+				canvas.queue_redraw(),
+		0.0,
+		1.0,
+		duration
+	)
+	
+	set_meta("anim_tween", tween)
+
+func _on_procedural_front_draw() -> void:
+	"""Draw callback for procedural fronts"""
+	var canvas = get_node("ProceduralCardFront")
+	var instance = canvas.get_meta("instance")
+	var data = canvas.get_meta("card_data")
+	
+	if instance and data:
+		var rank_str = _get_rank_string(data.rank)
+		instance.draw_card_front(canvas, size, rank_str, data.suit)
+
+func _on_procedural_back_draw() -> void:
+	"""Draw callback for procedural backs"""
+	var canvas = get_node("ProceduralCardBack")
+	var instance = canvas.get_meta("instance")
+	
+	if instance:
+		instance.draw_card_back(canvas, size)
+
+func _get_rank_string(rank_value: int) -> String:
+	"""Convert numeric rank to display string"""
+	match rank_value:
+		1: return "A"
+		11: return "J"
+		12: return "Q"
+		13: return "K"
+		_: return str(rank_value)
+
+func _apply_sprite_card_front() -> void:
 	"""Apply traditional sprite-based card front"""
-	var card_path = "res://Pyramids/assets/cards/"
+	var rank_name = ["", "ace", "two", "three", "four", "five", "six", 
+					"seven", "eight", "nine", "ten", "jack", "queen", "king"][card_data.rank]
 	
-	# Convert rank and suit to filename
-	var rank_name = ""
-	match card_data.rank:
-		1: rank_name = "ace"
-		2: rank_name = "two"
-		3: rank_name = "three"
-		4: rank_name = "four"
-		5: rank_name = "five"
-		6: rank_name = "six"
-		7: rank_name = "seven"
-		8: rank_name = "eight"
-		9: rank_name = "nine"
-		10: rank_name = "ten"
-		11: rank_name = "jack"
-		12: rank_name = "queen"
-		13: rank_name = "king"
+	var suit_name = ["spades", "hearts", "clubs", "diamonds"][card_data.suit]
 	
-	var suit_name = ""
-	match card_data.suit:
-		CardData.Suit.SPADES: suit_name = "spades"
-		CardData.Suit.HEARTS: suit_name = "hearts"
-		CardData.Suit.CLUBS: suit_name = "clubs"
-		CardData.Suit.DIAMONDS: suit_name = "diamonds"
+	var card_path = "res://Pyramids/assets/cards/%s_of_%s.png" % [rank_name, suit_name]
 	
-	card_path += rank_name + "_of_" + suit_name + ".png"
-	
-	# Load and set texture
 	var texture = load(card_path)
 	if texture:
 		card_sprite.texture = texture
 		card_sprite.visible = true
 		card_sprite.modulate = Color.WHITE
-		
-		if board_index == -1:  # Slot card
-			card_sprite.position = Vector2.ZERO
-			card_sprite.size = size
 
-func _apply_programmatic_card_front():
+func _apply_programmatic_card_front() -> void:
 	"""Apply programmatic card front"""
 	card_sprite.visible = false
 	
@@ -259,251 +325,49 @@ func _apply_programmatic_card_front():
 	else:
 		_update_programmatic_card()
 
-func _apply_equipped_card_back():
-	"""Apply the equipped card back or use default"""
-	
-	var equipped_back_id = ""
-	# Try NEW system first (if it exists)
-	if EquipmentManager:
-		equipped_back_id = EquipmentManager.get_equipped_item("card_back")
-
-	# Fallback to OLD system if new system didn't provide anything
-	if not equipped_back_id and ItemManager:
-		equipped_back_id = ItemManager.get_equipped_item(UnifiedItemData.Category.CARD_BACK)
-
-	# TODO: Remove ItemManager fallback once EquipmentManager is fully tested
-	
-	if equipped_back_id and equipped_back_id != "":
-		if not _apply_custom_card_back(equipped_back_id):
-			_apply_default_card_back()
-	else:
-		_apply_default_card_back()
-
-func _apply_custom_card_back(back_id: String) -> bool:
-	"""Apply a custom card back - returns true if successful"""
-
-	# FIRST check if it's a procedural card back (for animations)
-	if ProceduralItemRegistry and ProceduralItemRegistry.procedural_items.has(back_id):
-		var procedural_data = ProceduralItemRegistry.procedural_items[back_id]
-		var instance = procedural_data.instance
-		
-		if instance and instance.has_method("draw_card_back"):
-			
-			# Store the instance for animation
-			current_card_back_instance = instance
-			
-			# Check if it's animated
-			if instance.get("is_animated"):
-				is_animating_back = true
-				# Setup animation on this card node
-				if instance.has_method("setup_animation_on_node"):
-					instance.setup_animation_on_node(self)
-				set_process(true)  # Enable _process for animation updates
-			else:
-				is_animating_back = false
-				# Only stop process if front is also not animating
-				if not is_animating_front:
-					set_process(false)
-			
-			# Hide the sprite, we'll draw procedurally
-			card_sprite.visible = false
-			
-			# Create or get the procedural back canvas
-			var canvas = get_node_or_null("ProceduralCardBack")
-			if not canvas:
-				canvas = Control.new()
-				canvas.name = "ProceduralCardBack"
-				canvas.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-				canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE
-				add_child(canvas)
-				move_child(canvas, 0)
-			
-			# Store the instance reference
-			canvas.set_meta("card_back_instance", instance)
-			
-			# Connect draw signal if not connected
-			if not canvas.draw.is_connected(_on_procedural_back_draw):
-				canvas.draw.connect(_on_procedural_back_draw)
-			
-			canvas.visible = true
-			canvas.queue_redraw()
-			return true
-
-	# For non-procedural backs, stop back animation
-	is_animating_back = false
-	current_card_back_instance = null
-	if not is_animating_front:
-		set_process(false)
-	
-	# Check for exported PNG
-	var png_path = _get_card_back_png_path(back_id)
-	if ResourceLoader.exists(png_path):
-		card_sprite.texture = load(png_path)
-		card_sprite.visible = true
-		card_sprite.modulate = Color.WHITE
-		
-		# Hide procedural canvas if it exists
-		var canvas = get_node_or_null("ProceduralCardBack")
-		if canvas:
-			canvas.visible = false
-		
-		return true
-	
-	# Check if UnifiedItemData has a texture path
-	var item = ItemManager.get_item(back_id) if ItemManager else null
-	if item and item.texture_path != "" and ResourceLoader.exists(item.texture_path):
-		card_sprite.texture = load(item.texture_path)
-		card_sprite.visible = true
-		card_sprite.modulate = Color.WHITE
-		
-		# Hide procedural canvas if it exists
-		var canvas = get_node_or_null("ProceduralCardBack")
-		if canvas:
-			canvas.visible = false
-		
-		return true
-	
-	return false
-
-func _apply_default_card_back():
-	"""Apply the default card back based on current skin system"""
-	
-	# Stop any back animation
-	is_animating_back = false
-	current_card_back_instance = null
-	if not is_animating_front:
-		set_process(false)
-	
-	# Hide procedural canvas if it exists
+func _apply_default_card_back() -> void:
+	"""Apply the default card back"""
 	var canvas = get_node_or_null("ProceduralCardBack")
 	if canvas:
 		canvas.visible = false
 	
 	if SettingsSystem.current_card_skin == "sprites":
-		# Use the pink backing
-		var card_path = "res://Pyramids/assets/cards/pink_backing.png"
-		card_sprite.texture = load(card_path)
+		card_sprite.texture = load("res://Pyramids/assets/cards/pink_backing.png")
 		card_sprite.visible = true
 		card_sprite.modulate = Color.WHITE
 	else:
-		# Programmatic card back
+		# Programmatic back
 		card_sprite.visible = false
-		
 		if not has_node("CardBG"):
 			call_deferred("_create_programmatic_card")
-		else:
-			# Update to show as face down
-			var bg = get_node("CardBG")
-			var style = bg.get_theme_stylebox("panel") as StyleBoxFlat
-			if style:
-				style.bg_color = Color(0.8, 0.2, 0.4)  # Pink color for back
-			
-			# Hide labels
-			if has_node("RankLabel"):
-				get_node("RankLabel").visible = false
-			if has_node("SuitLabel"):
-				get_node("SuitLabel").visible = false
-
-func _get_card_back_png_path(back_id: String) -> String:
-	"""Build the expected PNG path for a card back"""
-	# Try multiple possible paths
-	var paths = [
-		"res://exported_items/card_backs/epic/%s.png" % back_id,
-		"res://exported_items/card_backs/rare/%s.png" % back_id,
-		"res://exported_items/card_backs/common/%s.png" % back_id,
-		"res://Pyramids/assets/cards/%s.png" % back_id
-	]
-	
-	for path in paths:
-		if ResourceLoader.exists(path):
-			return path
-	
-	return ""
-
-func _on_procedural_back_draw():
-	"""Draw callback for procedural card backs"""
-	var canvas = get_node("ProceduralCardBack")
-	if canvas:
-		var instance = canvas.get_meta("card_back_instance")
-		if instance and instance.has_method("draw_card_back"):
-			# The instance's animation_phase will be updated by its own animation system
-			instance.draw_card_back(canvas, size)
-
-func _on_procedural_front_draw():
-	"""Draw callback for procedural card fronts"""
-	var canvas = get_node("ProceduralCardFront")
-	if canvas:
-		var instance = canvas.get_meta("card_front_instance")
-		var data = canvas.get_meta("card_data")
-		if instance and instance.has_method("draw_card_front") and data:
-			# Pass card data to the front drawing method
-			instance.draw_card_front(canvas, size, data.rank, data.suit)
-
-func _process(_delta: float) -> void:
-	# Process animations for both front and back as needed
-	if is_animating_back and current_card_back_instance and not is_face_up:
-		var canvas = get_node_or_null("ProceduralCardBack")
-		if canvas and canvas.visible:
-			canvas.queue_redraw()
-	
-	if is_animating_front and current_card_front_instance and is_face_up:
-		var canvas = get_node_or_null("ProceduralCardFront")
-		if canvas and canvas.visible:
-			canvas.queue_redraw()
 
 func set_face_up(face_up: bool) -> void:
 	is_face_up = face_up
 	if face_up:
 		has_been_revealed = true
-		# Stop back animation when showing face
-		is_animating_back = false
-		# Enable front animation if applicable
-		if current_card_front_instance and current_card_front_instance.get("is_animated"):
-			is_animating_front = true
-			set_process(true)
-		elif not is_animating_back:
-			set_process(false)
-	else:
-		# Stop front animation when showing back
-		is_animating_front = false
-		# Re-enable back animation if we have an animated back
-		if current_card_back_instance and current_card_back_instance.get("is_animated"):
-			is_animating_back = true
-			set_process(true)
-		elif not is_animating_front:
-			set_process(false)
-	
 	_update_display()
 	call_deferred("update_selectability")
 
 func remove_from_board() -> void:
-	"""Remove card from board and clean up all animations"""
-	# Stop all animations
-	is_animating_back = false
-	is_animating_front = false
-	current_card_back_instance = null
-	current_card_front_instance = null
-	set_process(false)
-	
-	# Instead of destroying, just hide and disable
+	"""Remove card from board"""
 	is_on_board = false
-	position = Vector2(-2000, -2000)  # Move far off screen
+	position = Vector2(-2000, -2000)
 	z_index = -10
 	
-	# Disable collision
 	if area_2d:
 		area_2d.monitoring = false
 		area_2d.monitorable = false
 	
-	# Disable input
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	
+	# Clean up animations
+	_cleanup_canvases()
 
-# ... rest of the functions remain the same ...
-
+# === COLLISION & VISIBILITY ===
 func _on_area_entered(area: Area2D) -> void:
 	if not is_on_board:
 		return
-		
+	
 	var other_card = area.get_parent()
 	if other_card and other_card.has_method("get_board_index") and other_card.is_on_board:
 		if other_card.board_index > board_index:
@@ -513,51 +377,35 @@ func _on_area_entered(area: Area2D) -> void:
 func _on_area_exited(area: Area2D) -> void:
 	if not is_on_board:
 		return
-		
+	
 	var other_card = area.get_parent()
 	if other_card:
 		cards_blocking_me.erase(other_card)
 		_check_visibility()
 
 func _check_visibility() -> void:
-	# Skip if not a board card or already removed
 	if board_index < 0 or not is_on_board:
 		set_face_up(true)
 		return
-		
-	# Bottom row is always visible
+	
 	if board_index >= 18:
 		set_face_up(true)
 		return
 	
-	# Clean up any invalid references
-	var valid_blockers: Array[Node] = []
-	for blocker in cards_blocking_me:
-		if is_instance_valid(blocker) and blocker.is_on_board:
-			valid_blockers.append(blocker)
-	cards_blocking_me = valid_blockers
+	# Clean invalid blockers
+	cards_blocking_me = cards_blocking_me.filter(func(b): return is_instance_valid(b) and b.is_on_board)
 	
-	# Check blocking status
 	var is_blocked = not cards_blocking_me.is_empty()
 	
-	# EVEN rounds: All visible, but only unblocked are selectable
 	if GameState.current_round % 2 == 0:
-		set_face_up(true)  # Always visible
-		update_selectability()  # But selectability depends on blocking
+		set_face_up(true)
+		update_selectability()
 	else:
-		# ODD rounds: Only visible when unblocked
 		set_face_up(not is_blocked)
 
-func get_board_index() -> int:
-	return board_index
-
 func update_selectability() -> void:
-	# Only selectable if on board, face up, and not blocked
 	if is_face_up and board_index >= 0 and is_on_board:
-		# Check if blocked by other cards
 		var is_blocked = not cards_blocking_me.is_empty()
-		
-		# Can only select if not blocked AND is a valid move
 		if not is_blocked:
 			is_selectable = CardManager.get_valid_slot_for_card(card_data) != -1
 		else:
@@ -565,40 +413,34 @@ func update_selectability() -> void:
 	else:
 		is_selectable = false
 
-func set_selectable(selectable: bool) -> void:
-	is_selectable = selectable
-
+# === INPUT ===
 func _on_mouse_entered() -> void:
-	pass  # No hover effects
+	pass
 
 func _on_mouse_exited() -> void:
-	pass  # No hover effects
+	pass
 
 func _on_gui_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton:
-		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-			var is_blocked = not cards_blocking_me.is_empty()
-			
-			if is_blocked:
-				# Card is blocked - just flash, no penalty
-				flash_invalid()
-				return
-			
-			# Card is unblocked, check if valid move
-			if is_selectable:
-				SignalBus.card_selected.emit(self)
-			else:
-				# Unblocked but wrong value - this gets the penalty
-				SignalBus.card_invalid_selected.emit(self)
-				flash_invalid()
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		var is_blocked = not cards_blocking_me.is_empty()
+		
+		if is_blocked:
+			flash_invalid()
+			return
+		
+		if is_selectable:
+			SignalBus.card_selected.emit(self)
+		else:
+			SignalBus.card_invalid_selected.emit(self)
+			flash_invalid()
 
 func flash_invalid() -> void:
 	modulate = INVALID_TINT
 	var tween = create_tween()
 	tween.tween_property(self, "modulate", Color.WHITE, 0.5)
 
+# === PROGRAMMATIC CARDS ===
 func _create_programmatic_card() -> void:
-	# Create background
 	var bg = Panel.new()
 	bg.name = "CardBG"
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -614,7 +456,6 @@ func _create_programmatic_card() -> void:
 	add_child(bg)
 	move_child(bg, 0)
 	
-	# Create labels only if face up
 	if is_face_up:
 		var rank_label = Label.new()
 		rank_label.name = "RankLabel"
@@ -628,75 +469,40 @@ func _create_programmatic_card() -> void:
 		suit_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(suit_label)
 	
-	# Update the card display
 	_update_programmatic_card()
-	
+
 func _update_programmatic_card() -> void:
-	# Update background color
-	if has_node("CardBG"):
-		var bg = get_node("CardBG")
-		var style = bg.get_theme_stylebox("panel") as StyleBoxFlat
-		if style:
-			if is_face_up:
-				style.bg_color = Color.WHITE
-			else:
-				# Don't update color here for face down - let _apply_equipped_card_back handle it
-				return
-	
-	# Update labels if face up
-	if is_face_up:
-		var rank_label = get_node_or_null("RankLabel")
-		var suit_label = get_node_or_null("SuitLabel")
-		
-		if rank_label and suit_label:
-			# Set rank text
-			var rank_text = ""
-			match card_data.rank:
-				1: rank_text = "A"
-				11: rank_text = "J"
-				12: rank_text = "Q"
-				13: rank_text = "K"
-				_: rank_text = str(card_data.rank)
-			rank_label.text = rank_text
-			
-			# Set suit text and color
-			var suit_text = ""
-			var card_color = Color.BLACK
-			match card_data.suit:
-				CardData.Suit.HEARTS:
-					suit_text = "♥"
-					card_color = Color.RED if not SettingsSystem.high_contrast else Color(0.92, 0.28, 0.28)
-				CardData.Suit.DIAMONDS:
-					suit_text = "♦"
-					card_color = Color.RED if not SettingsSystem.high_contrast else Color(0.56, 0.82, 0.52)
-				CardData.Suit.CLUBS:
-					suit_text = "♣"
-					card_color = Color.BLACK if not SettingsSystem.high_contrast else Color(0.28, 0.55, 0.75)
-				CardData.Suit.SPADES:
-					suit_text = "♠"
-					card_color = Color.BLACK if not SettingsSystem.high_contrast else Color(0.2, 0.2, 0.2)
-						
-			suit_label.text = suit_text
-			rank_label.modulate = card_color
-			suit_label.modulate = card_color
-			
-			# Apply font sizes
-			var font_size = 32
-			match SettingsSystem.current_card_skin:
-				"modern": font_size = 36
-				"retro": font_size = 28
-			
-			rank_label.add_theme_font_size_override("font_size", font_size)
-			suit_label.add_theme_font_size_override("font_size", font_size + 4)
-			
-			rank_label.visible = true
-			suit_label.visible = true
-		else:
-			# Labels don't exist yet, create them next frame
-			call_deferred("_update_programmatic_card")
-	else:
-		# Hide labels when face down
+	if not is_face_up:
 		if has_node("RankLabel"):
 			get_node("RankLabel").visible = false
 		if has_node("SuitLabel"):
 			get_node("SuitLabel").visible = false
+		return
+	
+	var rank_label = get_node_or_null("RankLabel")
+	var suit_label = get_node_or_null("SuitLabel")
+	
+	if not rank_label or not suit_label:
+		call_deferred("_update_programmatic_card")
+		return
+	
+	rank_label.text = _get_rank_string(card_data.rank)
+	
+	var suit_symbols = ["♠", "♥", "♣", "♦"]
+	suit_label.text = suit_symbols[card_data.suit]
+	
+	var color = Color.BLACK if card_data.suit in [0, 2] else Color.RED
+	rank_label.modulate = color
+	suit_label.modulate = color
+	
+	rank_label.add_theme_font_size_override("font_size", 32)
+	suit_label.add_theme_font_size_override("font_size", 36)
+	
+	rank_label.visible = true
+	suit_label.visible = true
+
+func get_board_index() -> int:
+	return board_index
+
+func set_selectable(selectable: bool) -> void:
+	is_selectable = selectable

@@ -360,13 +360,14 @@ func _apply_board_skin() -> void:
 		get_node("BackgroundNode").queue_free()
 		await get_tree().process_frame
 	
-	# Get the current equipped board from ItemManager
-	var board_id = ItemManager.get_equipped_item(UnifiedItemData.Category.BOARD)
-	var board_item = ItemManager.get_item(board_id) if board_id else null
+	# NEW: Get equipped board from EquipmentManager
+	var board_id = ""
+	if EquipmentManager:
+		var equipped = EquipmentManager.get_equipped_items()
+		board_id = equipped.get("board", "board_green")  # Default to green
 	
-	# If no board equipped, use default
-	if not board_item:
-		board_item = ItemManager.get_item("board_green")
+	# Get item data from ItemManager
+	var board_item = ItemManager.get_item(board_id) if ItemManager else null
 	
 	if board_item and board_item is UnifiedItemData:
 		_apply_item_background(board_item)
@@ -377,34 +378,45 @@ func _apply_board_skin() -> void:
 func _apply_item_background(item: UnifiedItemData) -> void:
 	var bg_node: Node
 	
-	# Check for background type
-	var bg_type = item.background_type
+	# Check for scene-based backgrounds FIRST (like Desert Pyramids)
+	if item.background_scene_path and item.background_scene_path != "":
+		if ResourceLoader.exists(item.background_scene_path):
+			var scene = load(item.background_scene_path)
+			bg_node = scene.instantiate()
+		else:
+			# Fallback to procedural if scene not found
+			if item.is_procedural and ItemManager:
+				var instance = ItemManager.get_procedural_instance(item.id)
+				if instance and instance.has_method("draw_board_background"):
+					bg_node = _create_procedural_board_background(item, instance)
+				else:
+					bg_node = _create_color_background(item)
+			else:
+				bg_node = _create_color_background(item)
 	
-	match bg_type:
-		"scene":
-			# Load animated scene
-			var scene_path = item.background_scene_path
-			
-			if scene_path and ResourceLoader.exists(scene_path):
-				var scene = load(scene_path)
-				bg_node = scene.instantiate()
-			else:
-				bg_node = _create_color_background(item)
-				
-		"sprite":
-			# Static sprite using texture_path
-			if item.texture_path and ResourceLoader.exists(item.texture_path):
-				var texture = load(item.texture_path)
-				var rect = TextureRect.new()
-				rect.texture = texture
-				rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-				rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-				bg_node = rect
-			else:
-				bg_node = _create_color_background(item)
-				
-		_:  # "color" or default
+	# Check for procedural backgrounds (like Arctic Aurora)
+	elif item.is_procedural and ItemManager:
+		var instance = ItemManager.get_procedural_instance(item.id)
+		if instance and instance.has_method("draw_board_background"):
+			bg_node = _create_procedural_board_background(item, instance)
+		else:
 			bg_node = _create_color_background(item)
+	
+	# Check for static texture backgrounds
+	elif item.texture_path and item.texture_path != "":
+		if ResourceLoader.exists(item.texture_path):
+			var texture = load(item.texture_path)
+			var rect = TextureRect.new()
+			rect.texture = texture
+			rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+			rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			bg_node = rect
+		else:
+			bg_node = _create_color_background(item)
+	
+	# Default to color background
+	else:
+		bg_node = _create_color_background(item)
 	
 	if bg_node:
 		bg_node.name = "BackgroundNode"
@@ -414,6 +426,41 @@ func _apply_item_background(item: UnifiedItemData) -> void:
 			bg_node.z_index = -10
 			if bg_node.has_method("set_anchors_and_offsets_preset"):
 				bg_node.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+func _create_procedural_board_background(item: UnifiedItemData, instance) -> Control:
+	"""Create a procedural board background"""
+	var canvas = Control.new()
+	canvas.name = "ProceduralBoardBG"
+	canvas.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	
+	# Store the instance
+	canvas.set_meta("board_instance", instance)
+	
+	# Setup animation if needed
+	if instance.get("is_animated"):
+		var tween = create_tween()
+		tween.set_loops()
+		
+		var duration = instance.get("animation_duration") if instance.get("animation_duration") else 6.0
+		
+		tween.tween_method(
+			func(phase: float):
+				instance.animation_phase = phase
+				canvas.queue_redraw(),
+			0.0,
+			1.0,
+			duration
+		)
+	
+	# Connect draw callback
+	canvas.draw.connect(func():
+		if instance.has_method("draw_board_background"):
+			instance.draw_board_background(canvas, canvas.size)
+	)
+	
+	canvas.queue_redraw()
+	return canvas
 
 func _create_color_background(item: UnifiedItemData) -> ColorRect:
 	var rect = ColorRect.new()
