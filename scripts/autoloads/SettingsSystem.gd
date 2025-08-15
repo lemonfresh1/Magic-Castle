@@ -1,25 +1,36 @@
 # SettingsSystem.gd - Autoload for game settings and preferences
 # Path: res://Pyramids/scripts/autoloads/SettingsSystem.gd
+# Last Updated: Refactored to work with new manager architecture
+#
+# SettingsSystem handles:
+# - User preferences (audio, controls, performance)
+# - Draw zone configuration sync with DrawZoneManager
+# - Game mode preferences sync with GameModeManager
+# - Display settings and UI scaling for mobile
+# - Player profile basics (name, ID generation)
+# - Battery saver and performance options
+#
+# Flow: User input → SettingsSystem → Sync with managers → Save to disk
+# Dependencies: DrawZoneManager (for zones), GameModeManager (for modes), AudioServer (for volume)
+
 extends Node
 
 # === DRAW PILE PREFERENCES ===
 enum DrawPileMode {
 	LEFT_ONLY,
 	RIGHT_ONLY,
-	BOTH_SIDES
+	BOTH_SIDES,
+	NONE  # For potential PC mode
 }
 
 # === CURRENT SETTINGS ===
-var draw_pile_mode: DrawPileMode = DrawPileMode.LEFT_ONLY
+var draw_pile_mode: DrawPileMode = DrawPileMode.BOTH_SIDES  # Default to both for mobile
 var sound_enabled: bool = true
-var animation_speed: float = 1.0  # Placeholder for future
-var haptic_enabled: bool = true   # Placeholder for future
+var animation_speed: float = 1.0
+var haptic_enabled: bool = true
 
-# === SKIN SETTINGS ===
-var current_card_skin: String = "sprites"
-var current_board_skin: String = "default"
+# === GAME SETTINGS ===
 var current_game_mode: String = "tri_peaks"
-var high_contrast: bool = true
 
 # === AUDIO SETTINGS ===
 var sfx_volume: float = 1.0
@@ -29,31 +40,26 @@ var success_sounds_enabled: bool = true
 
 # === PROFILE SETTINGS ===
 var player_name: String = "Player"
-var player_avatar: String = "default"
-var player_frame: String = "basic"
+var player_id: String = ""  # For multiplayer/cloud saves
 
-# === STATS TRACKING ===
-var total_games_played: int = 0
-var total_wins: int = 0
-var highest_combo: int = 0
-var best_round_score: int = 0
-var best_game_score: int = 0
-
-# === AD SETTINGS ===
-var ad_skips_remaining: int = 2
-var last_ad_skip_date: String = ""
-var ads_watched_today: int = 0
-var last_ad_watch_date: String = ""
+# Stats are now handled by StatsManager
+# Ads are now handled by AdManager
 
 # === MOBILE SETTINGS ===
 var target_screen_width: int = 1080   # Pixel 8 width
 var target_screen_height: int = 2400  # Pixel 8 height
 var ui_scale_factor: float = 1.0
 
+# === PERFORMANCE SETTINGS ===
+var particle_effects_enabled: bool = true
+var reduce_animations: bool = false
+var battery_saver_mode: bool = false
+
 func _ready() -> void:
 	print("SettingsSystem initialized")
 	_detect_screen_settings()
 	load_settings()
+	_sync_with_managers()
 
 func _detect_screen_settings() -> void:
 	var screen_size = DisplayServer.screen_get_size()
@@ -67,10 +73,36 @@ func _detect_screen_settings() -> void:
 	
 	print("UI scale factor: %.2f" % ui_scale_factor)
 
+func _sync_with_managers() -> void:
+	"""Sync settings with the new manager architecture"""
+	# Sync draw zones with DrawZoneManager
+	if DrawZoneManager:
+		var zone_mode = _convert_to_draw_zone_mode(draw_pile_mode)
+		DrawZoneManager.set_draw_mode(zone_mode)
+
+func _convert_to_draw_zone_mode(mode: DrawPileMode) -> int:
+	"""Convert SettingsSystem mode to DrawZoneManager mode"""
+	match mode:
+		DrawPileMode.LEFT_ONLY:
+			return DrawZoneManager.DrawZoneMode.LEFT_ONLY
+		DrawPileMode.RIGHT_ONLY:
+			return DrawZoneManager.DrawZoneMode.RIGHT_ONLY
+		DrawPileMode.BOTH_SIDES:
+			return DrawZoneManager.DrawZoneMode.BOTH
+		DrawPileMode.NONE:
+			return DrawZoneManager.DrawZoneMode.NONE
+		_:
+			return DrawZoneManager.DrawZoneMode.BOTH
+
 # === DRAW PILE SETTINGS ===
 func set_draw_pile_mode(mode: DrawPileMode) -> void:
 	draw_pile_mode = mode
-	SignalBus.draw_pile_mode_changed.emit(mode)
+	
+	# Sync with DrawZoneManager
+	if DrawZoneManager:
+		var zone_mode = _convert_to_draw_zone_mode(mode)
+		DrawZoneManager.set_draw_mode(zone_mode)
+	
 	save_settings()
 
 func get_draw_pile_mode() -> DrawPileMode:
@@ -82,6 +114,9 @@ func is_left_draw_enabled() -> bool:
 func is_right_draw_enabled() -> bool:
 	return draw_pile_mode == DrawPileMode.RIGHT_ONLY or draw_pile_mode == DrawPileMode.BOTH_SIDES
 
+# Note: set_left_draw_enabled and set_right_draw_enabled removed to prevent recursion
+# Use set_draw_pile_mode directly instead
+
 # === AUDIO SETTINGS ===
 func set_sound_enabled(enabled: bool) -> void:
 	sound_enabled = enabled
@@ -92,74 +127,75 @@ func is_sound_enabled() -> bool:
 	return sound_enabled
 
 func set_sfx_volume(volume: float) -> void:
-	sfx_volume = volume
+	sfx_volume = clamp(volume, 0.0, 1.0)
 	var bus_idx = AudioServer.get_bus_index("SFX")
-	if bus_idx >= 0:  # Add this check
-		AudioServer.set_bus_volume_db(bus_idx, linear_to_db(volume))
+	if bus_idx >= 0:
+		AudioServer.set_bus_volume_db(bus_idx, linear_to_db(sfx_volume))
+	save_settings()
 
 func set_music_volume(volume: float) -> void:
-	music_volume = volume
+	music_volume = clamp(volume, 0.0, 1.0)
 	var bus_idx = AudioServer.get_bus_index("Music")
-	if bus_idx >= 0:  # Add this check
-		AudioServer.set_bus_volume_db(bus_idx, linear_to_db(volume))
-
-# === SKIN SYSTEM ===
-func set_card_skin(skin_name: String) -> void:
-	current_card_skin = skin_name
-	SignalBus.card_skin_changed.emit(skin_name)
+	if bus_idx >= 0:
+		AudioServer.set_bus_volume_db(bus_idx, linear_to_db(music_volume))
 	save_settings()
 
-func set_board_skin(skin_name: String) -> void:
-	current_board_skin = skin_name
-	SignalBus.board_skin_changed.emit(skin_name)
-	save_settings()
-
+# === GAME MODE ===
 func set_game_mode(mode_name: String) -> void:
+	"""Set game mode and emit signal for GameModeManager to handle"""
+	if current_game_mode == mode_name:
+		return  # No change needed
+	
 	current_game_mode = mode_name
+	save_settings()
+	
+	# Emit signal for GameModeManager to react
 	SignalBus.game_mode_changed.emit(mode_name)
+
+func save_game_mode(mode_name: String) -> void:
+	"""Save game mode without emitting signals (called by GameModeManager)"""
+	current_game_mode = mode_name
 	save_settings()
 
-# === STATS METHODS ===
-func update_stats(round_score: int, game_score: int, combo: int, won: bool) -> void:
-	total_games_played += 1
-	if won:
-		total_wins += 1
-	
-	highest_combo = max(highest_combo, combo)
-	best_round_score = max(best_round_score, round_score)
-	best_game_score = max(best_game_score, game_score)
-	
+func get_game_mode() -> String:
+	"""Get the current game mode"""
+	return current_game_mode
+
+# === PROFILE ===
+func set_player_name(name: String) -> void:
+	player_name = name
 	save_settings()
 
-# === AD MANAGEMENT ===
-func get_ad_skips() -> int:
-	_check_daily_reset()
-	return ad_skips_remaining
-
-func use_ad_skip() -> bool:
-	if ad_skips_remaining > 0:
-		ad_skips_remaining -= 1
+func generate_player_id() -> String:
+	"""Generate a unique player ID if not set"""
+	if player_id == "":
+		var rng = RandomNumberGenerator.new()
+		rng.randomize()
+		player_id = "player_%d_%d" % [Time.get_unix_time_from_system(), rng.randi()]
 		save_settings()
-		return true
-	return false
+	return player_id
 
-func watch_ad_for_skip() -> bool:
-	_check_daily_reset()
-	if ads_watched_today < 3:
-		ads_watched_today += 1
-		ad_skips_remaining = min(ad_skips_remaining + 3, 11)  # Max 11 skips
-		last_ad_watch_date = Time.get_date_string_from_system()
-		save_settings()
-		return true
-	return false
+# === PERFORMANCE SETTINGS ===
+func set_particle_effects(enabled: bool) -> void:
+	particle_effects_enabled = enabled
+	save_settings()
 
-func _check_daily_reset() -> void:
-	var today = Time.get_date_string_from_system()
-	if last_ad_skip_date != today:
-		ad_skips_remaining = 2  # Daily reset
-		ads_watched_today = 0
-		last_ad_skip_date = today
-		save_settings()
+func set_reduce_animations(enabled: bool) -> void:
+	reduce_animations = enabled
+	save_settings()
+
+func set_battery_saver(enabled: bool) -> void:
+	battery_saver_mode = enabled
+	
+	# Apply battery saver settings
+	if enabled:
+		particle_effects_enabled = false
+		reduce_animations = true
+		Engine.max_fps = 30
+	else:
+		Engine.max_fps = 60
+	
+	save_settings()
 
 # === PERSISTENCE ===
 func save_settings() -> void:
@@ -175,32 +211,19 @@ func save_settings() -> void:
 	config.set_value("audio", "error_sounds", error_sounds_enabled)
 	config.set_value("audio", "success_sounds", success_sounds_enabled)
 	
-	# Skin settings
-	config.set_value("skins", "card_skin", current_card_skin)
-	config.set_value("skins", "board_skin", current_board_skin)
-	config.set_value("skins", "high_contrast", high_contrast)
-	
-	# Game mode
+	# Game settings
 	config.set_value("gameplay", "game_mode", current_game_mode)
 	config.set_value("gameplay", "animation_speed", animation_speed)
+	config.set_value("gameplay", "haptic_enabled", haptic_enabled)
 	
 	# Profile settings
 	config.set_value("profile", "name", player_name)
-	config.set_value("profile", "avatar", player_avatar)
-	config.set_value("profile", "frame", player_frame)
+	config.set_value("profile", "id", player_id)
 	
-	# Stats
-	config.set_value("stats", "games_played", total_games_played)
-	config.set_value("stats", "wins", total_wins)
-	config.set_value("stats", "highest_combo", highest_combo)
-	config.set_value("stats", "best_round", best_round_score)
-	config.set_value("stats", "best_game", best_game_score)
-	
-	# Ad settings
-	config.set_value("ads", "skips_remaining", ad_skips_remaining)
-	config.set_value("ads", "last_skip_date", last_ad_skip_date)
-	config.set_value("ads", "watched_today", ads_watched_today)
-	config.set_value("ads", "last_watch_date", last_ad_watch_date)
+	# Performance settings
+	config.set_value("performance", "particle_effects", particle_effects_enabled)
+	config.set_value("performance", "reduce_animations", reduce_animations)
+	config.set_value("performance", "battery_saver", battery_saver_mode)
 	
 	var error = config.save("user://settings.cfg")
 	if error == OK:
@@ -217,7 +240,7 @@ func load_settings() -> void:
 		return
 	
 	# Load draw pile settings
-	draw_pile_mode = config.get_value("draw_pile", "mode", DrawPileMode.LEFT_ONLY)
+	draw_pile_mode = config.get_value("draw_pile", "mode", DrawPileMode.BOTH_SIDES)
 	
 	# Load audio settings
 	sound_enabled = config.get_value("audio", "sound_enabled", true)
@@ -226,32 +249,23 @@ func load_settings() -> void:
 	error_sounds_enabled = config.get_value("audio", "error_sounds", true)
 	success_sounds_enabled = config.get_value("audio", "success_sounds", true)
 	
-	# Load skin settings
-	current_card_skin = config.get_value("skins", "card_skin", "default")
-	current_board_skin = config.get_value("skins", "board_skin", "default")
-	high_contrast = config.get_value("skins", "high_contrast", true)
-	
-	# Load game mode
+	# Load game settings
 	current_game_mode = config.get_value("gameplay", "game_mode", "tri_peaks")
 	animation_speed = config.get_value("gameplay", "animation_speed", 1.0)
+	haptic_enabled = config.get_value("gameplay", "haptic_enabled", true)
 	
 	# Load profile settings
 	player_name = config.get_value("profile", "name", "Player")
-	player_avatar = config.get_value("profile", "avatar", "default")
-	player_frame = config.get_value("profile", "frame", "basic")
+	player_id = config.get_value("profile", "id", "")
 	
-	# Load stats
-	total_games_played = config.get_value("stats", "games_played", 0)
-	total_wins = config.get_value("stats", "wins", 0)
-	highest_combo = config.get_value("stats", "highest_combo", 0)
-	best_round_score = config.get_value("stats", "best_round", 0)
-	best_game_score = config.get_value("stats", "best_game", 0)
+	# Load performance settings
+	particle_effects_enabled = config.get_value("performance", "particle_effects", true)
+	reduce_animations = config.get_value("performance", "reduce_animations", false)
+	battery_saver_mode = config.get_value("performance", "battery_saver", false)
 	
-	# Load ad settings
-	ad_skips_remaining = config.get_value("ads", "skips_remaining", 2)
-	last_ad_skip_date = config.get_value("ads", "last_skip_date", "")
-	ads_watched_today = config.get_value("ads", "watched_today", 0)
-	last_ad_watch_date = config.get_value("ads", "last_watch_date", "")
+	# Apply audio settings
+	set_sfx_volume(sfx_volume)
+	set_music_volume(music_volume)
 	
 	print("Settings loaded: draw_mode=%d, sound=%s" % [draw_pile_mode, sound_enabled])
 
@@ -261,4 +275,34 @@ func get_scaled_size(base_size: Vector2) -> Vector2:
 
 func get_scaled_font_size(base_size: int) -> int:
 	return int(base_size * ui_scale_factor)
+
+# === RESET FUNCTIONS ===
+func reset_to_defaults() -> void:
+	"""Reset all settings to defaults"""
+	draw_pile_mode = DrawPileMode.BOTH_SIDES
+	sound_enabled = true
+	animation_speed = 1.0
+	haptic_enabled = true
+	current_game_mode = "tri_peaks"
+	sfx_volume = 1.0
+	music_volume = 1.0
+	error_sounds_enabled = true
+	success_sounds_enabled = true
+	particle_effects_enabled = true
+	reduce_animations = false
+	battery_saver_mode = false
 	
+	# Don't reset player name
+	save_settings()
+	_sync_with_managers()
+
+# === DEBUG ===
+func debug_print_settings() -> void:
+	"""Print all current settings for debugging"""
+	print("\n=== SETTINGS SYSTEM DEBUG ===")
+	print("Draw Pile Mode: %s" % DrawPileMode.keys()[draw_pile_mode])
+	print("Game Mode: %s" % current_game_mode)
+	print("Audio - SFX: %.1f, Music: %.1f" % [sfx_volume, music_volume])
+	print("Performance - Particles: %s, Battery Saver: %s" % [particle_effects_enabled, battery_saver_mode])
+	print("Player: %s (ID: %s)" % [player_name, player_id])
+	print("=============================\n")

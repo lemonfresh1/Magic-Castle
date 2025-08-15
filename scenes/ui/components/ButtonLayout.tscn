@@ -4,15 +4,15 @@
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_5jycp"]
 bg_color = Color(0.956863, 0.643137, 0.376471, 1)
-border_width_left = 4
-border_width_top = 4
-border_width_right = 4
-border_width_bottom = 4
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
 border_color = Color(0.823529, 0.411765, 0.117647, 1)
-corner_radius_top_left = 20
-corner_radius_top_right = 20
-corner_radius_bottom_right = 20
-corner_radius_bottom_left = 20
+corner_radius_top_left = 25
+corner_radius_top_right = 25
+corner_radius_bottom_right = 25
+corner_radius_bottom_left = 25
 
 [node name="ButtonLayout" type="Button"]
 self_modulate = Color(1, 1, 1, 0)

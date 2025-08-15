@@ -1,0 +1,43 @@
+[gd_scene format=3 uid="uid://1pngnvqccolr"]
+
+[node name="SwipePlayButton" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ButtonContainer" type="Panel" parent="."]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="PlayIcon" type="TextureRect" parent="ButtonContainer"]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="NodeLabel" type="Label" parent="ButtonContainer"]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 23.0
+
+[node name="HintLabel" type="Label" parent="ButtonContainer"]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 23.0
+
+[node name="ModeIndicator" type="HBoxContainer" parent="."]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="Dot1" type="TextureRect" parent="ModeIndicator"]
+layout_mode = 2
+
+[node name="Dot2" type="TextureRect" parent="ModeIndicator"]
+layout_mode = 2
+
+[node name="Dot3" type="TextureRect" parent="ModeIndicator"]
+layout_mode = 2

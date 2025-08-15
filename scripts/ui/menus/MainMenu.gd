@@ -210,11 +210,9 @@ func _create_buttons() -> void:
 		var button_instance = ButtonLayoutScene.instantiate() as Button
 		
 		add_child(button_instance)
-		
-		# Set position
 		button_instance.position = config.position
 		
-		# Get nodes from the simplified structure
+		# Get nodes from the ButtonLayout structure
 		var label = button_instance.get_node_or_null("MainPanel/MarginContainer/Label")
 		var icon = button_instance.get_node_or_null("MainPanel/MarginContainer/Icon")
 		
@@ -226,14 +224,26 @@ func _create_buttons() -> void:
 			var texture = load(config.icon)
 			if texture:
 				icon.texture = texture
-				# These will be overridden by apply_menu_button_style
 				icon.expand_mode = TextureRect.EXPAND_FIT_HEIGHT
 				icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		
-		# Apply the appropriate style
+		# Apply style and setup based on button type
 		if config.name == "Play":
+			# Attach SwipePlayButton script to the existing button
+			var swipe_script = preload("res://Pyramids/scripts/ui/components/SwipePlayButton.gd")
+			button_instance.set_script(swipe_script)
+			
+			# MANUALLY CALL _ready() since the node is already in the tree
+			button_instance._ready()
+			
 			UIStyleManager.apply_menu_button_style(button_instance, "play")
 			play_button = button_instance
+			
+			# Connect swipe button signals
+			if button_instance.has_signal("play_pressed"):
+				button_instance.play_pressed.connect(_on_swipe_play_pressed)
+			if button_instance.has_signal("mode_changed"):
+				button_instance.mode_changed.connect(_on_play_mode_changed)
 		else:
 			UIStyleManager.apply_menu_button_style(button_instance, "default")
 			
@@ -250,12 +260,19 @@ func _create_buttons() -> void:
 			
 			# Set toggle mode for non-play buttons
 			button_instance.toggle_mode = true
+			button_instance.pressed.connect(_on_button_pressed.bind(config.name))
 		
 		# Move to top
 		move_child(button_instance, get_child_count() - 1)
-		
-		# Connect button signal
-		button_instance.pressed.connect(_on_button_pressed.bind(config.name))
+
+func _on_swipe_play_pressed(mode: String):
+	print("Playing in mode: " + mode)
+	# SwipePlayButton script already handles the game start
+	
+func _on_play_mode_changed(mode: String):
+	print("Mode changed to: " + mode)
+	# Could save preference to SettingsSystem
+	SettingsSystem.set("last_play_mode", mode)
 
 func _create_ui_elements() -> void:
 	# Create CogBox

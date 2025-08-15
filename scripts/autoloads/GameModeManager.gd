@@ -1,6 +1,18 @@
 # GameModeManager.gd - Autoload for managing game modes and rules
 # Path: res://Pyramids/scripts/autoloads/GameModeManager.gd
 # Last Updated: Added visibility rules and custom lobby support
+#
+# GameModeManager handles:
+# - Game mode registration and switching (tri-peaks, rush, chill, test)
+# - Card visibility rules (even/odd rounds, progressive reveal)
+# - Draw pile limits and timer settings per mode
+# - Slot unlock thresholds and combo rules
+# - Custom lobby rule overrides for multiplayer
+# - Score multipliers and win conditions
+#
+# Flow: Game mode selection → GameModeManager → Game rules → Board/Card behavior
+# Dependencies: GameModeBase classes, SettingsSystem (for current mode)
+
 extends Node
 
 # === AVAILABLE GAME MODES ===
@@ -18,6 +30,10 @@ func _ready() -> void:
 	print("GameModeManager initializing...")
 	_register_game_modes()
 	_load_current_mode()
+	
+	# Listen for game mode changes from settings
+	SignalBus.game_mode_changed.connect(_on_game_mode_changed)
+	
 	print("GameModeManager ready with %d modes" % available_modes.size())
 
 func _register_game_modes() -> void:
@@ -40,26 +56,28 @@ func _register_game_modes() -> void:
 	print("Registered game modes: %s" % str(available_modes.keys()))
 
 func _load_current_mode() -> void:
-	var mode_name = SettingsSystem.current_game_mode
+	var mode_name = SettingsSystem.get_game_mode()
 	if available_modes.has(mode_name):
 		current_mode = available_modes[mode_name]
 		print("Loaded mode from settings: %s" % mode_name)
 	else:
 		# Default to tri-peaks
 		current_mode = available_modes["tri_peaks"]
-		SettingsSystem.set_game_mode("tri_peaks")
+		SettingsSystem.save_game_mode("tri_peaks")
 	
 	print("Current game mode: %s" % current_mode.display_name)
 
-# === MODE MANAGEMENT ===
 func set_current_mode(mode_name: String) -> bool:
 	if not available_modes.has(mode_name):
 		print("Game mode not found: %s" % mode_name)
 		return false
 	
 	current_mode = available_modes[mode_name]
-	SettingsSystem.set_game_mode(mode_name)
 	custom_rules_active = false  # Reset custom rules when changing modes
+	
+	# Save to settings without calling back
+	SettingsSystem.save_game_mode(mode_name)
+	
 	print("Switched to game mode: %s" % current_mode.display_name)
 	return true
 
@@ -71,6 +89,16 @@ func get_available_modes() -> Array[GameModeBase]:
 	for mode in available_modes.values():
 		modes.append(mode)
 	return modes
+
+func _on_game_mode_changed(mode_name: String) -> void:
+	"""Handle game mode changes from UI/Settings"""
+	if current_mode and current_mode.mode_name == mode_name:
+		return  # Already set, avoid redundancy
+	
+	if available_modes.has(mode_name):
+		current_mode = available_modes[mode_name]
+		custom_rules_active = false
+		print("Game mode changed via signal: %s" % current_mode.display_name)
 
 # === CUSTOM LOBBY SUPPORT ===
 func enable_custom_rules(rules: Dictionary) -> void:
@@ -263,7 +291,7 @@ func get_all_mode_info() -> Array[Dictionary]:
 	return mode_info
 
 func is_mode_unlocked(mode_name: String) -> bool:
-	# Check unlock conditions based on SettingsSystem stats
+	# Check unlock conditions based on StatsManager stats
 	match mode_name:
 		"tri_peaks":
 			return true
@@ -271,10 +299,14 @@ func is_mode_unlocked(mode_name: String) -> bool:
 			return true  # Always unlocked for testing
 		"rush":
 			# Unlock after 5 completed games
-			return SettingsSystem.total_games_played >= 5
+			if StatsManager:
+				return StatsManager.get_total_stats().games_played >= 5
+			return false
 		"chill":
 			# Unlock after reaching combo 15
-			return SettingsSystem.highest_combo >= 15
+			if StatsManager:
+				return StatsManager.get_longest_combo().combo >= 15
+			return false
 		_:
 			return false
 

@@ -146,14 +146,14 @@ func _display_card_front() -> void:
 		equipped_id = equipped.get("card_front", "")
 	
 	# Try procedural/animated
-	if equipped_id and ItemManager:
+	if equipped_id and equipped_id != "" and ItemManager:
 		var instance = ItemManager.get_procedural_instance(equipped_id)
 		if instance and instance.has_method("draw_card_front"):
 			_setup_procedural_front(instance)
 			return
 	
-	# Fallback to default
-	if SettingsSystem.current_card_skin == "sprites":
+	# Determine if we should use sprites based on equipped item
+	if _should_use_sprites():
 		_apply_sprite_card_front()
 	else:
 		_apply_programmatic_card_front()
@@ -327,7 +327,7 @@ func _apply_default_card_back() -> void:
 	if canvas:
 		canvas.visible = false
 	
-	if SettingsSystem.current_card_skin == "sprites":
+	if _should_use_sprites():
 		card_sprite.texture = load("res://Pyramids/assets/cards/pink_backing.png")
 		card_sprite.visible = true
 		card_sprite.modulate = Color.WHITE
@@ -510,3 +510,15 @@ func get_board_index() -> int:
 
 func set_selectable(selectable: bool) -> void:
 	is_selectable = selectable
+
+func _should_use_sprites() -> bool:
+	"""Check if we should use sprite-based cards"""
+	if not EquipmentManager:
+		return true  # Default to sprites
+	
+	var equipped = EquipmentManager.get_equipped_items()
+	var card_front = equipped.get("card_front", "card_classic")
+	
+	# Define which skins use sprites vs programmatic
+	var sprite_based_skins = ["card_classic", "card_sprites", ""]
+	return card_front in sprite_based_skins
