@@ -12,7 +12,14 @@ var colors = {
 	"primary_light": Color("#d1fae5"),
 	"primary_focus": Color(0.063, 0.725, 0.506, 0.1),
 	
-	# Neutral Palette
+	# Play Button Mode Colors
+	"play_solo": Color("#10b981"),        # Green (same as primary)
+	"play_solo_dark": Color("#059669"),   # Dark green (same as primary_dark)
+	"play_multiplayer": Color("#E53935"),  # Red
+	"play_multiplayer_dark": Color("#C62828"), # Dark red
+	"play_tournament": Color("#FFB300"),   # Gold
+	"play_tournament_dark": Color("#F57C00"), # Dark gold
+
 	"gray_900": Color("#111827"),  # Primary text
 	"gray_700": Color("#374151"),  # Secondary text
 	"gray_600": Color("#4b5563"),  # Tertiary text

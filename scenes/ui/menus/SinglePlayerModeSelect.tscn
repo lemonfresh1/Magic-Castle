@@ -1,0 +1,54 @@
+[gd_scene load_steps=2 format=3 uid="uid://yp5u0khhsxyh"]
+
+[ext_resource type="Script" uid="uid://dujak0iw8ijft" path="res://Pyramids/scripts/ui/menus/SinglePlayerModeSelect.gd" id="1_804e3"]
+
+[node name="SinglePlayerModeSelect" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_804e3")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="TopSection" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 0
+
+[node name="BackButton" type="Button" parent="TopSection"]
+layout_mode = 0
+offset_right = 8.0
+offset_bottom = 8.0
+text = "Back"
+
+[node name="HighscoresPanel" type="PanelContainer" parent="TopSection"]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="VBox" type="VBoxContainer" parent="TopSection/HighscoresPanel"]
+layout_mode = 2
+
+[node name="CurrentRankLabel" type="Label" parent="TopSection/HighscoresPanel/VBox"]
+layout_mode = 2
+
+[node name="TopScoresContainer" type="VBoxContainer" parent="TopSection/HighscoresPanel/VBox"]
+layout_mode = 2
+
+[node name="BottomSection" type="Control" parent="."]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="CardContainer" type="Control" parent="BottomSection"]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0

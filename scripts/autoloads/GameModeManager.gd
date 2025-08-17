@@ -1,361 +1,322 @@
-# GameModeManager.gd - Autoload for managing game modes and rules
+# GameModeManager.gd - COMPLETE VERSION with all missing methods
 # Path: res://Pyramids/scripts/autoloads/GameModeManager.gd
-# Last Updated: Added visibility rules and custom lobby support
-#
-# GameModeManager handles:
-# - Game mode registration and switching (tri-peaks, rush, chill, test)
-# - Card visibility rules (even/odd rounds, progressive reveal)
-# - Draw pile limits and timer settings per mode
-# - Slot unlock thresholds and combo rules
-# - Custom lobby rule overrides for multiplayer
-# - Score multipliers and win conditions
-#
-# Flow: Game mode selection → GameModeManager → Game rules → Board/Card behavior
-# Dependencies: GameModeBase classes, SettingsSystem (for current mode)
 
 extends Node
 
-# === AVAILABLE GAME MODES ===
-var available_modes: Dictionary = {}
-var current_mode: GameModeBase = null
+# Current mode configuration
+var current_mode_id: String = "test"
+var current_mode_config: Dictionary = {}
 
-# === CUSTOM LOBBY OVERRIDES ===
-var custom_rules_active: bool = false
-var custom_visibility_mode: String = ""  # "all_visible", "progressive", "custom"
-var custom_draw_limit: int = -1
-var custom_timer: int = -1
-var custom_slot_thresholds: Array[int] = []
+# Available modes with round-based rules
+var available_modes = {
+	"test": {
+		"display_name": "TestMode",
+		"timer_enabled": true,
+		"base_timer": 60,
+		"timer_decrease_per_round": 0,
+		"undo_enabled": false,
+		"undo_penalty": 50,
+		"base_draw_limit": 20,
+		"draw_limit_decrease": 0,
+		"combo_timeout": 15.0,
+		"slot_2_unlock": 2,
+		"slot_3_unlock": 6,
+		"base_points_start": 100,
+		"base_points_per_round": 10,
+		"max_rounds": 2
+	},
+	"classic": {
+		"display_name": "Classic",
+		"timer_enabled": false,
+		"base_timer": 0,
+		"timer_decrease_per_round": 0,
+		"undo_enabled": true,
+		"undo_penalty": 50,
+		"base_draw_limit": 24,
+		"draw_limit_decrease": 0,
+		"combo_timeout": 5.0,
+		"slot_2_unlock": 2,
+		"slot_3_unlock": 6,
+		"base_points_start": 100,
+		"base_points_per_round": 10,
+		"max_rounds": 10
+	},
+	"timed_rush": {
+		"display_name": "Timed Rush",
+		"timer_enabled": true,
+		"base_timer": 60,
+		"timer_decrease_per_round": 5,
+		"undo_enabled": false,
+		"undo_penalty": 0,
+		"base_draw_limit": 21,
+		"draw_limit_decrease": 1,
+		"combo_timeout": 3.0,
+		"slot_2_unlock": 3,
+		"slot_3_unlock": 7,
+		"base_points_start": 100,
+		"base_points_per_round": 15,
+		"max_rounds": 8
+	},
+	"zen": {
+		"display_name": "Zen Mode",
+		"timer_enabled": false,
+		"base_timer": 0,
+		"timer_decrease_per_round": 0,
+		"undo_enabled": true,
+		"undo_penalty": 0,
+		"base_draw_limit": 999,
+		"draw_limit_decrease": 0,
+		"combo_timeout": 999.0,
+		"slot_2_unlock": 5,
+		"slot_3_unlock": 10,
+		"base_points_start": 100,
+		"base_points_per_round": 10,
+		"max_rounds": 10
+	},
+	"daily_challenge": {
+		"display_name": "Daily Challenge",
+		"timer_enabled": false,
+		"base_timer": 0,
+		"timer_decrease_per_round": 0,
+		"undo_enabled": false,
+		"undo_penalty": 100,
+		"base_draw_limit": 24,
+		"draw_limit_decrease": 0,
+		"combo_timeout": 5.0,
+		"slot_2_unlock": 5,
+		"slot_3_unlock": 10,
+		"base_points_start": 100,
+		"base_points_per_round": 10,
+		"max_rounds": 10
+	},
+	"puzzle_master": {
+		"display_name": "Puzzle Master",
+		"timer_enabled": false,
+		"base_timer": 0,
+		"timer_decrease_per_round": 0,
+		"undo_enabled": false,
+		"undo_penalty": 0,
+		"base_draw_limit": 0,
+		"draw_limit_decrease": 0,
+		"combo_timeout": 5.0,
+		"slot_2_unlock": 999,
+		"slot_3_unlock": 999,
+		"base_points_start": 100,
+		"base_points_per_round": 10,
+		"max_rounds": 1  # Single puzzle
+	}
+}
 
-func _ready() -> void:
-	print("GameModeManager initializing...")
-	_register_game_modes()
-	_load_current_mode()
-	
-	# Listen for game mode changes from settings
-	SignalBus.game_mode_changed.connect(_on_game_mode_changed)
-	
-	print("GameModeManager ready with %d modes" % available_modes.size())
-
-func _register_game_modes() -> void:
-	# Register all available game modes
-	var tri_peaks = TriPeaksMode.new()
-	available_modes[tri_peaks.mode_name] = tri_peaks
-	
-	# Register Rush mode
-	var rush = RushMode.new()
-	available_modes[rush.mode_name] = rush
-	
-	# Register Chill mode
-	var chill = ChillMode.new()
-	available_modes[chill.mode_name] = chill
-	
-	# Register Test mode
-	var test = TestMode.new()
-	available_modes[test.mode_name] = test
-	
-	print("Registered game modes: %s" % str(available_modes.keys()))
-
-func _load_current_mode() -> void:
-	var mode_name = SettingsSystem.get_game_mode()
-	if available_modes.has(mode_name):
-		current_mode = available_modes[mode_name]
-		print("Loaded mode from settings: %s" % mode_name)
+func _ready():
+	print("GameModeManager initialized")
+	# Load saved mode from SettingsSystem
+	if SettingsSystem:
+		var saved_mode = SettingsSystem.get_game_mode()
+		if saved_mode and available_modes.has(saved_mode):
+			set_game_mode(saved_mode, {})
+		else:
+			set_game_mode("test", {})
 	else:
-		# Default to tri-peaks
-		current_mode = available_modes["tri_peaks"]
-		SettingsSystem.save_game_mode("tri_peaks")
-	
-	print("Current game mode: %s" % current_mode.display_name)
+		set_game_mode("test", {})
 
-func set_current_mode(mode_name: String) -> bool:
-	if not available_modes.has(mode_name):
-		print("Game mode not found: %s" % mode_name)
-		return false
+func set_game_mode(mode_id: String, config: Dictionary = {}):
+	"""Set game mode with optional config overrides"""
+	if not available_modes.has(mode_id):
+		push_error("Invalid game mode: " + mode_id)
+		return
 	
-	current_mode = available_modes[mode_name]
-	custom_rules_active = false  # Reset custom rules when changing modes
+	current_mode_id = mode_id
+	current_mode_config = available_modes[mode_id].duplicate()
+	current_mode_config.merge(config, true)
 	
-	# Save to settings without calling back
-	SettingsSystem.save_game_mode(mode_name)
+	_apply_mode_settings()
 	
-	print("Switched to game mode: %s" % current_mode.display_name)
-	return true
+	# Special handling
+	match mode_id:
+		"daily_challenge":
+			_setup_daily_seed()
+		"puzzle_master":
+			_load_puzzle_deck()
+	
+	# Save to SettingsSystem
+	if SettingsSystem:
+		SettingsSystem.save_game_mode(mode_id)
+	
+	print("Game mode set to: %s" % mode_id)
+	SignalBus.game_mode_changed.emit(mode_id)
 
-func get_current_mode() -> GameModeBase:
-	return current_mode
+func set_current_mode(mode_name: String):
+	"""Alias for compatibility with SettingsUI"""
+	set_game_mode(mode_name, {})
 
-func get_available_modes() -> Array[GameModeBase]:
-	var modes: Array[GameModeBase] = []
-	for mode in available_modes.values():
-		modes.append(mode)
-	return modes
+func _apply_mode_settings():
+	"""Apply settings to game systems"""
+	# Just emit a signal that settings changed
+	if SignalBus.has_signal("game_settings_changed"):
+		SignalBus.game_settings_changed.emit(current_mode_config)
 
-func _on_game_mode_changed(mode_name: String) -> void:
-	"""Handle game mode changes from UI/Settings"""
-	if current_mode and current_mode.mode_name == mode_name:
-		return  # Already set, avoid redundancy
+# === NEW METHOD FOR GAMESTATE ===
+func handle_round_start(round: int) -> Dictionary:
+	"""Handle round start and return configuration"""
+	var round_data = {
+		"time_limit": get_round_time_limit(round),
+		"draw_limit": get_draw_pile_limit(round),
+		"combo_timeout": get_combo_timeout()
+	}
 	
-	if available_modes.has(mode_name):
-		current_mode = available_modes[mode_name]
-		custom_rules_active = false
-		print("Game mode changed via signal: %s" % current_mode.display_name)
+	print("Round %d starting with config: %s" % [round, round_data])
+	return round_data
 
-# === CUSTOM LOBBY SUPPORT ===
-func enable_custom_rules(rules: Dictionary) -> void:
-	"""Enable custom rules for multiplayer lobbies"""
-	custom_rules_active = true
-	
-	if rules.has("visibility_mode"):
-		custom_visibility_mode = rules["visibility_mode"]
-	
-	if rules.has("draw_limit"):
-		custom_draw_limit = rules["draw_limit"]
-	
-	if rules.has("timer"):
-		custom_timer = rules["timer"]
-	
-	if rules.has("slot_thresholds"):
-		custom_slot_thresholds = rules["slot_thresholds"]
-	
-	print("Custom rules enabled: %s" % rules)
+# === ROUND-BASED GETTERS ===
 
-func disable_custom_rules() -> void:
-	"""Return to standard game mode rules"""
-	custom_rules_active = false
-	custom_visibility_mode = ""
-	custom_draw_limit = -1
-	custom_timer = -1
-	custom_slot_thresholds.clear()
-	print("Custom rules disabled, using standard mode: %s" % current_mode.display_name)
+func get_draw_pile_limit(round: int = 1) -> int:
+	"""Get draw limit for specific round"""
+	var base_limit = current_mode_config.get("base_draw_limit", 24)
+	var decrease = current_mode_config.get("draw_limit_decrease", 0)
+	var limit = base_limit - (decrease * (round - 1))
+	return max(0, limit)
 
-# === GAME RULE QUERIES ===
-func get_board_card_count() -> int:
-	return current_mode.board_card_count if current_mode else 28
-
-func get_max_rounds() -> int:
-	return current_mode.max_rounds if current_mode else 10
-
-func get_round_time_limit(round: int) -> int:
-	# Check custom rules first
-	if custom_rules_active and custom_timer >= 0:
-		return custom_timer
+func get_round_time_limit(round: int = 1) -> int:
+	"""Get time limit for specific round"""
+	if not current_mode_config.get("timer_enabled", false):
+		return 0
 	
-	if not current_mode:
-		return 60
-		
-	# Handle special cases for each mode
-	if current_mode.mode_name == "chill":
-		return 0  # No timer in chill mode
-	elif current_mode.mode_name == "rush":
-		# Rush mode uses specific times from on_round_start
-		var round_data = current_mode.on_round_start(round)
-		return round_data.get("time_limit", 50)
-	else:
-		# Standard calculation
-		return current_mode.starting_time - (current_mode.time_decrease_per_round * (round - 1))
-
-func get_draw_pile_limit(round: int) -> int:
-	# Check custom rules first
-	if custom_rules_active and custom_draw_limit >= 0:
-		return custom_draw_limit
-	
-	return current_mode.get_draw_pile_limit(round) if current_mode else 21
+	var base_time = current_mode_config.get("base_timer", 60)
+	var decrease = current_mode_config.get("timer_decrease_per_round", 0)
+	var time_limit = base_time - (decrease * (round - 1))
+	return max(20, time_limit)
 
 func get_base_card_points(round: int) -> int:
-	return current_mode.get_base_card_points(round) if current_mode else 100
+	"""Get base points for cards in this round"""
+	var base_points = current_mode_config.get("base_points_start", 100)
+	var points_per_round = current_mode_config.get("base_points_per_round", 10)
+	return base_points + (points_per_round * (round - 1))
 
-func get_visibility_mode(round: int) -> String:
-	# Check custom rules first
-	if custom_rules_active and custom_visibility_mode != "":
-		return custom_visibility_mode
-	
-	return current_mode.get_round_visibility_mode(round) if current_mode else "all_visible"
+func get_max_rounds() -> int:
+	"""Get maximum rounds for current mode"""
+	return current_mode_config.get("max_rounds", 10)
 
 func should_unlock_slot(combo: int, slot_number: int) -> bool:
-	# Check custom rules first
-	if custom_rules_active and custom_slot_thresholds.size() > 0:
-		if slot_number == 2 and custom_slot_thresholds.size() > 0:
-			return combo >= custom_slot_thresholds[0]
-		elif slot_number == 3 and custom_slot_thresholds.size() > 1:
-			return combo >= custom_slot_thresholds[1]
-		else:
+	"""Check if combo unlocks a slot"""
+	match slot_number:
+		2:
+			return combo >= current_mode_config.get("slot_2_unlock", 5)
+		3:
+			return combo >= current_mode_config.get("slot_3_unlock", 10)
+		_:
 			return false
-	
-	return current_mode.should_unlock_slot(combo, slot_number) if current_mode else false
 
-func is_valid_card_selection(card_data: CardData, slot_cards: Array[CardData]) -> bool:
-	return current_mode.is_valid_card_selection(card_data, slot_cards) if current_mode else false
+func get_combo_timeout() -> float:
+	"""Get combo timeout duration"""
+	return current_mode_config.get("combo_timeout", 5.0)
 
-# === VISIBILITY RULES (NEW) ===
-func should_card_be_visible(card_index: int, round: int) -> bool:
-	"""Determine if a specific card should be visible based on game rules"""
-	var visibility_mode = get_visibility_mode(round)
-	
-	match visibility_mode:
-		"all_visible":
+func should_show_timer() -> bool:
+	"""Check if timer should be displayed"""
+	return current_mode_config.get("timer_enabled", false)
+
+func get_current_mode() -> String:
+	return current_mode_id
+
+func get_mode_config() -> Dictionary:
+	return current_mode_config
+
+func get_mode_display_name() -> String:
+	return current_mode_config.get("display_name", "Unknown")
+
+func is_mode_unlocked(mode_id: String) -> bool:
+	"""Check if mode is unlocked"""
+	match mode_id:
+		"test", "classic", "timed_rush", "zen":
 			return true
-		"progressive":
-			# Progressive reveal: bottom row always visible, others depend on blocking
-			return card_index >= 18  # Bottom row indices
-		"custom":
-			# For future custom visibility patterns
-			return true
+		"daily_challenge":
+			return StatsManager.get_total_stats().games_played >= 10
+		"puzzle_master":
+			return false  # Premium feature
 		_:
-			return true
+			return false
 
-func should_card_start_face_up(card_index: int, round: int) -> bool:
-	"""Determine initial face-up state for a card"""
-	var visibility_mode = get_visibility_mode(round)
-	
-	match visibility_mode:
-		"all_visible":
-			return true
-		"progressive":
-			# In progressive mode, only bottom row starts face up
-			return card_index >= 18
-		_:
-			return true
-
-func can_reveal_card(card_index: int, blocking_cards: Array) -> bool:
-	"""Check if a card can be revealed based on blocking cards"""
-	var visibility_mode = get_visibility_mode(GameState.current_round)
-	
-	if visibility_mode == "all_visible":
-		return true
-	
-	# In progressive mode, card reveals when unblocked
-	return blocking_cards.is_empty()
-
-# === GAME EVENT HANDLERS ===
-func handle_round_start(round_number: int) -> Dictionary:
-	var data = current_mode.on_round_start(round_number) if current_mode else {}
-	
-	# Apply custom rule overrides
-	if custom_rules_active:
-		if custom_visibility_mode != "":
-			data["visibility_mode"] = custom_visibility_mode
-		if custom_timer >= 0:
-			data["time_limit"] = custom_timer
-		if custom_draw_limit >= 0:
-			data["draw_limit"] = custom_draw_limit
-	
-	return data
-
-func handle_card_played(card_data: CardData, combo_count: int) -> Dictionary:
-	return current_mode.on_card_played(card_data, combo_count) if current_mode else {}
-
-func handle_round_end(round_number: int, board_cleared: bool) -> Dictionary:
-	return current_mode.on_round_end(round_number, board_cleared) if current_mode else {}
-
-# === MODE INFO FOR UI ===
 func get_all_mode_info() -> Array[Dictionary]:
-	"""Returns info about all modes for the settings menu"""
+	"""Get info about all modes for UI display"""
 	var mode_info: Array[Dictionary] = []
 	
-	# Tri-Peaks (available)
-	mode_info.append({
-		"name": "tri_peaks",
-		"display": "Tri-Peaks",
-		"description": "Classic tri-peaks solitaire with combos",
-		"available": true,
-		"unlock_requirement": ""
-	})
-	
-	# Rush (locked initially)
-	mode_info.append({
-		"name": "rush",
-		"display": "Rush",
-		"description": "5 fast rounds with aggressive timing",
-		"available": is_mode_unlocked("rush"),
-		"unlock_requirement": "Complete 5 games"
-	})
-	
-	# Chill (locked initially)
-	mode_info.append({
-		"name": "chill",
-		"display": "Chill",
-		"description": "No time pressure, extended combos",
-		"available": is_mode_unlocked("chill"),
-		"unlock_requirement": "Reach combo 15"
-	})
-	
-	# Test mode (always available)
-	mode_info.append({
-		"name": "test",
-		"display": "Test Mode",
-		"description": "2 rounds for quick testing",
-		"available": true,  # Always available
-		"unlock_requirement": ""
-	})
+	for mode_id in available_modes:
+		var mode = available_modes[mode_id]
+		mode_info.append({
+			"name": mode_id,
+			"display": mode.display_name,
+			"description": _get_mode_description(mode_id),
+			"available": is_mode_unlocked(mode_id),
+			"unlock_requirement": _get_unlock_requirement(mode_id)
+		})
 	
 	return mode_info
 
-func is_mode_unlocked(mode_name: String) -> bool:
-	# Check unlock conditions based on StatsManager stats
-	match mode_name:
-		"tri_peaks":
-			return true
+func _get_mode_description(mode_id: String) -> String:
+	"""Get description for mode"""
+	match mode_id:
 		"test":
-			return true  # Always unlocked for testing
-		"rush":
-			# Unlock after 5 completed games
-			if StatsManager:
-				return StatsManager.get_total_stats().games_played >= 5
-			return false
-		"chill":
-			# Unlock after reaching combo 15
-			if StatsManager:
-				return StatsManager.get_longest_combo().combo >= 15
-			return false
+			return "Test Mode"
+		"classic":
+			return "Traditional pyramid solitaire"
+		"timed_rush":
+			return "Race against the clock!"
+		"zen":
+			return "Relaxed gameplay, no pressure"
+		"daily_challenge":
+			return "New puzzle every day"
+		"puzzle_master":
+			return "Handcrafted challenges"
 		_:
-			return false
+			return ""
 
-# === COMBO TIMEOUT ===
-func get_combo_timeout() -> float:
-	# Get combo timeout from current mode's round data
-	if current_mode and current_mode.mode_name == "chill":
-		return 720.0  # 12 minutes for chill mode
-	else:
-		return 5.0  # Default 5 seconds for other modes
-
-# === UI HELPERS ===
-func should_show_timer() -> bool:
-	# Hide timer in chill mode
-	return current_mode.mode_name != "chill" if current_mode else true
-
-func get_score_multiplier_display() -> String:
-	# For UI display of mode multiplier
-	match current_mode.mode_name:
-		"rush":
-			return "1.5x"
-		"chill":
-			return "1.0x"
+func _get_unlock_requirement(mode_id: String) -> String:
+	"""Get unlock requirement text"""
+	match mode_id:
+		"daily_challenge":
+			return "Play 10 games"
+		"puzzle_master":
+			return "Premium feature"
 		_:
-			return "1.0x"
+			return ""
 
-# === BOARD LAYOUT HELPERS (NEW) ===
-func get_pyramid_layout() -> Array[int]:
-	"""Get the pyramid layout for the current mode"""
-	return current_mode.pyramid_layout if current_mode else [3, 6, 9, 10]
+# === SPECIAL MODE FUNCTIONS ===
 
-func get_card_positions() -> Array[Vector2]:
-	"""Get card positions from the current game mode"""
-	if current_mode and current_mode.has_method("calculate_board_layout"):
-		var positions = current_mode.calculate_board_layout()
-		if positions.size() > 0:
-			return positions
-	
-	# Return empty array - let board handle default positioning
-	return []
+func _setup_daily_seed():
+	"""Set daily challenge seed"""
+	var today = Time.get_date_dict_from_system()
+	var seed_value = today.year * 10000 + today.month * 100 + today.day
+	GameState.deck_seed = seed_value
+	print("Daily seed: %d" % seed_value)
 
-# === DRAW ZONE CONFIGURATION (NEW) ===
-func get_draw_zone_config() -> Dictionary:
-	"""Get draw zone configuration for current mode"""
-	# For now, all modes use same draw zone config
-	# This can be expanded per mode later
-	return {
-		"allow_left": true,
-		"allow_right": true,
-		"allow_both": true,
-		"default": "both"  # or could be based on user preference
-	}
+func _load_puzzle_deck():
+	"""Load preset puzzle configuration"""
+	# TODO: Load specific puzzle deck
+	pass
+
+
+# === CARD VISIBILITY METHODS ===
+
+func should_card_start_face_up(card_index: int, round: int) -> bool:
+	"""Determine if a card should start face up"""
+	# For now, all cards start face up in all modes
+	# You can make this more complex later based on mode
+	return true
+
+func should_card_be_visible(card_index: int, round: int) -> bool:
+	"""Check if a card should be visible (face up)"""
+	# Simple rule: all cards visible
+	return true
+
+func can_reveal_card(card_index: int, blockers: Array) -> bool:
+	"""Check if a card can be revealed based on blockers"""
+	# Card can be revealed if it has no blockers
+	return blockers.is_empty()
+
+func get_visibility_mode(round: int) -> String:
+	"""Get visibility mode for current round"""
+	# Could vary by mode, but for now keep it simple
+	match current_mode_id:
+		"puzzle_master":
+			return "progressive"  # Cards reveal as you clear
+		_:
+			return "all_visible"  # All cards visible from start

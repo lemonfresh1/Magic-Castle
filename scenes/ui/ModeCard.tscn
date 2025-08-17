@@ -1,0 +1,45 @@
+[gd_scene load_steps=2 format=3 uid="uid://cyesap8txq15p"]
+
+[ext_resource type="Script" uid="uid://bn625xdpap5hl" path="res://Pyramids/scripts/ui/ModeCard.gd" id="1_u3ra7"]
+
+[node name="ModeCard" type="PanelContainer"]
+self_modulate = Color(1, 1, 1, 0)
+custom_minimum_size = Vector2(180, 240)
+script = ExtResource("1_u3ra7")
+
+[node name="VBox" type="VBoxContainer" parent="."]
+self_modulate = Color(1, 1, 1, 0)
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="TitelLabel" type="Label" parent="VBox"]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+text = "Titel"
+horizontal_alignment = 1
+
+[node name="DescriptionLabel" type="Label" parent="VBox"]
+custom_minimum_size = Vector2(1, 1)
+layout_mode = 2
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+text = "Description"
+autowrap_mode = 3
+
+[node name="DifficultyContainer" type="HBoxContainer" parent="VBox"]
+self_modulate = Color(1, 1, 1, 0)
+layout_mode = 2
+
+[node name="BestScoreLabel" type="Label" parent="VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+
+[node name="LockOverlay" type="ColorRect" parent="."]
+z_index = -1
+layout_mode = 2
+mouse_filter = 2
+
+[node name="LockIcon" type="TextureRect" parent="LockOverlay"]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0

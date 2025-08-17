@@ -293,7 +293,7 @@ func _create_volume_control(label_text: String, initial_value: float) -> VBoxCon
 
 func _load_current_settings():
 	# Load game mode
-	var current_mode_name = GameModeManager.get_current_mode().mode_name if GameModeManager.get_current_mode() else "tri_peaks"
+	var current_mode_name = GameModeManager.get_current_mode() if GameModeManager.get_current_mode() else "classic"
 	for i in range(available_modes.size()):
 		if available_modes[i].name == current_mode_name:
 			current_mode_index = i

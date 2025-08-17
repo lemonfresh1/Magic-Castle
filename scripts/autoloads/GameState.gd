@@ -64,7 +64,7 @@ func start_new_game(mode: String = "single") -> void:
 	cards_cleared = 0
 	board_cleared = false
 	
-	var game_mode_name = GameModeManager.get_current_mode().mode_name
+	var game_mode_name = GameModeManager.get_current_mode()
 	StatsManager.start_game(game_mode_name)
 	XPManager.rewards_enabled = false
 	StarManager.rewards_enabled = false  # Add similar flag to StarManager
@@ -175,7 +175,7 @@ func end_round() -> void:
 	
 	SignalBus.round_completed.emit(scores.round_total)
 	
-	var mode = GameModeManager.get_current_mode().mode_name
+	var mode = GameModeManager.get_current_mode()
 	var reason = get_meta("round_end_reason", "Unknown")
 	StatsManager.track_round_end(
 		current_round,
@@ -230,7 +230,7 @@ func _end_game() -> void:
 		total_score += score
 	
 	# Track game end
-	var mode = GameModeManager.get_current_mode().mode_name
+	var mode = GameModeManager.get_current_mode()
 	StatsManager.end_game(mode, total_score, current_round - 1)
 	AchievementManager.check_achievements()
 	

@@ -58,7 +58,7 @@ func calculate_card_score(card: Control) -> int:
 	if last_selected_card and card.card_data.suit == last_selected_card.suit:
 		total_points += 25
 		# Track suit bonus
-		var mode = GameModeManager.get_current_mode().mode_name
+		var mode = GameModeManager.get_current_mode()
 		StatsManager.track_suit_bonus(mode)
 	
 	# Update last selected card

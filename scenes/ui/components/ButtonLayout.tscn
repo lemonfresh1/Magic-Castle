@@ -16,8 +16,8 @@ corner_radius_bottom_left = 25
 
 [node name="ButtonLayout" type="Button"]
 self_modulate = Color(1, 1, 1, 0)
-offset_right = 250.0
-offset_bottom = 80.0
+offset_right = 8.0
+offset_bottom = 8.0
 
 [node name="MainPanel" type="PanelContainer" parent="."]
 layout_mode = 1

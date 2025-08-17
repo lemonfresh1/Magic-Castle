@@ -267,8 +267,18 @@ func _create_buttons() -> void:
 
 func _on_swipe_play_pressed(mode: String):
 	print("Playing in mode: " + mode)
-	# SwipePlayButton script already handles the game start
 	
+	match mode:
+		"Solo":
+			# Go to mode selection first!
+			get_tree().change_scene_to_file("res://Pyramids/scenes/ui/menus/SinglePlayerModeSelect.tscn")
+		"Multi":
+			# TODO: Implement multiplayer lobby
+			print("Multiplayer not yet implemented")
+		"Tournament":
+			# TODO: Implement tournament mode
+			print("Tournament not yet implemented")
+
 func _on_play_mode_changed(mode: String):
 	print("Mode changed to: " + mode)
 	# Could save preference to SettingsSystem
@@ -321,10 +331,9 @@ func _show_menu_buttons():
 			button.visible = true
 
 func _on_play_pressed() -> void:
-	GameState.reset_game_completely()
-	GameModeManager._load_current_mode()
-	get_tree().change_scene_to_file("res://Pyramids/scenes/game/MobileGameBoard.tscn")
-
+	# This shouldn't be called anymore - SwipePlayButton handles it
+	pass
+	
 func _on_shop_pressed() -> void:
 	_toggle_menu_panel("shop", shop_button)
 

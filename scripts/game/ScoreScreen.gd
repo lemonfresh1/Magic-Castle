@@ -268,7 +268,7 @@ func _show_game_over() -> void:
 	summary_text += "Total Rounds: %d\n" % GameState.round_stats.size()
 	summary_text += "Rounds Cleared: %d\n" % GameState.round_stats.filter(func(s): return s.cleared).size()
 	summary_text += "Best Round: #%d (%d pts)\n" % [best_round, best_score]
-	summary_text += "Game Mode: %s" % GameModeManager.get_current_mode().display_name
+	summary_text += "Game Mode: %s" % GameModeManager.get_mode_display_name()
 	
 	# Use the base score label to show summary (it's multiline capable)
 	score_label_base.text = summary_text

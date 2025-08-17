@@ -6,6 +6,9 @@ extends Node
 const SAVE_PATH = "user://stats.save"
 const STATS_VERSION = 2  # Increment for new stats
 
+var mode_highscores: Dictionary = {}  # mode_id -> Array of {player_name, score, timestamp}
+var player_best_scores: Dictionary = {}  # mode_id -> best_score
+
 # Main stats dictionary
 var stats = {
 	"version": STATS_VERSION,
@@ -380,3 +383,59 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed:
 		if event.keycode == KEY_S:
 			print_stats_summary()
+
+
+func save_score(mode_id: String, score: int, player_name: String = "Player"):
+	"""Save a score for a specific game mode"""
+	if not mode_highscores.has(mode_id):
+		mode_highscores[mode_id] = []
+	
+	mode_highscores[mode_id].append({
+		"player_name": player_name,
+		"score": score,
+		"timestamp": Time.get_unix_time_from_system(),
+		"is_current_player": true
+	})
+	
+	# Sort by score (descending)
+	mode_highscores[mode_id].sort_custom(func(a, b): return a.score > b.score)
+	
+	# Keep only top 100
+	if mode_highscores[mode_id].size() > 100:
+		mode_highscores[mode_id].resize(100)
+	
+	# Update player's best
+	if not player_best_scores.has(mode_id) or score > player_best_scores[mode_id]:
+		player_best_scores[mode_id] = score
+	
+	save_stats() 
+
+func get_top_scores(mode_id: String, count: int = 5) -> Array:
+	"""Get top scores for a specific mode"""
+	if not mode_highscores.has(mode_id):
+		return []
+	
+	var scores = mode_highscores[mode_id]
+	return scores.slice(0, min(count, scores.size()))
+
+func get_best_score(mode_id: String) -> int:
+	"""Get player's best score for a mode"""
+	return player_best_scores.get(mode_id, 0)
+
+func get_player_rank(mode_id: String) -> int:
+	"""Get player's rank in a specific mode"""
+	var best = get_best_score(mode_id)
+	if best == 0:
+		return 999
+	
+	if not mode_highscores.has(mode_id):
+		return 1
+	
+	var rank = 1
+	for score_entry in mode_highscores[mode_id]:
+		if score_entry.score > best:
+			rank += 1
+		else:
+			break
+	
+	return rank

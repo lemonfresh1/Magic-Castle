@@ -46,6 +46,9 @@ signal ui_scale_changed(scale_factor: float)
 # === DEBUG SIGNALS ===
 signal debug_message(message: String)
 
+signal game_settings_changed(settings: Dictionary)
+signal game_ended(final_score: int)
+
 func _ready() -> void:
 	print("SignalBus initialized")
 	debug_message.emit("SignalBus ready with %d signals" % get_signal_list().size())

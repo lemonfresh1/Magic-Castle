@@ -31,6 +31,8 @@ var haptic_enabled: bool = true
 
 # === GAME SETTINGS ===
 var current_game_mode: String = "tri_peaks"
+var preferred_play_mode: String = "Solo"  # Default to Solo
+
 
 # === AUDIO SETTINGS ===
 var sfx_volume: float = 1.0
@@ -215,6 +217,8 @@ func save_settings() -> void:
 	config.set_value("gameplay", "game_mode", current_game_mode)
 	config.set_value("gameplay", "animation_speed", animation_speed)
 	config.set_value("gameplay", "haptic_enabled", haptic_enabled)
+	config.set_value("gameplay", "preferred_play_mode", preferred_play_mode)
+
 	
 	# Profile settings
 	config.set_value("profile", "name", player_name)
@@ -253,7 +257,8 @@ func load_settings() -> void:
 	current_game_mode = config.get_value("gameplay", "game_mode", "tri_peaks")
 	animation_speed = config.get_value("gameplay", "animation_speed", 1.0)
 	haptic_enabled = config.get_value("gameplay", "haptic_enabled", true)
-	
+	preferred_play_mode = config.get_value("gameplay", "preferred_play_mode", "Solo")
+
 	# Load profile settings
 	player_name = config.get_value("profile", "name", "Player")
 	player_id = config.get_value("profile", "id", "")
@@ -275,6 +280,13 @@ func get_scaled_size(base_size: Vector2) -> Vector2:
 
 func get_scaled_font_size(base_size: int) -> int:
 	return int(base_size * ui_scale_factor)
+
+func set_preferred_play_mode(mode: String) -> void:
+	preferred_play_mode = mode
+	save_settings()
+
+func get_preferred_play_mode() -> String:
+	return preferred_play_mode
 
 # === RESET FUNCTIONS ===
 func reset_to_defaults() -> void:
