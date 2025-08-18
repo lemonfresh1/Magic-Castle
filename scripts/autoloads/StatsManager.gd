@@ -99,21 +99,42 @@ func track_suit_bonus(mode: String) -> void:
 func save_stats() -> void:
 	var save_file = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if save_file:
-		save_file.store_var(stats)
+		# Save EVERYTHING - stats, highscores, and player bests
+		var save_data = {
+			"stats": stats,
+			"mode_highscores": mode_highscores,
+			"player_best_scores": player_best_scores
+		}
+		save_file.store_var(save_data)
 		save_file.close()
-		print("Stats saved successfully")
+		print("Stats saved successfully (including %d mode highscores)" % mode_highscores.size())
 
 func load_stats() -> void:
 	if FileAccess.file_exists(SAVE_PATH):
 		var save_file = FileAccess.open(SAVE_PATH, FileAccess.READ)
 		if save_file:
-			var loaded_stats = save_file.get_var()
+			var loaded_data = save_file.get_var()
 			save_file.close()
 			
-			if loaded_stats and loaded_stats.has("version"):
-				stats = loaded_stats
+			# Handle old format (just stats) or new format (with highscores)
+			if loaded_data:
+				if loaded_data.has("stats"):
+					# New format with separate sections
+					stats = loaded_data.stats
+					mode_highscores = loaded_data.get("mode_highscores", {})
+					player_best_scores = loaded_data.get("player_best_scores", {})
+					print("Loaded stats with %d mode highscores" % mode_highscores.size())
+				elif loaded_data.has("version"):
+					# Old format - just stats
+					stats = loaded_data
+					mode_highscores = {}
+					player_best_scores = {}
+					print("Loaded legacy stats format")
+				
 				_migrate_stats_if_needed()
 				print("Stats loaded successfully")
+	else:
+		print("No stats file found at %s" % SAVE_PATH)
 
 func _migrate_stats_if_needed() -> void:
 	if stats.version < STATS_VERSION:

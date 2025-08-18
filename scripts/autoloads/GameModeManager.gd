@@ -27,14 +27,14 @@ var available_modes = {
 	},
 	"classic": {
 		"display_name": "Classic",
-		"timer_enabled": false,
-		"base_timer": 0,
-		"timer_decrease_per_round": 0,
+		"timer_enabled": true,
+		"base_timer": 60,
+		"timer_decrease_per_round": 2,
 		"undo_enabled": true,
 		"undo_penalty": 50,
-		"base_draw_limit": 24,
+		"base_draw_limit": 20,
 		"draw_limit_decrease": 0,
-		"combo_timeout": 5.0,
+		"combo_timeout": 10.0,
 		"slot_2_unlock": 2,
 		"slot_3_unlock": 6,
 		"base_points_start": 100,
@@ -44,18 +44,18 @@ var available_modes = {
 	"timed_rush": {
 		"display_name": "Timed Rush",
 		"timer_enabled": true,
-		"base_timer": 60,
-		"timer_decrease_per_round": 5,
+		"base_timer": 50,
+		"timer_decrease_per_round": 3,
 		"undo_enabled": false,
 		"undo_penalty": 0,
-		"base_draw_limit": 21,
+		"base_draw_limit": 18,
 		"draw_limit_decrease": 1,
-		"combo_timeout": 3.0,
+		"combo_timeout": 7.0,
 		"slot_2_unlock": 3,
 		"slot_3_unlock": 7,
 		"base_points_start": 100,
 		"base_points_per_round": 15,
-		"max_rounds": 8
+		"max_rounds": 5
 	},
 	"zen": {
 		"display_name": "Zen Mode",
@@ -83,8 +83,8 @@ var available_modes = {
 		"base_draw_limit": 24,
 		"draw_limit_decrease": 0,
 		"combo_timeout": 5.0,
-		"slot_2_unlock": 5,
-		"slot_3_unlock": 10,
+		"slot_2_unlock": 4,
+		"slot_3_unlock": 5,
 		"base_points_start": 100,
 		"base_points_per_round": 10,
 		"max_rounds": 10
@@ -320,3 +320,13 @@ func get_visibility_mode(round: int) -> String:
 			return "progressive"  # Cards reveal as you clear
 		_:
 			return "all_visible"  # All cards visible from start
+
+func get_slot_unlock_requirement(slot_number: int) -> int:
+	"""Get combo requirement to unlock a slot"""
+	match slot_number:
+		2:
+			return current_mode_config.get("slot_2_unlock", 2)
+		3:
+			return current_mode_config.get("slot_3_unlock", 6)
+		_:
+			return 0

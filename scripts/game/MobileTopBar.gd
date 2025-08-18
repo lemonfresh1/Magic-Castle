@@ -78,9 +78,9 @@ func _ready() -> void:
 		pause_button.visible = not GameState.is_multiplayer
 	
 	if slot_2_countdown:
-		slot_2_countdown.text = str(GameConstants.SLOT_2_UNLOCK_COMBO)
+		slot_2_countdown.text = str(GameModeManager.get_slot_unlock_requirement(2))
 	if slot_3_countdown:
-		slot_3_countdown.text = str(GameConstants.SLOT_3_UNLOCK_COMBO)
+		slot_3_countdown.text = str(GameModeManager.get_slot_unlock_requirement(3))
 	
 	# Enable processing
 	set_process(true)
@@ -259,7 +259,7 @@ func update_slots() -> void:
 				# Slot is locked - show background and counter
 				bg.visible = true
 				countdown.visible = true
-				var required = GameConstants.SLOT_2_UNLOCK_COMBO if i == 1 else GameConstants.SLOT_3_UNLOCK_COMBO
+				var required = GameModeManager.get_slot_unlock_requirement(2) if i == 1 else GameModeManager.get_slot_unlock_requirement(3)
 				var remaining = max(0, required - CardManager.current_combo)
 				countdown.text = "%d" % remaining
 		
@@ -294,24 +294,24 @@ func _on_round_started(_round: int) -> void:
 	timer_label.visible = show_timer
 	
 	# Reset countdown labels
-	slot_2_countdown.text = str(GameConstants.SLOT_2_UNLOCK_COMBO)
-	slot_3_countdown.text = str(GameConstants.SLOT_3_UNLOCK_COMBO)
+	slot_2_countdown.text = str(GameModeManager.get_slot_unlock_requirement(2))
+	slot_3_countdown.text = str(GameModeManager.get_slot_unlock_requirement(3))
 	
 	call_deferred("update_slots")
 
 func _on_combo_updated(combo: int) -> void:
 	# Update countdown labels
 	if CardManager.active_slots < 2:
-		var remaining = max(0, GameConstants.SLOT_2_UNLOCK_COMBO - combo)
+		var remaining = max(0, GameModeManager.get_slot_unlock_requirement(2) - combo)
 		slot_2_countdown.text = "%d" % remaining
 	
 	if CardManager.active_slots < 3:
-		var remaining = max(0, GameConstants.SLOT_3_UNLOCK_COMBO - combo)
+		var remaining = max(0, GameModeManager.get_slot_unlock_requirement(3) - combo)
 		slot_3_countdown.text = "%d" % remaining
 	
 	if combo == 0:
-		slot_2_countdown.text = str(GameConstants.SLOT_2_UNLOCK_COMBO)
-		slot_3_countdown.text = str(GameConstants.SLOT_3_UNLOCK_COMBO)
+		slot_2_countdown.text = str(GameModeManager.get_slot_unlock_requirement(2))
+		slot_3_countdown.text = str(GameModeManager.get_slot_unlock_requirement(3))
 
 func _on_card_selected(_card: Control) -> void:
 	call_deferred("update_slots")
@@ -324,9 +324,9 @@ func _on_draw_pile_clicked() -> void:
 		tween.tween_property(draw_pile_container, "scale", Vector2.ONE, 0.05)
 	
 	if slot_2_countdown:
-		slot_2_countdown.text = str(GameConstants.SLOT_2_UNLOCK_COMBO)
+		slot_2_countdown.text = str(GameModeManager.get_slot_unlock_requirement(2))
 	if slot_3_countdown:
-		slot_3_countdown.text = str(GameConstants.SLOT_3_UNLOCK_COMBO)
+		slot_3_countdown.text = str(GameModeManager.get_slot_unlock_requirement(3))
 	
 	call_deferred("update_slots")
 

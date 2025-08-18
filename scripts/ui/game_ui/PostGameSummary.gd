@@ -138,6 +138,15 @@ func show_summary(final_score: int, rounds_data: Array) -> void:
 	
 	# Start animations - THIS is where we actually award everything
 	_animate_progression()
+	
+	if StatsManager:
+		var mode_id = GameModeManager.get_current_mode()  # This already exists and works!
+		if mode_id != "":
+			print("PostGameSummary: Saving score %d for mode %s" % [final_score, mode_id])
+			StatsManager.save_score(mode_id, final_score)
+			StatsManager.save_stats()  # Force save to disk
+		else:
+			print("PostGameSummary: No game mode set, cannot save score")
 
 func _calculate_progression() -> void:
 	# Calculate base game XP

@@ -25,6 +25,7 @@ var round_scores: Array[int] = []
 var total_score: int = 0
 var round_stats: Array[Dictionary] = []  # NEW: Track each round's details
 
+
 # === TIMER ===
 var game_timer: Timer
 

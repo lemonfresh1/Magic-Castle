@@ -48,13 +48,53 @@ func _ready():
 	_select_mode(0)
 
 func _on_tree_entered():
-	"""Called when scene becomes active - reload scores"""
-	print("SinglePlayerModeSelect entered tree - reloading scores")
-	_load_all_mode_scores()
-	# Refresh current card display
-	if cards.size() > current_mode_index:
-		_update_card_visibility(cards[current_mode_index], true)
+	"""Called every time we enter the scene tree (including returns from game)"""
+	print("=== ENTERING SINGLE PLAYER MODE SELECT ===")
+	# Force reload all scores when entering the scene
+	if StatsManager:
+		print("StatsManager available, reloading scores...")
+		_reload_all_scores()
+
+func _reload_all_scores():
+	"""Force reload all scores and update UI"""
+	if not StatsManager:
+		print("No StatsManager available")
+		return
+		
+	print("Reloading scores for all modes...")
+	
+	# Update mode data
+	for mode in single_player_modes:
+		var old_score = mode.best_score
+		mode.best_score = StatsManager.get_best_score(mode.id)
+		if old_score != mode.best_score:
+			print("Mode %s score changed: %d -> %d" % [mode.id, old_score, mode.best_score])
+	
+	# Update all card displays
+	for i in range(cards.size()):
+		if i >= single_player_modes.size():
+			continue
+			
+		var card = cards[i]
+		var mode = single_player_modes[i]
+		var vbox = card.get_node_or_null("VBox")
+		
+		if vbox:
+			var score_label = vbox.get_node_or_null("BestScore")
+			if score_label:
+				var new_text = "Best: %d" % mode.best_score if mode.best_score > 0 else "New!"
+				print("Updating card %d (%s) score label: %s -> %s" % [i, mode.id, score_label.text, new_text])
+				score_label.text = new_text
+	
+	# Refresh the highscores panel for current mode
+	if current_mode_index < single_player_modes.size():
 		_load_mode_highscores(single_player_modes[current_mode_index])
+
+func _notification(what):
+	if what == NOTIFICATION_VISIBILITY_CHANGED:
+		if visible:
+			print("SinglePlayerModeSelect became visible")
+			_reload_all_scores()
 
 func _load_all_mode_scores():
 	"""Load best scores for all modes from StatsManager"""
@@ -313,18 +353,36 @@ func _create_carousel_card(mode_data: Dictionary, index: int) -> PanelContainer:
 	card.set_meta("mode_data", mode_data)
 	
 	# CRITICAL: Remove ALL default theming first
-	card.theme = Theme.new()  # Empty theme
+	card.theme = Theme.new()
 	card.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	
 	# Enable clipping for the entire card (including children)
 	card.clip_contents = true
 	
-	# Main container
+	# MarginContainer that FILLS the card
+	var margin_container = MarginContainer.new()
+	margin_container.name = "MarginContainer"
+	# CRITICAL: Make it fill the entire card
+	margin_container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	margin_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	margin_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	
+	# Set the margins - push content down and add side padding
+	margin_container.add_theme_constant_override("margin_left", 10)    # Side padding
+	margin_container.add_theme_constant_override("margin_right", 10)   # Side padding
+	margin_container.add_theme_constant_override("margin_top", 8)      # Push down by 8px
+	margin_container.add_theme_constant_override("margin_bottom", 10)  # Bottom padding
+	
+	card.add_child(margin_container)
+	
+	# Main container goes INSIDE the margin container
 	var vbox = VBoxContainer.new()
 	vbox.name = "VBox"
 	vbox.add_theme_constant_override("separation", 8)
 	vbox.alignment = BoxContainer.ALIGNMENT_BEGIN
-	card.add_child(vbox)
+	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	margin_container.add_child(vbox)  # Add to margin_container, not card!
 	
 	# Title (always at top, always visible)
 	var title = Label.new()
@@ -461,10 +519,16 @@ func _update_carousel_positions():
 
 func _update_card_visibility(card: PanelContainer, is_selected: bool):
 	"""Update which elements of the card are visible"""
-	var vbox = card.get_node_or_null("VBox")
+	# VBox is now inside MarginContainer
+	var margin_container = card.get_node_or_null("MarginContainer")
+	if not margin_container:
+		return
+		
+	var vbox = margin_container.get_node_or_null("VBox")
 	if not vbox:
 		return
 	
+	# Rest of the function stays the same...
 	var title = vbox.get_node_or_null("Title")
 	var desc = vbox.get_node_or_null("Description")
 	var btn = vbox.get_node_or_null("PlayButton")
@@ -746,6 +810,14 @@ func _unhandled_input(event: InputEvent):
 			KEY_ENTER, KEY_SPACE:
 				if not single_player_modes[current_mode_index].locked:
 					_start_game_mode(current_mode_index)
+			KEY_T:  # Test key - add a fake score
+				if StatsManager and current_mode_index < single_player_modes.size():
+					var test_score = randi() % 1000 + 500
+					var mode_id = single_player_modes[current_mode_index].id
+					print("TEST: Adding score %d to mode %s" % [test_score, mode_id])
+					StatsManager.save_score(mode_id, test_score)
+					StatsManager.save_stats()
+					_reload_all_scores()
 
 func _on_back_pressed():
 	get_tree().change_scene_to_file("res://Pyramids/scenes/ui/menus/MainMenu.tscn")
@@ -756,19 +828,18 @@ func _start_game_mode(index: int):
 	
 	print("Starting game mode: ", mode.id)
 	
-	# Store the mode ID globally for score saving
-	set_meta("current_mode_id", mode.id)
+	# Remove this line - GameModeManager already tracks it!
+	# GameState.current_game_mode = mode.id  <-- DELETE THIS LINE
 	
-	# Configure GameModeManager with unified method
+	# Configure GameModeManager (this already stores the current mode)
 	GameModeManager.set_game_mode(mode.id, {
 		"time_limit": mode.time_limit,
 		"special_rules": mode.special_rules,
 		"difficulty": mode.difficulty
 	})
 	
-	# Connect to game_ended signal - Remove ONE_SHOT so it works properly
-	if not SignalBus.game_ended.is_connected(_on_game_ended):
-		SignalBus.game_ended.connect(_on_game_ended)
+	# DON'T connect signal here - we'll be destroyed when scene changes!
+	# Instead, let PostGameSummary handle the score saving
 	
 	# Change to game board
 	get_tree().change_scene_to_file("res://Pyramids/scenes/game/MobileGameBoard.tscn")
