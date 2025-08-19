@@ -181,7 +181,7 @@ func _ready() -> void:
 		print("MainMenu: Waiting for UIManager...")
 		await get_tree().process_frame
 
-	_setup_menu_background()
+	_setup_background()
 	
 	_setup_profile_card()
 	_create_buttons()
@@ -272,9 +272,8 @@ func _on_swipe_play_pressed(mode: String):
 		"Solo":
 			# Go to mode selection first!
 			get_tree().change_scene_to_file("res://Pyramids/scenes/ui/menus/SinglePlayerModeSelect.tscn")
-		"Multi":
-			# TODO: Implement multiplayer lobby
-			print("Multiplayer not yet implemented")
+		"Multiplayer":
+			get_tree().change_scene_to_file("res://Pyramids/scenes/ui/menus/MultiPlayerScreen.tscn")
 		"Tournament":
 			# TODO: Implement tournament mode
 			print("Tournament not yet implemented")
@@ -373,57 +372,8 @@ func _on_holiday_event_completed(event_id: String):
 func _on_holiday_closed():
 	pass
 
-func _setup_menu_background() -> void:
-	# Remove any game board backgrounds that might exist
-	if has_node("BackgroundSprite"):
-		get_node("BackgroundSprite").queue_free()
-	
-	# Create gradient background
-	var bg_rect = ColorRect.new()
-	bg_rect.name = "MenuBackground"
-	bg_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	
-	# Create gradient texture
-	var gradient = Gradient.new()
-	var gradient_texture = GradientTexture2D.new()
-	
-	# Set gradient colors - dark forest green to lighter sage green
-	gradient.add_point(0.0, Color(0.1, 0.25, 0.15))  # Dark forest green
-	gradient.add_point(1.0, Color(0.25, 0.45, 0.3))  # Lighter sage green
-	
-	# Apply gradient vertically
-	gradient_texture.gradient = gradient
-	gradient_texture.fill_from = Vector2(0, 0)
-	gradient_texture.fill_to = Vector2(0, 1)
-	
-	# Apply to background
-	var shader = Shader.new()
-	shader.code = """
-	shader_type canvas_item;
-	
-	uniform sampler2D gradient_texture;
-	
-	void fragment() {
-		vec4 gradient_color = texture(gradient_texture, vec2(0.5, UV.y));
-		COLOR = gradient_color;
-	}
-	"""
-	
-	var material = ShaderMaterial.new()
-	material.shader = shader
-	material.set_shader_parameter("gradient_texture", gradient_texture)
-	
-	bg_rect.material = material
-	
-	# Add as first child (behind everything)
-	add_child(bg_rect)
-	move_child(bg_rect, 0)
-	
-	# Also set the clear color as fallback
-	RenderingServer.set_default_clear_color(Color(0.15, 0.3, 0.2))
-
-	bg_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-
+func _setup_background():
+	UIStyleManager.apply_menu_gradient_background(self)
 
 func _setup_version_label():
 	if not version_label:

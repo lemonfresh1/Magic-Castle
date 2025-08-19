@@ -1,0 +1,135 @@
+[gd_scene load_steps=2 format=3 uid="uid://ms3fpvyqvvsq"]
+
+[ext_resource type="Script" uid="uid://bkmpvnabsjamy" path="res://Pyramids/scripts/ui/menus/GameLobby.gd" id="1_r5phi"]
+
+[node name="GameLobby" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_r5phi")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MainContainer" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="ContentVBox" type="VBoxContainer" parent="MainContainer"]
+layout_mode = 2
+
+[node name="HeaderPanel" type="PanelContainer" parent="MainContainer/ContentVBox"]
+layout_mode = 2
+size_flags_vertical = 0
+
+[node name="LobbyTitle" type="Label" parent="MainContainer/ContentVBox/HeaderPanel"]
+layout_mode = 2
+text = "Lobby Title"
+
+[node name="PlayersAndSettings" type="HBoxContainer" parent="MainContainer/ContentVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="PlayersGrid" type="GridContainer" parent="MainContainer/ContentVBox/PlayersAndSettings"]
+layout_mode = 2
+size_flags_horizontal = 6
+size_flags_vertical = 4
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 10
+columns = 4
+
+[node name="Control" type="ColorRect" parent="MainContainer/ContentVBox/PlayersAndSettings/PlayersGrid"]
+custom_minimum_size = Vector2(200, 200)
+layout_mode = 2
+color = Color(1, 0.294118, 1, 1)
+
+[node name="Control2" type="ColorRect" parent="MainContainer/ContentVBox/PlayersAndSettings/PlayersGrid"]
+custom_minimum_size = Vector2(200, 200)
+layout_mode = 2
+color = Color(1, 0.294118, 1, 1)
+
+[node name="Control3" type="ColorRect" parent="MainContainer/ContentVBox/PlayersAndSettings/PlayersGrid"]
+custom_minimum_size = Vector2(200, 200)
+layout_mode = 2
+color = Color(1, 0.294118, 1, 1)
+
+[node name="Control4" type="ColorRect" parent="MainContainer/ContentVBox/PlayersAndSettings/PlayersGrid"]
+custom_minimum_size = Vector2(200, 200)
+layout_mode = 2
+color = Color(1, 0.294118, 1, 1)
+
+[node name="Control5" type="ColorRect" parent="MainContainer/ContentVBox/PlayersAndSettings/PlayersGrid"]
+custom_minimum_size = Vector2(200, 200)
+layout_mode = 2
+color = Color(1, 0.294118, 1, 1)
+
+[node name="Control6" type="ColorRect" parent="MainContainer/ContentVBox/PlayersAndSettings/PlayersGrid"]
+custom_minimum_size = Vector2(200, 200)
+layout_mode = 2
+color = Color(1, 0.294118, 1, 1)
+
+[node name="Control7" type="ColorRect" parent="MainContainer/ContentVBox/PlayersAndSettings/PlayersGrid"]
+custom_minimum_size = Vector2(200, 200)
+layout_mode = 2
+color = Color(1, 0.294118, 1, 1)
+
+[node name="Control8" type="ColorRect" parent="MainContainer/ContentVBox/PlayersAndSettings/PlayersGrid"]
+custom_minimum_size = Vector2(200, 200)
+layout_mode = 2
+color = Color(1, 0.294118, 1, 1)
+
+[node name="SettingsPanel" type="PanelContainer" parent="MainContainer/ContentVBox/PlayersAndSettings"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.33
+
+[node name="SettingsVBox" type="VBoxContainer" parent="MainContainer/ContentVBox/PlayersAndSettings/SettingsPanel"]
+layout_mode = 2
+
+[node name="BottomButtons" type="HBoxContainer" parent="MainContainer/ContentVBox"]
+layout_mode = 2
+
+[node name="ReadyButton" type="Button" parent="MainContainer/ContentVBox/BottomButtons"]
+layout_mode = 2
+text = "Ready"
+
+[node name="StartButton" type="Button" parent="MainContainer/ContentVBox/BottomButtons"]
+layout_mode = 2
+text = "Start"
+
+[node name="EmojiButton1" type="Button" parent="MainContainer/ContentVBox/BottomButtons"]
+layout_mode = 2
+text = "Emoji 1"
+
+[node name="EmojiButton2" type="Button" parent="MainContainer/ContentVBox/BottomButtons"]
+layout_mode = 2
+text = "Emoji 2"
+
+[node name="EmojiButton3" type="Button" parent="MainContainer/ContentVBox/BottomButtons"]
+layout_mode = 2
+text = "Emoji 3"
+
+[node name="EmojiButton4" type="Button" parent="MainContainer/ContentVBox/BottomButtons"]
+layout_mode = 2
+text = "Emoji 4"
+
+[node name="LeaveButton" type="Button" parent="MainContainer/ContentVBox/BottomButtons"]
+layout_mode = 2
+size_flags_horizontal = 10
+text = "Leave"

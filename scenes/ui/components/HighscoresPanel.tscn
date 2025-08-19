@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://d1o0yxxp1k243"]
+
+[ext_resource type="Script" uid="uid://b4t34gj22k257" path="res://Pyramids/scripts/ui/components/HighscoresPanel.gd" id="1_6okva"]
+
+[node name="HighscoresPanel" type="PanelContainer"]
+script = ExtResource("1_6okva")

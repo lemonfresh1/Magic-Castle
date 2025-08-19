@@ -12,8 +12,8 @@ var available_modes = {
 	"test": {
 		"display_name": "TestMode",
 		"timer_enabled": true,
-		"base_timer": 60,
-		"timer_decrease_per_round": 0,
+		"base_timer": 50,
+		"timer_decrease_per_round": 10,
 		"undo_enabled": false,
 		"undo_penalty": 50,
 		"base_draw_limit": 20,
@@ -23,7 +23,8 @@ var available_modes = {
 		"slot_3_unlock": 6,
 		"base_points_start": 100,
 		"base_points_per_round": 10,
-		"max_rounds": 2
+		"max_rounds": 2,
+		"card_visibility": "even_rounds"  # NEW: always, never, odd_rounds, even_rounds
 	},
 	"classic": {
 		"display_name": "Classic",
@@ -39,7 +40,8 @@ var available_modes = {
 		"slot_3_unlock": 6,
 		"base_points_start": 100,
 		"base_points_per_round": 10,
-		"max_rounds": 10
+		"max_rounds": 10,
+		"card_visibility": "always"  # NEW: always, never, odd_rounds, even_rounds
 	},
 	"timed_rush": {
 		"display_name": "Timed Rush",
@@ -55,7 +57,8 @@ var available_modes = {
 		"slot_3_unlock": 7,
 		"base_points_start": 100,
 		"base_points_per_round": 15,
-		"max_rounds": 5
+		"max_rounds": 5,
+		"card_visibility": "always"  # NEW: always, never, odd_rounds, even_rounds
 	},
 	"zen": {
 		"display_name": "Zen Mode",
@@ -71,7 +74,8 @@ var available_modes = {
 		"slot_3_unlock": 10,
 		"base_points_start": 100,
 		"base_points_per_round": 10,
-		"max_rounds": 10
+		"max_rounds": 10,
+		"card_visibility": "always"  # NEW: always, never, odd_rounds, even_rounds
 	},
 	"daily_challenge": {
 		"display_name": "Daily Challenge",
@@ -87,7 +91,8 @@ var available_modes = {
 		"slot_3_unlock": 5,
 		"base_points_start": 100,
 		"base_points_per_round": 10,
-		"max_rounds": 10
+		"max_rounds": 10,
+		"card_visibility": "never"  # NEW: always, never, odd_rounds, even_rounds
 	},
 	"puzzle_master": {
 		"display_name": "Puzzle Master",
@@ -103,7 +108,8 @@ var available_modes = {
 		"slot_3_unlock": 999,
 		"base_points_start": 100,
 		"base_points_per_round": 10,
-		"max_rounds": 1  # Single puzzle
+		"max_rounds": 1,
+		"card_visibility": "always"  # NEW: always, never, odd_rounds, even_rounds
 	}
 }
 
@@ -297,19 +303,41 @@ func _load_puzzle_deck():
 # === CARD VISIBILITY METHODS ===
 
 func should_card_start_face_up(card_index: int, round: int) -> bool:
-	"""Determine if a card should start face up"""
-	# For now, all cards start face up in all modes
-	# You can make this more complex later based on mode
-	return true
+	"""Determine if a card should start face up based on mode settings"""
+	var visibility_mode = current_mode_config.get("card_visibility", "always")
+	
+	match visibility_mode:
+		"always":
+			return true
+		"never":
+			return false
+		"odd_rounds":
+			return round % 2 == 1  # Face up on rounds 1, 3, 5...
+		"even_rounds":
+			return round % 2 == 0  # Face up on rounds 2, 4, 6...
+		_:
+			return true  # Default to visible
 
 func should_card_be_visible(card_index: int, round: int) -> bool:
-	"""Check if a card should be visible (face up)"""
-	# Simple rule: all cards visible
-	return true
+	"""Check if a card should be visible (face up) - used for checking during play"""
+	var visibility_mode = current_mode_config.get("card_visibility", "always")
+	
+	# If mode is "never", cards can still be revealed by clearing blockers
+	if visibility_mode == "never":
+		return false  # Let can_reveal_card handle it
+	
+	# Otherwise use same logic as start
+	return should_card_start_face_up(card_index, round)
 
 func can_reveal_card(card_index: int, blockers: Array) -> bool:
 	"""Check if a card can be revealed based on blockers"""
-	# Card can be revealed if it has no blockers
+	var visibility_mode = current_mode_config.get("card_visibility", "always")
+	
+	# In "never" mode, cards reveal when unblocked
+	if visibility_mode == "never":
+		return blockers.is_empty()
+	
+	# In other modes, this is only called if card isn't already visible
 	return blockers.is_empty()
 
 func get_visibility_mode(round: int) -> String:

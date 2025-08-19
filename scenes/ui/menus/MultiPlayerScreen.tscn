@@ -1,0 +1,154 @@
+[gd_scene load_steps=2 format=3 uid="uid://un7equhhsln0"]
+
+[ext_resource type="Script" uid="uid://d2ka3nv1gby3d" path="res://Pyramids/scripts/ui/menus/MultiPlayerScreen.gd" id="1_qvf2i"]
+
+[node name="MultiPlayerScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_qvf2i")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MainContainer" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="ContentHBox" type="HBoxContainer" parent="MainContainer"]
+layout_mode = 2
+
+[node name="LeftSection" type="Control" parent="MainContainer/ContentHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="RightSection" type="VBoxContainer" parent="MainContainer/ContentHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="PanelContainer" type="PanelContainer" parent="MainContainer/ContentHBox/RightSection"]
+layout_mode = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="MainContainer/ContentHBox/RightSection/PanelContainer"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="ButtonsHBox" type="HBoxContainer" parent="MainContainer/ContentHBox/RightSection/PanelContainer/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CreateLobby" type="Button" parent="MainContainer/ContentHBox/RightSection/PanelContainer/MarginContainer/ButtonsHBox"]
+layout_mode = 2
+text = "Create Lobby"
+
+[node name="JoinLobby" type="Button" parent="MainContainer/ContentHBox/RightSection/PanelContainer/MarginContainer/ButtonsHBox"]
+layout_mode = 2
+text = "Join Lobby"
+
+[node name="CreateBattleground" type="Button" parent="MainContainer/ContentHBox/RightSection/PanelContainer/MarginContainer/ButtonsHBox"]
+layout_mode = 2
+text = "Create Battleground"
+
+[node name="JoinBattleground" type="Button" parent="MainContainer/ContentHBox/RightSection/PanelContainer/MarginContainer/ButtonsHBox"]
+layout_mode = 2
+text = "Join Battleground"
+
+[node name="JoinTournament" type="Button" parent="MainContainer/ContentHBox/RightSection/PanelContainer/MarginContainer/ButtonsHBox"]
+layout_mode = 2
+text = "Tournament"
+
+[node name="RightSectionMain" type="HBoxContainer" parent="MainContainer/ContentHBox/RightSection"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="MiddleSectionVBox" type="VBoxContainer" parent="MainContainer/ContentHBox/RightSection/RightSectionMain"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="GameModeStatsPanel" type="PanelContainer" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/MiddleSectionVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="MarginContainer" type="MarginContainer" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/MiddleSectionVBox/GameModeStatsPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="StatsGrid" type="GridContainer" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/MiddleSectionVBox/GameModeStatsPanel/MarginContainer"]
+layout_mode = 2
+
+[node name="GameModeSettingsPanel" type="PanelContainer" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/MiddleSectionVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="MarginContainer" type="MarginContainer" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/MiddleSectionVBox/GameModeSettingsPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="SettingsGrid" type="GridContainer" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/MiddleSectionVBox/GameModeSettingsPanel/MarginContainer"]
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="RightSectionPanel" type="PanelContainer" parent="MainContainer/ContentHBox/RightSection/RightSectionMain"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="MarginContainer" type="MarginContainer" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="RightSectionVBox" type="VBoxContainer" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 0
+theme_override_constants/separation = 8
+
+[node name="ModeSelector" type="Button" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox"]
+layout_mode = 2
+text = "Mode"
+
+[node name="RankedButton" type="Button" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox"]
+layout_mode = 2
+text = "Ranked"
+
+[node name="UnrankedButton" type="Button" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox"]
+layout_mode = 2
+text = "Unranked"
+
+[node name="BackButton" type="Button" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 8
+text = "Menu"

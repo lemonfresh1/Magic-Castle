@@ -351,6 +351,33 @@ var item_card_style = {
 	"border_use_rounded": false  # Explicitly no rounded corners
 }
 
+var mode_colors = {
+	"test": {
+		"primary": Color(0.3, 0.8, 0.3),  # Green
+		"dark": Color(0.2, 0.6, 0.2)
+	},
+	"classic": {
+		"primary": Color(0.2, 0.5, 0.8),  # Blue
+		"dark": Color(0.15, 0.4, 0.65)
+	},
+	"timed_rush": {
+		"primary": Color(0.9, 0.3, 0.3),  # Red
+		"dark": Color(0.7, 0.2, 0.2)
+	},
+	"zen": {
+		"primary": Color(0.5, 0.7, 0.9),  # Light blue
+		"dark": Color(0.4, 0.6, 0.8)
+	},
+	"daily_challenge": {
+		"primary": Color(0.9, 0.7, 0.2),  # Gold/Yellow
+		"dark": Color(0.7, 0.5, 0.1)
+	},
+	"puzzle_master": {
+		"primary": Color(0.7, 0.4, 0.9),  # Purple
+		"dark": Color(0.6, 0.3, 0.8)
+	}
+}
+
 # Dictionary to track styled panels for easy updates
 var styled_panels = {}
 
@@ -543,6 +570,9 @@ func apply_button_style(button: Button, button_type: String = "default", size: S
 	button.add_theme_stylebox_override("normal", style_normal)
 	button.add_theme_stylebox_override("hover", style_hover)
 	button.add_theme_stylebox_override("pressed", style_pressed)
+	
+	button.focus_mode = Control.FOCUS_NONE
+
 
 # Progress bar styling
 func apply_progress_bar_style(progress_bar: ProgressBar, theme: String = "battle_pass") -> void:
@@ -1100,3 +1130,69 @@ func get_grid_slots_needed(item_category: UnifiedItemData.Category) -> int:
 			return item_card_style.grid_slots_board
 		_:
 			return item_card_style.grid_slots_card
+
+func apply_menu_gradient_background(target_node: Control) -> void:
+	"""Apply standard menu gradient background to any screen"""
+	# Use existing Background node if it exists
+	var bg_rect = target_node.get_node_or_null("Background")
+	if not bg_rect:
+		bg_rect = ColorRect.new()
+		bg_rect.name = "Background"
+		bg_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		target_node.add_child(bg_rect)
+		target_node.move_child(bg_rect, 0)
+	
+	# Create gradient texture
+	var gradient = Gradient.new()
+	var gradient_texture = GradientTexture2D.new()
+	
+	# Set gradient colors - dark forest green to lighter sage green
+	gradient.add_point(0.0, Color(0.1, 0.25, 0.15))  # Dark forest green
+	gradient.add_point(1.0, Color(0.25, 0.45, 0.3))  # Lighter sage green
+	
+	# Apply gradient vertically
+	gradient_texture.gradient = gradient
+	gradient_texture.fill_from = Vector2(0, 0)
+	gradient_texture.fill_to = Vector2(0, 1)
+	
+	# Apply to background
+	var shader = Shader.new()
+	shader.code = """
+	shader_type canvas_item;
+	
+	uniform sampler2D gradient_texture;
+	
+	void fragment() {
+		vec4 gradient_color = texture(gradient_texture, vec2(0.5, UV.y));
+		COLOR = gradient_color;
+	}
+	"""
+	
+	var material = ShaderMaterial.new()
+	material.shader = shader
+	material.set_shader_parameter("gradient_texture", gradient_texture)
+	
+	bg_rect.material = material
+	bg_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+func get_mode_color(mode_id: String, variant: String = "primary") -> Color:
+	"""Get color for a specific game mode"""
+	var mode_id_lower = mode_id.to_lower().replace(" ", "_")
+	
+	# Handle display names -> IDs
+	var id_map = {
+		"classic": "classic",
+		"rush": "timed_rush",
+		"zen": "zen",
+		"challenge": "daily_challenge",
+		"puzzle": "puzzle_master",
+		"test": "test",
+	}
+	
+	var mapped_id = id_map.get(mode_id_lower, mode_id_lower)
+	
+	if mode_colors.has(mapped_id):
+		return mode_colors[mapped_id].get(variant, colors.primary)
+	
+	# Fallback to primary color
+	return colors.primary if variant == "primary" else colors.primary_dark

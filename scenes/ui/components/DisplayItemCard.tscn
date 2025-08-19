@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3 uid="uid://d4flq3jbjd0qv"]
+
+[ext_resource type="Script" uid="uid://cmg1rhuphd3u7" path="res://Pyramids/scripts/ui/components/DisplayItemCard.gd" id="1_mohex"]
+
+[node name="DisplayItemCard" type="PanelContainer"]
+script = ExtResource("1_mohex")
+
+[node name="IconRect" type="TextureRect" parent="."]
+layout_mode = 2

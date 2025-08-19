@@ -1,0 +1,12 @@
+[gd_scene load_steps=2 format=3 uid="uid://mn2rd1l0dobe"]
+
+[ext_resource type="Script" uid="uid://bf0qd287d4gyd" path="res://Pyramids/scenes/test/ProfileFrameTest.gd" id="1_mr5a2"]
+
+[node name="ProfileFrameTest" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_mr5a2")

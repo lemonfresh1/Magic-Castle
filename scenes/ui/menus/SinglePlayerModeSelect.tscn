@@ -29,20 +29,6 @@ offset_right = 8.0
 offset_bottom = 8.0
 text = "Back"
 
-[node name="HighscoresPanel" type="PanelContainer" parent="TopSection"]
-layout_mode = 0
-offset_right = 40.0
-offset_bottom = 40.0
-
-[node name="VBox" type="VBoxContainer" parent="TopSection/HighscoresPanel"]
-layout_mode = 2
-
-[node name="CurrentRankLabel" type="Label" parent="TopSection/HighscoresPanel/VBox"]
-layout_mode = 2
-
-[node name="TopScoresContainer" type="VBoxContainer" parent="TopSection/HighscoresPanel/VBox"]
-layout_mode = 2
-
 [node name="BottomSection" type="Control" parent="."]
 anchors_preset = 0
 offset_right = 40.0
