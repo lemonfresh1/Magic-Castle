@@ -25,6 +25,9 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_7gvmm")
 script = ExtResource("1_1bo5v")
 metadata/_edit_use_anchors_ = true
 
+[node name="EffectOverlay" type="Control" parent="."]
+layout_mode = 2
+
 [node name="MarginContainer" type="MarginContainer" parent="."]
 layout_mode = 2
 theme_override_constants/margin_left = 10
@@ -35,41 +38,38 @@ theme_override_constants/margin_bottom = 10
 [node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer"]
 layout_mode = 2
 
-[node name="TopSection" type="HBoxContainer" parent="MarginContainer/VBoxContainer"]
+[node name="NameLabel" type="Label" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
-size_flags_vertical = 3
-theme_override_constants/separation = 5
-
-[node name="ProfileContainer" type="Control" parent="MarginContainer/VBoxContainer/TopSection"]
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="Label" type="Label" parent="MarginContainer/VBoxContainer/TopSection/ProfileContainer"]
-layout_mode = 2
-offset_top = 4.0
-offset_right = 87.0
-offset_bottom = 27.0
 text = "Name"
 
-[node name="StatsContainer" type="VBoxContainer" parent="MarginContainer/VBoxContainer/TopSection"]
+[node name="MiddleSection" type="HBoxContainer" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 15
+
+[node name="ProfileContainer" type="Control" parent="MarginContainer/VBoxContainer/MiddleSection"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="WinRateLabel" type="Label" parent="MarginContainer/VBoxContainer/TopSection/StatsContainer"]
+[node name="StatsPanel" type="PanelContainer" parent="MarginContainer/VBoxContainer/MiddleSection"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="StatsVBox" type="VBoxContainer" parent="MarginContainer/VBoxContainer/MiddleSection/StatsPanel"]
+layout_mode = 2
+size_flags_horizontal = 10
+
+[node name="WinRateLabel" type="Label" parent="MarginContainer/VBoxContainer/MiddleSection/StatsPanel/StatsVBox"]
 layout_mode = 2
 text = "WR:"
 
-[node name="GamesLabel" type="Label" parent="MarginContainer/VBoxContainer/TopSection/StatsContainer"]
+[node name="GamesLabel" type="Label" parent="MarginContainer/VBoxContainer/MiddleSection/StatsPanel/StatsVBox"]
 layout_mode = 2
 text = "G:"
 
-[node name="MMRLabel" type="Label" parent="MarginContainer/VBoxContainer/TopSection/StatsContainer"]
+[node name="MMRLabel" type="Label" parent="MarginContainer/VBoxContainer/MiddleSection/StatsPanel/StatsVBox"]
 layout_mode = 2
 text = "MMR:"
-
-[node name="Stat4Label" type="Label" parent="MarginContainer/VBoxContainer/TopSection/StatsContainer"]
-layout_mode = 2
-text = "Stat4:"
 
 [node name="BotSection" type="PanelContainer" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
