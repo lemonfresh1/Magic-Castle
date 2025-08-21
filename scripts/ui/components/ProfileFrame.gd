@@ -105,7 +105,7 @@ func set_custom_frame(frame_id: String) -> void:
 	custom_frame_id = frame_id
 	
 	# TODO: Load custom frame texture/style
-	# - Load from ItemDatabase
+	# - Load from ItemManager
 	# - Apply custom border texture
 	# - Override default prestige colors if needed
 	print("TODO: Load custom frame with ID: " + frame_id)

@@ -1,0 +1,11 @@
+[gd_scene load_steps=2 format=3 uid="uid://cqdjlpemmepup"]
+
+[ext_resource type="Script" uid="uid://dondl4yn7kiwu" path="res://Pyramids/scripts/ui/popups/ItemExpandedView.gd" id="1_va24t"]
+
+[node name="ItemExpandedView" type="PanelContainer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_va24t")

@@ -76,7 +76,7 @@ func _build_cache():
 	
 	# Initialize all categories including future ones
 	var all_categories = ["card_front", "card_back", "board", "frame", "avatar", 
-						  "emoji", "mini_profile", "topbar", "combo_effect", "menu_background"]
+						  "emoji", "mini_profile_card", "topbar", "combo_effect", "menu_background"]
 	
 	for category in all_categories:
 		items_by_category[category] = []

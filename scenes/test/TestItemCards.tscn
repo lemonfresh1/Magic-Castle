@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://w7y2fhhkphvu"]
 
-[ext_resource type="Script" uid="uid://7y3qwsiji8aj" path="res://Pyramids/scenes/test/TestItemCards.gd" id="1_kyhyk"]
+[ext_resource type="Script" uid="uid://2mxlogrcm8nx" path="res://Pyramids/scenes/test/TestUnifiedItemCards.gd" id="1_kyhyk"]
 
 [node name="TestItemCards" type="Control"]
 layout_mode = 3

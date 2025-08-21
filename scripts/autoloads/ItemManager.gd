@@ -31,7 +31,8 @@ const CATEGORIES = [
 	"boards",
 	"frames",
 	"avatars",
-	"emojis"
+	"emojis",
+	"mini_profile_board"
 ]
 
 # === PROPERTIES ===
@@ -410,6 +411,8 @@ func _category_to_string(category: UnifiedItemData.Category) -> String:
 			return "avatars"
 		UnifiedItemData.Category.EMOJI:
 			return "emojis"
+#		UnifiedItemData.Category.MINI_PROFILE_BOARD:
+#			return "mini_profile_board"
 		_:
 			return "unknown"
 
