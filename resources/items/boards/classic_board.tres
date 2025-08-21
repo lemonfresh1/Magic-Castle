@@ -1,22 +1,22 @@
-[gd_resource type="Resource" script_class="UnifiedItemData" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="UnifiedItemData" load_steps=2 format=3 uid="uid://b4ltkkjf8kyxq"]
 
-[ext_resource type="Script" path="res://Pyramids/scripts/resources/UnifiedItemData.gd" id="1_oyx06"]
+[ext_resource type="Script" uid="uid://d0xqbrsva3nam" path="res://Pyramids/scripts/resources/UnifiedItemData.gd" id="1_eu05a"]
 
 [resource]
-script = ExtResource("1_oyx06")
-id = "arctic_aurora_board"
-display_name = "Arctic Aurora Board"
-description = "Procedurally generated Arctic Aurora board design"
+script = ExtResource("1_eu05a")
+id = "classic_board"
+display_name = "Classic Green Board"
+description = "Procedurally generated Classic board design"
 category = 2
-rarity = 1
+rarity = 0
 set_name = ""
 subcategory = ""
-icon_path = "res://Pyramids/assets/icons/boards/arctic_aurora_board.png"
-texture_path = "res://Pyramids/assets/icons/boards/arctic_aurora_board.png"
-preview_texture_path = "res://Pyramids/assets/icons/boards/arctic_aurora_board.png"
+icon_path = "res://Pyramids/assets/icons/boards/classic_board.png"
+texture_path = "res://Pyramids/assets/icons/boards/classic_board.png"
+preview_texture_path = "res://Pyramids/assets/icons/boards/classic_board.png"
 is_procedural = true
-is_animated = true
-procedural_script_path = "res://Pyramids/scripts/items/boards/procedural/uncommon/ArcticAuroraBoard.gd"
+is_animated = false
+procedural_script_path = "res://Pyramids/scripts/items/boards/procedural/common/ClassicBoard.gd"
 animation_metadata = {}
 background_type = "procedural"
 background_scene_path = ""
@@ -38,12 +38,12 @@ border_shader_path = ""
 sound_effect_path = ""
 effect_type = "fire"
 max_combo_visuals = 20
-base_price = 100
+base_price = 0
 currency_type = "stars"
-is_purchasable = true
+is_purchasable = false
 is_tradeable = false
 unlock_level = 0
-source = 1
+source = 0
 achievement_id = ""
 event_id = ""
 quest_id = ""

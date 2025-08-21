@@ -54,6 +54,7 @@ var is_owned: bool = false
 var is_locked: bool = false
 var is_claimable: bool = false  # For animation control
 var is_claimed: bool = false    # For dimming
+var _cached_border_width: int = -1  # -1 means not cached
 
 # Animation properties
 var animation_enabled: bool = false  # State-based animation
@@ -122,6 +123,8 @@ func setup(item: UnifiedItemData, mode: DisplayMode = DisplayMode.INVENTORY):
 	item_data = item
 	reward_data = {}  # Clear reward data
 	display_mode = mode
+	_cached_border_width = -1
+
 	
 	# Store the preset if it was already set (for size_before_setup case)
 	var preset_override = size_preset
@@ -183,6 +186,8 @@ func setup_from_dict(reward_dict: Dictionary, preset: SizePreset):
 	reward_data = reward_dict
 	item_data = null  # Clear item data
 	size_preset = preset
+	_cached_border_width = -1
+
 	
 	if not is_node_ready():
 		await ready
@@ -463,7 +468,7 @@ func _setup_background():
 		
 		# Then setup procedural if needed
 		if item_data.is_animated or item_data.is_procedural:
-			_setup_scaled_procedural_display()
+			_setup_procedural_display()
 			if procedural_canvas.visible:
 				background_texture.visible = false  # Ensure it stays hidden
 		return
@@ -681,28 +686,40 @@ func _update_lock_state():
 # This ensures DrawCanvas is ALWAYS created for procedural items
 
 func _setup_procedural_display():
-	"""Setup procedural animation - WITH BORDER PADDING"""
+	"""Setup procedural animation - smart method handles both full and scaled displays"""
 	if not item_data:
 		return
 	
 	if not item_data.is_animated and not item_data.is_procedural:
 		return
 	
-	print("[PROCEDURAL] Setting up for: %s" % item_data.id)
+	# Determine if we need scaling based on size preset
+	var needs_scaling = size_preset in [SizePreset.MINI_DISPLAY, SizePreset.PASS_REWARD, SizePreset.SHOWCASE]
+	
+	print("[PROCEDURAL] Setting up for: %s (scaled: %s)" % [item_data.id, needs_scaling])
 	
 	# Show procedural canvas, hide background
 	procedural_canvas.visible = true
 	background_texture.visible = false
 	
-	# Clear any previous children SYNCHRONOUSLY
+	# For small presets, ensure background stays hidden
+	if needs_scaling:
+		if background_texture:
+			background_texture.visible = false
+			background_texture.texture = null
+			background_texture.self_modulate = Color(1, 1, 1, 0)
+	
+	# Clear any previous children
 	for child in procedural_canvas.get_children():
 		procedural_canvas.remove_child(child)
 		child.queue_free()
 	
+	await get_tree().process_frame
+	
 	# Get the procedural instance
 	var instance = null
 	
-	# Try loading the script directly FIRST (most reliable)
+	# Try loading the script directly (most reliable)
 	if item_data.procedural_script_path != "":
 		print("[PROCEDURAL] Loading script: %s" % item_data.procedural_script_path)
 		if ResourceLoader.exists(item_data.procedural_script_path):
@@ -728,7 +745,15 @@ func _setup_procedural_display():
 		background_texture.visible = true
 		return
 	
-	# CREATE CONTAINER for border padding (for full-size items)
+	# Branch based on whether we need scaling
+	if needs_scaling:
+		_setup_scaled_procedural(instance)
+	else:
+		_setup_full_size_procedural(instance)
+
+func _setup_full_size_procedural(instance):
+	"""Setup procedural display at full size with border padding"""
+	# Create container for border padding
 	var padding_container = Control.new()
 	padding_container.name = "PaddingContainer"
 	padding_container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -744,118 +769,34 @@ func _setup_procedural_display():
 	
 	procedural_canvas.add_child(padding_container)
 	
-	# CREATE DRAWCANVAS inside padding container
+	# Create DrawCanvas inside padding container
 	var draw_canvas = Control.new()
 	draw_canvas.name = "DrawCanvas"
 	draw_canvas.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	draw_canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	draw_canvas.clip_contents = true
 	
-	# Add to padding container instead of directly to procedural_canvas
 	padding_container.add_child(draw_canvas)
 	
-	await get_tree().process_frame  # Let it enter tree first
+	await get_tree().process_frame
 	draw_canvas.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	
 	print("[PROCEDURAL] DrawCanvas created with size: %s (with %spx border padding)" % [draw_canvas.size, border_width])
 	
-	# Setup the draw callback with proper method selection
-	draw_canvas.draw.connect(func():
-		var canvas_size = draw_canvas.size
-		if canvas_size.x <= 0 or canvas_size.y <= 0:
-			canvas_size = padding_container.size  # Fallback to container size
-			if canvas_size.x <= 0 or canvas_size.y <= 0:
-				return  # Can't draw with invalid size
-		
-		# Call the appropriate draw method based on category
-		match item_data.category:
-			UnifiedItemData.Category.CARD_BACK:
-				if instance.has_method("draw_card_back"):
-					instance.draw_card_back(draw_canvas, canvas_size)
-			UnifiedItemData.Category.CARD_FRONT:
-				if instance.has_method("draw_card_front"):
-					instance.draw_card_front(draw_canvas, canvas_size, "A", 0)
-			UnifiedItemData.Category.BOARD:
-				if instance.has_method("draw_board_background"):
-					instance.draw_board_background(draw_canvas, canvas_size)
-			_:
-				if instance.has_method("draw_item"):
-					instance.draw_item(draw_canvas, canvas_size)
-	)
+	# Setup the draw callback
+	_setup_draw_callback(draw_canvas, instance, draw_canvas.size)
 	
 	# Setup animation if needed
-	if instance.get("is_animated") and instance.is_animated:
-		var tween = create_tween()
-		tween.set_loops()
-		
-		var duration = 2.0
-		if "animation_duration" in instance:
-			duration = instance.animation_duration
-		
-		tween.tween_method(
-			func(phase: float): 
-				instance.animation_phase = phase
-				draw_canvas.queue_redraw(),
-			0.0, 
-			1.0, 
-			duration
-		)
+	_setup_procedural_animation(draw_canvas, instance)
 	
 	# Force initial draw
 	draw_canvas.queue_redraw()
 	
-	print("[PROCEDURAL] Setup complete. ProceduralCanvas children: %d" % procedural_canvas.get_child_count())
+	print("[PROCEDURAL] Full-size setup complete")
 
-func _setup_scaled_procedural_display():
-	"""Setup procedural display with scaling for small sizes - WITH VISIBLE SHADOWS"""
-	if not item_data or not item_data.is_procedural:
-		return
-	
-	print("[SCALED] Setting up scaled display for: %s at size %s" % [item_data.id, size])
-	
-	# Determine if we need scaling (for small presets)
-	var needs_scaling = size_preset in [SizePreset.MINI_DISPLAY, SizePreset.PASS_REWARD, SizePreset.SHOWCASE]
-	
-	if not needs_scaling:
-		# Use normal procedural display for full-size cards
-		_setup_procedural_display()
-		return
-	
-	# ENSURE ALL BACKGROUNDS ARE HIDDEN
-	if background_texture:
-		background_texture.visible = false
-		background_texture.texture = null  # Clear any default texture
-		background_texture.self_modulate = Color(1, 1, 1, 0)
-	
-	# Clear and setup procedural canvas
-	procedural_canvas.visible = true
-	procedural_canvas.self_modulate = Color(1, 1, 1, 1)  # No transparency on the canvas itself
-	
-	# Clear the procedural canvas background color if it has one
-	if procedural_canvas.has_method("set_default_color"):
-		procedural_canvas.set_default_color(Color(0, 0, 0, 0))
-	
-	for child in procedural_canvas.get_children():
-		child.queue_free()
-	
-	await get_tree().process_frame
-	
-	# Get the procedural instance
-	var instance = null
-	
-	if item_data.procedural_script_path != "":
-		if ResourceLoader.exists(item_data.procedural_script_path):
-			var script = load(item_data.procedural_script_path)
-			if script:
-				instance = script.new()
-	
-	if not instance:
-		print("[SCALED] Failed to create procedural instance")
-		procedural_canvas.visible = false
-		background_texture.visible = true
-		return
-	
-	# DETERMINE FULL SIZE based on item type
+func _setup_scaled_procedural(instance):
+	"""Setup procedural display with scaling for small sizes"""
+	# Determine full size based on item type
 	var full_size = Vector2()
 	var is_landscape = item_data.category == UnifiedItemData.Category.BOARD
 	
@@ -864,15 +805,13 @@ func _setup_scaled_procedural_display():
 	else:
 		full_size = Vector2(90, 126)  # Full portrait size
 	
-	# GET BORDER WIDTH to account for
+	# Get border width and calculate target size
 	var border_width = _get_border_width()
-	var padding = border_width + 2  # Border plus 2px extra for shadow space
-	
-	# CALCULATE TARGET SIZE with padding
+	var padding = border_width + 2  # Border plus extra for shadow
 	var container_size = procedural_canvas.size
 	var target_size = container_size - Vector2(padding * 2, padding * 2)
 	
-	# Further reduce for small presets to ensure good spacing
+	# Further reduce for small presets
 	match size_preset:
 		SizePreset.MINI_DISPLAY:
 			target_size = Vector2(40, 40)
@@ -889,33 +828,31 @@ func _setup_scaled_procedural_display():
 	var scaled_size = full_size * uniform_scale
 	var card_offset = (container_size - scaled_size) / 2
 	
-	print("[SCALED] Container: %s, Target: %s, Scale: %s, Border: %spx" % 
-		[container_size, target_size, scale_factor, border_width])
+	print("[PROCEDURAL] Scaled: Container: %s, Target: %s, Scale: %s" % 
+		[container_size, target_size, scale_factor])
 	
-	# CREATE SHADOW DIRECTLY ON PROCEDURAL CANVAS (for mini display and pass reward)
+	# Create shadow for mini display and pass reward
 	if size_preset in [SizePreset.MINI_DISPLAY, SizePreset.PASS_REWARD]:
-		var shadow_node = ColorRect.new()  # Use ColorRect for simple shadow
+		var shadow_node = ColorRect.new()
 		shadow_node.name = "ShadowNode"
 		shadow_node.color = Color(0, 0, 0, 0.3)  # 30% black
 		shadow_node.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		
-		# Position shadow with offset
 		var shadow_offset = Vector2(2, 2)
 		shadow_node.position = card_offset + shadow_offset
 		shadow_node.size = scaled_size
 		
 		procedural_canvas.add_child(shadow_node)
-		
-		print("[SCALED] Shadow added at position: %s, size: %s" % [shadow_node.position, shadow_node.size])
+		print("[PROCEDURAL] Shadow added")
 	
-	# CREATE SCALING CONTAINER (for the actual card)
+	# Create scaling container
 	var scale_container = Control.new()
 	scale_container.name = "ScaleContainer"
 	scale_container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	scale_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	procedural_canvas.add_child(scale_container)
 	
-	# CREATE FULL-SIZE DRAW CANVAS
+	# Create full-size draw canvas
 	var draw_canvas = Control.new()
 	draw_canvas.name = "DrawCanvas"
 	draw_canvas.custom_minimum_size = full_size
@@ -924,49 +861,34 @@ func _setup_scaled_procedural_display():
 	draw_canvas.clip_contents = true
 	scale_container.add_child(draw_canvas)
 	
-	print("[SCALED] DrawCanvas created at full size: %s (landscape: %s)" % [full_size, is_landscape])
-	
-	# APPLY SCALE AND CENTER
+	# Apply scale and position
 	draw_canvas.scale = scale_factor
 	draw_canvas.position = card_offset
 	
-	print("[SCALED] Final size: %s, Position: %s" % [scaled_size, card_offset])
+	print("[PROCEDURAL] DrawCanvas at full size: %s, scaled to: %s" % [full_size, scaled_size])
 	
-	# SETUP FLOAT ANIMATION (only for mini display and pass reward)
+	# Setup float animation for mini/pass
 	if size_preset in [SizePreset.MINI_DISPLAY, SizePreset.PASS_REWARD]:
-		# Store base position for animation
-		var base_pos = draw_canvas.position
-		
-		# Horizontal sway + rotation animation
-		var float_tween = create_tween()
-		float_tween.set_loops()
-		float_tween.set_trans(Tween.TRANS_SINE)
-		
-		# Sway right with clockwise rotation
-		float_tween.tween_property(draw_canvas, "position:x", base_pos.x + 1.5, 1.2)
-		float_tween.parallel().tween_property(draw_canvas, "rotation", deg_to_rad(2), 1.2)
-		
-		# Sway left with counter-clockwise rotation
-		float_tween.tween_property(draw_canvas, "position:x", base_pos.x - 1.5, 1.2)
-		float_tween.parallel().tween_property(draw_canvas, "rotation", deg_to_rad(-2), 1.2)
-		
-		# Return to center
-		float_tween.tween_property(draw_canvas, "position:x", base_pos.x, 1.2)
-		float_tween.parallel().tween_property(draw_canvas, "rotation", 0, 1.2)
-		
-		# Vertical bob animation (separate for different timing)
-		var bob_tween = create_tween()
-		bob_tween.set_loops()
-		bob_tween.set_trans(Tween.TRANS_SINE)
-		
-		bob_tween.tween_property(draw_canvas, "position:y", base_pos.y - 1, 1.8)
-		bob_tween.tween_property(draw_canvas, "position:y", base_pos.y + 1, 1.8)
-		bob_tween.tween_property(draw_canvas, "position:y", base_pos.y, 1.8)
+		_setup_float_animation(draw_canvas, card_offset)
 	
-	# SETUP DRAW CALLBACK (draw at FULL size)
+	# Setup the draw callback (always draw at full size)
+	_setup_draw_callback(draw_canvas, instance, full_size)
+	
+	# Setup procedural animation if needed
+	_setup_procedural_animation(draw_canvas, instance)
+	
+	# Force initial draw
+	draw_canvas.queue_redraw()
+	
+	print("[PROCEDURAL] Scaled setup complete")
+
+func _setup_draw_callback(draw_canvas: Control, instance, canvas_size: Vector2):
+	"""Setup the draw callback for procedural items"""
 	draw_canvas.draw.connect(func():
-		var canvas_size = full_size  # Always use full size for drawing
+		if canvas_size.x <= 0 or canvas_size.y <= 0:
+			return  # Can't draw with invalid size
 		
+		# Call the appropriate draw method based on category
 		match item_data.category:
 			UnifiedItemData.Category.CARD_BACK:
 				if instance.has_method("draw_card_back"):
@@ -981,8 +903,9 @@ func _setup_scaled_procedural_display():
 				if instance.has_method("draw_item"):
 					instance.draw_item(draw_canvas, canvas_size)
 	)
-	
-	# SETUP PROCEDURAL ANIMATION if needed
+
+func _setup_procedural_animation(draw_canvas: Control, instance):
+	"""Setup animation for animated procedural items"""
 	if instance.get("is_animated") and instance.is_animated:
 		var tween = create_tween()
 		tween.set_loops()
@@ -997,11 +920,6 @@ func _setup_scaled_procedural_display():
 			1.0, 
 			duration
 		)
-	
-	# Force initial draw
-	draw_canvas.queue_redraw()
-	
-	print("[SCALED] Setup complete for %s" % item_data.id)
 
 func _draw_card_shadow(shadow_node: Control, card_size: Vector2, card_offset: Vector2):
 	"""Draw a drop shadow for the card"""
@@ -1027,59 +945,70 @@ func _draw_card_shadow(shadow_node: Control, card_size: Vector2, card_offset: Ve
 		if rect.size.x > 0 and rect.size.y > 0:
 			shadow_node.draw_rect(rect, color)
 
-func _setup_float_animation(container: Control):
+func _setup_float_animation(draw_canvas: Control, base_pos: Vector2):
 	"""Setup subtle floating animation for small display cards"""
-	# Create looping animation
-	var tween = create_tween()
-	tween.set_loops()
-	tween.set_trans(Tween.TRANS_SINE)  # Smooth sine wave motion
+	# Horizontal sway + rotation animation
+	var float_tween = create_tween()
+	float_tween.set_loops()
+	float_tween.set_trans(Tween.TRANS_SINE)
 	
-	# Horizontal sway (subtle left-right)
-	var sway_amount = 1.5  # pixels
-	var rotation_amount = deg_to_rad(2)  # 2 degrees
+	# Sway right with clockwise rotation
+	float_tween.tween_property(draw_canvas, "position:x", base_pos.x + 1.5, 1.2)
+	float_tween.parallel().tween_property(draw_canvas, "rotation", deg_to_rad(2), 1.2)
 	
-	# Create animation sequence
-	# Move right and rotate slightly clockwise
-	tween.tween_property(container, "position:x", sway_amount, 1.2)
-	tween.parallel().tween_property(container, "rotation", rotation_amount, 1.2)
-	
-	# Move left and rotate counter-clockwise  
-	tween.tween_property(container, "position:x", -sway_amount, 1.2)
-	tween.parallel().tween_property(container, "rotation", -rotation_amount, 1.2)
+	# Sway left with counter-clockwise rotation
+	float_tween.tween_property(draw_canvas, "position:x", base_pos.x - 1.5, 1.2)
+	float_tween.parallel().tween_property(draw_canvas, "rotation", deg_to_rad(-2), 1.2)
 	
 	# Return to center
-	tween.tween_property(container, "position:x", 0, 1.2)
-	tween.parallel().tween_property(container, "rotation", 0, 1.2)
+	float_tween.tween_property(draw_canvas, "position:x", base_pos.x, 1.2)
+	float_tween.parallel().tween_property(draw_canvas, "rotation", 0, 1.2)
 	
-	# Add subtle vertical bob
-	var tween2 = create_tween()
-	tween2.set_loops()
-	tween2.set_trans(Tween.TRANS_SINE)
+	# Vertical bob animation (separate for different timing)
+	var bob_tween = create_tween()
+	bob_tween.set_loops()
+	bob_tween.set_trans(Tween.TRANS_SINE)
 	
-	var bob_amount = 1.0  # pixels
-	tween2.tween_property(container, "position:y", -bob_amount, 1.8)
-	tween2.tween_property(container, "position:y", bob_amount, 1.8)
-	tween2.tween_property(container, "position:y", 0, 1.8)
+	bob_tween.tween_property(draw_canvas, "position:y", base_pos.y - 1, 1.8)
+	bob_tween.tween_property(draw_canvas, "position:y", base_pos.y + 1, 1.8)
+	bob_tween.tween_property(draw_canvas, "position:y", base_pos.y, 1.8)
 
 func _get_border_width() -> int:
-	"""Get the border width based on item rarity"""
+	"""Get the border width based on item rarity - CACHED"""
+	# Return cached value if available
+	if _cached_border_width >= 0:
+		return _cached_border_width
+	
+	# Calculate border width
+	var border_width = 2  # Default
+	
 	if not item_data:
-		return 2  # Default border
+		_cached_border_width = 2
+		return _cached_border_width
 	
 	var rarity_str = item_data.get_rarity_name().to_lower()
 	if rarity_str in ["epic", "legendary", "mythic"]:
-		# Check if UIStyleManager has the border width setting
 		if UIStyleManager and UIStyleManager.has_method("get_item_card_style"):
 			var epic_border = UIStyleManager.get_item_card_style("card_border_width_epic")
 			if epic_border:
-				return epic_border
-		return 3  # Default epic border
+				border_width = epic_border
+			else:
+				border_width = 3  # Default epic
+		else:
+			border_width = 3
 	else:
 		if UIStyleManager and UIStyleManager.has_method("get_item_card_style"):
 			var normal_border = UIStyleManager.get_item_card_style("card_border_width_normal")
 			if normal_border:
-				return normal_border
-		return 2  # Default normal border
+				border_width = normal_border
+			else:
+				border_width = 2  # Default normal
+		else:
+			border_width = 2
+	
+	# Cache the result
+	_cached_border_width = border_width
+	return _cached_border_width
 
 func _get_card_size() -> Vector2:
 	"""Get the appropriate size based on item category and display mode"""
@@ -1238,43 +1167,48 @@ func _update_shadow_position():
 # === ANIMATION SYSTEM (TWEEN ONLY) ===
 
 func _play_animation():
-	"""Play subtle float animation for claimable rewards - matches procedural items"""
-	# Only animate if we don't already have a float animation running
-	if has_meta("float_tween") and get_meta("float_tween"):
-		return
-	
-	# Store base position
-	var base_pos = position
-	
-	# Create subtle horizontal sway with slight rotation
-	var float_tween = create_tween()
-	float_tween.set_loops()  # Continuous loop
-	float_tween.set_trans(Tween.TRANS_SINE)
-	
-	# Sway right with clockwise rotation
-	float_tween.tween_property(self, "position:x", base_pos.x + 1.5, 1.2)
-	float_tween.parallel().tween_property(self, "rotation", deg_to_rad(1), 1.2)
-	
-	# Sway left with counter-clockwise rotation  
-	float_tween.tween_property(self, "position:x", base_pos.x - 1.5, 1.2)
-	float_tween.parallel().tween_property(self, "rotation", deg_to_rad(-1), 1.2)
-	
-	# Return to center
-	float_tween.tween_property(self, "position:x", base_pos.x, 1.2)
-	float_tween.parallel().tween_property(self, "rotation", 0, 1.2)
-	
-	# Vertical bob animation (separate for different timing)
-	var bob_tween = create_tween()
-	bob_tween.set_loops()
-	bob_tween.set_trans(Tween.TRANS_SINE)
-	
-	bob_tween.tween_property(self, "position:y", base_pos.y - 1, 1.8)
-	bob_tween.tween_property(self, "position:y", base_pos.y + 1, 1.8)
-	bob_tween.tween_property(self, "position:y", base_pos.y, 1.8)
-	
-	# Store reference to stop if needed
-	set_meta("float_tween", float_tween)
-	set_meta("bob_tween", bob_tween)
+	"""Play subtle float animation - for rewards, animate icon only"""
+	# For rewards, animate the icon inside, not the whole card
+	if reward_data.size() > 0 and icon_texture and icon_texture.visible:
+		# Only animate icon if we don't already have animation
+		if icon_texture.has_meta("float_tween") and icon_texture.get_meta("float_tween"):
+			return
+		
+		# Store base position of icon
+		var base_pos = icon_texture.position
+		
+		# Create subtle horizontal sway with slight rotation for icon
+		var float_tween = create_tween()
+		float_tween.set_loops()
+		float_tween.set_trans(Tween.TRANS_SINE)
+		
+		# Sway right with clockwise rotation
+		float_tween.tween_property(icon_texture, "position:x", base_pos.x + 1.5, 1.2)
+		float_tween.parallel().tween_property(icon_texture, "rotation", deg_to_rad(1), 1.2)
+		
+		# Sway left with counter-clockwise rotation  
+		float_tween.tween_property(icon_texture, "position:x", base_pos.x - 1.5, 1.2)
+		float_tween.parallel().tween_property(icon_texture, "rotation", deg_to_rad(-1), 1.2)
+		
+		# Return to center
+		float_tween.tween_property(icon_texture, "position:x", base_pos.x, 1.2)
+		float_tween.parallel().tween_property(icon_texture, "rotation", 0, 1.2)
+		
+		# Vertical bob animation
+		var bob_tween = create_tween()
+		bob_tween.set_loops()
+		bob_tween.set_trans(Tween.TRANS_SINE)
+		
+		bob_tween.tween_property(icon_texture, "position:y", base_pos.y - 1, 1.8)
+		bob_tween.tween_property(icon_texture, "position:y", base_pos.y + 1, 1.8)
+		bob_tween.tween_property(icon_texture, "position:y", base_pos.y, 1.8)
+		
+		# Store reference
+		icon_texture.set_meta("float_tween", float_tween)
+		icon_texture.set_meta("bob_tween", bob_tween)
+	else:
+		# For regular items, keep existing animation (if any needed)
+		pass
 
 func _update_animation_state():
 	"""Update whether animations should be enabled"""

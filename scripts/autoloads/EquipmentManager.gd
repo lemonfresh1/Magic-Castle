@@ -481,7 +481,8 @@ func _ensure_defaults() -> void:
 	# Default items that should always be owned
 	var defaults = {
 		"card_front": "card_classic",
-		"board": "board_green"
+		"card_back": "classic_card_back",
+		"board": "classic_board"
 	}
 	
 	for category in defaults:

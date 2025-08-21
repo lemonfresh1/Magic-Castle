@@ -1,24 +1,24 @@
-[gd_resource type="Resource" script_class="UnifiedItemData" load_steps=2 format=3 uid="uid://bwltglg65jfgp"]
+[gd_resource type="Resource" script_class="UnifiedItemData" load_steps=2 format=3]
 
-[ext_resource type="Script" uid="uid://d0xqbrsva3nam" path="res://Pyramids/scripts/resources/UnifiedItemData.gd" id="1_cs8a8"]
+[ext_resource type="Script" path="res://Pyramids/scripts/resources/UnifiedItemData.gd" id="1_axx3a"]
 
 [resource]
-script = ExtResource("1_cs8a8")
-id = "card_back_classic_pyramids_gold"
-display_name = "Classic Pyramids Gold"
-description = "Procedurally generated Classic Pyramids card back design"
-category = 1
+script = ExtResource("1_axx3a")
+id = "glyphwave_board"
+display_name = "Glyphwave Board"
+description = "Procedurally generated Glyphwave board design"
+category = 2
 rarity = 3
-set_name = "Classic Pyramids Collection"
-subcategory = "classic pyramids"
-icon_path = "res://Pyramids/assets/icons/card_backs/card_back_classic_pyramids_gold.png"
-texture_path = "res://Pyramids/assets/icons/card_backs/card_back_classic_pyramids_gold.png"
-preview_texture_path = "res://Pyramids/assets/icons/card_backs/card_back_classic_pyramids_gold.png"
+set_name = ""
+subcategory = ""
+icon_path = "res://Pyramids/assets/icons/boards/glyphwave_board.png"
+texture_path = "res://Pyramids/assets/icons/boards/glyphwave_board.png"
+preview_texture_path = "res://Pyramids/assets/icons/boards/glyphwave_board.png"
 is_procedural = true
 is_animated = true
-procedural_script_path = "res://Pyramids/scripts/items/card_backs/procedural/epic/ClassicPyramidsGold.gd"
+procedural_script_path = "res://Pyramids/scripts/items/boards/procedural/epic/GlyphwaveBoard.gd"
 animation_metadata = {}
-background_type = "color"
+background_type = "procedural"
 background_scene_path = ""
 colors = {}
 can_be_menu_background = false
@@ -62,4 +62,3 @@ supports_color_customization = false
 supports_user_upload = false
 blockchain_id = ""
 workshop_id = ""
-metadata/_custom_type_script = "uid://d0xqbrsva3nam"

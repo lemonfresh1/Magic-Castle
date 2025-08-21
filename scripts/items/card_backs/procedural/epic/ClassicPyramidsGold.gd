@@ -7,11 +7,11 @@ extends ProceduralCardBack
 
 func _init():
 	# Single identifier
-	item_id = "card_back_classic_pyramids_gold"
+	item_id = "pyramids_back"
 	
 	# Display properties
-	display_name = "Classic Pyramids Gold"
-	theme_name = "Classic Pyramids"
+	display_name = "Pyramids"
+	theme_name = "Pyramids"
 	item_rarity = UnifiedItemData.Rarity.EPIC
 	
 	# Sync with parent's skin_name

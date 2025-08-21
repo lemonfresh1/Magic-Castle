@@ -1,24 +1,24 @@
-[gd_resource type="Resource" script_class="UnifiedItemData" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="UnifiedItemData" load_steps=2 format=3 uid="uid://3kpnshacbnqq"]
 
-[ext_resource type="Script" path="res://Pyramids/scripts/resources/UnifiedItemData.gd" id="1_oyx06"]
+[ext_resource type="Script" uid="uid://d0xqbrsva3nam" path="res://Pyramids/scripts/resources/UnifiedItemData.gd" id="1_x6vg3"]
 
 [resource]
-script = ExtResource("1_oyx06")
-id = "arctic_aurora_board"
-display_name = "Arctic Aurora Board"
-description = "Procedurally generated Arctic Aurora board design"
-category = 2
-rarity = 1
-set_name = ""
-subcategory = ""
-icon_path = "res://Pyramids/assets/icons/boards/arctic_aurora_board.png"
-texture_path = "res://Pyramids/assets/icons/boards/arctic_aurora_board.png"
-preview_texture_path = "res://Pyramids/assets/icons/boards/arctic_aurora_board.png"
+script = ExtResource("1_x6vg3")
+id = "pyramids_back"
+display_name = "Pyramids"
+description = "Procedurally generated Classic Pyramids card back design"
+category = 1
+rarity = 3
+set_name = "Pyramids"
+subcategory = "classic pyramids"
+icon_path = "res://Pyramids/assets/icons/card_backs/card_back_classic_pyramids_gold.png"
+texture_path = "res://Pyramids/assets/icons/card_backs/card_back_classic_pyramids_gold.png"
+preview_texture_path = "res://Pyramids/assets/icons/card_backs/card_back_classic_pyramids_gold.png"
 is_procedural = true
 is_animated = true
-procedural_script_path = "res://Pyramids/scripts/items/boards/procedural/uncommon/ArcticAuroraBoard.gd"
+procedural_script_path = "res://Pyramids/scripts/items/card_backs/procedural/epic/ClassicPyramidsGold.gd"
 animation_metadata = {}
-background_type = "procedural"
+background_type = "color"
 background_scene_path = ""
 colors = {}
 can_be_menu_background = false
@@ -38,7 +38,7 @@ border_shader_path = ""
 sound_effect_path = ""
 effect_type = "fire"
 max_combo_visuals = 20
-base_price = 100
+base_price = 500
 currency_type = "stars"
 is_purchasable = true
 is_tradeable = false
@@ -62,3 +62,4 @@ supports_color_customization = false
 supports_user_upload = false
 blockchain_id = ""
 workshop_id = ""
+metadata/_custom_type_script = "uid://d0xqbrsva3nam"

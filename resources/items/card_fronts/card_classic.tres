@@ -1,15 +1,15 @@
-[gd_resource type="Resource" script_class="UnifiedItemData" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="UnifiedItemData" load_steps=2 format=3 uid="uid://cejvjfl80blpj"]
 
-[ext_resource type="Script" path="res://Pyramids/scripts/resources/UnifiedItemData.gd" id="1_sfslp"]
+[ext_resource type="Script" uid="uid://d0xqbrsva3nam" path="res://Pyramids/scripts/resources/UnifiedItemData.gd" id="1_e84ch"]
 
 [resource]
-script = ExtResource("1_sfslp")
-id = "board_green"
-display_name = "Classic Green"
-description = "The classic green felt board"
-category = 2
+script = ExtResource("1_e84ch")
+id = "card_classic"
+display_name = "Classic Cards"
+description = "The original card design"
+category = 0
 rarity = 0
-set_name = ""
+set_name = "Default"
 subcategory = ""
 icon_path = ""
 texture_path = ""
@@ -20,9 +20,7 @@ procedural_script_path = ""
 animation_metadata = {}
 background_type = "color"
 background_scene_path = ""
-colors = {
-"primary": Color(0.2, 0.5, 0.2, 1)
-}
+colors = {}
 can_be_menu_background = false
 mini_profile_layout = "standard"
 showcase_slots = 3
@@ -41,6 +39,7 @@ sound_effect_path = ""
 effect_type = "fire"
 max_combo_visuals = 20
 base_price = 0
+currency_type = "stars"
 is_purchasable = false
 is_tradeable = false
 unlock_level = 0

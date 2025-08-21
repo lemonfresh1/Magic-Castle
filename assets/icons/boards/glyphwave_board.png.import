@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://brt3s25i8gawn"
-path="res://.godot/imported/clouds_4.png-0aa09964be90b34c90142d22b036338e.ctex"
+uid="uid://dcxg0w5vltq53"
+path="res://.godot/imported/glyphwave_board.png-1e4142593f6bd308ec3196a516539481.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Pyramids/scenes/items/boards/1_pyramids/clouds_4.png"
-dest_files=["res://.godot/imported/clouds_4.png-0aa09964be90b34c90142d22b036338e.ctex"]
+source_file="res://Pyramids/assets/icons/boards/glyphwave_board.png"
+dest_files=["res://.godot/imported/glyphwave_board.png-1e4142593f6bd308ec3196a516539481.ctex"]
 
 [params]
 

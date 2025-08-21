@@ -1,6 +1,6 @@
-[gd_resource type="Resource" script_class="UnifiedItemData" load_steps=2 format=3 uid="uid://b1nvbkg5ygrof"]
+[gd_resource type="Resource" script_class="UnifiedItemData" load_steps=2 format=3]
 
-[ext_resource type="Script" uid="uid://d0xqbrsva3nam" path="res://Pyramids/scripts/resources/UnifiedItemData.gd" id="1_f13nm"]
+[ext_resource type="Script" path="res://Pyramids/scripts/resources/UnifiedItemData.gd" id="1_f13nm"]
 
 [resource]
 script = ExtResource("1_f13nm")
@@ -9,8 +9,8 @@ display_name = "Arctic Aurora Card Front"
 description = "Procedurally generated Arctic Aurora card front design"
 category = 0
 rarity = 1
-set_name = "Arctic Aurora Collection"
-subcategory = "arctic aurora"
+set_name = ""
+subcategory = ""
 icon_path = "res://Pyramids/assets/icons/card_fronts/arctic_aurora_front.png"
 texture_path = "res://Pyramids/assets/icons/card_fronts/arctic_aurora_front.png"
 preview_texture_path = "res://Pyramids/assets/icons/card_fronts/arctic_aurora_front.png"

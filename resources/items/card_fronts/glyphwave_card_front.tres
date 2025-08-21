@@ -1,24 +1,24 @@
 [gd_resource type="Resource" script_class="UnifiedItemData" load_steps=2 format=3]
 
-[ext_resource type="Script" path="res://Pyramids/scripts/resources/UnifiedItemData.gd" id="1_oyx06"]
+[ext_resource type="Script" path="res://Pyramids/scripts/resources/UnifiedItemData.gd" id="1_25otf"]
 
 [resource]
-script = ExtResource("1_oyx06")
-id = "arctic_aurora_board"
-display_name = "Arctic Aurora Board"
-description = "Procedurally generated Arctic Aurora board design"
-category = 2
-rarity = 1
+script = ExtResource("1_25otf")
+id = "glyphwave_card_front"
+display_name = "Glyphwave Card Front"
+description = "Procedurally generated Glyphwave card front design"
+category = 0
+rarity = 3
 set_name = ""
 subcategory = ""
-icon_path = "res://Pyramids/assets/icons/boards/arctic_aurora_board.png"
-texture_path = "res://Pyramids/assets/icons/boards/arctic_aurora_board.png"
-preview_texture_path = "res://Pyramids/assets/icons/boards/arctic_aurora_board.png"
+icon_path = "res://Pyramids/assets/icons/card_fronts/glyphwave_card_front.png"
+texture_path = "res://Pyramids/assets/icons/card_fronts/glyphwave_card_front.png"
+preview_texture_path = "res://Pyramids/assets/icons/card_fronts/glyphwave_card_front.png"
 is_procedural = true
 is_animated = true
-procedural_script_path = "res://Pyramids/scripts/items/boards/procedural/uncommon/ArcticAuroraBoard.gd"
+procedural_script_path = "res://Pyramids/scripts/items/card_fronts/procedural/epic/GlyphwaveCardFront.gd"
 animation_metadata = {}
-background_type = "procedural"
+background_type = "color"
 background_scene_path = ""
 colors = {}
 can_be_menu_background = false
@@ -38,7 +38,7 @@ border_shader_path = ""
 sound_effect_path = ""
 effect_type = "fire"
 max_combo_visuals = 20
-base_price = 100
+base_price = 500
 currency_type = "stars"
 is_purchasable = true
 is_tradeable = false

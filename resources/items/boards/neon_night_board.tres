@@ -1,22 +1,22 @@
 [gd_resource type="Resource" script_class="UnifiedItemData" load_steps=2 format=3]
 
-[ext_resource type="Script" path="res://Pyramids/scripts/resources/UnifiedItemData.gd" id="1_oyx06"]
+[ext_resource type="Script" path="res://Pyramids/scripts/resources/UnifiedItemData.gd" id="1_qa6s0"]
 
 [resource]
-script = ExtResource("1_oyx06")
-id = "arctic_aurora_board"
-display_name = "Arctic Aurora Board"
-description = "Procedurally generated Arctic Aurora board design"
+script = ExtResource("1_qa6s0")
+id = "neon_night_board"
+display_name = "Neon Night Board"
+description = "Procedurally generated Neon Night board design"
 category = 2
-rarity = 1
+rarity = 0
 set_name = ""
 subcategory = ""
-icon_path = "res://Pyramids/assets/icons/boards/arctic_aurora_board.png"
-texture_path = "res://Pyramids/assets/icons/boards/arctic_aurora_board.png"
-preview_texture_path = "res://Pyramids/assets/icons/boards/arctic_aurora_board.png"
+icon_path = "res://Pyramids/assets/icons/boards/neon_night_board.png"
+texture_path = "res://Pyramids/assets/icons/boards/neon_night_board.png"
+preview_texture_path = "res://Pyramids/assets/icons/boards/neon_night_board.png"
 is_procedural = true
 is_animated = true
-procedural_script_path = "res://Pyramids/scripts/items/boards/procedural/uncommon/ArcticAuroraBoard.gd"
+procedural_script_path = "res://Pyramids/scripts/items/boards/procedural/common/NeonNightBoard.gd"
 animation_metadata = {}
 background_type = "procedural"
 background_scene_path = ""
@@ -38,7 +38,7 @@ border_shader_path = ""
 sound_effect_path = ""
 effect_type = "fire"
 max_combo_visuals = 20
-base_price = 100
+base_price = 50
 currency_type = "stars"
 is_purchasable = true
 is_tradeable = false

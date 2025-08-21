@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bpajg7kbj7b64"
-path="res://.godot/imported/clouds_1.png-ae7ed2f030fde96884d1104c662d34bd.ctex"
+uid="uid://tu67lngnp8s6"
+path="res://.godot/imported/forest_spirits_front.png-bee281939dcf67c66877c6fe55811216.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Pyramids/scenes/items/boards/1_pyramids/clouds_1.png"
-dest_files=["res://.godot/imported/clouds_1.png-ae7ed2f030fde96884d1104c662d34bd.ctex"]
+source_file="res://Pyramids/assets/icons/card_fronts/forest_spirits_front.png"
+dest_files=["res://.godot/imported/forest_spirits_front.png-bee281939dcf67c66877c6fe55811216.ctex"]
 
 [params]
 
