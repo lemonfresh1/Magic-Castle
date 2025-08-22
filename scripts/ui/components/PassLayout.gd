@@ -17,20 +17,18 @@ signal pass_refreshed()
 @onready var progress_label: Label = $VBoxContainer/HeaderContainer/ProgressBar/ProgressLabel
 @onready var timer_label: Label = $VBoxContainer/HeaderContainer/ProgressBar/TimerLabel
 @onready var pass_level_label: Label = $VBoxContainer/HeaderContainer/ProgressBar/PassLevelLabel
-@onready var level_label: Label = $VBoxContainer/ContentContainer/FixedLabelsContainer/Control/LevelLabel
-@onready var free_pass_label: Label = $VBoxContainer/ContentContainer/FixedLabelsContainer/Control2/FreePassLabel
-@onready var battle_pass_label: Label = $VBoxContainer/ContentContainer/FixedLabelsContainer/Control3/BattlePassLabel
 @onready var scroll_container: ScrollContainer = $VBoxContainer/ContentContainer/ScrollContainer
 @onready var margin_container: MarginContainer = $VBoxContainer/ContentContainer/ScrollContainer/MarginContainer
 @onready var tiers_container: HBoxContainer = $VBoxContainer/ContentContainer/ScrollContainer/MarginContainer/TiersContainer
 @onready var buy_premium_button: Button = $VBoxContainer/ButtonContainer/BuyPremiumButton
 @onready var buy_levels_button: Button = $VBoxContainer/ButtonContainer/BuyLevelsButton
 @onready var claim_all_button: Button = $VBoxContainer/ButtonContainer/ClaimAllButton
+@onready var fixed_labels_container: VBoxContainer = $VBoxContainer/ContentContainer/FixedLabelsContainer
 
 # Configuration
 @export var pass_type: String = "season"  # "season" or "event"
 @export var theme_type: String = "battle_pass"  # "battle_pass" or "holiday"
-@export var auto_scroll_to_current: bool = true
+@export var auto_scroll_to_current: bool = false
 @export var scroll_speed: float = 500.0  # Pixels per second for smooth scrolling
 
 # State
@@ -40,14 +38,14 @@ var is_premium: bool = false
 var countdown_timer: Timer
 var is_setting_up: bool = false  # Prevent concurrent setups
 var has_been_setup: bool = false  # Track if initial setup is done
+var has_scrolled_to_current: bool = false  # Track if we've done initial scroll
+
 
 func _ready():
 	print("[PassLayout] _ready() called - Instance ID: ", get_instance_id())
 	print("[PassLayout] Pass type: ", pass_type, " Theme type: ", theme_type)
 	print("[PassLayout] Current tier container children: ", tiers_container.get_child_count())
 	
-	# Debug label creation
-	print("[PassLayout] Creating labels - free_pass_label: ", free_pass_label, " battle_pass_label: ", battle_pass_label)
 	
 	# Ensure we expand to fill parent
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -70,11 +68,6 @@ func _ready():
 	# Setup labels and styling
 	_setup_labels()
 	_apply_styling()
-	
-	# Rotate the vertical labels
-	print("[PassLayout] Rotating labels to -90 degrees")
-	free_pass_label.rotation_degrees = -90
-	battle_pass_label.rotation_degrees = -90
 	
 	# Connect button signals
 	buy_premium_button.pressed.connect(_on_buy_premium_pressed)
@@ -140,9 +133,6 @@ func _apply_styling():
 	
 	timer_label.add_theme_font_size_override("font_size", UIStyleManager.get_font_size("size_body_small"))
 	timer_label.add_theme_color_override("font_color", UIStyleManager.get_color("gray_600"))
-	
-	level_label.add_theme_font_size_override("font_size", UIStyleManager.get_font_size("size_body_small"))
-	level_label.add_theme_color_override("font_color", UIStyleManager.get_color("gray_700"))
 
 func setup_pass():
 	"""Initialize the pass with current data"""
@@ -210,9 +200,10 @@ func setup_pass():
 	_update_labels()
 	_update_button_states()
 	
-	# Scroll to current tier
-	if auto_scroll_to_current:
+	# Only scroll to current tier on first setup
+	if auto_scroll_to_current and not has_scrolled_to_current:
 		call_deferred("_scroll_to_tier", current_tier)
+		has_scrolled_to_current = true
 	
 	is_setting_up = false
 	has_been_setup = true
@@ -296,20 +287,84 @@ func _on_tier_reward_claim_requested(tier_number: int, is_free: bool):
 			reward_claimed.emit(tier_number, true)
 
 func _setup_labels():
-	"""Setup label text based on pass type"""
-	print("[PassLayout] _setup_labels() called")
+	"""Setup icon indicators for level and tracks"""
+	print("[PassLayout] Setting up icon indicators")
 	
-	if pass_type == "season":
-		level_label.text = "Lv."
-		# Free and Battle Pass labels are rotated -90 degrees, so keep them short
-		free_pass_label.text = "Free"
-		battle_pass_label.text = "Premium"
-	else:
-		level_label.text = "Tier"
-		free_pass_label.text = "Free"
-		battle_pass_label.text = "Premium"
+	# Clear any existing children
+	for child in fixed_labels_container.get_children():
+		child.queue_free()
 	
-	print("[PassLayout] Labels set - Level: '%s', Free: '%s', Premium: '%s'" % [level_label.text, free_pass_label.text, battle_pass_label.text])
+	# Wait for cleanup
+	await get_tree().process_frame
+	
+	# Create three containers for the icons
+	var level_container = Control.new()
+	level_container.name = "LevelIconContainer"
+	level_container.custom_minimum_size = Vector2(95, 50)  # Match tier column width
+	
+	var free_container = Control.new()
+	free_container.name = "FreeIconContainer"
+	free_container.custom_minimum_size = Vector2(95, 86)  # Match reward card height
+	
+	var premium_container = Control.new()
+	premium_container.name = "PremiumIconContainer"
+	premium_container.custom_minimum_size = Vector2(95, 86)  # Match reward card height
+	
+	# Add containers to fixed labels
+	fixed_labels_container.add_child(level_container)
+	fixed_labels_container.add_child(free_container)
+	fixed_labels_container.add_child(premium_container)
+	
+	# Create level icon
+	var level_icon = TextureRect.new()
+	level_icon.name = "LevelIcon"
+	level_icon.texture = load("res://Pyramids/assets/ui/bp_lvl.png")
+	level_icon.expand_mode = TextureRect.EXPAND_FIT_HEIGHT_PROPORTIONAL
+	level_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	level_icon.custom_minimum_size = Vector2(32, 32)
+	level_icon.size = Vector2(64, 64)
+	
+	# Center the level icon
+	level_icon.set_anchors_preset(Control.PRESET_CENTER)
+	level_icon.position = Vector2(-16, -16)  # Half of size to center
+	
+	
+	level_container.add_child(level_icon)
+	
+	# Create gift icon for free track
+	var gift_icon = TextureRect.new()
+	gift_icon.name = "GiftIcon"
+	gift_icon.texture = load("res://Pyramids/assets/ui/bp_gift.png")
+	gift_icon.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+	gift_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	gift_icon.custom_minimum_size = Vector2(30, 30)
+	gift_icon.size = Vector2(64, 64)
+	
+	# Center in container
+	gift_icon.set_anchors_preset(Control.PRESET_CENTER)
+	gift_icon.position = Vector2(-15, -15)
+	
+	free_container.add_child(gift_icon)
+	
+	# Create crown icon for premium track
+	var crown_icon = TextureRect.new()
+	crown_icon.name = "CrownIcon"
+	crown_icon.texture = load("res://Pyramids/assets/ui/bp_crown.png")
+	crown_icon.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+	crown_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	crown_icon.custom_minimum_size = Vector2(30, 30)
+	crown_icon.size = Vector2(64, 64)
+	
+	# Center in container
+	crown_icon.set_anchors_preset(Control.PRESET_CENTER)
+	crown_icon.position = Vector2(-15, -15)
+	
+	# Golden tint for premium
+	crown_icon.modulate = Color("#FFD700")
+	
+	premium_container.add_child(crown_icon)
+	
+	print("[PassLayout] Icon indicators created")
 
 func _update_labels():
 	"""Update dynamic labels"""
@@ -322,7 +377,6 @@ func _update_labels():
 		pass_level_label.text = "Level %d" % SeasonPassManager.get_current_tier()
 		
 	elif pass_type == "holiday":
-		# FIXED: Use HolidayEventManager and show HP
 		var progress = HolidayEventManager.get_tier_progress()
 		progress_label.text = "%d/%d HP" % [progress.current_hp, progress.required_hp]
 		
@@ -442,9 +496,6 @@ func _on_level_up(new_level: int):
 		var column = tier_columns[i]
 		if is_instance_valid(column):
 			column.set_current(i + 1 == current_tier)
-	
-	if auto_scroll_to_current:
-		_scroll_to_tier(current_tier)
 
 func _on_season_progress_updated():
 	"""Handle any season progress update"""

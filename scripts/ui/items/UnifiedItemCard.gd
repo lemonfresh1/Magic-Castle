@@ -42,6 +42,8 @@ enum SizePreset {
 @onready var equipped_badge: TextureRect = $OverlayContainer/EquippedBadge
 @onready var locked_overlay: Control = $LockedOverlay
 @onready var shadow_layer: Control = null  # Created dynamically
+@onready var lock_icon: TextureRect = $OverlayContainer/LockIcon
+@onready var check_icon: TextureRect = $OverlayContainer/CheckIcon
 
 # === PROPERTIES ===
 var item_data: UnifiedItemData = null  # Can be null for raw rewards
@@ -80,6 +82,16 @@ func _ready():
 		# Ensure it has no background color
 		if procedural_canvas is ColorRect:
 			procedural_canvas.color = Color(0, 0, 0, 0)
+	
+	# Initialize lock icon visibility
+	if lock_icon:
+		lock_icon.visible = false
+		lock_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	
+	# Initialize check icon visibility
+	if check_icon:
+		check_icon.visible = false
+		check_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	
 	# Hide background texture if this is a small preset (might be set before ready)
 	if size_preset in [SizePreset.MINI_DISPLAY, SizePreset.PASS_REWARD]:
@@ -220,31 +232,83 @@ func setup_from_dict(reward_dict: Dictionary, preset: SizePreset):
 
 func set_reward_state(unlocked: bool, claimed: bool):
 	"""Set the state for reward items (controls animation and appearance)"""
+	# Check if this is an empty reward slot (no actual rewards)
+	var is_empty_slot = _is_empty_reward()
+	
 	is_locked = not unlocked
 	is_claimed = claimed
 	is_claimable = unlocked and not claimed
 	
-	# Only animate if claimable
-	animation_enabled = is_claimable
+	# Only animate if claimable and not empty
+	animation_enabled = is_claimable and not is_empty_slot
 	
 	# Ensure processing is enabled for animations
 	if animation_enabled:
 		set_process(true)
 	else:
-		set_process(false)  # Stop processing if not animating
+		set_process(false)
 	
-	# Update visual state
-	_update_lock_state()
+	# Update visual state - pass empty flag
+	_update_lock_state_for_rewards(is_empty_slot)
 	
-	# Dim if claimed
+	# UPDATE: Show checkmark for claimed items
+	if check_icon:
+		check_icon.visible = is_claimed and not is_empty_slot
+		if check_icon.visible:
+			# Position and size the checkmark
+			check_icon.custom_minimum_size = Vector2(24, 24)
+			check_icon.size = Vector2(24, 24)
+			check_icon.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+			check_icon.position = Vector2(-26, 2)
+			check_icon.modulate = Color("#10B981")  # Green checkmark
+	
+	# Dim if claimed (but preserve icon colors)
 	if is_claimed:
 		modulate.a = 0.5
 		if shadow_layer:
 			shadow_layer.visible = false
 	else:
 		modulate.a = 1.0
-		if shadow_layer and is_claimable:
+		if shadow_layer and is_claimable and size_preset != SizePreset.PASS_REWARD:
 			shadow_layer.visible = true
+	
+	# PRESERVE ICON COLORS - reset icon modulation after state changes
+	if icon_texture:
+		icon_texture.modulate = Color.WHITE
+		icon_texture.self_modulate = Color.WHITE
+
+func _is_empty_reward() -> bool:
+	"""Check if reward_data is empty or has no meaningful content"""
+	if reward_data.is_empty():
+		return true
+	
+	# Check if it has any actual reward content
+	var has_content = (
+		reward_data.has("stars") or 
+		reward_data.has("xp") or 
+		reward_data.has("cosmetic_id") or
+		reward_data.has("cosmetic_type")
+	)
+	
+	return not has_content
+	
+func _update_lock_state_for_rewards(is_empty_slot: bool):
+	"""Update lock display for rewards - use simple icon"""
+	# Remove old locked overlay if it exists
+	if locked_overlay and is_instance_valid(locked_overlay):
+		locked_overlay.queue_free()
+		locked_overlay = null
+	
+	# Show lock icon ONLY if locked AND has content
+	if lock_icon:
+		lock_icon.visible = is_locked and not is_empty_slot
+		
+		# Size for pass rewards
+		lock_icon.custom_minimum_size = Vector2(20, 20)
+		lock_icon.size = Vector2(20, 20)
+		lock_icon.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+		lock_icon.position = Vector2(-22, 2)
+
 
 func setup_with_preset(item: UnifiedItemData, preset: SizePreset):
 	"""Configure with UnifiedItemData and size preset"""
@@ -657,30 +721,36 @@ func _update_equipped_badge():
 		equipped_badge.visible = false
 
 func _update_lock_state():
-	"""Update lock overlay using chain animation"""
-	if not locked_overlay:
-		# For reward cards, locked_overlay might not exist in scene
-		# Create it dynamically if needed
-		if is_locked and not has_node("LockedOverlay"):
-			locked_overlay = Control.new()
-			locked_overlay.name = "LockedOverlay"
-			locked_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-			locked_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			add_child(locked_overlay)
-		elif not is_locked:
-			return  # Nothing to do if not locked and no overlay
-		else:
-			locked_overlay = get_node_or_null("LockedOverlay")
-			if not locked_overlay:
-				return
+	"""Update lock display using simple lock icon"""
+	# Remove old locked overlay if it exists (cleanup)
+	if locked_overlay and is_instance_valid(locked_overlay):
+		locked_overlay.queue_free()
+		locked_overlay = null
 	
-	if is_locked:
-		locked_overlay.visible = true
-		_setup_chain_lock()
-	else:
-		locked_overlay.visible = false
-		for child in locked_overlay.get_children():
-			child.queue_free()
+	# Use the simple lock icon
+	if lock_icon:
+		lock_icon.visible = is_locked
+		
+		# Position based on size preset
+		match size_preset:
+			SizePreset.PASS_REWARD:
+				# For 86x86 cards, make it 20x20 in top-right
+				lock_icon.custom_minimum_size = Vector2(20, 20)
+				lock_icon.size = Vector2(20, 20)
+				lock_icon.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+				lock_icon.position = Vector2(-22, 2)  # Slight padding from edge
+			SizePreset.MINI_DISPLAY:
+				# For 50x50 cards, make it 12x12
+				lock_icon.custom_minimum_size = Vector2(12, 12)
+				lock_icon.size = Vector2(12, 12)
+				lock_icon.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+				lock_icon.position = Vector2(-14, 1)
+			_:
+				# Default size for other presets
+				lock_icon.custom_minimum_size = Vector2(24, 24)
+				lock_icon.size = Vector2(24, 24)
+				lock_icon.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+				lock_icon.position = Vector2(-26, 2)
 
 # CRITICAL FIX for _setup_procedural_display in UnifiedItemCard.gd
 # This ensures DrawCanvas is ALWAYS created for procedural items
@@ -1028,6 +1098,9 @@ func _get_card_size() -> Vector2:
 
 func _setup_reward_display():
 	"""Setup display for raw reward dictionary"""
+	# RESET any modulation first
+	self.modulate = Color.WHITE  # Reset card modulation
+	
 	# Hide background texture for rewards
 	if background_texture:
 		background_texture.visible = false
@@ -1035,6 +1108,12 @@ func _setup_reward_display():
 	# Hide procedural canvas for rewards
 	if procedural_canvas:
 		procedural_canvas.visible = false
+	
+	# Check if empty first
+	if _is_empty_reward():
+		# Empty slot - just show empty bordered container
+		_setup_empty_slot_display()
+		return
 	
 	# Create icon based on reward type
 	if reward_data.has("stars"):
@@ -1047,64 +1126,110 @@ func _setup_reward_display():
 		# Generic reward
 		_setup_generic_reward_display()
 
+func _setup_empty_slot_display():
+	"""Display for empty reward slots - just a semi-transparent placeholder"""
+	# Hide icon
+	if icon_texture:
+		icon_texture.visible = false
+	
+	# Hide labels
+	if name_label:
+		name_label.visible = false
+	if price_label:
+		price_label.visible = false
+	
+	# Make the whole card semi-transparent to indicate emptiness
+	modulate.a = 0.6
+
 func _setup_currency_display(currency_type: String, amount: int):
-	"""Display currency rewards (stars, XP)"""
+	"""Display currency rewards (stars, XP) with proper sprites"""
 	# Show icon
 	if icon_texture:
 		icon_texture.visible = true
 		icon_texture.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-		icon_texture.size = Vector2(40, 40) if size_preset == SizePreset.PASS_REWARD else Vector2(24, 24)
-		icon_texture.position = size / 2 - icon_texture.size / 2
 		
-		# Try to load placeholder food icons for now
-		var food_path = ""
+		# Size based on preset - slightly smaller to fit well
+		var icon_size = Vector2(50, 50) if size_preset == SizePreset.PASS_REWARD else Vector2(40, 40)
+		icon_texture.size = icon_size
+		icon_texture.position = (size / 2) - (icon_texture.size / 2)
+		icon_texture.position.y -= 8  # Move icon up a bit to make room for text
+		
+		# Load proper sprites for stars and XP
+		var sprite_path = ""
 		match currency_type:
 			"stars":
-				food_path = "res://Pyramids/assets/placeholder/food/59_jelly.png"  # Golden jelly for stars
+				sprite_path = "res://Pyramids/assets/ui/bp_star.png"
 			"xp":
-				food_path = "res://Pyramids/assets/placeholder/food/57_icecream.png"  # Ice cream for XP
+				sprite_path = "res://Pyramids/assets/ui/bp_xp.png"
+			_:
+				# Fallback to food icons for other types
+				sprite_path = "res://Pyramids/assets/placeholder/food/92_sandwich.png"
 		
-		if ResourceLoader.exists(food_path):
-			icon_texture.texture = load(food_path)
+		if ResourceLoader.exists(sprite_path):
+			icon_texture.texture = load(sprite_path)
+			icon_texture.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+			icon_texture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			
+			# ENSURE NO TINTING - Force white modulation to show original colors
+			icon_texture.modulate = Color.WHITE
+			icon_texture.self_modulate = Color.WHITE
+		else:
+			push_warning("[UnifiedItemCard] Currency sprite not found: " + sprite_path)
 		
-		# Use name label to show amount
+		# Use NameLabel to show amount below icon
 		if name_label:
 			name_label.visible = true
 			name_label.text = str(amount)
+			
+			# Position at bottom of card
 			name_label.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-			name_label.anchor_top = 0.7
-			name_label.add_theme_color_override("font_color", Color("#FFD700") if currency_type == "stars" else Color("#00FF00"))
-			name_label.add_theme_font_size_override("font_size", 16)
+			name_label.anchor_top = 0.65  # Start from 65% down
+			name_label.anchor_bottom = 0.95  # End at 95% down
+			name_label.offset_left = 0
+			name_label.offset_right = 0
+			
+			# Style the text
+			match currency_type:
+				"stars":
+					name_label.add_theme_color_override("font_color", Color("#FFD700"))  # Gold
+				"xp":
+					name_label.add_theme_color_override("font_color", Color("#00E5FF"))  # Cyan
+				_:
+					name_label.add_theme_color_override("font_color", Color.WHITE)
+			
+			name_label.add_theme_font_size_override("font_size", 20)
+			name_label.add_theme_color_override("font_outline_color", Color.BLACK)
+			name_label.add_theme_constant_override("outline_size", 2)
+			name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			
+			# Ensure label isn't tinted either
+			name_label.modulate = Color.WHITE
+			name_label.self_modulate = Color.WHITE
 	
-	# HIDE price label for rewards
+	# Hide price label for rewards
 	if price_label:
 		price_label.visible = false
 
 func _setup_cosmetic_reward_display(cosmetic_type: String, cosmetic_id: String):
 	"""Display cosmetic rewards"""
-	if icon_texture:
-		icon_texture.visible = true
-		icon_texture.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-		icon_texture.size = Vector2(40, 40) if size_preset == SizePreset.PASS_REWARD else Vector2(24, 24)
-		icon_texture.position = size / 2 - icon_texture.size / 2
-		
-		# Use placeholder food for cosmetics
-		var food_items = ["34_donut.png", "75_pudding.png", "77_potatochips.png", "83_popcorn.png", "87_ramen.png"]
-		var food_path = "res://Pyramids/assets/placeholder/food/" + food_items[randi() % food_items.size()]
-		
-		if ResourceLoader.exists(food_path):
-			icon_texture.texture = load(food_path)
+	var item = ItemManager.get_item(cosmetic_id) if ItemManager else null
 	
-	# Show "NEW!" label
-	if name_label:
-		name_label.visible = true
-		name_label.text = "NEW!"
-		name_label.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-		name_label.anchor_top = 0.7
-		name_label.add_theme_color_override("font_color", Color("#FFB75A"))
-		name_label.add_theme_font_size_override("font_size", 14)
+	if item:
+		item_data = item
+		size_preset = SizePreset.PASS_REWARD
+		_setup_background()  # Handles procedural display
+		
+		# NO TEXT LABELS for cosmetics - keep it clean
+		if name_label:
+			name_label.visible = false
+	else:
+		push_warning("[UnifiedItemCard] Cosmetic not found in ItemManager: %s" % cosmetic_id)
+		# Since we have all items, this shouldn't happen
+		# Just show nothing rather than placeholder
+		if icon_texture:
+			icon_texture.visible = false
 	
-	# HIDE price label for rewards
 	if price_label:
 		price_label.visible = false
 
@@ -1129,6 +1254,10 @@ func _setup_generic_reward_display():
 
 func _create_shadow_layer():
 	"""Create shadow layer for floating effect"""
+	# NO SHADOWS for pass rewards
+	if size_preset == SizePreset.PASS_REWARD:
+		return  # Skip shadow creation entirely
+	
 	shadow_layer = Control.new()
 	shadow_layer.name = "ShadowLayer"
 	shadow_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1219,8 +1348,8 @@ func _update_animation_state():
 	# For items, animate if not locked and not equipped
 	animation_enabled = not is_locked and not is_equipped and display_mode != DisplayMode.INVENTORY
 	
-	# Show shadow for animated items
-	if shadow_layer:
+	# Show shadow for animated items (but NOT pass rewards)
+	if shadow_layer and size_preset != SizePreset.PASS_REWARD:
 		shadow_layer.visible = animation_enabled
 
 # === EXPANDED VIEW ===
@@ -1416,147 +1545,6 @@ func _draw_badge_icon(badge_node: TextureRect, badge_type: String):
 	
 	icon_drawer.queue_redraw()
 
-func _setup_chain_lock():
-	"""Create animated chain lock overlay"""
-	for child in locked_overlay.get_children():
-		child.queue_free()
-	
-	# Create dark overlay background
-	var dark_overlay = ColorRect.new()
-	dark_overlay.name = "DarkOverlay"
-	dark_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	dark_overlay.color = Color(0, 0, 0, 0.6)
-	dark_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	locked_overlay.add_child(dark_overlay)
-	
-	# Create chain drawer
-	var chain_drawer = Control.new()
-	chain_drawer.name = "ChainDrawer"
-	chain_drawer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	chain_drawer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	locked_overlay.add_child(chain_drawer)
-	
-	chain_drawer.draw.connect(func():
-		_draw_chains(chain_drawer)
-	)
-	
-	_animate_chains_entrance(locked_overlay)
-	chain_drawer.queue_redraw()
-
-func _draw_chains(drawer: Control):
-	"""Draw the X pattern of chains"""
-	var card_size = drawer.size
-	
-	# Chain properties
-	var link_width = 8.0
-	var link_height = 12.0
-	var link_spacing = 2.0
-	
-	# Colors
-	var chain_color = Color(0.7, 0.7, 0.7, 1.0)
-	var chain_shadow = Color(0.2, 0.2, 0.2, 0.8)
-	var chain_highlight = Color(0.9, 0.9, 0.9, 1.0)
-	
-	# Draw two diagonal chains
-	_draw_chain_line(drawer, Vector2(0, 0), Vector2(card_size.x, card_size.y), 
-					link_width, link_height, link_spacing, 
-					chain_color, chain_shadow, chain_highlight)
-	
-	_draw_chain_line(drawer, Vector2(card_size.x, 0), Vector2(0, card_size.y),
-					link_width, link_height, link_spacing,
-					chain_color, chain_shadow, chain_highlight)
-	
-	_draw_padlock(drawer, card_size / 2, 20)
-
-func _draw_chain_line(drawer: Control, start: Vector2, end: Vector2, 
-					link_width: float, link_height: float, spacing: float,
-					color: Color, shadow_color: Color, highlight_color: Color):
-	"""Draw a single chain line made of oval links"""
-	var direction = (end - start).normalized()
-	var angle = direction.angle()
-	var total_length = start.distance_to(end)
-	var link_total = link_height + spacing
-	var num_links = int(total_length / link_total)
-	
-	for i in range(num_links):
-		var link_pos = start + direction * (i * link_total)
-		
-		_draw_chain_link(drawer, link_pos + Vector2(1, 1), link_width, link_height, 
-						angle, shadow_color, true)
-		
-		_draw_chain_link(drawer, link_pos, link_width, link_height, 
-						angle, color, false)
-		
-		_draw_chain_link_highlight(drawer, link_pos, link_width, link_height,
-								angle, highlight_color)
-
-func _draw_chain_link(drawer: Control, pos: Vector2, width: float, height: float, 
-					angle: float, color: Color, is_shadow: bool):
-	"""Draw a single oval chain link"""
-	var points = 16
-	var oval_points = PackedVector2Array()
-	
-	for i in range(points + 1):
-		var theta = (i / float(points)) * TAU
-		var x = cos(theta) * width / 2
-		var y = sin(theta) * height / 2
-		
-		var rotated = Vector2(x, y).rotated(angle)
-		oval_points.append(pos + rotated)
-	
-	if not is_shadow:
-		drawer.draw_polyline(oval_points, color, 2.0, true)
-	else:
-		drawer.draw_polyline(oval_points, color, 2.5, true)
-
-func _draw_chain_link_highlight(drawer: Control, pos: Vector2, width: float, height: float,
-							angle: float, color: Color):
-	"""Draw highlight on chain link for 3D effect"""
-	var points = 8
-	var highlight_points = PackedVector2Array()
-	
-	for i in range(points):
-		var theta = (i / float(points - 1)) * PI - PI/2
-		var x = cos(theta) * width / 2.5
-		var y = sin(theta) * height / 2.5
-		
-		var rotated = Vector2(x, y).rotated(angle)
-		highlight_points.append(pos + rotated)
-	
-	drawer.draw_polyline(highlight_points, color, 1.0, true)
-
-func _draw_padlock(drawer: Control, pos: Vector2, size: float):
-	"""Draw a padlock at the chain intersection"""
-	var body_rect = Rect2(pos.x - size/2, pos.y - size/3, size, size * 0.8)
-	drawer.draw_rect(body_rect, Color(0.5, 0.5, 0.5, 1.0), true)
-	drawer.draw_rect(body_rect, Color(0.3, 0.3, 0.3, 1.0), false, 2.0)
-	
-	var shackle_points = PackedVector2Array()
-	var shackle_radius = size * 0.35
-	
-	for i in range(11):
-		var angle = PI + (i / 10.0) * PI
-		var point = pos + Vector2(cos(angle), sin(angle)) * shackle_radius
-		point.y -= size * 0.2
-		shackle_points.append(point)
-	
-	drawer.draw_polyline(shackle_points, Color(0.4, 0.4, 0.4, 1.0), 3.0)
-	drawer.draw_circle(pos + Vector2(0, size * 0.1), 3, Color(0.2, 0.2, 0.2, 1.0))
-
-func _animate_chains_entrance(container: Control):
-	"""Animate chains sliding in from corners"""
-	container.modulate.a = 0.0
-	container.scale = Vector2(1.2, 1.2)
-	
-	var tween = create_tween()
-	tween.set_parallel(true)
-	tween.tween_property(container, "modulate:a", 1.0, 0.3)
-	tween.tween_property(container, "scale", Vector2.ONE, 0.3).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
-	
-	tween.chain().set_loops()
-	tween.tween_property(container, "modulate:a", 0.9, 1.0)
-	tween.tween_property(container, "modulate:a", 1.0, 1.0)
-
 # === SIGNAL HANDLERS ===
 
 func _on_gui_input(event: InputEvent):
@@ -1643,3 +1631,4 @@ func debug_print_canvas_info():
 			print("[DEBUG]   - Effective size: %s" % (draw_canvas.size * draw_canvas.scale.x))
 	else:
 		print("[DEBUG]   Normal rendering (no scaling)")
+ 

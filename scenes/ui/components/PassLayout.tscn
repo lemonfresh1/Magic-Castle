@@ -117,78 +117,9 @@ layout_mode = 2
 size_flags_vertical = 3
 
 [node name="FixedLabelsContainer" type="VBoxContainer" parent="VBoxContainer/ContentContainer"]
-custom_minimum_size = Vector2(30, 0)
+custom_minimum_size = Vector2(60, 0)
 layout_mode = 2
-
-[node name="Control" type="Control" parent="VBoxContainer/ContentContainer/FixedLabelsContainer"]
-self_modulate = Color(1, 1, 1, 0)
-layout_mode = 2
-size_flags_vertical = 3
-size_flags_stretch_ratio = 0.15
-
-[node name="LevelLabel" type="Label" parent="VBoxContainer/ContentContainer/FixedLabelsContainer/Control"]
-custom_minimum_size = Vector2(20, 20)
-layout_mode = 1
-anchors_preset = 7
-anchor_left = 0.5
-anchor_top = 1.0
-anchor_right = 0.5
-anchor_bottom = 1.0
-offset_left = -15.0
-offset_top = -31.0
-offset_right = 15.0
-grow_horizontal = 2
-grow_vertical = 0
-size_flags_vertical = 3
-size_flags_stretch_ratio = 0.4
-theme_override_colors/font_color = Color(0, 0, 0, 1)
-text = "Lvl"
-horizontal_alignment = 1
-vertical_alignment = 2
-
-[node name="Control2" type="Control" parent="VBoxContainer/ContentContainer/FixedLabelsContainer"]
-self_modulate = Color(1, 1, 1, 0)
-layout_mode = 2
-size_flags_vertical = 3
-size_flags_stretch_ratio = 0.42
-
-[node name="FreePassLabel" type="Label" parent="VBoxContainer/ContentContainer/FixedLabelsContainer/Control2"]
-layout_mode = 1
-anchors_preset = 2
-anchor_top = 1.0
-anchor_bottom = 1.0
-offset_top = -20.0
-offset_right = 48.0
-grow_vertical = 0
-rotation = -1.5708
-size_flags_vertical = 3
-size_flags_stretch_ratio = 0.9
-theme_override_colors/font_color = Color(0, 0, 0, 1)
-theme_override_font_sizes/font_size = 14
-text = "asdasd"
-
-[node name="Control3" type="Control" parent="VBoxContainer/ContentContainer/FixedLabelsContainer"]
-self_modulate = Color(1, 1, 1, 0)
-layout_mode = 2
-size_flags_vertical = 3
-size_flags_stretch_ratio = 0.42
-
-[node name="BattlePassLabel" type="Label" parent="VBoxContainer/ContentContainer/FixedLabelsContainer/Control3"]
-custom_minimum_size = Vector2(20, 20)
-layout_mode = 1
-anchors_preset = 2
-anchor_top = 1.0
-anchor_bottom = 1.0
-offset_top = -20.0
-offset_right = 48.0
-grow_vertical = 0
-rotation = -1.5708
-size_flags_vertical = 3
-size_flags_stretch_ratio = 0.9
-theme_override_colors/font_color = Color(0, 0, 0, 1)
-theme_override_constants/line_spacing = -9
-theme_override_font_sizes/font_size = 14
-text = "asdasd"
+size_flags_horizontal = 0
 
 [node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer/ContentContainer"]
 layout_mode = 2

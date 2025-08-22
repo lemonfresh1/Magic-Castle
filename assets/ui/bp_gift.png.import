@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c6gvbst0mo8mk"
-path="res://.godot/imported/bp_star.png-084bb53da10e665133496dc6f13d357f.ctex"
+uid="uid://iyplp1emeov1"
+path="res://.godot/imported/bp_gift.png-d973455bbe7e1c951b45b0a6a59b09a2.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Pyramids/assets/ui/bp_star.png"
-dest_files=["res://.godot/imported/bp_star.png-084bb53da10e665133496dc6f13d357f.ctex"]
+source_file="res://Pyramids/assets/ui/bp_gift.png"
+dest_files=["res://.godot/imported/bp_gift.png-d973455bbe7e1c951b45b0a6a59b09a2.ctex"]
 
 [params]
 

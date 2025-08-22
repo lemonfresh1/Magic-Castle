@@ -1,6 +1,6 @@
-[gd_resource type="Resource" script_class="UnifiedItemData" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="UnifiedItemData" load_steps=2 format=3 uid="uid://cv6qvldx6v5av"]
 
-[ext_resource type="Script" path="res://Pyramids/scripts/resources/UnifiedItemData.gd" id="1_qa6s0"]
+[ext_resource type="Script" uid="uid://d0xqbrsva3nam" path="res://Pyramids/scripts/resources/UnifiedItemData.gd" id="1_qa6s0"]
 
 [resource]
 script = ExtResource("1_qa6s0")
@@ -38,12 +38,12 @@ border_shader_path = ""
 sound_effect_path = ""
 effect_type = "fire"
 max_combo_visuals = 20
-base_price = 50
+base_price = 0
 currency_type = "stars"
-is_purchasable = true
+is_purchasable = false
 is_tradeable = false
 unlock_level = 0
-source = 1
+source = 6
 achievement_id = ""
 event_id = ""
 quest_id = ""

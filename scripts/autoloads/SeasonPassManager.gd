@@ -55,12 +55,13 @@ var season_rewards = {
 	"free": {
 		1: {"stars": 50},
 		3: {"stars": 100},
-		5: {"cosmetic_type": "emoji", "cosmetic_id": "season_emoji_1", "stars": 50},
-		8: {"stars": 150},
-		10: {"cosmetic_type": "card_skin", "cosmetic_id": "season_card_1"},
+		4: {"xp": 250},
+		5: {"cosmetic_type": "card_back", "cosmetic_id": "neon_night_back"},
+		8: {"xp": 500},  # ADD XP reward here
+		10: {"cosmetic_type": "card_front", "cosmetic_id": "neon_night_front"},
 		15: {"stars": 200},
-		20: {"cosmetic_type": "avatar", "cosmetic_id": "season_avatar_1"},
-		25: {"stars": 300},
+		20: {"cosmetic_type": "board", "cosmetic_id": "neon_night_board"},
+		25: {"xp": 1000},  # ADD XP reward here
 		30: {"cosmetic_type": "frame", "cosmetic_id": "season_frame_1"},
 		35: {"stars": 400},
 		40: {"cosmetic_type": "board_skin", "cosmetic_id": "season_board_1"},
@@ -68,14 +69,14 @@ var season_rewards = {
 	},
 	"premium": {
 		1: {"stars": 100},
-		2: {"cosmetic_type": "emoji", "cosmetic_id": "premium_emoji_1"},
+		2: {"cosmetic_type": "board", "cosmetic_id": "glyphwave_board"},
 		3: {"stars": 150},
-		4: {"cosmetic_type": "card_skin", "cosmetic_id": "premium_card_1"},
-		5: {"stars": 200, "cosmetic_type": "emoji", "cosmetic_id": "premium_emoji_2"},
-		7: {"cosmetic_type": "avatar", "cosmetic_id": "premium_avatar_1"},
+		4: {"cosmetic_type": "card_back", "cosmetic_id": "glyphwave_card_back"},
+		5: {"cosmetic_type": "card_front", "cosmetic_id": "glyphwave_card_front"},
+		7: {"xp": 750},  # ADD XP reward here
 		9: {"stars": 250},
 		10: {"cosmetic_type": "frame", "cosmetic_id": "premium_frame_1", "stars": 100},
-		12: {"cosmetic_type": "board_skin", "cosmetic_id": "premium_board_1"},
+		12: {"xp": 1500},
 		15: {"stars": 300, "cosmetic_type": "emoji", "cosmetic_id": "premium_emoji_3"},
 		18: {"cosmetic_type": "card_skin", "cosmetic_id": "premium_card_2"},
 		20: {"cosmetic_type": "avatar", "cosmetic_id": "premium_avatar_2", "stars": 200},
@@ -193,32 +194,19 @@ func _grant_rewards(rewards: Dictionary):
 	"""Grant rewards through proper managers"""
 	print("[SeasonPassManager] _grant_rewards called with: ", rewards)
 	
-	# Get managers
-	var star_manager = get_node("/root/StarManager")
-	var item_manager = get_node("/root/ItemManager")
-	
-	print("[SeasonPassManager] Manager checks - Star: %s, Item: %s" % [
-		star_manager != null,
-		item_manager != null
-	])
-	
 	# Grant stars
 	if rewards.has("stars"):
-		print("[SeasonPassManager] Attempting to grant %d stars" % rewards.stars)
-		if star_manager:
-			print("[SeasonPassManager] Calling star_manager.add_stars()")
-			# Temporarily enable rewards to ensure stars are granted
+		print("[SeasonPassManager] Granting %d stars" % rewards.stars)
+		if StarManager:
 			var old_state = StarManager.rewards_enabled
 			StarManager.rewards_enabled = true
-			star_manager.add_stars(rewards.stars, "season_pass_tier")
+			StarManager.add_stars(rewards.stars, "season_pass_tier")
 			StarManager.rewards_enabled = old_state
 			print("[SeasonPassManager] Stars added successfully")
-		else:
-			push_error("[SeasonPassManager] StarManager not found!")
 	
 	# Grant XP
 	if rewards.has("xp"):
-		print("[SeasonPassManager] Attempting to grant %d XP" % rewards.xp)
+		print("[SeasonPassManager] Granting %d XP" % rewards.xp)
 		if XPManager:
 			var old_state = XPManager.rewards_enabled
 			XPManager.rewards_enabled = true
@@ -226,20 +214,25 @@ func _grant_rewards(rewards: Dictionary):
 			XPManager.rewards_enabled = old_state
 			print("[SeasonPassManager] XP added successfully")
 	
-	# Grant cosmetics
+	# Grant cosmetics - FIX THE CALL
 	if rewards.has("cosmetic_id") and rewards.has("cosmetic_type"):
-		print("[SeasonPassManager] Attempting to grant cosmetic: %s (%s)" % [
+		print("[SeasonPassManager] Granting cosmetic: %s (%s)" % [
 			rewards.cosmetic_id,
 			rewards.cosmetic_type
 		])
-		if item_manager:
-			var success = item_manager.grant_item(rewards.cosmetic_id, UnifiedItemData.Source.SEASON_PASS)
+		
+		# Use EquipmentManager to grant the item
+		if EquipmentManager:
+			var success = EquipmentManager.grant_item(
+				rewards.cosmetic_id, 
+				"season_pass"  # source as string, not enum
+			)
 			if success:
 				print("[SeasonPassManager] Cosmetic granted successfully")
 			else:
-				print("[SeasonPassManager] Failed to grant cosmetic")
+				push_error("[SeasonPassManager] Failed to grant cosmetic: " + rewards.cosmetic_id)
 		else:
-			push_error("[SeasonPassManager] ItemManager not found!")
+			push_error("[SeasonPassManager] EquipmentManager not found!")
 	
 	print("[SeasonPassManager] _grant_rewards completed")
 
