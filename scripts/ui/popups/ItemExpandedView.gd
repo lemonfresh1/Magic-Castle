@@ -1,6 +1,24 @@
-# ItemExpandedView.gd - Popup for expanded item/reward display
+# ItemExpandedView.gd - Modal popup for detailed item/reward preview
 # Location: res://Pyramids/scripts/ui/popups/ItemExpandedView.gd
-# Last Updated: Production version - debug removed
+# Last Updated: August 23, 2025 - Added header documentation, identified click issue
+#
+# Dependencies:
+#   - UnifiedItemCard - Creates the actual item display
+#   - UnifiedItemData - Item data structure
+#
+# Flow: User clicks small item → UnifiedItemCard emits signal → Creates this popup
+#       → Shows large preview → User clicks X or backdrop → Popup closes
+#
+# Functionality:
+#   • Creates modal popup with dark backdrop
+#   • Displays items at full size (90x126 portrait, 192x126 landscape)
+#   • Handles both item data and reward dictionaries
+#   • Auto-sizes based on item type (board vs card)
+#   • Closes on backdrop click or X button
+#   • Hides price/name overlays for clean preview
+#
+# Signals Out:
+#   - closed - When popup is dismissed
 
 extends PanelContainer
 

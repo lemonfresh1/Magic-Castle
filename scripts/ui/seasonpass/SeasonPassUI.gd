@@ -188,7 +188,6 @@ func _setup_battle_pass_tab(battle_pass_tab: Control):
 	pass_layout.offset_top = 10
 	pass_layout.pass_type = "season"
 	pass_layout.theme_type = "battle_pass"
-	pass_layout.auto_scroll_to_current = true
 	
 	# Connect signals
 	_connect_pass_layout_signals()

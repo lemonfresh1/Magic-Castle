@@ -10,10 +10,15 @@ signal holiday_level_up(new_level: int)
 signal holiday_event_started(event_id: String)
 signal holiday_event_ended(event_id: String)
 signal holiday_progress_updated()  # For UI refresh
+signal tier_claimed(tier_num: int)
+signal holiday_pass_updated()
 
 const SAVE_PATH = "user://holiday_pass_data.save"
 const HP_PER_LEVEL = 10  # Holiday Points per level
 const MAX_TIER = 30  # Shorter than season pass
+const PREMIUM_PASS_COST: int = 1000
+const TIER_SKIP_COST_PER_5: int = 500
+const TIER_SKIP_BUNDLE_SIZE: int = 5
 
 # Tiers that have rewards
 const FREE_REWARD_TIERS = [1, 3, 5, 8, 10, 15, 20, 25, 30]
@@ -169,39 +174,38 @@ func add_holiday_points(amount: int, source: String = "gameplay"):
 func add_holiday_currency(amount: int):
 	add_holiday_points(amount, "legacy_currency")
 
-func claim_tier_rewards(tier_number: int, is_premium: bool = false) -> bool:
-	if tier_number < 1 or tier_number > MAX_TIER:
+func claim_tier_rewards(tier_num: int, claim_free: bool = true, claim_premium: bool = true) -> bool:
+	"""Claim rewards with separate control for free/premium - matching SeasonPassManager"""
+	if tier_num < 1 or tier_num > MAX_TIER:
 		return false
 		
-	var tier = current_event.tiers[tier_number - 1]
-	
-	if not tier.is_unlocked:
+	var tier = current_event.tiers[tier_num - 1]
+	if not tier:
 		return false
 	
-	if is_premium and not holiday_data.has_premium_pass:
-		return false
+	var claimed_something = false
 	
-	var rewards = {}
-	var tier_key = ""
-	
-	if is_premium and not tier.premium_claimed:
-		rewards = tier.premium_rewards
-		tier.premium_claimed = true
-		tier_key = "tier_%d_premium" % tier_number
-	elif not is_premium and not tier.free_claimed:
-		rewards = tier.free_rewards
+	# Claim free if requested and available
+	if claim_free and not tier.free_claimed and tier.is_unlocked:
+		_grant_rewards(tier.free_rewards)
 		tier.free_claimed = true
-		tier_key = "tier_%d_free" % tier_number
-	else:
-		return false  # Already claimed
+		holiday_data.claimed_tiers.append("tier_%d_free" % tier_num)
+		claimed_something = true
 	
-	# Grant rewards
-	_grant_rewards(rewards)
+	# Claim premium if requested and available
+	if claim_premium and holiday_data.has_premium_pass and not tier.premium_claimed and tier.is_unlocked:
+		_grant_rewards(tier.premium_rewards)
+		tier.premium_claimed = true
+		holiday_data.claimed_tiers.append("tier_%d_premium" % tier_num)
+		claimed_something = true
 	
-	holiday_data.claimed_tiers.append(tier_key)
-	save_holiday_data()
-	holiday_progress_updated.emit()
-	return true
+	if claimed_something:
+		save_holiday_data()
+		tier_claimed.emit(tier_num)
+		holiday_pass_updated.emit()
+		holiday_progress_updated.emit()  # Keep this extra signal for holiday
+	
+	return claimed_something
 
 func _grant_rewards(rewards: Dictionary):
 	"""Grant rewards through proper managers"""

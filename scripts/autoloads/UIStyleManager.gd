@@ -2,6 +2,15 @@
 # Location: res://Pyramids/scripts/autoloads/UIStyleManager.gd
 # Last Updated: Added comprehensive design system [Date]
 
+# TODO: REFACTOR - Split into theme components (1,199 lines)
+# See roadmap: res://docs/CodebaseImprovementRoadmap.md
+# Priority: HIGH - Used by 17+ scripts
+# Split into:
+#   - UIConstants.gd (sizes, spacing)
+#   - UIColors.gd (theme colors)
+#   - UIFonts.gd (typography)
+#   - UIAnimations.gd (transitions)
+
 extends Node
 
 # Design system colors - from your design doc

@@ -1,9 +1,33 @@
-# TierColumn.gd - Individual tier column with UnifiedItemCard integration
+# TierColumn.gd - Individual tier column display with reward cards
 # Location: res://Pyramids/scripts/ui/components/TierColumn.gd
-# Last Updated: Integrated UnifiedItemCard, removed redundant lock system [Date]
+# Last Updated: August 23, 2025 - Fixed manager selection bug, added popup display, cleaned debug prints
+#
+# Dependencies:
+#   - UnifiedItemCard - Displays individual rewards
+#   - SeasonPassManager/HolidayEventManager - Handles claiming logic
+#   - UIStyleManager - Provides styling
+#   - RewardClaimPopup (scene) - Shows claim confirmation
+#
+# Flow: PassLayout creates columns → Setup with tier data → Creates UnifiedItemCards
+#       → User clicks card → Calls manager claim → Shows popup → Updates visual state
+#
+# Functionality:
+#   • Displays one tier column with free and premium rewards
+#   • Creates and manages UnifiedItemCard instances for each reward
+#   • Handles click events for claiming rewards
+#   • Shows reward popup after successful claim
+#   • Shows current tier with special styling
+#   • Applies locked/claimed/claimable states to cards
+#   • Centers cards properly in column
+#
+# Signals Out:
+#   - reward_claim_requested(tier_number, is_free) - When user wants to claim
 
 extends VBoxContainer
 class_name TierColumn
+
+# Debug flag - set to false for production
+const DEBUG = true
 
 # Global counter for debugging
 static var total_instances: int = 0
@@ -16,9 +40,11 @@ var instance_id: int = 0
 var current_tier_level: int = 1  # Track the actual current tier
 var tier_glow_effect: Control = null  # For the glow effect
 
-# Column sizing variables
-@export var column_width: int = 95  # Adjusted for better spacing
-@export var column_height: int = 240  # Adjusted for 86x86 cards + header + spacing
+# Column sizing constants
+const COLUMN_WIDTH: int = 95  # Width of each tier column
+const COLUMN_HEIGHT: int = 240  # Height for 86x86 cards + header + spacing
+const CARD_SIZE: int = 86  # Size of reward cards
+const ELEMENT_SPACING: int = 4  # Spacing between elements
 
 # Node references (only header remains from scene)
 @onready var tier_header: PanelContainer = $TierHeader
@@ -44,12 +70,24 @@ var premium_reward_data: Dictionary = {}
 var popup_scene = preload("res://Pyramids/scenes/ui/popups/RewardClaimPopup.tscn")
 
 func _ready():
-	# Track instance creation
+	# Track instance creation (always keep for debugging)
 	total_instances += 1
 	active_instances += 1
 	instance_id = total_instances
 	
-	custom_minimum_size = Vector2(column_width, column_height)
+	custom_minimum_size = Vector2(COLUMN_WIDTH, COLUMN_HEIGHT)
+	
+	# CENTER ALIGNMENT FIX
+	alignment = BoxContainer.ALIGNMENT_CENTER
+	
+	# REDUCE SPACING between elements
+	add_theme_constant_override("separation", ELEMENT_SPACING)
+	
+	# ENSURE NO MARGINS
+	add_theme_constant_override("margin_left", 0)
+	add_theme_constant_override("margin_right", 0)
+	add_theme_constant_override("margin_top", 0)
+	add_theme_constant_override("margin_bottom", 0)
 	
 	# Remove old nodes if they exist (cleanup from scene)
 	if has_node("FreeReward"):
@@ -60,17 +98,8 @@ func _ready():
 	# Wait for cleanup
 	await get_tree().process_frame
 	
-	# DON'T create cards here - let setup() handle it
-	
 	# Apply theme to header
 	_style_tier_header()
-
-	_add_current_tier_glow()
-
-	add_theme_constant_override("margin_left", 0)
-	add_theme_constant_override("margin_right", 0)
-	add_theme_constant_override("margin_top", 0)
-	add_theme_constant_override("margin_bottom", 0)
 
 func _exit_tree():
 	"""Track when instances are destroyed"""
@@ -79,7 +108,6 @@ func _exit_tree():
 func _create_reward_cards() -> void:
 	"""Create UnifiedItemCard instances for rewards"""
 	
-	# Load the UnifiedItemCard scene from the correct path
 	var card_scene_path = "res://Pyramids/scenes/ui/items/UnifiedItemCard.tscn"
 	
 	if not ResourceLoader.exists(card_scene_path):
@@ -92,8 +120,12 @@ func _create_reward_cards() -> void:
 	if not free_reward_card:
 		free_reward_card = card_scene.instantiate()
 		free_reward_card.name = "FreeRewardCard"
-		free_reward_card.custom_minimum_size = Vector2(86, 86)  # CORRECT SIZE
-		free_reward_card.size = Vector2(86, 86)
+		free_reward_card.custom_minimum_size = Vector2(CARD_SIZE, CARD_SIZE)
+		free_reward_card.size = Vector2(CARD_SIZE, CARD_SIZE)
+		
+		# CENTER THE CARD - THIS IS KEY
+		free_reward_card.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		
 		add_child(free_reward_card)
 		
 		# Wait for card to be ready
@@ -108,8 +140,12 @@ func _create_reward_cards() -> void:
 	if not premium_reward_card:
 		premium_reward_card = card_scene.instantiate()
 		premium_reward_card.name = "PremiumRewardCard"
-		premium_reward_card.custom_minimum_size = Vector2(86, 86)  # CORRECT SIZE
-		premium_reward_card.size = Vector2(86, 86)
+		premium_reward_card.custom_minimum_size = Vector2(CARD_SIZE, CARD_SIZE)
+		premium_reward_card.size = Vector2(CARD_SIZE, CARD_SIZE)
+		
+		# CENTER THE CARD - THIS IS KEY
+		premium_reward_card.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		
 		add_child(premium_reward_card)
 		
 		# Wait for card to be ready
@@ -129,14 +165,12 @@ func setup(tier_data: Dictionary, theme: String = "battle_pass"):
 	free_claimed = tier_data.get("free_claimed", false)
 	premium_claimed = tier_data.get("premium_claimed", false)
 	
-	# Get current tier level from manager
-	if theme == "battle_pass":
-		current_tier_level = SeasonPassManager.get_current_tier()
-	else:
-		current_tier_level = HolidayEventManager.get_current_tier()
+	# Get current tier level from correct manager based on theme
+	var manager = _get_current_manager()
+	current_tier_level = manager.get_current_tier()
 	
-	# Debug output for tracking
-	if tier_number <= 5:  # Only log first 5 tiers
+	# Debug output for tracking (wrapped)
+	if DEBUG and tier_number <= 5:  # Only log first 5 tiers in debug mode
 		print("[TierColumn] Tier %d - unlocked: %s, premium: %s, free_claimed: %s, premium_claimed: %s" % 
 			[tier_number, is_unlocked, has_premium_pass, free_claimed, premium_claimed])
 	
@@ -150,7 +184,7 @@ func setup(tier_data: Dictionary, theme: String = "battle_pass"):
 	
 	# Create cards only when first needed
 	if not free_reward_card or not premium_reward_card:
-		print("[TierColumn] Creating reward cards for tier %d" % tier_number)
+		# Removed spammy debug output
 		await _create_reward_cards()
 	
 	# Setup UnifiedItemCards
@@ -179,7 +213,7 @@ func _setup_unified_card(card: UnifiedItemCard, rewards: Dictionary, is_free: bo
 	
 	if formatted_rewards.size() > 0:
 		# Has rewards - set up normally
-		print("[TierColumn] Setting up %s card with formatted rewards: %s" % ["free" if is_free else "premium", formatted_rewards])
+		# Removed spammy debug output
 		
 		# Setup card with reward dictionary and PASS_REWARD preset
 		card.setup_from_dict(formatted_rewards, UnifiedItemCard.SizePreset.PASS_REWARD)
@@ -195,7 +229,7 @@ func _setup_unified_card(card: UnifiedItemCard, rewards: Dictionary, is_free: bo
 		_apply_pass_reward_style(card, is_accessible, is_claimed)
 	else:
 		# Empty slot - just show as empty placeholder, NO LOCK
-		print("[TierColumn] No rewards for %s track - showing empty placeholder" % ["free" if is_free else "premium"])
+		# Removed spammy debug output
 		
 		# Setup as empty card with no rewards
 		card.setup_from_dict({}, UnifiedItemCard.SizePreset.PASS_REWARD)
@@ -259,8 +293,8 @@ func _apply_empty_slot_style(card: UnifiedItemCard):
 	
 	card.add_theme_stylebox_override("panel", style)
 	
-	# Slightly transparent to indicate emptiness
-	card.modulate = Color(1, 1, 1, 1)  # 50% opacity
+	# Fully opaque to show it exists
+	card.modulate = Color(1, 1, 1, 1)
 
 func _format_reward_data(rewards: Dictionary) -> Dictionary:
 	"""Format reward data for UnifiedItemCard consumption"""
@@ -269,14 +303,14 @@ func _format_reward_data(rewards: Dictionary) -> Dictionary:
 	# Handle different reward structures
 	if rewards.has("stars"):
 		formatted["stars"] = rewards.stars
-		# TODO: Update UnifiedItemCard to use bp_star.png sprite
+		# TODO: [Feature] Update UnifiedItemCard to use bp_star.png sprite
 	elif rewards.has("xp"):
 		formatted["xp"] = rewards.xp
-		# TODO: Update UnifiedItemCard to use bp_xp.png sprite
+		# TODO: [Feature] Update UnifiedItemCard to use bp_xp.png sprite
 	elif rewards.has("cosmetic_type") and rewards.has("cosmetic_id"):
 		formatted["cosmetic_type"] = rewards.cosmetic_type
 		formatted["cosmetic_id"] = rewards.cosmetic_id
-		# TODO: Replace with real cosmetic item sprites
+		# TODO: [Feature] Replace with real cosmetic item sprites
 	else:
 		# Pass through any other reward types
 		formatted = rewards
@@ -342,7 +376,7 @@ func set_current(current: bool):
 	# Could add visual indication for current tier if needed
 
 func claim_reward(is_free: bool):
-	"""Called when a reward is claimed"""
+	"""Called when a reward is claimed - updates visual state"""
 	if is_free:
 		free_claimed = true
 		if free_reward_card:
@@ -352,19 +386,54 @@ func claim_reward(is_free: bool):
 		if premium_reward_card:
 			premium_reward_card.set_reward_state(is_unlocked and has_premium_pass, true)
 
+# === HELPER FUNCTIONS ===
+
+func _get_current_manager():
+	"""Get the correct manager based on current theme"""
+	if current_theme == "battle_pass":
+		return SeasonPassManager
+	else:
+		return HolidayEventManager
+
 # === CLICK HANDLERS ===
 
-func _on_free_card_clicked(item_data):
-	"""Handle click on free reward card"""
-	# Only show popup if claimable
-	if is_unlocked and not free_claimed and free_reward_data.size() > 0:
+func _on_free_card_clicked():
+	"""Handle click on FREE reward card only"""
+	if not is_unlocked or free_claimed:
+		return
+	
+	# FIXED: Get correct manager based on theme
+	var manager = _get_current_manager()
+	
+	# Claim ONLY free reward
+	var success = manager.claim_tier_rewards(tier_number, true, false)
+	if success:
+		print("[TierColumn] Successfully claimed FREE reward for tier %d" % tier_number)
+		# FIXED: Show popup after successful claim
 		_show_claim_popup(free_reward_data, true)
+		# Update visual state
+		claim_reward(true)
 
-func _on_premium_card_clicked(item_data):
-	"""Handle click on premium reward card"""
-	# Only show popup if claimable
-	if is_unlocked and has_premium_pass and not premium_claimed and premium_reward_data.size() > 0:
+func _on_premium_card_clicked():
+	"""Handle click on PREMIUM reward card only"""
+	if not is_unlocked or premium_claimed:
+		return
+	
+	# FIXED: Get correct manager based on theme
+	var manager = _get_current_manager()
+	
+	if not manager.has_premium_pass():
+		# TODO: [Feature] Show purchase prompt for premium pass
+		return
+	
+	# Claim ONLY premium reward
+	var success = manager.claim_tier_rewards(tier_number, false, true)
+	if success:
+		print("[TierColumn] Successfully claimed PREMIUM reward for tier %d" % tier_number)
+		# FIXED: Show popup after successful claim
 		_show_claim_popup(premium_reward_data, false)
+		# Update visual state
+		claim_reward(false)
 
 func _show_claim_popup(rewards: Dictionary, is_free: bool):
 	"""Show the reward claim confirmation popup"""
@@ -381,21 +450,18 @@ func _show_claim_popup(rewards: Dictionary, is_free: bool):
 	
 	# Get icon texture from the card
 	var icon_texture = null
-	if is_free and free_reward_card:
-		# Try to get texture from UnifiedItemCard (might need adjustment based on internal structure)
-		icon_texture = null  # TODO: Get actual texture from card if needed
-	elif not is_free and premium_reward_card:
-		icon_texture = null  # TODO: Get actual texture from card if needed
+	# TODO: [Feature] Get actual texture from UnifiedItemCard if needed
 	
 	popup.setup(rewards, icon_texture)
 	popup.confirmed.connect(_on_popup_confirmed.bind(is_free))
 
 func _on_popup_confirmed(is_free: bool):
 	"""Handle popup confirmation"""
+	# This should trigger the manager to grant ALL rewards in the dict
 	reward_claim_requested.emit(tier_number, is_free)
 
 func _add_current_tier_glow():
-	"""Add a properly centered glow effect"""
+	"""Add a properly centered glow effect for current tier"""
 	# Remove old glow if exists
 	if tier_glow_effect:
 		tier_glow_effect.queue_free()
@@ -411,7 +477,7 @@ func _add_current_tier_glow():
 	
 	# Make it exactly the same size as the column
 	tier_glow_effect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	# NO OFFSETS - this was likely the issue
+	# NO OFFSETS - this was the issue
 	tier_glow_effect.offset_left = 0
 	tier_glow_effect.offset_right = 0
 	tier_glow_effect.offset_top = 0

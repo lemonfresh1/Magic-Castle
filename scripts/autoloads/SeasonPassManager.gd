@@ -10,6 +10,8 @@ signal season_level_up(new_level: int)
 signal season_ended(season_id: String)
 signal season_started(season_id: String)
 signal season_progress_updated()  # NEW: For UI refresh
+signal tier_claimed(tier_num: int)
+signal season_pass_updated()
 
 const SAVE_PATH = "user://season_pass_data.save"
 const SP_PER_LEVEL = 10  # Season Points per level
@@ -18,6 +20,9 @@ const MAX_TIER = 50
 # Tiers that have rewards
 const FREE_REWARD_TIERS = [1, 3, 5, 8, 10, 15, 20, 25, 30, 35, 40, 50]
 const PREMIUM_REWARD_TIERS = [1, 2, 3, 4, 5, 7, 9, 10, 12, 15, 18, 20, 25, 30, 35, 40, 45, 50]
+const PREMIUM_PASS_COST: int = 1000
+const TIER_SKIP_COST_PER_5: int = 500
+const TIER_SKIP_BUNDLE_SIZE: int = 5
 
 # Season tier structure
 class SeasonTier extends Resource:
@@ -146,49 +151,37 @@ func add_season_points(amount: int, source: String = "gameplay"):
 	# Emit progress update for UI refresh
 	season_progress_updated.emit()
 
-func claim_tier_rewards(tier_number: int, is_premium: bool = false) -> bool:
-	print("[SeasonPassManager] claim_tier_rewards called - tier: %d, premium: %s" % [tier_number, is_premium])
-	
-	if tier_number < 1 or tier_number > MAX_TIER:
-		print("[SeasonPassManager] Invalid tier number")
+func claim_tier_rewards(tier_num: int, claim_free: bool = true, claim_premium: bool = true) -> bool:
+	"""Claim rewards with separate control for free/premium"""
+	if tier_num < 1 or tier_num > MAX_TIER:
 		return false
 		
-	var tier = current_season.tiers[tier_number - 1]
-	print("[SeasonPassManager] Tier data - unlocked: %s, free_claimed: %s, premium_claimed: %s" % [tier.is_unlocked, tier.free_claimed, tier.premium_claimed])
-	
-	if not tier.is_unlocked:
-		print("[SeasonPassManager] Tier not unlocked")
+	var tier = current_season.tiers[tier_num - 1]
+	if not tier:
 		return false
 	
-	if is_premium and not season_data.has_premium_pass:
-		print("[SeasonPassManager] No premium pass")
-		return false
+	var claimed_something = false
 	
-	var rewards = {}
-	var tier_key = ""
-	
-	if is_premium and not tier.premium_claimed:
-		rewards = tier.premium_rewards
-		print("[SeasonPassManager] Premium rewards to grant: ", rewards)
-		tier.premium_claimed = true
-		tier_key = "tier_%d_premium" % tier_number
-	elif not is_premium and not tier.free_claimed:
-		rewards = tier.free_rewards
-		print("[SeasonPassManager] Free rewards to grant: ", rewards)
+	# Claim free if requested and available
+	if claim_free and not tier.free_claimed and tier.is_unlocked:
+		_grant_rewards(tier.free_rewards)
 		tier.free_claimed = true
-		tier_key = "tier_%d_free" % tier_number
-	else:
-		print("[SeasonPassManager] Already claimed")
-		return false  # Already claimed
+		season_data.claimed_tiers.append("tier_%d_free" % tier_num)
+		claimed_something = true
 	
-	# Grant rewards
-	print("[SeasonPassManager] About to grant rewards: ", rewards)
-	_grant_rewards(rewards)
+	# Claim premium if requested and available
+	if claim_premium and season_data.has_premium_pass and not tier.premium_claimed and tier.is_unlocked:
+		_grant_rewards(tier.premium_rewards)
+		tier.premium_claimed = true
+		season_data.claimed_tiers.append("tier_%d_premium" % tier_num)
+		claimed_something = true
 	
-	season_data.claimed_tiers.append(tier_key)
-	save_season_data()
-	season_progress_updated.emit()
-	return true
+	if claimed_something:
+		save_season_data()
+		tier_claimed.emit(tier_num)
+		season_pass_updated.emit()
+	
+	return claimed_something
 
 func _grant_rewards(rewards: Dictionary):
 	"""Grant rewards through proper managers"""

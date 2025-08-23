@@ -191,3 +191,7 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_wdcgp")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_rh7uf")
 theme_override_styles/normal = SubResource("StyleBoxFlat_mc2au")
 text = "Claim All"
+
+[node name="ScrollLevelButton" type="Button" parent="VBoxContainer/ButtonContainer"]
+visible = false
+layout_mode = 2
