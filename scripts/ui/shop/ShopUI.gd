@@ -84,6 +84,7 @@ func _setup_tabs():
 		"avatar": tab_container.get_node_or_null("Avatars"),
 		"frame": tab_container.get_node_or_null("Frames"),
 		"emoji": tab_container.get_node_or_null("Emojis"),
+		"mini_profile_card": tab_container.get_node_or_null("Mini Profiles"),  # NEW
 		"sounds": tab_container.get_node_or_null("Sounds")
 	}
 	
@@ -173,7 +174,7 @@ func _create_regular_grid(category_id: String) -> GridContainer:
 	var grid = GridContainer.new()
 	grid.name = "ItemGrid"
 	
-	if category_id == "board":
+	if category_id == "board" or category_id == "mini_profile_card":  # UPDATED
 		grid.columns = 2
 	else:
 		grid.columns = 4
@@ -299,6 +300,7 @@ func _category_to_shop_format(category: String) -> String:
 		"avatar": return "avatars"
 		"frame": return "frames"
 		"emoji": return "emojis"
+		"mini_profile_card": return "mini_profile_cards"  # NEW
 		_: return category
 
 func _apply_filters(tab_id: String):

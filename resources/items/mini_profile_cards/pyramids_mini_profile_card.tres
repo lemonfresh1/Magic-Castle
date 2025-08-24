@@ -1,22 +1,22 @@
-[gd_resource type="Resource" script_class="UnifiedItemData" load_steps=2 format=3 uid="uid://bgww6s4porrf8"]
+[gd_resource type="Resource" script_class="UnifiedItemData" load_steps=2 format=3]
 
-[ext_resource type="Script" uid="uid://d0xqbrsva3nam" path="res://Pyramids/scripts/resources/UnifiedItemData.gd" id="1_qphnd"]
+[ext_resource type="Script" path="res://Pyramids/scripts/resources/UnifiedItemData.gd" id="1_vpysj"]
 
 [resource]
-script = ExtResource("1_qphnd")
-id = "neon_night_front"
-display_name = "Neon Night Card Front"
-description = "Procedurally generated Neon Night card front design"
-category = 0
+script = ExtResource("1_vpysj")
+id = "pyramids_mini_profile_card"
+display_name = "Pyramids"
+description = ""
+category = 6
 rarity = 0
-set_name = ""
+set_name = "Pyramids"
 subcategory = ""
-icon_path = "res://Pyramids/assets/icons/card_fronts/neon_night_front.png"
-texture_path = "res://Pyramids/assets/icons/card_fronts/neon_night_front.png"
-preview_texture_path = "res://Pyramids/assets/icons/card_fronts/neon_night_front.png"
+icon_path = ""
+texture_path = ""
+preview_texture_path = ""
 is_procedural = true
 is_animated = false
-procedural_script_path = "res://Pyramids/scripts/items/card_fronts/procedural/common/NeonNightCardFront.gd"
+procedural_script_path = "res://Pyramids/scripts/items/mini_profile_cards/procedural/common/PyramidsMiniProfileCard.gd"
 animation_metadata = {}
 background_type = "color"
 background_scene_path = ""
@@ -38,12 +38,12 @@ border_shader_path = ""
 sound_effect_path = ""
 effect_type = "fire"
 max_combo_visuals = 20
-base_price = 0
+base_price = 50
 currency_type = "stars"
-is_purchasable = false
+is_purchasable = true
 is_tradeable = false
 unlock_level = 0
-source = 6
+source = 1
 achievement_id = ""
 event_id = ""
 quest_id = ""

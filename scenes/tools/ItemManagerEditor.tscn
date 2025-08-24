@@ -81,15 +81,20 @@ visible = false
 layout_mode = 2
 metadata/_tab_index = 2
 
-[node name="Frames" type="Control" parent="VBoxContainer/MainContent/LeftPanel/CategoryTabs"]
+[node name="Mini Profile Cards" type="Control" parent="VBoxContainer/MainContent/LeftPanel/CategoryTabs"]
 visible = false
 layout_mode = 2
 metadata/_tab_index = 3
 
-[node name="Avatars" type="Control" parent="VBoxContainer/MainContent/LeftPanel/CategoryTabs"]
+[node name="Frames" type="Control" parent="VBoxContainer/MainContent/LeftPanel/CategoryTabs"]
 visible = false
 layout_mode = 2
 metadata/_tab_index = 4
+
+[node name="Avatars" type="Control" parent="VBoxContainer/MainContent/LeftPanel/CategoryTabs"]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 5
 
 [node name="RightPanel" type="VBoxContainer" parent="VBoxContainer/MainContent"]
 custom_minimum_size = Vector2(600, 300)

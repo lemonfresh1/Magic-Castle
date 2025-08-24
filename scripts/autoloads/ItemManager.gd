@@ -32,7 +32,7 @@ const CATEGORIES = [
 	"frames",
 	"avatars",
 	"emojis",
-	"mini_profile_board"
+	"mini_profile_card"
 ]
 
 # === PROPERTIES ===
@@ -298,15 +298,22 @@ func get_procedural_instance(item_id: String):
 	"""Get the procedural instance for animated items"""
 	return procedural_instances.get(item_id)
 
-func get_items_by_category(category) -> Array:
-	"""Get all items in a category"""
-	var category_str = ""
-	if category is String:
-		category_str = category
-	elif category is int:
-		category_str = _category_to_string(category)
+func get_items_by_category(category: String) -> Array:
+	"""Get all items in a specific category"""
+	var result = []
 	
-	return items_by_category.get(category_str, [])
+	# Map string category to enum
+	var target_category = _string_to_category(category)
+	if target_category == -1:
+		push_warning("ItemManager: Unknown category: " + category)
+		return result
+	
+	for item_id in all_items:
+		var item = all_items[item_id]
+		if item and item.category == target_category:
+			result.append(item)
+	
+	return result
 
 func get_items_by_rarity(rarity) -> Array:
 	"""Get all items of a specific rarity"""
@@ -378,23 +385,17 @@ func _load_from_cache() -> bool:
 
 # === HELPERS ===
 
-func _string_to_category(category_str: String) -> UnifiedItemData.Category:
-	"""Convert string to category enum"""
+func _string_to_category(category_str: String) -> int:
+	"""Convert string category to UnifiedItemData.Category enum"""
 	match category_str:
-		"card_fronts", "card_front":
-			return UnifiedItemData.Category.CARD_FRONT
-		"card_backs", "card_back":
-			return UnifiedItemData.Category.CARD_BACK
-		"boards", "board":
-			return UnifiedItemData.Category.BOARD
-		"frames", "frame":
-			return UnifiedItemData.Category.FRAME
-		"avatars", "avatar":
-			return UnifiedItemData.Category.AVATAR
-		"emojis", "emoji":
-			return UnifiedItemData.Category.EMOJI
-		_:
-			return UnifiedItemData.Category.CARD_FRONT
+		"card_fronts", "card_front": return UnifiedItemData.Category.CARD_FRONT
+		"card_backs", "card_back": return UnifiedItemData.Category.CARD_BACK
+		"boards", "board": return UnifiedItemData.Category.BOARD
+		"avatars", "avatar": return UnifiedItemData.Category.AVATAR
+		"frames", "frame": return UnifiedItemData.Category.FRAME
+		"emojis", "emoji": return UnifiedItemData.Category.EMOJI
+		"mini_profile_cards", "mini_profile_card": return UnifiedItemData.Category.MINI_PROFILE_CARD
+		_: return -1
 
 func _category_to_string(category: UnifiedItemData.Category) -> String:
 	"""Convert category enum to string"""
@@ -411,8 +412,8 @@ func _category_to_string(category: UnifiedItemData.Category) -> String:
 			return "avatars"
 		UnifiedItemData.Category.EMOJI:
 			return "emojis"
-#		UnifiedItemData.Category.MINI_PROFILE_BOARD:
-#			return "mini_profile_board"
+		UnifiedItemData.Category.MINI_PROFILE_CARD:
+			return "mini_profile_card"
 		_:
 			return "unknown"
 

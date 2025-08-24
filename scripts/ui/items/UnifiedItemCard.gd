@@ -352,11 +352,13 @@ func _apply_size_preset():
 		SizePreset.PASS_REWARD:
 			target_size = Vector2(86, 86)
 		SizePreset.INVENTORY:
-			target_size = Vector2(90, 126)
+			# FIX: Check layout_type for landscape items (boards, mini profiles)
+			target_size = Vector2(192, 126) if layout_type == LayoutType.LANDSCAPE else Vector2(90, 126)
 		SizePreset.SHOP:
 			target_size = Vector2(192, 126) if layout_type == LayoutType.LANDSCAPE else Vector2(90, 126)
 		SizePreset.SHOWCASE:
-			target_size = Vector2(60, 80)
+			# FIX: Also check layout_type for showcase
+			target_size = Vector2(120, 80) if layout_type == LayoutType.LANDSCAPE else Vector2(60, 80)
 	
 	custom_minimum_size = target_size
 	size = target_size
@@ -1443,6 +1445,7 @@ func _get_layout_type() -> LayoutType:
 			return LayoutType.PORTRAIT
 		return LayoutType.PORTRAIT
 	
+	# FIX: Add MINI_PROFILE_CARD to landscape categories
 	match item_data.category:
 		UnifiedItemData.Category.BOARD, UnifiedItemData.Category.MINI_PROFILE_CARD:
 			return LayoutType.LANDSCAPE

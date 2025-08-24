@@ -50,8 +50,8 @@ var current_season = {
 	"id": "season_1",
 	"name": "Castle Foundations",
 	"theme": "medieval",
-	"start_date": "2024-01-01",
-	"end_date": "2024-03-31",
+	"start_date": "2025-07-31",
+	"end_date": "2025-10-31",
 	"tiers": []
 }
 
@@ -296,9 +296,28 @@ func get_season_info() -> Dictionary:
 		"has_premium": season_data.has_premium_pass
 	}
 
+func get_seconds_remaining() -> int:
+	"""Get seconds until season ends"""
+	# Parse end date
+	var end_parts = current_season.end_date.split("-")
+	var end_dict = {
+		"year": int(end_parts[0]),
+		"month": int(end_parts[1]), 
+		"day": int(end_parts[2]),
+		"hour": 23,
+		"minute": 59,
+		"second": 59
+	}
+	
+	var current_unix = Time.get_unix_time_from_system()
+	var end_unix = Time.get_unix_time_from_datetime_dict(end_dict)
+	
+	return max(0, int(end_unix - current_unix))
+
 func _calculate_days_remaining() -> int:
-	# Simple calculation - would need proper date parsing
-	return 90  # 90 days for full season
+	"""Calculate days remaining until season end"""
+	var seconds = get_seconds_remaining()
+	return int(seconds / 86400)
 
 func check_season_end():
 	# Called daily to check if season should end

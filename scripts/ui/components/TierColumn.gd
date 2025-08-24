@@ -170,7 +170,7 @@ func setup(tier_data: Dictionary, theme: String = "battle_pass"):
 	current_tier_level = manager.get_current_tier()
 	
 	# Debug output for tracking (wrapped)
-	if DEBUG and tier_number <= 5:  # Only log first 5 tiers in debug mode
+	if DEBUG and tier_number <= 5:
 		print("[TierColumn] Tier %d - unlocked: %s, premium: %s, free_claimed: %s, premium_claimed: %s" % 
 			[tier_number, is_unlocked, has_premium_pass, free_claimed, premium_claimed])
 	
@@ -184,16 +184,17 @@ func setup(tier_data: Dictionary, theme: String = "battle_pass"):
 	
 	# Create cards only when first needed
 	if not free_reward_card or not premium_reward_card:
-		# Removed spammy debug output
 		await _create_reward_cards()
 	
-	# Setup UnifiedItemCards
+	# FIX: Ensure cards are centered even if they already exist
 	if free_reward_card:
+		free_reward_card.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		_setup_unified_card(free_reward_card, free_reward_data, true)
 	else:
 		push_error("[TierColumn] Free reward card is null!")
 	
 	if premium_reward_card:
+		premium_reward_card.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		_setup_unified_card(premium_reward_card, premium_reward_data, false)
 	else:
 		push_error("[TierColumn] Premium reward card is null!")
@@ -208,12 +209,23 @@ func _setup_unified_card(card: UnifiedItemCard, rewards: Dictionary, is_free: bo
 	card.visible = true
 	card.modulate = Color.WHITE
 	
+	# FIX: ALWAYS ensure the card is centered AND positioned correctly
+	card.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	card.custom_minimum_size = Vector2(CARD_SIZE, CARD_SIZE)
+	card.size = Vector2(CARD_SIZE, CARD_SIZE)
+	
+	# FIX: Set the correct position based on whether it's free or premium
+	# This matches the fresh creation positioning
+	if is_free:
+		card.position = Vector2(4, 77)  # FREE card position
+	else:
+		card.position = Vector2(4, 167)  # PREMIUM card position
+	
 	# Convert reward data to proper format for UnifiedItemCard
 	var formatted_rewards = _format_reward_data(rewards)
 	
 	if formatted_rewards.size() > 0:
 		# Has rewards - set up normally
-		# Removed spammy debug output
 		
 		# Setup card with reward dictionary and PASS_REWARD preset
 		card.setup_from_dict(formatted_rewards, UnifiedItemCard.SizePreset.PASS_REWARD)
@@ -229,7 +241,6 @@ func _setup_unified_card(card: UnifiedItemCard, rewards: Dictionary, is_free: bo
 		_apply_pass_reward_style(card, is_accessible, is_claimed)
 	else:
 		# Empty slot - just show as empty placeholder, NO LOCK
-		# Removed spammy debug output
 		
 		# Setup as empty card with no rewards
 		card.setup_from_dict({}, UnifiedItemCard.SizePreset.PASS_REWARD)

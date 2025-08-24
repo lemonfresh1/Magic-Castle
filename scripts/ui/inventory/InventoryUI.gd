@@ -53,6 +53,7 @@ func _setup_tabs():
 		"card_skins": tab_container.get_node_or_null("Cards"),
 		"card_backs": tab_container.get_node_or_null("Card Backs"),
 		"board_skins": tab_container.get_node_or_null("Boards"),
+		"mini_profile_cards": tab_container.get_node_or_null("Mini Profiles"),  # NEW
 		"avatars": tab_container.get_node_or_null("Avatars"),
 		"frames": tab_container.get_node_or_null("Frames"),
 		"emojis": tab_container.get_node_or_null("Emojis"),
@@ -128,7 +129,9 @@ func _populate_inventory():
 		else:
 			var grid = GridContainer.new()
 			grid.name = "ItemGrid"
-			grid.columns = 4 if category_id != "boards" and category_id != "board_skins" else 2
+			# FIXED: Check for landscape items (boards and mini profile cards)
+			var is_landscape = category_id in ["boards", "board_skins", "mini_profile_cards"]
+			grid.columns = 2 if is_landscape else 4
 			grid.add_theme_constant_override("h_separation", 10)
 			grid.add_theme_constant_override("v_separation", 10)
 			scroll_container.add_child(grid)
@@ -145,6 +148,7 @@ func _get_owned_items_for_category(category_id: String) -> Array:
 		"card_backs": "card_back",
 		"board_skins": "board",
 		"boards": "board",
+		"mini_profile_cards": "mini_profile_card",  # NEW
 		"avatars": "avatar",
 		"frames": "frame",
 		"emojis": "emoji"
@@ -272,7 +276,8 @@ func _populate_flow_container(container: VBoxContainer, items: Array, tab_id: St
 		if not item is UnifiedItemData:
 			continue
 		
-		var columns_needed = 2 if item.category == UnifiedItemData.Category.BOARD else 1
+		# FIXED: Check for both BOARD and MINI_PROFILE_CARD
+		var columns_needed = 2 if item.category in [UnifiedItemData.Category.BOARD, UnifiedItemData.Category.MINI_PROFILE_CARD] else 1
 		
 		if current_row == null or current_columns_used + columns_needed > MAX_COLUMNS:
 			current_row = HBoxContainer.new()
@@ -311,7 +316,8 @@ func _populate_flow_container_by_type(container: VBoxContainer, items: Array, ta
 		items_by_type[cat_name].append(item)
 	
 	var first_category = true
-	for category in ["card_front", "card_back", "board", "avatar", "frame", "emoji"]:
+	# FIXED: Added mini_profile_card to the categories list
+	for category in ["card_front", "card_back", "board", "mini_profile_card", "avatar", "frame", "emoji"]:
 		if not items_by_type.has(category):
 			continue
 		
@@ -330,7 +336,8 @@ func _populate_flow_container_by_type(container: VBoxContainer, items: Array, ta
 		var MAX_COLUMNS = 4
 		
 		for item in items_by_type[category]:
-			var columns_needed = 2 if item.category == UnifiedItemData.Category.BOARD else 1
+			# FIXED: Check for both BOARD and MINI_PROFILE_CARD
+			var columns_needed = 2 if item.category in [UnifiedItemData.Category.BOARD, UnifiedItemData.Category.MINI_PROFILE_CARD] else 1
 			
 			if current_row == null or current_columns_used + columns_needed > MAX_COLUMNS:
 				current_row = HBoxContainer.new()
@@ -462,6 +469,7 @@ func _get_type_display_name(type: String) -> String:
 		"card_front": return "Card Fronts"
 		"card_back": return "Card Backs"
 		"board": return "Boards"
+		"mini_profile_card": return "Mini Profile Cards"  # ADDED
 		"avatar": return "Avatars"
 		"frame": return "Frames"
 		"emoji": return "Emojis"

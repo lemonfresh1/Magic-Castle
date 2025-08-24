@@ -21,7 +21,7 @@ const CATEGORIES = [
 	"frames",
 	"avatars",
 	"emojis",
-	"mini_profile_boards"
+	"mini_profile_cards"
 ]
 
 const BASE_PATH = "res://Pyramids/scripts/items/"
@@ -210,6 +210,8 @@ func _is_valid_procedural_item(instance, category: String) -> bool:
 			return instance.has_method("draw_frame")
 		"avatars":
 			return instance.has_method("draw_avatar")
+		"mini_profile_cards":
+			return instance is ProceduralMiniProfileCard or instance.has_method("draw_mini_profile_card")
 		_:
 			return instance.has_method("create_item_data")
 
@@ -225,6 +227,7 @@ func _get_category_folder_name(category: String) -> String:
 		"frames": return "frames"
 		"avatars": return "avatars"
 		"emojis": return "emojis"
+		"mini_profile_cards": return "mini_profile_cards"
 		_: return category
 
 func _category_string_to_enum(category: String) -> UnifiedItemData.Category:
@@ -235,6 +238,7 @@ func _category_string_to_enum(category: String) -> UnifiedItemData.Category:
 		"frames": return UnifiedItemData.Category.FRAME
 		"avatars": return UnifiedItemData.Category.AVATAR
 		"emojis": return UnifiedItemData.Category.EMOJI
+		"mini_profile_cards": return UnifiedItemData.Category.MINI_PROFILE_CARD
 		_: return UnifiedItemData.Category.CARD_FRONT
 
 # === DEBUG (KEEP BUT SIMPLIFIED) ===

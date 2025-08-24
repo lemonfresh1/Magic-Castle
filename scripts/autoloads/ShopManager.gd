@@ -52,8 +52,11 @@ func get_items_by_category(category: String) -> Array:
 		push_error("ShopManager: ItemManager not available")
 		return []
 	
+	# Convert shop category to ItemManager category format
+	var item_manager_category = _convert_shop_category_to_item_manager(category)
+	
 	var result = []
-	var items = ItemManager.get_items_by_category(category)
+	var items = ItemManager.get_items_by_category(item_manager_category)
 	
 	for item in items:
 		if item and item is UnifiedItemData and _is_purchasable(item):
@@ -270,3 +273,16 @@ func debug_status():
 	
 	print("Star balance: %d" % (StarManager.get_balance() if StarManager else 0))
 	print("===========================\n")
+
+func _convert_shop_category_to_item_manager(category: String) -> String:
+	"""Convert shop UI category names to ItemManager category names"""
+	# ItemManager expects these exact strings
+	match category:
+		"mini_profile_cards": return "mini_profile_cards"
+		"card_fronts": return "card_fronts"
+		"card_backs": return "card_backs"
+		"boards": return "boards"
+		"avatars": return "avatars"
+		"frames": return "frames"
+		"emojis": return "emojis"
+		_: return category

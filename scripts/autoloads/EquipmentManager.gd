@@ -33,15 +33,15 @@ var save_data = {
 		"card_front": "card_classic",
 		"card_back": "",
 		"board": "board_green",
+		"mini_profile_card": "",
 		"frame": "",
 		"avatar": "",
 		"emoji": [],  # Array for multiple emojis
 		
 		# Future categories - TODO: Implement these systems
-		"mini_profile": "",
-		"mini_profile_showcased_items": [],  # Items shown on mini profile
-		"mini_profile_showcased_stats": [],  # Stats shown on mini profile
-		"mini_profile_showcased_achievements": [],  # Achievements shown
+		"mini_profile_card_showcased_items": [],  # Items shown on mini profile
+		"mini_profile_card_showcased_stats": [],  # Stats shown on mini profile
+		"mini_profile_card_showcased_achievements": [],  # Achievements shown
 		
 		"topbar": "",  # TODO: Implement topbar customization
 		"combo_effect": "",  # TODO: Implement combo effects
@@ -149,8 +149,8 @@ func equip_item(item_id: String) -> bool:
 					return false
 		
 		UnifiedItemData.Category.MINI_PROFILE_CARD:
-			old_equipped = save_data.equipped.mini_profile
-			save_data.equipped.mini_profile = item_id
+			old_equipped = save_data.equipped.mini_profile_card
+			save_data.equipped.mini_profile_card = item_id
 			# TODO: Implement mini profile showcase UI
 		
 		UnifiedItemData.Category.COMBO_EFFECT:
@@ -211,12 +211,12 @@ func unequip_item(item_id: String) -> bool:
 		UnifiedItemData.Category.EMOJI:
 			save_data.equipped.emoji.erase(item_id)
 		UnifiedItemData.Category.MINI_PROFILE_CARD:
-			if save_data.equipped.mini_profile == item_id:
-				save_data.equipped.mini_profile = ""
+			if save_data.equipped.mini_profile_card == item_id:
+				save_data.equipped.mini_profile_card = ""
 				# Also clear showcased items
-				save_data.equipped.mini_profile_showcased_items.clear()
-				save_data.equipped.mini_profile_showcased_stats.clear()
-				save_data.equipped.mini_profile_showcased_achievements.clear()
+				save_data.equipped.mini_profile_card_showcased_items.clear()
+				save_data.equipped.mini_profile_card_showcased_stats.clear()
+				save_data.equipped.mini_profile_card_showcased_achievements.clear()
 		_:
 			if save_data.equipped.get(category_key, "") == item_id:
 				save_data.equipped[category_key] = ""
@@ -416,24 +416,24 @@ func get_history(category: String) -> Array:
 
 # === MINI PROFILE SPECIFIC ===
 
-func set_mini_profile_showcase(items: Array, stats: Array, achievements: Array) -> void:
+func set_mini_profile_card_showcase(items: Array, stats: Array, achievements: Array) -> void:
 	"""Set what's displayed on the mini profile card"""
-	if not save_data.equipped.mini_profile:
+	if not save_data.equipped.mini_profile_card:
 		push_warning("No mini profile equipped")
 		return
 	
 	if ItemManager:
-		var profile = ItemManager.get_item(save_data.equipped.mini_profile)
+		var profile = ItemManager.get_item(save_data.equipped.mini_profile_card)
 		if profile:
 			# Validate limits (default to 3 if property doesn't exist)
 			var max_slots = profile.get("showcase_slots") if profile.has("showcase_slots") else 3
 			
-			save_data.equipped.mini_profile_showcased_items = items.slice(0, min(items.size(), max_slots))
-			save_data.equipped.mini_profile_showcased_stats = stats.slice(0, min(stats.size(), max_slots))
-			save_data.equipped.mini_profile_showcased_achievements = achievements.slice(0, min(achievements.size(), max_slots))
+			save_data.equipped.mini_profile_card_showcased_items = items.slice(0, min(items.size(), max_slots))
+			save_data.equipped.mini_profile_card_showcased_stats = stats.slice(0, min(stats.size(), max_slots))
+			save_data.equipped.mini_profile_card_showcased_achievements = achievements.slice(0, min(achievements.size(), max_slots))
 			
 			save_data_to_file()
-			equipment_changed.emit("mini_profile_showcase")
+			equipment_changed.emit("mini_profile_card_showcase")
 
 # === MENU BACKGROUND SPECIFIC ===
 
@@ -477,7 +477,30 @@ func _add_to_history(category: String, item_id: String) -> void:
 		history.resize(5)
 
 func _ensure_defaults() -> void:
-	"""Ensure default items are owned and equipped"""
+	"""Ensure default items are owned and equipped AND all keys exist"""
+	# First, ensure the equipped dictionary has all required keys
+	var required_equipped_keys = {
+		"card_front": "",
+		"card_back": "",
+		"board": "",
+		"frame": "",
+		"avatar": "",
+		"emoji": [],
+		"mini_profile_card": "",
+		"mini_profile_card_showcased_items": [],
+		"mini_profile_card_showcased_stats": [],
+		"mini_profile_card_showcased_achievements": [],
+		"topbar": "",
+		"combo_effect": "",
+		"menu_background": "",
+		"use_board_as_menu_bg": false
+	}
+	
+	# Add any missing keys to equipped
+	for key in required_equipped_keys:
+		if not save_data.equipped.has(key):
+			save_data.equipped[key] = required_equipped_keys[key]
+	
 	# Default items that should always be owned
 	var defaults = {
 		"card_front": "card_classic",
@@ -527,24 +550,61 @@ func _migrate_save_data(old_data: Dictionary) -> void:
 	"""Handle save data migration from older versions"""
 	print("EquipmentManager: Migrating save from version %d to %d" % [old_data.get("version", 0), SAVE_VERSION])
 	
-	# Preserve owned items and equipped state
-	if old_data.has("owned_items"):
-		save_data.owned_items = old_data.owned_items
-	if old_data.has("equipped"):
-		save_data.equipped = old_data.equipped
-	if old_data.has("favorites"):
-		save_data.favorites = old_data.favorites
-	if old_data.has("history"):
-		save_data.history = old_data.history
-	if old_data.has("unlock_dates"):
-		save_data.unlock_dates = old_data.unlock_dates
-	if old_data.has("item_sources"):
-		save_data.item_sources = old_data.item_sources
-	if old_data.has("stats"):
-		save_data.stats = old_data.stats
+	# Start with fresh save structure
+	var new_save = {
+		"version": SAVE_VERSION,
+		"owned_items": [],
+		"equipped": {
+			"card_front": "card_classic",
+			"card_back": "",
+			"board": "board_green",
+			"frame": "",
+			"avatar": "",
+			"emoji": [],
+			"mini_profile_card": "",
+			"mini_profile_card_showcased_items": [],
+			"mini_profile_card_showcased_stats": [],
+			"mini_profile_card_showcased_achievements": [],
+			"topbar": "",
+			"combo_effect": "",
+			"menu_background": "",
+			"use_board_as_menu_bg": false
+		},
+		"favorites": {},
+		"history": {},
+		"unlock_dates": {},
+		"item_sources": {},
+		"stats": {
+			"total_items_owned": 0,
+			"items_by_category": {},
+			"items_by_rarity": {},
+			"total_equipped_time": {},
+			"times_equipped": {}
+		}
+	}
 	
-	# Update version
-	save_data.version = SAVE_VERSION
+	# Copy over existing data
+	if old_data.has("owned_items"):
+		new_save.owned_items = old_data.owned_items
+	
+	if old_data.has("equipped"):
+		# Merge old equipped with new structure
+		for key in old_data.equipped:
+			if new_save.equipped.has(key):
+				new_save.equipped[key] = old_data.equipped[key]
+	
+	if old_data.has("favorites"):
+		new_save.favorites = old_data.favorites
+	if old_data.has("history"):
+		new_save.history = old_data.history
+	if old_data.has("unlock_dates"):
+		new_save.unlock_dates = old_data.unlock_dates
+	if old_data.has("item_sources"):
+		new_save.item_sources = old_data.item_sources
+	if old_data.has("stats"):
+		new_save.stats = old_data.stats
+	
+	save_data = new_save
 	save_data_to_file()
 
 func reset_all_equipment() -> void:
@@ -559,10 +619,10 @@ func reset_all_equipment() -> void:
 			"frame": "",
 			"avatar": "",
 			"emoji": [],
-			"mini_profile": "",
-			"mini_profile_showcased_items": [],
-			"mini_profile_showcased_stats": [],
-			"mini_profile_showcased_achievements": [],
+			"mini_profile_card": "",
+			"mini_profile_card_showcased_items": [],
+			"mini_profile_card_showcased_stats": [],
+			"mini_profile_card_showcased_achievements": [],
 			"topbar": "",
 			"combo_effect": "",
 			"menu_background": "",
@@ -613,7 +673,7 @@ func _get_category_key(category) -> String:
 			UnifiedItemData.Category.EMOJI:
 				return "emoji"
 			UnifiedItemData.Category.MINI_PROFILE_CARD:
-				return "mini_profile"
+				return "mini_profile_card"
 			UnifiedItemData.Category.TOPBAR:
 				return "topbar"
 			UnifiedItemData.Category.COMBO_EFFECT:

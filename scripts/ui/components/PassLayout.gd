@@ -186,16 +186,21 @@ func _apply_styling():
 	
 	# Style progress bar
 	UIStyleManager.apply_progress_bar_style(progress_bar, theme_type)
-	
-	# CONSISTENT FONT SIZES for all labels
-	progress_label.add_theme_font_size_override("font_size", standard_font_size)
+	# Grey font with white outline for readability
 	progress_label.add_theme_color_override("font_color", UIStyleManager.get_color("gray_700"))
-	
-	timer_label.add_theme_font_size_override("font_size", standard_font_size)
-	timer_label.add_theme_color_override("font_color", UIStyleManager.get_color("gray_600"))
-	
-	pass_level_label.add_theme_font_size_override("font_size", standard_font_size)
-	pass_level_label.add_theme_color_override("font_color", UIStyleManager.get_color("white"))
+	progress_label.add_theme_color_override("font_outline_color", Color.WHITE)
+	progress_label.add_theme_constant_override("outline_size", 1)
+
+	timer_label.add_theme_color_override("font_color", UIStyleManager.get_color("gray_700"))
+	timer_label.add_theme_color_override("font_outline_color", Color.WHITE)
+	timer_label.add_theme_constant_override("outline_size", 1)
+	timer_label.position.x = -150  # Move left
+
+	pass_level_label.add_theme_color_override("font_color", UIStyleManager.get_color("gray_700"))
+	pass_level_label.add_theme_color_override("font_outline_color", Color.WHITE)
+	pass_level_label.add_theme_constant_override("outline_size", 1)
+	pass_level_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	pass_level_label.position.x = 5
 	
 	# Style buttons with consistent size
 	UIStyleManager.apply_button_style(buy_premium_button, "primary", "medium")
@@ -209,19 +214,19 @@ func _apply_styling():
 	buy_levels_button.add_theme_font_size_override("font_size", button_font_size)
 	claim_all_button.add_theme_font_size_override("font_size", button_font_size)
 	scroll_level_button.add_theme_font_size_override("font_size", button_font_size)
-	
-	# Add shadow to pass level label
-	pass_level_label.add_theme_color_override("font_shadow_color", UIStyleManager.shadows.color_medium)
-	pass_level_label.add_theme_constant_override("shadow_offset_x", UIStyleManager.shadows.offset_small.x)
-	pass_level_label.add_theme_constant_override("shadow_offset_y", UIStyleManager.shadows.offset_small.y)
-	
-	pass_level_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 
 func setup_pass():
 	"""Initialize the pass with current data"""
 	if DEBUG:
-		print("\n[PassLayout] setup_pass() called - Instance: ", get_instance_id())
+		print("\n[PassLayout] ============================================")
+		print("[PassLayout] setup_pass() called - Instance: ", get_instance_id())
 		print("[PassLayout] Pass type: ", pass_type, " Theme type: ", theme_type)
+		print("[PassLayout] Call Stack:")
+		var stack = get_stack()
+		for i in range(min(5, stack.size())):  # Show last 5 calls
+			var frame = stack[i]
+			print("  -> %s:%d in %s()" % [frame.source, frame.line, frame.function])
+		print("[PassLayout] ============================================")
 	
 	# Prevent concurrent setups
 	if is_setting_up:
@@ -348,7 +353,8 @@ func _on_tier_column_input(event: InputEvent, column: TierColumn):
 					column.claim_reward(true)
 					reward_claimed.emit(column.tier_number, false)
 					print("[PassLayout] Successfully claimed FREE tier %d" % column.tier_number)
-					# TODO: Show popup here
+					# FIXED: Show popup for free reward
+					_show_claim_popup([column.free_reward_data], column.tier_number, true)
 		else:
 			# Clicked on PREMIUM card
 			if column.is_unlocked and is_premium and not column.premium_claimed and column.premium_reward_data.size() > 0:
@@ -359,7 +365,8 @@ func _on_tier_column_input(event: InputEvent, column: TierColumn):
 					column.claim_reward(false)
 					reward_claimed.emit(column.tier_number, true)
 					print("[PassLayout] Successfully claimed PREMIUM tier %d" % column.tier_number)
-					# TODO: Show popup here
+					# FIXED: Show popup for premium reward
+					_show_claim_popup([column.premium_reward_data], column.tier_number, false)
 
 func _try_claim_reward(tier_number: int, is_premium_reward: bool) -> bool:
 	"""Try to claim a tier reward through the appropriate manager"""
@@ -476,17 +483,23 @@ func _update_labels():
 func _update_timer():
 	"""Update countdown timer display"""
 	var manager = _get_current_manager()
-	var days = manager._calculate_days_remaining()
 	
-	var time_left = ""
-	if days > 1:
-		time_left = "%d days left" % days
-	elif days == 1:
-		time_left = "1 day left"
+	if manager.has_method("get_seconds_remaining"):
+		var total_seconds = manager.get_seconds_remaining()
+		
+		# Calculate components
+		var days = int(total_seconds / 86400)
+		var hours = int(total_seconds / 3600) % 24
+		var minutes = int(total_seconds / 60) % 60
+		var seconds = int(total_seconds) % 60
+		
+		# Format as "XX days, HH:MM:SS left"
+		if days > 0:
+			timer_label.text = "%d days, %02d:%02d:%02d left" % [days, hours, minutes, seconds]
+		else:
+			timer_label.text = "%02d:%02d:%02d left" % [hours, minutes, seconds]
 	else:
-		time_left = "Ends today!"
-	
-	timer_label.text = time_left
+		timer_label.text = "90 days left"  # Fallback
 
 func _update_progress_display():
 	"""Update the progress display for current tier"""
@@ -686,51 +699,114 @@ func _on_claim_all_pressed():
 	else:
 		print("[DEBUG] No rewards were claimed")
 
-func _show_batch_claim_popup(rewards: Array):
-	"""Show popup for batch claimed rewards"""
+func _show_claim_popup(rewards: Array, tier_num: int = -1, is_free: bool = true):
+	"""Show popup for claimed rewards (single or batch)"""
 	if rewards.size() == 0:
 		return
 	
-	print("[DEBUG POPUP] Creating popup with %d rewards" % rewards.size())
+	print("[DEBUG POPUP] === Creating Popup ===")
+	print("[DEBUG POPUP] Rewards to show: %s" % str(rewards))
+	print("[DEBUG POPUP] Is batch: %s" % (rewards.size() > 1 or tier_num < 0))
 	
 	var popup_scene_path = "res://Pyramids/scenes/ui/popups/RewardClaimPopup.tscn"
 	
-	if ResourceLoader.exists(popup_scene_path):
-		var popup_scene = load(popup_scene_path)
-		if popup_scene:
-			var popup = popup_scene.instantiate()
-			
-			# Create CanvasLayer for guaranteed top rendering
-			var canvas_layer = CanvasLayer.new()
-			canvas_layer.layer = 100
-			get_tree().root.add_child(canvas_layer)
-			canvas_layer.add_child(popup)
-			
-			# FIX: Get the actual visible window size
-			var visible_rect = get_viewport().get_visible_rect()
-			var window_size = visible_rect.size
-			var popup_size = Vector2(400, 300)
-			
-			# Center in the actual visible window
-			popup.position = (window_size - popup_size) / 2
-			popup.size = popup_size
-			
-			# Make visible
-			popup.visible = true
-			popup.modulate = Color.WHITE
-			popup.z_index = 999
-			
-			# Now setup content
+	if not ResourceLoader.exists(popup_scene_path):
+		push_error("[PassLayout] RewardClaimPopup scene not found!")
+		return
+		
+	var popup_scene = load(popup_scene_path)
+	if not popup_scene:
+		push_error("[PassLayout] Failed to load RewardClaimPopup scene!")
+		return
+		
+	var popup = popup_scene.instantiate()
+	
+	# Create CanvasLayer for guaranteed top rendering
+	var canvas_layer = CanvasLayer.new()
+	canvas_layer.layer = 100
+	canvas_layer.name = "RewardPopupLayer"
+	get_tree().root.add_child(canvas_layer)
+	canvas_layer.add_child(popup)
+	
+	# Get the actual visible window size
+	var visible_rect = get_viewport().get_visible_rect()
+	var window_size = visible_rect.size
+	var popup_size = Vector2(400, 300)
+	
+	# Center in the actual visible window
+	popup.position = (window_size - popup_size) / 2
+	popup.size = popup_size
+	
+	# Set these BEFORE setup
+	popup.visible = true
+	popup.modulate = Color.WHITE
+	popup.z_index = 999
+	
+	print("[DEBUG POPUP] Popup node: %s" % popup)
+	print("[DEBUG POPUP] Popup position: %s" % popup.position)
+	print("[DEBUG POPUP] Popup size: %s" % popup.size)
+	
+	# Setup content based on single or batch
+	if rewards.size() == 1 and tier_num > 0:
+		# Single reward
+		var reward_data = rewards[0]
+		print("[DEBUG POPUP] Setting up single reward: %s" % str(reward_data))
+		
+		if popup.has_method("setup"):
+			popup.setup(reward_data, null)
+			print("[DEBUG POPUP] Called setup()")
+	else:
+		# Multiple rewards - batch
+		print("[DEBUG POPUP] Setting up batch with %d rewards" % rewards.size())
+		if popup.has_method("setup_batch"):
 			popup.setup_batch(rewards)
-			
-			# Debug to verify position
-			print("[DEBUG POPUP] Visible rect: %s" % visible_rect)
-			print("[DEBUG POPUP] Window size: %s" % window_size)
-			print("[DEBUG POPUP] Popup position: %s" % popup.position)
-			print("[DEBUG POPUP] Popup visible: %s" % popup.visible)
-			
-			# Clean up canvas layer when popup is freed
-			popup.tree_exited.connect(func(): canvas_layer.queue_free())
+			print("[DEBUG POPUP] Called setup_batch()")
+	
+	# Force to front
+	popup.show()
+	popup.move_to_front()
+	
+	# REMOVED: Timer that auto-closes popup
+	# The popup will now stay open until user clicks "Awesome!"
+	
+	# Connect to close popup when button is pressed
+	if popup.has_signal("confirmed"):
+		popup.confirmed.connect(func():
+			print("[DEBUG POPUP] User clicked Awesome!")
+			if is_instance_valid(popup):
+				popup.queue_free()
+			if is_instance_valid(canvas_layer):
+				canvas_layer.queue_free()
+		)
+	
+	print("[DEBUG POPUP] === Popup Setup Complete ===")
+
+func _debug_node_tree(node: Node, depth: int):
+	"""Recursively print node tree for debugging"""
+	var indent = "  ".repeat(depth)
+	var info = "%s%s" % [indent, node.name]
+	
+	if node is Control:
+		info += " (visible: %s, size: %s)" % [node.visible, node.size]
+	
+	# Check for specific UI elements
+	if node is Label:
+		info += " - Text: '%s'" % node.text
+	elif node is Button:
+		info += " - Button: '%s'" % node.text
+	elif node is TextureRect:
+		info += " - Texture: %s" % (node.texture != null)
+		
+	print("[DEBUG POPUP] %s" % info)
+	
+	# Only go 3 levels deep to avoid spam
+	if depth < 3:
+		for child in node.get_children():
+			_debug_node_tree(child, depth + 1)
+
+func _show_batch_claim_popup(rewards: Array):
+	"""Show popup for batch claimed rewards"""
+	_show_claim_popup(rewards, -1, false)  # -1 tier means batch
 
 func _on_scroll_level_pressed():
 	"""Handle scroll to current level button"""

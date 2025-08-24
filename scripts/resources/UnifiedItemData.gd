@@ -79,7 +79,7 @@ enum Source {
 @export var can_be_menu_background: bool = false  # TODO: Allow boards to be menu backgrounds
 
 @export_group("Mini Profile Settings")
-@export_enum("standard", "compact", "detailed", "animated") var mini_profile_layout: String = "standard"
+@export_enum("standard", "compact", "detailed", "animated") var mini_profile_card_layout: String = "standard"
 @export var showcase_slots: int = 3  # How many items/achievements/stats can be shown
 @export var stat_positions: Dictionary = {}  # Where stats appear on the card
 @export var achievement_positions: Dictionary = {}  # Where achievements appear
@@ -172,7 +172,7 @@ func get_category_folder() -> String:
 		Category.FRAME: return "frames"
 		Category.AVATAR: return "avatars"
 		Category.EMOJI: return "emojis"
-		Category.MINI_PROFILE_CARD: return "mini_profiles"
+		Category.MINI_PROFILE_CARD: return "mini_profile_cards"
 		_: return get_category_name() + "s"
 
 func get_source_name() -> String:
@@ -346,7 +346,7 @@ static func string_to_category(category_str: String) -> Category:
 			return Category.AVATAR
 		"emoji", "emojis":
 			return Category.EMOJI
-		"mini_profile", "mini_profiles", "mini_profile_card":
+		"mini_profile_card", "mini_profile_cards":
 			return Category.MINI_PROFILE_CARD
 		"topbar", "topbars":
 			return Category.TOPBAR

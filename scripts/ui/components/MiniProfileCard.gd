@@ -93,6 +93,7 @@ var display_cards: Array[PanelContainer] = []  # Will hold the 3 display cards
 var player_data: Dictionary = {}
 var is_empty: bool = true
 var plus_label: Label = null  # For empty state
+var applied_theme: ProceduralMiniProfileCard = null  # NEW: For custom themes
 
 # === LIFECYCLE ===
 
@@ -205,6 +206,12 @@ func _configure_stat_labels() -> void:
 
 func _setup_card_style() -> void:
 	"""Setup the main panel style"""
+	# Check if we have a custom theme applied
+	if applied_theme:
+		_apply_theme_styles()
+		return
+	
+	# Default style if no theme
 	var style = StyleBoxFlat.new()
 	style.bg_color = Color(0.15, 0.15, 0.15, 0.9)
 	style.set_border_width_all(2)
@@ -391,6 +398,7 @@ func set_occupied_state() -> void:
 	
 	_update_overlay_controls()
 
+
 func _setup_empty_card_style() -> void:
 	"""Style for empty slots"""
 	var style = get_theme_stylebox("panel")
@@ -400,6 +408,20 @@ func _setup_empty_card_style() -> void:
 
 func _setup_occupied_card_style() -> void:
 	"""Style for occupied slots"""
+	# Check if we have a custom theme applied
+	if applied_theme:
+		_apply_theme_styles()
+		# Special handling for host (golden border)
+		if player_data.get("is_host", false):
+			var style = get_theme_stylebox("panel")
+			if style and style is StyleBoxFlat:
+				var host_style = style.duplicate()
+				host_style.border_color = Color(1.0, 0.84, 0, 1.0)
+				host_style.set_border_width_all(3)
+				add_theme_stylebox_override("panel", host_style)
+		return
+	
+	# Default style if no theme
 	var style = get_theme_stylebox("panel")
 	if style is StyleBoxFlat:
 		style.border_color = Color(0.4, 0.4, 0.4, 1.0)
@@ -563,6 +585,54 @@ func highlight() -> void:
 func unhighlight() -> void:
 	"""Remove highlight"""
 	modulate = Color.WHITE
+
+# === PUBLIC API ===
+
+func apply_mini_profile_theme(theme_id: String) -> void:
+	"""Apply a mini profile card theme by ID"""
+	if not theme_id or theme_id == "":
+		applied_theme = null
+		_setup_card_style()  # Reset to default
+		return
+	
+	# Try to load the theme from ItemManager
+	if ItemManager:
+		var item = ItemManager.get_item(theme_id)
+		if item and item.category == UnifiedItemData.Category.MINI_PROFILE_CARD:
+			# Get the procedural instance
+			if ProceduralItemRegistry:
+				var instance = ProceduralItemRegistry.get_procedural_item(theme_id)
+				if instance and instance is ProceduralMiniProfileCard:
+					applied_theme = instance
+					_apply_theme_styles()
+				else:
+					push_warning("Mini profile theme not found in registry: " + theme_id)
+			else:
+				push_warning("ProceduralItemRegistry not available")
+		else:
+			push_warning("Invalid mini profile theme ID: " + theme_id)
+
+func _apply_theme_styles() -> void:
+	"""Apply the current theme to all panels"""
+	if not applied_theme:
+		return
+	
+	# Apply to main panel
+	var main_style = applied_theme.get_main_panel_style()
+	if main_style:
+		add_theme_stylebox_override("panel", main_style)
+	
+	# Apply to stats panel
+	if stats_panel:
+		var stats_style = applied_theme.get_stats_panel_style()
+		if stats_style:
+			stats_panel.add_theme_stylebox_override("panel", stats_style)
+	
+	# Apply to bottom section
+	if bot_section:
+		var bot_style = applied_theme.get_bot_section_style()
+		if bot_style:
+			bot_section.add_theme_stylebox_override("panel", bot_style)
 
 # === DEBUG FUNCTIONS ===
 

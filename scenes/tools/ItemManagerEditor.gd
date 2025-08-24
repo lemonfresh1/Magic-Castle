@@ -55,7 +55,7 @@ func _reload_item_manager():
 		
 		# Force reload from disk - scan .tres files manually
 		var base_path = "res://Pyramids/resources/items/"
-		var categories = ["card_fronts", "card_backs", "boards", "frames", "avatars", "emojis", "mini_profiles"]
+		var categories = ["card_fronts", "card_backs", "boards", "mini_profile_cards", "frames", "avatars", "emojis"]
 		
 		for category in categories:
 			var path = base_path + category + "/"
@@ -197,6 +197,7 @@ func _get_category_name(category: UnifiedItemData.Category) -> String:
 		UnifiedItemData.Category.CARD_BACK: return "Card Backs"
 		UnifiedItemData.Category.CARD_FRONT: return "Card Fronts"
 		UnifiedItemData.Category.BOARD: return "Boards"
+		UnifiedItemData.Category.MINI_PROFILE_CARD: return "Mini Profile Cards"
 		UnifiedItemData.Category.FRAME: return "Frames"
 		UnifiedItemData.Category.AVATAR: return "Avatars"
 		_: return "Unknown"
@@ -291,19 +292,21 @@ func _show_preview():
 		preview_container.add_child(label)
 
 func _get_item_png_path(item: UnifiedItemData) -> String:
-	# Build path like: res://exported_items/card_backs/epic/card_back_classic_pyramids_gold.png
 	var category_folder = ""
 	match item.category:
 		UnifiedItemData.Category.CARD_BACK: category_folder = "card_backs"
 		UnifiedItemData.Category.CARD_FRONT: category_folder = "card_fronts"
 		UnifiedItemData.Category.BOARD: category_folder = "boards"
+		UnifiedItemData.Category.MINI_PROFILE_CARD: category_folder = "mini_profile_cards"  # NEW
 		UnifiedItemData.Category.FRAME: category_folder = "frames"
 		UnifiedItemData.Category.AVATAR: category_folder = "avatars"
+		_: category_folder = "misc"
 	
 	var rarity_folder = item.get_rarity_name().to_lower()
 	
-	return "res://exported_items/%s/%s/%s.png" % [category_folder, rarity_folder, item.id]
+	return "res://Pyramids/assets/icons/%s/%s.png" % [category_folder, item.id]
 
+	
 func export_all():
 	print("Export all not implemented yet")
 
@@ -484,14 +487,15 @@ func _save_current_item():
 		print("✗ Failed to save: %s" % selected_item.display_name)
 
 func _get_item_save_path(item: UnifiedItemData) -> String:
-	# Build path like: res://Pyramids/resources/items/card_backs/card_back_classic_pyramids_gold.tres
 	var category_folder = ""
 	match item.category:
 		UnifiedItemData.Category.CARD_BACK: category_folder = "card_backs"
 		UnifiedItemData.Category.CARD_FRONT: category_folder = "card_fronts"
 		UnifiedItemData.Category.BOARD: category_folder = "boards"
+		UnifiedItemData.Category.MINI_PROFILE_CARD: category_folder = "mini_profile_cards"  # NEW
 		UnifiedItemData.Category.FRAME: category_folder = "frames"
 		UnifiedItemData.Category.AVATAR: category_folder = "avatars"
+		_: category_folder = "misc"
 	
 	return "res://Pyramids/resources/items/%s/%s.tres" % [category_folder, item.id]
 
