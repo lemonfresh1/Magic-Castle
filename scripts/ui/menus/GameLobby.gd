@@ -56,12 +56,17 @@ const PLAYER_SLOT_SCENE = "res://Pyramids/scenes/ui/components/PlayerSlot.tscn"
 @onready var leave_button: Button = $MainContainer/ContentVBox/BottomButtons/LeaveButton
 
 # === PROPERTIES ===
-var player_slots: Array = []  # Array of PlayerSlot nodes
+var player_slots: Array = []
 var local_player_id: String = ""
 var host_player_id: String = ""
 var is_host: bool = false
 var is_ready: bool = false
 var game_started: bool = false
+
+# Emoji system
+var emoji_buttons: Array = []
+var emoji_on_cooldown: bool = false  # Global cooldown state
+var emoji_cooldown_overlays: Array = []  # Track all overlays
 
 # === LIFECYCLE ===
 
@@ -70,6 +75,7 @@ func _ready():
 	_create_player_slots()
 	_connect_signals()
 	_apply_ui_styling()
+	_setup_emoji_buttons()  # NEW
 	_update_controls_visibility()
 	
 	# Test mode if running directly
@@ -264,7 +270,99 @@ func set_player_ready(player_id: String, ready: bool):
 			_check_all_ready()
 			break
 
+func _setup_emoji_buttons():
+	"""Load equipped emojis into buttons"""
+	emoji_buttons = [emoji_button_1, emoji_button_2, emoji_button_3, emoji_button_4]
+	
+	# Get equipped emojis from EquipmentManager
+	if not EquipmentManager:
+		return
+		
+	var equipped_emojis = EquipmentManager.get_equipped_emojis()
+	
+	for i in range(4):
+		var button = emoji_buttons[i]
+		if i < equipped_emojis.size():
+			var emoji_id = equipped_emojis[i]
+			if ItemManager:
+				var item = ItemManager.get_item(emoji_id)
+				if item and item.get("texture_path"):
+					_configure_emoji_button(button, item, i)
+				else:
+					button.visible = false
+		else:
+			button.visible = false
+
 # === PRIVATE HELPERS ===
+
+func _configure_emoji_button(button: Button, emoji_item: UnifiedItemData, index: int):
+	"""Configure a single emoji button"""
+	button.visible = true
+	button.text = ""  # Remove text
+	button.tooltip_text = emoji_item.display_name
+	
+	# Load and set emoji texture
+	var texture_path = emoji_item.texture_path if emoji_item else ""
+	if texture_path != "" and ResourceLoader.exists(texture_path):
+		var texture = load(texture_path)
+		button.icon = texture
+		button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		button.expand_icon = true
+		# Scale 16x16 to 32x32 in button
+		button.custom_minimum_size = Vector2(48, 48)
+	
+	# Store emoji_id for later use
+	button.set_meta("emoji_id", emoji_item.id)
+	button.set_meta("button_index", index)
+
+func _start_global_emoji_cooldown():
+	"""Start cooldown animation on ALL emoji buttons"""
+	if emoji_on_cooldown:
+		return
+	
+	emoji_on_cooldown = true
+	emoji_cooldown_overlays.clear()
+	
+	# Apply cooldown to ALL buttons
+	for button in emoji_buttons:
+		if not button.visible:
+			continue
+			
+		# Create gray overlay that covers the button
+		var overlay = ColorRect.new()
+		overlay.name = "CooldownOverlay"
+		overlay.color = Color(0, 0, 0, 0.6)
+		overlay.mouse_filter = Control.MOUSE_FILTER_STOP  # Block input
+		overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		button.add_child(overlay)
+		emoji_cooldown_overlays.append(overlay)
+		
+		# Disable the button
+		button.disabled = true
+		
+		# Animate overlay disappearing from top to bottom over 3 seconds
+		var tween = create_tween()
+		
+		# Shrink from bottom to top (revealing button from top down)
+		tween.tween_property(overlay, "anchor_top", 1.0, 3.0)
+		
+		# Only the last tween needs to reset the global state
+		if button == emoji_buttons[-1]:
+			tween.tween_callback(func():
+				_clear_emoji_cooldown()
+			)
+
+func _clear_emoji_cooldown():
+	"""Clear all cooldown overlays and reset state"""
+	for overlay in emoji_cooldown_overlays:
+		if is_instance_valid(overlay):
+			overlay.queue_free()
+	
+	for button in emoji_buttons:
+		button.disabled = false
+	
+	emoji_cooldown_overlays.clear()
+	emoji_on_cooldown = false
 
 func _update_controls_visibility():
 	"""Update button visibility based on role and state"""
@@ -408,9 +506,28 @@ func _on_leave_pressed():
 			get_tree().change_scene_to_file("res://Pyramids/scenes/ui/menus/MultiplayerScreen.tscn")
 
 func _on_emoji_pressed(emoji_index: int):
-	"""Handle emoji button press"""
-	print("Emoji %d pressed" % emoji_index)
-	# TODO: Show emoji animation over player's card
+	"""Handle emoji button press with cooldown"""
+	# Check if ANY emoji is on cooldown
+	if emoji_on_cooldown:
+		return  # All emojis are on cooldown
+	
+	var button = emoji_buttons[emoji_index - 1]
+	var emoji_id = button.get_meta("emoji_id", "")
+	if emoji_id == "":
+		return
+	
+	# Apply cooldown to ALL emoji buttons
+	_start_global_emoji_cooldown()
+	
+	# Show emoji on local player's card
+	for slot in player_slots:
+		if slot.has_method("get_player_id") and slot.get_player_id() == local_player_id:
+			if slot.mini_profile_card and slot.mini_profile_card.has_method("show_emoji"):
+				slot.mini_profile_card.show_emoji(emoji_id)
+			break
+	
+	# TODO: Send emoji to network for other players to see
+	print("Emoji sent: %s" % emoji_id)
 
 # === TEST/DEBUG ===
 

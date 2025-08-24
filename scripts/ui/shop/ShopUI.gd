@@ -175,9 +175,9 @@ func _create_regular_grid(category_id: String) -> GridContainer:
 	grid.name = "ItemGrid"
 	
 	if category_id == "board" or category_id == "mini_profile_card":  # UPDATED
-		grid.columns = 2
+		grid.columns = 3
 	else:
-		grid.columns = 4
+		grid.columns = 6
 	
 	grid.add_theme_constant_override("h_separation", 10)
 	grid.add_theme_constant_override("v_separation", 10)

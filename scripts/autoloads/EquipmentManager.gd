@@ -140,13 +140,17 @@ func equip_item(item_id: String) -> bool:
 	# Handle different category types
 	match category:
 		UnifiedItemData.Category.EMOJI:
-			# Emojis can have multiple equipped
+			# Max 4 emojis
 			if not item_id in save_data.equipped.emoji:
-				if save_data.equipped.emoji.size() < 8:  # Max 8 emojis
+				if save_data.equipped.emoji.size() < 4:
 					save_data.equipped.emoji.append(item_id)
 				else:
-					push_warning("EquipmentManager: Max emojis equipped")
-					return false
+					# Replace oldest
+					push_warning("EquipmentManager: Max 4 emojis, replacing oldest")
+					var old_emoji = save_data.equipped.emoji[0]
+					save_data.equipped.emoji.erase(old_emoji)
+					save_data.equipped.emoji.append(item_id)
+					item_unequipped.emit(old_emoji, "emoji")
 		
 		UnifiedItemData.Category.MINI_PROFILE_CARD:
 			old_equipped = save_data.equipped.mini_profile_card
@@ -505,21 +509,35 @@ func _ensure_defaults() -> void:
 	var defaults = {
 		"card_front": "card_classic",
 		"card_back": "classic_card_back",
-		"board": "classic_board"
+		"board": "classic_board",
+		"emoji": ["emoji_cool", "emoji_cry", "emoji_curse", "emoji_love"]
 	}
 	
 	for category in defaults:
-		var item_id = defaults[category]
-		
-		# Ensure owned
-		if not item_id in save_data.owned_items:
-			save_data.owned_items.append(item_id)
-			save_data.item_sources[item_id] = "default"
-			save_data.stats.total_items_owned += 1
-		
-		# Ensure equipped if nothing else is
-		if save_data.equipped.get(category, "") == "":
-			save_data.equipped[category] = item_id
+		if category == "emoji":
+			# Handle emoji array differently
+			for emoji_id in defaults[category]:
+				# Ensure owned
+				if not emoji_id in save_data.owned_items:
+					save_data.owned_items.append(emoji_id)
+					save_data.item_sources[emoji_id] = "default"
+					save_data.stats.total_items_owned += 1
+				
+				# Auto-equip if not already equipped
+				if not emoji_id in save_data.equipped.emoji:
+					save_data.equipped.emoji.append(emoji_id)
+		else:
+			var item_id = defaults[category]
+			
+			# Ensure owned
+			if not item_id in save_data.owned_items:
+				save_data.owned_items.append(item_id)
+				save_data.item_sources[item_id] = "default"
+				save_data.stats.total_items_owned += 1
+			
+			# Ensure equipped if nothing else is
+			if save_data.equipped.get(category, "") == "":
+				save_data.equipped[category] = item_id
 
 # === PERSISTENCE ===
 

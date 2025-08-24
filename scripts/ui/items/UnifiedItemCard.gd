@@ -65,7 +65,8 @@ enum DisplayMode {
 
 enum LayoutType {
 	PORTRAIT,     # Cards, Emojis, Avatars, Frames
-	LANDSCAPE     # Boards, Mini profiles
+	LANDSCAPE,     # Boards, Mini profiles
+	ICON # Used for frames and emojis
 }
 
 enum SizePreset {
@@ -507,6 +508,11 @@ func _setup_background():
 	if not item_data:
 		return  # Skip for rewards
 	
+	# For ICON layout, use special centered display
+	if layout_type == LayoutType.ICON:
+		_setup_icon_display()
+		return
+	
 	# For small presets, hide ALL backgrounds
 	if size_preset in [SizePreset.MINI_DISPLAY, SizePreset.PASS_REWARD]:
 		background_texture.visible = false
@@ -546,10 +552,19 @@ func _setup_overlays():
 	if size_preset in [SizePreset.MINI_DISPLAY, SizePreset.PASS_REWARD, SizePreset.SHOWCASE]:
 		name_label.visible = false
 		price_label.visible = false
-		equipped_badge.visible = false  # Also hide badge for small cards
+		equipped_badge.visible = false
 		return
 	
-	# Below here is only for INVENTORY and SHOP presets (full size cards)
+	# DELETE THE ENTIRE SPECIAL ICON HANDLING BLOCK (lines that had "if layout_type == LayoutType.ICON:")
+	# Just add this simple check for ICON items to hide the name
+	if layout_type == LayoutType.ICON:
+		name_label.visible = false
+	else:
+		# Normal name label setup for non-ICON items
+		name_label.visible = true
+		name_label.text = item_data.display_name
+	
+	# Below here continues as normal for all items (including ICON)
 	
 	# Get positioning from UIStyleManager
 	var slot_1_top = UIStyleManager.get_item_card_style("label_slot_1_top")
@@ -559,31 +574,30 @@ func _setup_overlays():
 	var font_size_name = UIStyleManager.get_item_card_style("font_size_name")
 	var font_size_price = UIStyleManager.get_item_card_style("font_size_price")
 	
-	# Setup Name Label
-	name_label.text = item_data.display_name
-	name_label.visible = true
-	name_label.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	name_label.anchor_top = slot_1_top
-	name_label.anchor_bottom = slot_1_bottom
-	name_label.anchor_left = 0
-	name_label.anchor_right = 1
+	# Only setup name label position if it's visible
+	if name_label.visible:
+		name_label.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+		name_label.anchor_top = slot_1_top
+		name_label.anchor_bottom = slot_1_bottom
+		name_label.anchor_left = 0
+		name_label.anchor_right = 1
+		
+		# Inset from borders
+		name_label.offset_left = 4
+		name_label.offset_right = -4
+		name_label.offset_top = 0
+		name_label.offset_bottom = 0
+		
+		# Configure appearance
+		name_label.add_theme_color_override("font_color", Color.WHITE)
+		name_label.add_theme_color_override("font_outline_color", Color.BLACK)
+		name_label.add_theme_constant_override("outline_size", 1)
+		name_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 1.0))
+		name_label.add_theme_constant_override("shadow_offset_x", 1)
+		name_label.add_theme_constant_override("shadow_offset_y", 1)
+		name_label.add_theme_font_size_override("font_size", font_size_name)
 	
-	# Inset from borders
-	name_label.offset_left = 4
-	name_label.offset_right = -4
-	name_label.offset_top = 0
-	name_label.offset_bottom = 0
-	
-	# Configure appearance
-	name_label.add_theme_color_override("font_color", Color.WHITE)
-	name_label.add_theme_color_override("font_outline_color", Color.BLACK)
-	name_label.add_theme_constant_override("outline_size", 1)
-	name_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 1.0))
-	name_label.add_theme_constant_override("shadow_offset_x", 1)
-	name_label.add_theme_constant_override("shadow_offset_y", 1)
-	name_label.add_theme_font_size_override("font_size", font_size_name)
-	
-	# Setup Price Label
+	# Setup Price Label (same for all including ICON)
 	if display_mode == DisplayMode.SHOP and not is_owned:
 		price_label.visible = true
 		var price = 0
@@ -600,6 +614,7 @@ func _setup_overlays():
 	else:
 		price_label.visible = false
 	
+	# Continue with price label positioning (unchanged)
 	price_label.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	price_label.anchor_top = slot_2_top
 	price_label.anchor_bottom = slot_2_bottom
@@ -630,6 +645,8 @@ func _setup_card_size():
 			base_size = UIStyleManager.get_item_card_style("size_portrait")
 		LayoutType.LANDSCAPE:
 			base_size = UIStyleManager.get_item_card_style("size_landscape")
+		LayoutType.ICON:
+			base_size = UIStyleManager.get_item_card_style("size_portrait")
 	
 	# Set sizes
 	custom_minimum_size = base_size
@@ -932,6 +949,46 @@ func _setup_reward_display():
 	else:
 		# Generic reward
 		_setup_generic_reward_display()
+
+func _setup_icon_display():
+	"""Setup centered icon display for emojis, frames, etc."""
+	# Hide background for icon items
+	background_texture.visible = false
+	procedural_canvas.visible = false
+	
+	# Load the texture
+	var texture_path = item_data.texture_path
+	if texture_path == "" or not ResourceLoader.exists(texture_path):
+		return
+	
+	# Use icon_texture for display
+	icon_texture.visible = true
+	icon_texture.texture = load(texture_path)
+	
+	# ENSURE NO COLOR MODULATION
+	icon_texture.modulate = Color.WHITE
+	icon_texture.self_modulate = Color.WHITE
+	
+	# Use the expand mode that works for sizing
+	icon_texture.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+	icon_texture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	
+	# Instead of position, use anchors and margins to center it
+	icon_texture.set_anchors_preset(Control.PRESET_CENTER)
+	
+	# Set the size
+	var icon_size = Vector2(64, 64)
+	icon_texture.size = icon_size
+	
+	# Use margins to offset from center (negative half of size)
+	icon_texture.set_offsets_preset(Control.PRESET_CENTER)
+	icon_texture.offset_left = -32  # Half of 64
+	icon_texture.offset_top = 32   # Half of 64
+	icon_texture.offset_right = 32
+	icon_texture.offset_bottom = 32
+	
+	if DEBUG:
+		print("[ICON] Using anchor centering: size=%s" % icon_texture.size)
 
 func _setup_empty_slot_display():
 	"""Display for empty reward slots - just a semi-transparent placeholder"""
@@ -1445,10 +1502,12 @@ func _get_layout_type() -> LayoutType:
 			return LayoutType.PORTRAIT
 		return LayoutType.PORTRAIT
 	
-	# FIX: Add MINI_PROFILE_CARD to landscape categories
+	# Determine layout based on category
 	match item_data.category:
 		UnifiedItemData.Category.BOARD, UnifiedItemData.Category.MINI_PROFILE_CARD:
 			return LayoutType.LANDSCAPE
+		UnifiedItemData.Category.EMOJI, UnifiedItemData.Category.FRAME:
+			return LayoutType.ICON
 		_:
 			return LayoutType.PORTRAIT
 

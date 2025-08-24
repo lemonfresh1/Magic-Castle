@@ -86,15 +86,18 @@ const EMPTY_CARD_DATA = {
 # Overlay controls
 @onready var kick_button: Button = $KickButton
 @onready var ready_sign: TextureRect = $ReadySign
+@onready var emoji_container: Control = $EmojiContainer
+@onready var emoji_texture_rect: TextureRect = $EmojiContainer/EmojiTextureRect
 
 # === MEMBER VARIABLES ===
-var profile_frame: PanelContainer = null  # Will be created dynamically
-var display_cards: Array[PanelContainer] = []  # Will hold the 3 display cards
+var profile_frame: PanelContainer = null
+var display_cards: Array[PanelContainer] = []
 var player_data: Dictionary = {}
 var is_empty: bool = true
-var plus_label: Label = null  # For empty state
-var applied_theme: ProceduralMiniProfileCard = null  # NEW: For custom themes
-var host_indicator = null  # Untyped
+var plus_label: Label = null
+var applied_theme: ProceduralMiniProfileCard = null
+var host_indicator = null
+var active_emoji = null 
 
 # === LIFECYCLE ===
 
@@ -427,6 +430,54 @@ func _setup_occupied_card_style() -> void:
 		style.bg_color = Color(0.15, 0.15, 0.15, 0.95)
 		# REMOVED: Host border changes - keep consistent border for all
 		style.set_border_width_all(1)  # Same for everyone
+
+# === EMOJI DISPLAY ===
+
+func show_emoji(emoji_id: String):
+	"""Display emoji animation over card"""
+	if not ItemManager:
+		return
+	
+	var item = ItemManager.get_item(emoji_id)
+	if not item:
+		return
+		
+	var texture_path = item.texture_path
+	if not texture_path or texture_path == "" or not ResourceLoader.exists(texture_path):
+		return
+	
+	# Set the texture
+	emoji_texture_rect.texture = load(texture_path)
+	
+	# Reset and show
+	emoji_container.visible = true
+	emoji_container.scale = Vector2.ZERO
+	emoji_container.rotation = 0
+	
+	# Create animation
+	var tween = create_tween()
+	
+	# Pop up
+	tween.tween_property(emoji_container, "scale", Vector2(1.2, 1.2), 0.3)\
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	tween.tween_property(emoji_container, "scale", Vector2.ONE, 0.1)
+	
+	# Wiggle
+	tween.tween_property(emoji_container, "rotation", deg_to_rad(5), 0.2)
+	tween.tween_property(emoji_container, "rotation", deg_to_rad(-5), 0.2)
+	tween.tween_property(emoji_container, "rotation", 0.0, 0.2)
+	
+	# Stay
+	tween.tween_interval(1.7)
+	
+	# Shrink away
+	tween.tween_property(emoji_container, "scale", Vector2.ZERO, 0.3)\
+		.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_BACK)
+	
+	# Hide
+	tween.tween_callback(func():
+		emoji_container.visible = false
+	)
 
 # === UPDATE FUNCTIONS ===
 

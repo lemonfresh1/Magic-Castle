@@ -21,10 +21,10 @@ stretch_mode = 5
 
 [node name="IconTexture" type="TextureRect" parent="."]
 modulate = Color(0, 1, 1, 1)
-custom_minimum_size = Vector2(45, 63)
+custom_minimum_size = Vector2(64, 64)
 layout_mode = 2
 size_flags_horizontal = 4
-size_flags_vertical = 0
+size_flags_vertical = 4
 
 [node name="ProceduralCanvas" type="Control" parent="."]
 layout_mode = 2

@@ -270,7 +270,7 @@ func _populate_flow_container(container: VBoxContainer, items: Array, tab_id: St
 	
 	var current_row = null
 	var current_columns_used = 0
-	var MAX_COLUMNS = 4
+	var MAX_COLUMNS = 6
 	
 	for item in items:
 		if not item is UnifiedItemData:
@@ -333,7 +333,7 @@ func _populate_flow_container_by_type(container: VBoxContainer, items: Array, ta
 		
 		var current_row = null
 		var current_columns_used = 0
-		var MAX_COLUMNS = 4
+		var MAX_COLUMNS = 6
 		
 		for item in items_by_type[category]:
 			# FIXED: Check for both BOARD and MINI_PROFILE_CARD
@@ -458,7 +458,7 @@ func _connect_equipment_signals():
 
 func _add_grid_spacer_row(grid: GridContainer):
 	"""Add a full row of minimal spacers"""
-	for i in range(4):
+	for i in range(6):
 		var spacer = Control.new()
 		spacer.custom_minimum_size = Vector2(1, 20)
 		grid.add_child(spacer)
