@@ -94,6 +94,7 @@ var player_data: Dictionary = {}
 var is_empty: bool = true
 var plus_label: Label = null  # For empty state
 var applied_theme: ProceduralMiniProfileCard = null  # NEW: For custom themes
+var host_indicator = null  # Untyped
 
 # === LIFECYCLE ===
 
@@ -352,6 +353,9 @@ func set_empty_state() -> void:
 		kick_button.visible = false
 	if ready_sign:
 		ready_sign.visible = false
+	# DEBUG: Print size
+	await get_tree().process_frame
+	print("[EMPTY] MiniProfileCard %d size: %s | Min size: %s" % [slot_index, size, custom_minimum_size])
 
 func set_occupied_state() -> void:
 	"""Configure for occupied player slot"""
@@ -397,7 +401,9 @@ func set_occupied_state() -> void:
 		_update_display_items()
 	
 	_update_overlay_controls()
-
+	# DEBUG: Print size  
+	await get_tree().process_frame
+	print("[OCCUPIED] MiniProfileCard %d size: %s | Min size: %s" % [slot_index, size, custom_minimum_size])
 
 func _setup_empty_card_style() -> void:
 	"""Style for empty slots"""
@@ -411,14 +417,7 @@ func _setup_occupied_card_style() -> void:
 	# Check if we have a custom theme applied
 	if applied_theme:
 		_apply_theme_styles()
-		# Special handling for host (golden border)
-		if player_data.get("is_host", false):
-			var style = get_theme_stylebox("panel")
-			if style and style is StyleBoxFlat:
-				var host_style = style.duplicate()
-				host_style.border_color = Color(1.0, 0.84, 0, 1.0)
-				host_style.set_border_width_all(3)
-				add_theme_stylebox_override("panel", host_style)
+		# REMOVED: Special handling for host (golden border)
 		return
 	
 	# Default style if no theme
@@ -426,10 +425,8 @@ func _setup_occupied_card_style() -> void:
 	if style is StyleBoxFlat:
 		style.border_color = Color(0.4, 0.4, 0.4, 1.0)
 		style.bg_color = Color(0.15, 0.15, 0.15, 0.95)
-		
-		if player_data.get("is_host", false):
-			style.border_color = Color(1.0, 0.84, 0, 1.0)
-			style.set_border_width_all(3)
+		# REMOVED: Host border changes - keep consistent border for all
+		style.set_border_width_all(1)  # Same for everyone
 
 # === UPDATE FUNCTIONS ===
 
@@ -490,19 +487,54 @@ func _update_display_items() -> void:
 
 func _update_overlay_controls() -> void:
 	"""Update ready sign and kick button visibility"""
-	if kick_button:
-		kick_button.set_position(Vector2(size.x - 25, 5))
-		var is_host_viewing = show_kick_button
-		var is_self = player_data.get("is_host", false)
-		kick_button.visible = is_host_viewing and not is_self and not is_empty
 	
+	# Ready sign stays top-left
 	if ready_sign:
 		ready_sign.set_position(Vector2(5, 5))
 		ready_sign.visible = player_data.get("is_ready", false)
 		if ready_sign.visible and not ready_sign.texture:
 			_create_ready_checkmark()
+	
+	# Kick button OR host indicator (top-right)
+	if player_data.get("is_host", false):
+		# Hide kick button, show host indicator
+		if kick_button:
+			kick_button.visible = false
+		_show_host_indicator()
+	else:
+		# Hide host indicator, potentially show kick button
+		if host_indicator:
+			host_indicator.visible = false  # HIDE THE HOST INDICATOR!
+		
+		if kick_button:
+			kick_button.set_position(Vector2(size.x - 25, 5))
+			var is_host_viewing = show_kick_button
+			kick_button.visible = is_host_viewing and not is_empty
 
 # === HELPER FUNCTIONS ===
+
+func _show_host_indicator() -> void:
+	"""Show host indicator in top-right corner"""
+	if not host_indicator:
+		# Use a Label instead of TextureRect
+		var label = Label.new()
+		label.name = "HostIndicator"
+		label.text = "H"
+		label.add_theme_font_size_override("font_size", 16)
+		label.add_theme_color_override("font_color", Color(1.0, 0.84, 0, 1.0))  # Gold
+		label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.5))
+		label.add_theme_constant_override("shadow_offset_x", 1)
+		label.add_theme_constant_override("shadow_offset_y", 1)
+		
+		# YOUR INSTRUCTIONS - SIZE FLAGS
+		label.size_flags_horizontal = Control.SIZE_SHRINK_END
+		label.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		
+		label.size = Vector2(20, 20)
+		add_child(label)
+		host_indicator = label
+	
+	host_indicator.visible = true
 
 func _show_plus_symbol() -> void:
 	"""Show + symbol for empty state"""

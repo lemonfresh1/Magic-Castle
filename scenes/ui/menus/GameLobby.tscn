@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3 uid="uid://ms3fpvyqvvsq"]
+[gd_scene load_steps=3 format=3 uid="uid://ms3fpvyqvvsq"]
 
 [ext_resource type="Script" uid="uid://bkmpvnabsjamy" path="res://Pyramids/scripts/ui/menus/GameLobby.gd" id="1_r5phi"]
+[ext_resource type="Script" uid="uid://dt5c7myi1lf2u" path="res://Pyramids/scenes/test/GameLobbyDebugPanel.gd" id="2_5xbhc"]
 
 [node name="GameLobby" type="Control"]
 layout_mode = 3
@@ -98,6 +99,7 @@ color = Color(1, 0.294118, 1, 1)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 0.33
+script = ExtResource("2_5xbhc")
 
 [node name="SettingsVBox" type="VBoxContainer" parent="MainContainer/ContentVBox/PlayersAndSettings/SettingsPanel"]
 layout_mode = 2

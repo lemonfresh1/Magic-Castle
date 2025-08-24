@@ -49,6 +49,15 @@ signal debug_message(message: String)
 signal game_settings_changed(settings: Dictionary)
 signal game_ended(final_score: int)
 
+# === LOBBY SIGNALS ===
+signal lobby_player_joined(player_id: String, player_data: Dictionary)
+signal lobby_player_left(player_id: String)
+signal lobby_player_ready_changed(player_id: String, ready: bool)
+signal lobby_all_players_ready()
+signal lobby_start_requested()
+signal lobby_invite_requested(slot_index: int)
+signal lobby_player_kicked(player_id: String)
+
 func _ready() -> void:
 	print("SignalBus initialized")
 	debug_message.emit("SignalBus ready with %d signals" % get_signal_list().size())
