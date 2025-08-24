@@ -34,6 +34,7 @@ theme_override_constants/margin_bottom = 10
 
 [node name="ContentVBox" type="VBoxContainer" parent="MainContainer"]
 layout_mode = 2
+theme_override_constants/separation = 20
 
 [node name="HeaderPanel" type="PanelContainer" parent="MainContainer/ContentVBox"]
 layout_mode = 2
@@ -41,6 +42,7 @@ size_flags_vertical = 0
 
 [node name="LobbyTitle" type="Label" parent="MainContainer/ContentVBox/HeaderPanel"]
 layout_mode = 2
+size_flags_horizontal = 4
 text = "Lobby Title"
 
 [node name="PlayersAndSettings" type="HBoxContainer" parent="MainContainer/ContentVBox"]
@@ -54,46 +56,6 @@ size_flags_vertical = 4
 theme_override_constants/h_separation = 10
 theme_override_constants/v_separation = 10
 columns = 4
-
-[node name="Control" type="ColorRect" parent="MainContainer/ContentVBox/PlayersAndSettings/PlayersGrid"]
-custom_minimum_size = Vector2(200, 200)
-layout_mode = 2
-color = Color(1, 0.294118, 1, 1)
-
-[node name="Control2" type="ColorRect" parent="MainContainer/ContentVBox/PlayersAndSettings/PlayersGrid"]
-custom_minimum_size = Vector2(200, 200)
-layout_mode = 2
-color = Color(1, 0.294118, 1, 1)
-
-[node name="Control3" type="ColorRect" parent="MainContainer/ContentVBox/PlayersAndSettings/PlayersGrid"]
-custom_minimum_size = Vector2(200, 200)
-layout_mode = 2
-color = Color(1, 0.294118, 1, 1)
-
-[node name="Control4" type="ColorRect" parent="MainContainer/ContentVBox/PlayersAndSettings/PlayersGrid"]
-custom_minimum_size = Vector2(200, 200)
-layout_mode = 2
-color = Color(1, 0.294118, 1, 1)
-
-[node name="Control5" type="ColorRect" parent="MainContainer/ContentVBox/PlayersAndSettings/PlayersGrid"]
-custom_minimum_size = Vector2(200, 200)
-layout_mode = 2
-color = Color(1, 0.294118, 1, 1)
-
-[node name="Control6" type="ColorRect" parent="MainContainer/ContentVBox/PlayersAndSettings/PlayersGrid"]
-custom_minimum_size = Vector2(200, 200)
-layout_mode = 2
-color = Color(1, 0.294118, 1, 1)
-
-[node name="Control7" type="ColorRect" parent="MainContainer/ContentVBox/PlayersAndSettings/PlayersGrid"]
-custom_minimum_size = Vector2(200, 200)
-layout_mode = 2
-color = Color(1, 0.294118, 1, 1)
-
-[node name="Control8" type="ColorRect" parent="MainContainer/ContentVBox/PlayersAndSettings/PlayersGrid"]
-custom_minimum_size = Vector2(200, 200)
-layout_mode = 2
-color = Color(1, 0.294118, 1, 1)
 
 [node name="SettingsPanel" type="PanelContainer" parent="MainContainer/ContentVBox/PlayersAndSettings"]
 layout_mode = 2
@@ -135,8 +97,3 @@ text = "Emoji 4"
 layout_mode = 2
 size_flags_horizontal = 10
 text = "Leave"
-
-[node name="TextureRect" type="TextureRect" parent="."]
-layout_mode = 0
-offset_right = 40.0
-offset_bottom = 40.0

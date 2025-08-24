@@ -302,6 +302,31 @@ func _fetch_leaderboard_data(context: Dictionary) -> Array:
 
 func _on_lobby_action(action: String):
 	print("Lobby action: " + action)
+	
+	match action:
+		"create_lobby":
+			# Load GameLobby scene
+			if ResourceLoader.exists("res://Pyramids/scenes/ui/menus/GameLobby.tscn"):
+				get_tree().change_scene_to_file("res://Pyramids/scenes/ui/menus/GameLobby.tscn")
+			else:
+				push_error("GameLobby scene not found!")
+				
+		"join_lobby":
+			# TODO: Show lobby browser or join with code
+			print("Join lobby - not implemented yet")
+			
+		"create_battleground":
+			# TODO: Create battleground lobby
+			print("Create battleground - not implemented yet")
+			
+		"join_battleground":
+			# TODO: Join battleground
+			print("Join battleground - not implemented yet")
+			
+		"join_tournament":
+			# TODO: Show tournament browser
+			print("Join tournament - not implemented yet")
+	
 	lobby_action.emit(action)
 
 func _on_queue_selected(queue_type: String):

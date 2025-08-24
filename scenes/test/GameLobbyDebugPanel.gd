@@ -21,17 +21,10 @@ func _ready():
 func _create_debug_controls():
 	"""Create all debug controls in the settings panel"""
 	
-	# Title
-	var title = Label.new()
-	title.text = "🛠️ Debug Controls"
-	title.add_theme_font_size_override("font_size", 20)
-	settings_vbox.add_child(title)
-	
-	settings_vbox.add_child(HSeparator.new())
-	
 	# === PERSPECTIVE SECTION ===
 	var perspective_label = Label.new()
 	perspective_label.text = "Perspective:"
+	perspective_label.add_theme_color_override("font_color", Color.BLACK)
 	settings_vbox.add_child(perspective_label)
 	
 	# Switch to Host button
@@ -51,6 +44,7 @@ func _create_debug_controls():
 	# === PLAYER MANAGEMENT SECTION ===
 	var players_label = Label.new()
 	players_label.text = "Players:"
+	players_label.add_theme_color_override("font_color", Color.BLACK)
 	settings_vbox.add_child(players_label)
 	
 	# Add Random Player button
@@ -76,6 +70,7 @@ func _create_debug_controls():
 	# === READY STATES SECTION ===
 	var ready_label = Label.new()
 	ready_label.text = "Ready States:"
+	ready_label.add_theme_color_override("font_color", Color.BLACK)
 	settings_vbox.add_child(ready_label)
 	
 	# Make All Ready button
@@ -97,6 +92,7 @@ func _create_debug_controls():
 	info_label.name = "InfoLabel"
 	info_label.text = "Status: Host Mode"
 	info_label.add_theme_font_size_override("font_size", 14)
+	info_label.add_theme_color_override("font_color", Color.BLACK)
 	info_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	settings_vbox.add_child(info_label)
 
@@ -197,4 +193,4 @@ func _update_info(text: String):
 	# Also update player count
 	var player_count = game_lobby.get_player_count()
 	var ready_count = game_lobby.get_ready_count()
-	info_label.text += "\nPlayers: %d/8 | Ready: %d" % [player_count, ready_count]
+	info_label.text += "// Players: %d/8 | Ready: %d" % [player_count, ready_count]

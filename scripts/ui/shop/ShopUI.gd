@@ -218,7 +218,7 @@ func _populate_flow_container(container: VBoxContainer, items: Array, tab_id: St
 	
 	var current_row = null
 	var current_columns_used = 0
-	var MAX_COLUMNS = 4
+	var MAX_COLUMNS = 6
 	
 	for item in items:
 		var item_data = item.get("item_data")
@@ -232,12 +232,12 @@ func _populate_flow_container(container: VBoxContainer, items: Array, tab_id: St
 			container.add_child(current_row)
 			current_columns_used = 0
 		
-		var card = _create_item_card(item, tab_id)
+		var card = _create_item_card(item, tab_id)  # or _create_inventory_card
 		if card:
 			if columns_needed == 2:
-				card.custom_minimum_size = Vector2(192, 126)
+				card.custom_minimum_size = UIStyleManager.get_item_card_style("size_landscape")
 			else:
-				card.custom_minimum_size = Vector2(90, 126)
+				card.custom_minimum_size = UIStyleManager.get_item_card_style("size_portrait")
 			
 			card.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 			current_row.add_child(card)

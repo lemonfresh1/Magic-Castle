@@ -46,6 +46,7 @@ var colors = {
 	"error_light": Color("#fee2e2"),
 	"warning": Color("#f59e0b"),
 	"warning_light": Color("#fef3c7"),
+	"warning_muted": Color("#FFBD00"), 
 	"success": Color("#10b981"),
 	"info": Color("#3b82f6"),
 	"info_light": Color("#dbeafe"),
@@ -306,7 +307,7 @@ var card_colors = {
 var item_card_style = {
 	# === CORE SIZES BY LAYOUT ===
 	"size_portrait": Vector2(90, 126),
-	"size_landscape": Vector2(192, 126),  # 2x portrait width + separator
+	"size_landscape": Vector2(191, 126),  # 2x portrait width + separator
 	"size_reduction": 0.5,  # 50% of original export size
 	
 	# === CONTEXT-SPECIFIC SIZES ===
@@ -473,7 +474,33 @@ func apply_panel_style(panel: PanelContainer, panel_id: String = "") -> void:
 	if panel_id != "":
 		styled_panels[panel_id] = panel
 
-# New tier column styling function
+func apply_panel_style_no_shadow(panel: PanelContainer, panel_id: String = "") -> void:
+	"""Apply panel styling WITHOUT shadow"""
+	if not panel:
+		return
+	
+	var style = StyleBoxFlat.new()
+	
+	# Background
+	style.bg_color = panel_style_config.bg_color
+	
+	# Border
+	style.border_color = panel_style_config.border_color
+	style.set_border_width_all(panel_style_config.border_width)
+	
+	# Corners
+	style.set_corner_radius_all(panel_style_config.corner_radius)
+	
+	# NO SHADOW - that's the difference
+	style.shadow_size = 0
+	
+	# Apply the style
+	panel.add_theme_stylebox_override("panel", style)
+	
+	# Track the panel if it has an ID
+	if panel_id != "":
+		styled_panels[panel_id] = panel
+
 func apply_tier_column_style(panel: PanelContainer, state: String = "normal", theme: String = "battle_pass") -> void:
 	"""Apply tier column styling based on state and theme"""
 	var style = StyleBoxFlat.new()
@@ -512,41 +539,82 @@ func apply_tier_column_style(panel: PanelContainer, state: String = "normal", th
 # Button styling function
 func apply_button_style(button: Button, button_type: String = "default", size: String = "medium") -> void:
 	"""Apply button styling following the design system"""
+	
+	# Special handling for transparent buttons
+	if button_type == "transparent" or button_type == "icon_only":
+		var empty_style = StyleBoxEmpty.new()
+		button.add_theme_stylebox_override("normal", empty_style)
+		button.add_theme_stylebox_override("hover", empty_style)
+		button.add_theme_stylebox_override("pressed", empty_style)
+		button.add_theme_stylebox_override("disabled", empty_style)
+		button.add_theme_stylebox_override("focus", empty_style)
+		
+		button.add_theme_color_override("font_color", Color.TRANSPARENT)
+		button.add_theme_color_override("font_disabled_color", Color.TRANSPARENT)
+		button.add_theme_color_override("icon_normal_color", Color.WHITE)
+		button.add_theme_color_override("icon_hover_color", Color.WHITE)
+		button.add_theme_color_override("icon_pressed_color", Color.WHITE)
+		button.add_theme_color_override("icon_disabled_color", Color(0.5, 0.5, 0.5))
+		
+		button.focus_mode = Control.FOCUS_NONE
+		button.set_meta("button_type", button_type)
+		return
+	
+	# Regular button styling continues below
 	var style_normal = StyleBoxFlat.new()
 	var style_hover = StyleBoxFlat.new()
 	var style_pressed = StyleBoxFlat.new()
+	var style_disabled = StyleBoxFlat.new()
 	
 	# Base styling
 	match button_type:
 		"primary":
 			style_normal.bg_color = colors.primary
 			style_hover.bg_color = colors.primary_dark
+			style_disabled.bg_color = colors.primary
 			button.add_theme_color_override("font_color", colors.white)
-		"danger":  # NEW - for Continue button
+			button.add_theme_color_override("font_disabled_color", colors.white)
+		"danger":
 			style_normal.bg_color = colors.error
 			style_hover.bg_color = colors.error.darkened(0.1)
+			style_disabled.bg_color = colors.error
 			button.add_theme_color_override("font_color", colors.white)
-		"success":  # NEW - for Rematch button
+			button.add_theme_color_override("font_disabled_color", colors.white)
+		"success":
 			style_normal.bg_color = colors.success
 			style_hover.bg_color = colors.primary_dark
+			style_disabled.bg_color = colors.error
 			button.add_theme_color_override("font_color", colors.white)
+			button.add_theme_color_override("font_disabled_color", colors.white)
+		"warning":
+			style_normal.bg_color = colors.warning_muted
+			style_hover.bg_color = colors.warning_muted.darkened(0.1)
+			style_disabled.bg_color = colors.warning_muted
+			button.add_theme_color_override("font_color", colors.gray_900)
+			button.add_theme_color_override("font_disabled_color", colors.gray_900)
 		"secondary":
 			style_normal.bg_color = colors.white
 			style_hover.bg_color = colors.gray_50
+			style_disabled.bg_color = colors.white
 			style_normal.border_color = colors.gray_200
 			style_normal.set_border_width_all(borders.width_thin)
+			style_disabled.border_color = colors.gray_200
+			style_disabled.set_border_width_all(borders.width_thin)
 			button.add_theme_color_override("font_color", colors.gray_700)
-		_:  # default
+			button.add_theme_color_override("font_disabled_color", colors.gray_700)
+		_:
 			style_normal.bg_color = colors.white
 			style_hover.bg_color = colors.gray_50
+			style_disabled.bg_color = colors.white
 			button.add_theme_color_override("font_color", colors.gray_600)
+			button.add_theme_color_override("font_disabled_color", colors.gray_600)
 	
 	# Size-based adjustments
 	match size:
 		"large":
 			button.custom_minimum_size.y = dimensions.action_button_height
 			button.add_theme_font_size_override("font_size", typography.size_body_large)
-			style_normal.set_corner_radius_all(dimensions.corner_radius_xl)
+			style_normal.set_corner_radius_all(dimensions.corner_radius_medium)
 		"small":
 			button.custom_minimum_size.y = dimensions.small_button_height
 			button.add_theme_font_size_override("font_size", typography.size_body_small)
@@ -555,7 +623,7 @@ func apply_button_style(button: Button, button_type: String = "default", size: S
 			button.custom_minimum_size.y = dimensions.medium_button_height
 			button.add_theme_font_size_override("font_size", typography.size_body)
 			style_normal.set_corner_radius_all(dimensions.corner_radius_medium)
-		_:  # default
+		_:
 			button.add_theme_font_size_override("font_size", typography.size_body)
 			style_normal.set_corner_radius_all(dimensions.corner_radius_medium)
 	
@@ -565,11 +633,16 @@ func apply_button_style(button: Button, button_type: String = "default", size: S
 	style_normal.content_margin_top = spacing.button_padding_v
 	style_normal.content_margin_bottom = spacing.button_padding_v
 	
-	# Copy styling to hover/pressed states
+	# Copy styling to other states
 	style_hover = style_normal.duplicate()
 	style_pressed = style_normal.duplicate()
+	style_disabled = style_normal.duplicate()
 	
-	# Add hover shadow
+	# Adjust hover state
+	if button_type == "warning":
+		style_hover.bg_color = colors.warning_muted.darkened(0.15)
+	
+	# Add hover shadow for non-transparent buttons
 	var shadow = get_shadow_config("small")
 	style_hover.shadow_size = shadow.size
 	style_hover.shadow_color = shadow.color
@@ -579,9 +652,10 @@ func apply_button_style(button: Button, button_type: String = "default", size: S
 	button.add_theme_stylebox_override("normal", style_normal)
 	button.add_theme_stylebox_override("hover", style_hover)
 	button.add_theme_stylebox_override("pressed", style_pressed)
+	button.add_theme_stylebox_override("disabled", style_disabled)
 	
 	button.focus_mode = Control.FOCUS_NONE
-
+	button.set_meta("button_type", button_type)
 
 # Progress bar styling
 func apply_progress_bar_style(progress_bar: ProgressBar, theme: String = "battle_pass") -> void:

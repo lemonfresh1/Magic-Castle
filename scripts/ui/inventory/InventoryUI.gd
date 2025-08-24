@@ -129,9 +129,9 @@ func _populate_inventory():
 		else:
 			var grid = GridContainer.new()
 			grid.name = "ItemGrid"
-			# FIXED: Check for landscape items (boards and mini profile cards)
+			# FIXED: Updated columns to match ShopUI (6 for regular, 3 for landscape)
 			var is_landscape = category_id in ["boards", "board_skins", "mini_profile_cards"]
-			grid.columns = 2 if is_landscape else 4
+			grid.columns = 3 if is_landscape else 6  # Changed from 2/4 to 3/6
 			grid.add_theme_constant_override("h_separation", 10)
 			grid.add_theme_constant_override("v_separation", 10)
 			scroll_container.add_child(grid)
@@ -286,12 +286,12 @@ func _populate_flow_container(container: VBoxContainer, items: Array, tab_id: St
 			container.add_child(current_row)
 			current_columns_used = 0
 		
-		var card = _create_inventory_card(item, tab_id)
+		var card = _create_inventory_card(item, tab_id)  # or _create_inventory_card
 		if card:
 			if columns_needed == 2:
-				card.custom_minimum_size = Vector2(192, 126)
+				card.custom_minimum_size = UIStyleManager.get_item_card_style("size_landscape")
 			else:
-				card.custom_minimum_size = Vector2(90, 126)
+				card.custom_minimum_size = UIStyleManager.get_item_card_style("size_portrait")
 			
 			card.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 			current_row.add_child(card)
@@ -349,9 +349,9 @@ func _populate_flow_container_by_type(container: VBoxContainer, items: Array, ta
 			var card = _create_inventory_card(item, tab_id)
 			if card:
 				if columns_needed == 2:
-					card.custom_minimum_size = Vector2(192, 126)
+					card.custom_minimum_size = UIStyleManager.get_item_card_style("size_landscape")
 				else:
-					card.custom_minimum_size = Vector2(90, 126)
+					card.custom_minimum_size = UIStyleManager.get_item_card_style("size_portrait")
 				
 				card.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 				current_row.add_child(card)
@@ -458,7 +458,7 @@ func _connect_equipment_signals():
 
 func _add_grid_spacer_row(grid: GridContainer):
 	"""Add a full row of minimal spacers"""
-	for i in range(6):
+	for i in range(4):
 		var spacer = Control.new()
 		spacer.custom_minimum_size = Vector2(1, 20)
 		grid.add_child(spacer)

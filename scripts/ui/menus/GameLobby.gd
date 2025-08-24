@@ -67,8 +67,8 @@ var game_started: bool = false
 var emoji_buttons: Array = []
 var emoji_on_cooldown: bool = false  # Global cooldown state
 var emoji_cooldown_overlays: Array = []  # Track all overlays
-
-# === LIFECYCLE ===
+var emoji_cooldown_tweens: Array = []
+var emoji_progress_bars: Array = []
 
 func _ready():
 	_setup_lobby()
@@ -172,16 +172,31 @@ func _apply_ui_styling():
 	if background:
 		UIStyleManager.apply_menu_gradient_background(self)
 	
-	# Style the header panel
+	# Style the header panel WITHOUT SHADOW
 	if header_panel:
-		UIStyleManager.apply_panel_style(header_panel, "lobby_header")
+		UIStyleManager.apply_panel_style_no_shadow(header_panel, "lobby_header")
 	
-	# Style buttons
+	# Style the lobby title label
+	if lobby_title:
+		UIStyleManager.apply_label_style(lobby_title, "title")
+	
+	# Style the settings panel WITHOUT SHADOW
+	if settings_panel:
+		UIStyleManager.apply_panel_style_no_shadow(settings_panel, "settings_panel")
+	
+	# Style buttons with proper types
 	if ready_button:
-		UIStyleManager.apply_button_style(ready_button, "primary", "medium")
+		# Apply warning style initially (not ready state)
+		UIStyleManager.apply_button_style(ready_button, "warning", "medium")
+	
 	if start_button:
-		UIStyleManager.apply_button_style(start_button, "success", "large")
+		# Green success button with medium size
+		UIStyleManager.apply_button_style(start_button, "success", "medium")
+		# Override font size to be slightly bigger
+		start_button.add_theme_font_size_override("font_size", 20)
+	
 	if leave_button:
+		# Red danger button
 		UIStyleManager.apply_button_style(leave_button, "danger", "medium")
 
 # === PUBLIC API ===
@@ -274,7 +289,6 @@ func _setup_emoji_buttons():
 	"""Load equipped emojis into buttons"""
 	emoji_buttons = [emoji_button_1, emoji_button_2, emoji_button_3, emoji_button_4]
 	
-	# Get equipped emojis from EquipmentManager
 	if not EquipmentManager:
 		return
 		
@@ -298,91 +312,99 @@ func _setup_emoji_buttons():
 func _configure_emoji_button(button: Button, emoji_item: UnifiedItemData, index: int):
 	"""Configure a single emoji button"""
 	button.visible = true
-	button.text = ""  # Remove text
+	button.text = ""
 	button.tooltip_text = emoji_item.display_name
 	
-	# Load and set emoji texture
+	if UIStyleManager:
+		UIStyleManager.apply_button_style(button, "transparent", "medium")
+	
 	var texture_path = emoji_item.texture_path if emoji_item else ""
 	if texture_path != "" and ResourceLoader.exists(texture_path):
 		var texture = load(texture_path)
 		button.icon = texture
 		button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		button.expand_icon = true
-		# Scale 16x16 to 32x32 in button
 		button.custom_minimum_size = Vector2(48, 48)
 	
-	# Store emoji_id for later use
 	button.set_meta("emoji_id", emoji_item.id)
 	button.set_meta("button_index", index)
 
 func _start_global_emoji_cooldown():
-	"""Start cooldown animation on ALL emoji buttons"""
+	"""Start cooldown animation on ALL emoji buttons using color modulation"""
 	if emoji_on_cooldown:
 		return
 	
 	emoji_on_cooldown = true
-	emoji_cooldown_overlays.clear()
+	emoji_cooldown_tweens.clear()
 	
-	# Apply cooldown to ALL buttons
-	for button in emoji_buttons:
+	for i in range(emoji_buttons.size()):
+		var button = emoji_buttons[i]
 		if not button.visible:
 			continue
-			
-		# Create gray overlay that covers the button
-		var overlay = ColorRect.new()
-		overlay.name = "CooldownOverlay"
-		overlay.color = Color(0, 0, 0, 0.6)
-		overlay.mouse_filter = Control.MOUSE_FILTER_STOP  # Block input
-		overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		button.add_child(overlay)
-		emoji_cooldown_overlays.append(overlay)
 		
-		# Disable the button
 		button.disabled = true
 		
-		# Animate overlay disappearing from top to bottom over 3 seconds
+		# Start with grey modulation
+		button.modulate = Color(0.3, 0.3, 0.3, 1.0)
+		
+		# Create tween to animate back to normal color
 		var tween = create_tween()
+		tween.tween_property(button, "modulate", Color.WHITE, 3.0)
+		emoji_cooldown_tweens.append(tween)
 		
-		# Shrink from bottom to top (revealing button from top down)
-		tween.tween_property(overlay, "anchor_top", 1.0, 3.0)
-		
-		# Only the last tween needs to reset the global state
-		if button == emoji_buttons[-1]:
+		# Only the last button triggers the cleanup
+		if i == emoji_buttons.size() - 1:
 			tween.tween_callback(func():
 				_clear_emoji_cooldown()
 			)
 
 func _clear_emoji_cooldown():
-	"""Clear all cooldown overlays and reset state"""
-	for overlay in emoji_cooldown_overlays:
-		if is_instance_valid(overlay):
-			overlay.queue_free()
-	
+	"""Clear cooldown and reset emoji buttons"""
 	for button in emoji_buttons:
 		button.disabled = false
+		button.modulate = Color.WHITE
 	
-	emoji_cooldown_overlays.clear()
+	emoji_cooldown_tweens.clear()
 	emoji_on_cooldown = false
 
 func _update_controls_visibility():
 	"""Update button visibility based on role and state"""
 	if start_button:
 		start_button.visible = is_host
-		start_button.disabled = not _can_start_game()
-		# Set fixed size to prevent expansion
-		start_button.custom_minimum_size = Vector2(100, 40)
-		start_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		var can_start = _can_start_game()
+		start_button.disabled = not can_start or game_started
+		
+		# Apply modulation for disabled state
+		if start_button.disabled:
+			start_button.modulate = Color(1, 1, 1, 0.7)  # 70% opacity
+		else:
+			start_button.modulate = Color.WHITE  # Full opacity
 
 	if ready_button:
 		ready_button.visible = true
 		ready_button.disabled = game_started
-		ready_button.text = "Ready" if not is_ready else "Not Ready"
-		# Set fixed size
-		ready_button.custom_minimum_size = Vector2(100, 40)
-		ready_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		ready_button.text = "Ready"  # Always show "Ready" text
+		
+		# Update button style based on ready state
+		if is_ready:
+			UIStyleManager.apply_button_style(ready_button, "success", "medium")
+		else:
+			UIStyleManager.apply_button_style(ready_button, "warning", "medium")
+		
+		# Apply modulation for disabled state
+		if ready_button.disabled:
+			ready_button.modulate = Color(1, 1, 1, 0.7)  # 70% opacity
+		else:
+			ready_button.modulate = Color.WHITE  # Full opacity
 	
 	if leave_button:
 		leave_button.disabled = is_ready or game_started
+		
+		# Apply modulation for disabled state
+		if leave_button.disabled:
+			leave_button.modulate = Color(1, 1, 1, 0.7)  # 70% opacity
+		else:
+			leave_button.modulate = Color.WHITE  # Full opacity
 
 func _update_start_button_state():
 	"""Update start button based on game conditions"""
@@ -491,8 +513,14 @@ func _on_start_pressed():
 	"""Handle start game button (host only)"""
 	if _can_start_game():
 		game_started = true
+		
+		# Immediately update visual state
+		start_button.disabled = true
+		start_button.modulate = Color(1, 1, 1, 0.7)
+		
 		if SignalBus.has_signal("lobby_start_requested"):
 			SignalBus.lobby_start_requested.emit()
+		
 		_update_controls_visibility()
 		print("Starting game with %d players" % get_player_count())
 		# TODO: Transition to game scene

@@ -349,17 +349,28 @@ func _apply_size_preset():
 	
 	match size_preset:
 		SizePreset.MINI_DISPLAY:
-			target_size = Vector2(50, 50)
+			target_size = Vector2(50, 50)  # Keep this custom for mini
 		SizePreset.PASS_REWARD:
-			target_size = Vector2(86, 86)
+			target_size = Vector2(86, 86)  # Keep this custom for pass
 		SizePreset.INVENTORY:
-			# FIX: Check layout_type for landscape items (boards, mini profiles)
-			target_size = Vector2(192, 126) if layout_type == LayoutType.LANDSCAPE else Vector2(90, 126)
+			# Use UIStyleManager values
+			if layout_type == LayoutType.LANDSCAPE:
+				target_size = UIStyleManager.get_item_card_style("size_landscape")
+			else:
+				target_size = UIStyleManager.get_item_card_style("size_portrait")
 		SizePreset.SHOP:
-			target_size = Vector2(192, 126) if layout_type == LayoutType.LANDSCAPE else Vector2(90, 126)
+			# Same as inventory
+			if layout_type == LayoutType.LANDSCAPE:
+				target_size = UIStyleManager.get_item_card_style("size_landscape")
+			else:
+				target_size = UIStyleManager.get_item_card_style("size_portrait")
 		SizePreset.SHOWCASE:
-			# FIX: Also check layout_type for showcase
-			target_size = Vector2(120, 80) if layout_type == LayoutType.LANDSCAPE else Vector2(60, 80)
+			target_size = UIStyleManager.get_item_card_style("size_showcase")
+			# But we need to handle landscape showcase differently
+			if layout_type == LayoutType.LANDSCAPE:
+				# Calculate proportional landscape showcase (roughly 2x width)
+				var showcase = UIStyleManager.get_item_card_style("size_showcase")
+				target_size = Vector2(showcase.x * 2, showcase.y)
 	
 	custom_minimum_size = target_size
 	size = target_size
