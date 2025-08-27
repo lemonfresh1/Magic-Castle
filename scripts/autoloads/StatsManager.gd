@@ -46,6 +46,12 @@ var current_game_stats = {
 	"suit_bonuses": 0      # NEW
 }
 
+var multiplayer_stats = {
+	"classic": {"wins": 0, "losses": 0, "games": 0, "win_rate": 0.0},
+	"timed_rush": {"wins": 0, "losses": 0, "games": 0, "win_rate": 0.0}, 
+	"test": {"wins": 0, "losses": 0, "games": 0, "win_rate": 0.0}
+}
+
 func _ready() -> void:
 	print("StatsManager initializing...")
 	load_stats()
@@ -103,7 +109,8 @@ func save_stats() -> void:
 		var save_data = {
 			"stats": stats,
 			"mode_highscores": mode_highscores,
-			"player_best_scores": player_best_scores
+			"player_best_scores": player_best_scores,
+			"multiplayer_stats": multiplayer_stats  # Add this
 		}
 		save_file.store_var(save_data)
 		save_file.close()
@@ -123,6 +130,7 @@ func load_stats() -> void:
 					stats = loaded_data.stats
 					mode_highscores = loaded_data.get("mode_highscores", {})
 					player_best_scores = loaded_data.get("player_best_scores", {})
+					multiplayer_stats = loaded_data.get("multiplayer_stats", {})
 					print("Loaded stats with %d mode highscores" % mode_highscores.size())
 				elif loaded_data.has("version"):
 					# Old format - just stats
@@ -460,3 +468,22 @@ func get_player_rank(mode_id: String) -> int:
 			break
 	
 	return rank
+
+func track_multiplayer_game(mode: String, won: bool, score: int, player_count: int):
+	if not multiplayer_stats.has(mode):
+		multiplayer_stats[mode] = {"wins": 0, "losses": 0, "games": 0, "win_rate": 0.0}
+	
+	var stat = multiplayer_stats[mode]
+	stat.games += 1
+	if won:
+		stat.wins += 1
+	else:
+		stat.losses += 1
+	stat.win_rate = float(stat.wins) / float(stat.games) * 100.0
+	
+	# Also save as highscore if applicable
+	save_score(mode + "_mp", score, SettingsSystem.player_name)
+	save_stats()
+
+func get_multiplayer_stats(mode: String) -> Dictionary:
+	return multiplayer_stats.get(mode, {"wins": 0, "losses": 0, "games": 0, "win_rate": 0.0})

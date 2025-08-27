@@ -1,10 +1,12 @@
 # SwipeModeButton.gd - Swipeable mode selector for multiplayer
 # Location: res://Pyramids/scripts/ui/components/SwipeModeButton.gd
+# Last Updated: Changed modes to Classic, Rush, Test [Date]
+
 extends Button
 
-# Available modes for multiplayer (using same as single player)
-var modes: Array = ["Classic", "Rush", "Puzzle"]  # Display names
-var mode_ids: Array = ["classic", "timed_rush", "puzzle_master"]  # Actual IDs for colors
+# Available modes for multiplayer (matching single player options)
+var modes: Array = ["Classic", "Rush", "Test"]  # Display names
+var mode_ids: Array = ["classic", "timed_rush", "test"]  # Actual IDs for colors and GameModeManager
 var current_mode_index: int = 0
 
 # Child nodes (created programmatically)
@@ -18,17 +20,26 @@ var swipe_threshold: float = 30.0
 var is_pressed: bool = false
 
 signal mode_changed(mode: String)
+signal mode_id_changed(mode_id: String)  # New signal with actual ID
 
 func _ready():
 	# Create button structure programmatically
 	focus_mode = Control.FOCUS_NONE 
 	_create_button_structure()
 	
-	# Load saved preference if any
+	# Load saved preference if any (check MultiplayerManager first)
 	var saved_mode = "Classic"
-	current_mode_index = modes.find(saved_mode)
-	if current_mode_index == -1:
-		current_mode_index = 0
+	if has_node("/root/MultiplayerManager"):
+		var mp_manager = get_node("/root/MultiplayerManager")
+		var saved_mode_id = mp_manager.get_selected_mode()
+		var idx = mode_ids.find(saved_mode_id)
+		if idx != -1:
+			current_mode_index = idx
+			saved_mode = modes[idx]
+	else:
+		current_mode_index = modes.find(saved_mode)
+		if current_mode_index == -1:
+			current_mode_index = 0
 	
 	# Add dots
 	_add_mode_dots()
@@ -195,6 +206,12 @@ func _animate_mode_change(direction: int):
 		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BOUNCE)
 	
 	mode_changed.emit(modes[current_mode_index])
+	mode_id_changed.emit(mode_ids[current_mode_index])
+	
+	# Update MultiplayerManager if available
+	if has_node("/root/MultiplayerManager"):
+		var mp_manager = get_node("/root/MultiplayerManager")
+		mp_manager.select_game_mode(mode_ids[current_mode_index])
 
 func _animate_snap_back():
 	"""Return to neutral position"""
@@ -250,3 +267,10 @@ func get_current_mode() -> String:
 func get_current_mode_id() -> String:
 	"""Get the actual mode ID for GameModeManager"""
 	return mode_ids[current_mode_index]
+
+func set_mode_by_id(mode_id: String) -> void:
+	"""Set mode by ID (for syncing with MultiplayerManager)"""
+	var index = mode_ids.find(mode_id)
+	if index != -1 and index != current_mode_index:
+		current_mode_index = index
+		_update_mode_display()

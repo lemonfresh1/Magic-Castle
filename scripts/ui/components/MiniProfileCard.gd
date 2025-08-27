@@ -276,31 +276,31 @@ func _create_profile_frame() -> void:
 	profile_frame.frame_clicked.connect(_on_profile_frame_clicked)
 
 func _create_display_cards() -> void:
-	"""Create 3 DisplayItemCard instances"""
+	"""Create 3 UnifiedItemCard instances with MINI_DISPLAY preset"""
 	if not display_container:
 		return
 	
+	# Clear any existing children
 	for child in display_container.get_children():
-		if child.name.begins_with("DisplayCard"):
-			continue
 		child.queue_free()
 	
-	var card_scene_path = "res://Pyramids/scenes/ui/components/DisplayItemCard.tscn"
-	var has_scene = ResourceLoader.exists(card_scene_path)
+	# Load UnifiedItemCard scene
+	var card_scene_path = "res://Pyramids/scenes/ui/items/UnifiedItemCard.tscn"
+	if not ResourceLoader.exists(card_scene_path):
+		push_error("UnifiedItemCard scene not found")
+		return
+	
+	var card_scene = load(card_scene_path)
 	
 	display_cards.clear()
 	for i in range(3):
-		var card
+		var card = card_scene.instantiate()
 		
-		if has_scene:
-			var scene = load(card_scene_path)
-			card = scene.instantiate()
-		else:
-			card = PanelContainer.new()
-			card.set_script(preload("res://Pyramids/scripts/ui/components/DisplayItemCard.gd"))
-		
+		# Set size to 50x50 using MINI_DISPLAY preset
 		card.custom_minimum_size = Vector2(50, 50)
 		card.size = Vector2(50, 50)
+		
+		# Center the card in the container
 		card.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		card.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		
@@ -308,6 +308,7 @@ func _create_display_cards() -> void:
 		display_container.add_child(card)
 		display_cards.append(card)
 		
+		# Connect click signal
 		if card.has_signal("clicked"):
 			card.clicked.connect(_on_display_item_clicked)
 
@@ -317,6 +318,43 @@ func set_player_data(data: Dictionary) -> void:
 	"""Main entry point for updating card data"""
 	player_data = data
 	is_empty = data.get("is_empty", false)
+	
+	# TODO: Future Enhancement - ProfileUI Display Configuration
+	# Allow players to select up to 3 items to display on their MiniProfileCard:
+	# - Equipped cosmetics (card_back, card_front, board) 
+	# - Achievement badges (first_win, combo_master, speed_demon, etc.)
+	# - Special titles or unlocks
+	# Players would configure this in ProfileUI and it would save to their profile
+	# For now, we're hardcoding to show the 3 equipped cosmetic items
+	
+	# === TEMPORARY: Replace display_items with equipped items ===
+	# Original achievement-based display items are commented out
+	# if data.has("display_items"):
+	#     # This would show achievements/badges selected by player
+	#     pass
+	
+	# Override display_items with equipped cosmetics
+	var equipped = data.get("equipped", {})
+	var equipped_items = []
+	
+	# Add equipped items in specific order: card_back, card_front, board
+	if equipped.has("card_back") and equipped.card_back != "":
+		equipped_items.append(equipped.card_back)
+	else:
+		equipped_items.append("")
+		
+	if equipped.has("card_front") and equipped.card_front != "":
+		equipped_items.append(equipped.card_front)  
+	else:
+		equipped_items.append("")
+		
+	if equipped.has("board") and equipped.board != "":
+		equipped_items.append(equipped.board)
+	else:
+		equipped_items.append("")
+	
+	# Replace the display_items in player_data with equipped items
+	player_data["display_items"] = equipped_items
 	
 	if is_empty:
 		set_empty_state()
@@ -517,7 +555,7 @@ func _update_stats_display() -> void:
 		games_label.visible = true
 
 func _update_display_items() -> void:
-	"""Update the 3 display item cards"""
+	"""Update the 3 display item cards using UnifiedItemCard"""
 	var display_items = player_data.get("display_items", ["", "", ""])
 	
 	for i in range(min(3, display_cards.size())):
@@ -526,15 +564,27 @@ func _update_display_items() -> void:
 			var card = display_cards[i]
 			
 			if item_id == "":
-				if card.has_method("set_empty"):
-					card.set_empty()
+				# Empty slot - hide the card or show empty state
+				card.visible = false
 			else:
-				if AchievementManager and AchievementManager.achievements.has(item_id):
-					if card.has_method("set_achievement"):
-						card.set_achievement(item_id)
-				else:
-					if card.has_method("set_item"):
-						card.set_item(item_id)
+				card.visible = true
+				
+				# Get item from ItemManager
+				if ItemManager:
+					var item_data = ItemManager.get_item(item_id)
+					if item_data:
+						# Use setup_with_preset for MINI_DISPLAY size
+						if card.has_method("setup_with_preset"):
+							card.setup_with_preset(item_data, UnifiedItemCard.SizePreset.MINI_DISPLAY)
+						else:
+							# Fallback to regular setup
+							card.setup(item_data, UnifiedItemCard.DisplayMode.SHOWCASE)
+							card.size_preset = UnifiedItemCard.SizePreset.MINI_DISPLAY
+							if card.has_method("_apply_size_preset"):
+								card._apply_size_preset()
+					else:
+						push_warning("Item not found: " + item_id)
+						card.visible = false
 
 func _update_overlay_controls() -> void:
 	"""Update ready sign and kick button visibility"""

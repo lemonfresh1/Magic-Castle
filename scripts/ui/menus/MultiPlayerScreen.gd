@@ -1,10 +1,12 @@
-# MultiPlayerScreen.gd - Works with existing scene structure
-# Location: res://Pyramids/scripts/ui/menus/MultiPlayerScreen.gd
+# MultiplayerScreen.gd - Works with existing scene structure
+# Location: res://Pyramids/scenes/ui/menus/MultiplayerScreen.gd
+# Last Updated: Integrated MultiplayerManager and GameSettingsPanel [Date]
 
 extends Control
 
 # Scene references
 var highscores_panel_scene = preload("res://Pyramids/scenes/ui/components/HighscoresPanel.tscn")
+var game_settings_panel_script = preload("res://Pyramids/scripts/ui/components/GameSettingsPanel.gd")
 
 # Existing nodes from scene
 @onready var background: ColorRect = $Background
@@ -45,9 +47,11 @@ var swipe_mode_button_scene = preload("res://Pyramids/scenes/ui/components/Swipe
 # UI References
 var leaderboard_panel: Control
 var mode_description_label: RichTextLabel
+var game_settings_component: Control  # NEW: Reusable settings panel
 
 # State
 var current_mode: String = "Classic"
+var current_mode_id: String = "classic"
 var current_queue_type: String = ""
 var player_stats: Dictionary = {}
 
@@ -60,10 +64,25 @@ func _ready():
 	_setup_leaderboard()
 	_setup_buttons()
 	_setup_stats_panel()
+	_setup_game_settings_component()  # NEW
 	_load_player_stats()
-	_update_mode_settings("Classic")  # Add this line!
+	
+	# Initialize MultiplayerManager if available
+	if has_node("/root/MultiplayerManager"):
+		var mp_manager = get_node("/root/MultiplayerManager")
+		mp_manager.select_game_mode(current_mode_id)
+		
+		# Load local player data
+		# TODO: Get real player data from save system
+		mp_manager.set_local_player_data({
+			"name": "Player",
+			"level": 1,
+			"prestige": 0,
+			"stats": player_stats
+		})
+	
 	if leaderboard_panel:
-		leaderboard_panel.load_scores({})  # Add this line!
+		leaderboard_panel.load_scores({})
 
 func _setup_styles():
 	"""Apply styles to existing nodes"""
@@ -149,7 +168,7 @@ func _setup_leaderboard():
 		],
 		"row_actions": ["challenge", "friend"],
 		"filter_position": "top",
-		"max_rows": 50,  # Changed from 12 to 50!
+		"max_rows": 50,
 		"show_title": true,
 		"data_provider": _fetch_leaderboard_data
 	})
@@ -178,7 +197,7 @@ func _setup_buttons():
 	join_tournament_btn.text = "🏆 Tournament"
 	join_tournament_btn.focus_mode = Control.FOCUS_NONE
 	join_tournament_btn.pressed.connect(func(): _on_lobby_action("join_tournament"))
-	UIStyleManager.apply_button_style(join_tournament_btn, "secondary", "small")  # Changed from "accent" to "secondary" to ensure frame
+	UIStyleManager.apply_button_style(join_tournament_btn, "secondary", "small")
 	
 	# Back button
 	back_button.text = "Menu"
@@ -186,18 +205,20 @@ func _setup_buttons():
 	back_button.pressed.connect(_on_back_pressed)
 	UIStyleManager.apply_button_style(back_button, "primary", "medium")
 	
-	# First configure the existing buttons (but don't move them yet)
+	# Configure but don't move the existing buttons
 	ranked_button.text = "🏅 Ranked"
 	ranked_button.focus_mode = Control.FOCUS_NONE
 	ranked_button.custom_minimum_size = Vector2(0, 80)
+	ranked_button.visible = false  # TODO: Enable ranked mode in future update
 	ranked_button.pressed.connect(func(): _on_queue_selected("ranked"))
 	UIStyleManager.apply_button_style(ranked_button, "primary", "large")
 	
-	unranked_button.text = "🎮 Unranked"
+	# Rename Unranked to Play
+	unranked_button.text = "▶️ Play"  # Changed from "🎮 Unranked"
 	unranked_button.focus_mode = Control.FOCUS_NONE
 	unranked_button.custom_minimum_size = Vector2(0, 80)
-	unranked_button.pressed.connect(func(): _on_queue_selected("unranked"))
-	UIStyleManager.apply_button_style(unranked_button, "secondary", "large")
+	unranked_button.pressed.connect(func(): _on_queue_selected("play"))
+	UIStyleManager.apply_button_style(unranked_button, "success", "large")  # Changed to success (green) for main action
 	
 	back_button.text = "Menu"
 	back_button.focus_mode = Control.FOCUS_NONE
@@ -223,6 +244,7 @@ func _setup_buttons():
 	swipe_button.custom_minimum_size = Vector2(0, 60)
 	swipe_button.focus_mode = Control.FOCUS_NONE
 	swipe_button.mode_changed.connect(_on_mode_changed)
+	swipe_button.mode_id_changed.connect(_on_mode_id_changed)  # NEW: Connect to ID signal
 	right_vbox.add_child(swipe_button)
 	right_vbox.move_child(swipe_button, 1)  # After step 1 label
 	
@@ -231,7 +253,7 @@ func _setup_buttons():
 	# Separator
 	var separator = HSeparator.new()
 	separator.add_theme_constant_override("separation", 10)
-	separator.self_modulate.a = 0  # Add this line
+	separator.self_modulate.a = 0  # Invisible separator
 	right_vbox.add_child(separator)
 	right_vbox.move_child(separator, 2)  # After mode selector
 	
@@ -244,8 +266,8 @@ func _setup_buttons():
 	right_vbox.move_child(step2_label, 3)  # After separator
 	
 	# Move the existing buttons to correct positions
-	right_vbox.move_child(ranked_button, 4)    # After step 2 label
-	right_vbox.move_child(unranked_button, 5)  # After ranked
+	right_vbox.move_child(ranked_button, 4)    # After step 2 label (hidden)
+	right_vbox.move_child(unranked_button, 5)  # After ranked (visible as "Play")
 	right_vbox.move_child(back_button, 6)      # At the bottom
 
 func _setup_stats_panel():
@@ -263,6 +285,27 @@ func _setup_stats_panel():
 	middle_vbox.add_child(mode_description_label)
 	middle_vbox.move_child(mode_description_label, 0)  # Put before stats panel
 
+func _setup_game_settings_component():
+	"""Setup the reusable GameSettingsPanel component"""
+	# Clear existing settings grid content
+	for child in settings_grid.get_children():
+		child.queue_free()
+	
+	# Create GameSettingsPanel component (VBoxContainer since the script extends it)
+	game_settings_component = VBoxContainer.new()
+	game_settings_component.set_script(game_settings_panel_script)
+	settings_margin.add_child(game_settings_component)
+	
+	# Hide the old grid since we're using the component
+	settings_grid.visible = false
+	
+	# Setup the component with initial mode
+	if game_settings_component.has_method("setup_display"):
+		game_settings_component.setup_display(current_mode_id, false, {
+			"show_title": true,
+			"compact": true
+		})
+
 func _load_player_stats():
 	"""Load and display player statistics"""
 	player_stats = {
@@ -276,22 +319,10 @@ func _load_player_stats():
 	
 	_update_stats_display()
 
-func _setup_panels():
-	"""Setup both stats and settings panels"""
-	# Player Stats Panel
-	_setup_player_stats_panel()
-	
-	# Game Mode Settings Panel
-	_setup_game_mode_settings_panel()
-	
-	# Load initial data
-	_load_player_stats()
-	_update_mode_settings("Classic")
-
 func _fetch_leaderboard_data(context: Dictionary) -> Array:
 	"""Mock leaderboard data"""
 	var mock_data = []
-	for i in range(50):  # Changed from 12 to 50
+	for i in range(50):
 		mock_data.append({
 			"rank": i + 1,
 			"player": "Player" + str(i + 1),
@@ -305,11 +336,14 @@ func _on_lobby_action(action: String):
 	
 	match action:
 		"create_lobby":
-			# Load GameLobby scene
-			if ResourceLoader.exists("res://Pyramids/scenes/ui/menus/GameLobby.tscn"):
+			# Create custom lobby with selected mode
+			if has_node("/root/MultiplayerManager"):
+				var mp_manager = get_node("/root/MultiplayerManager")
+				mp_manager.select_game_mode(current_mode_id)
+				mp_manager.create_custom_lobby()
 				get_tree().change_scene_to_file("res://Pyramids/scenes/ui/menus/GameLobby.tscn")
 			else:
-				push_error("GameLobby scene not found!")
+				push_error("MultiplayerManager not found!")
 				
 		"join_lobby":
 			# TODO: Show lobby browser or join with code
@@ -330,9 +364,24 @@ func _on_lobby_action(action: String):
 	lobby_action.emit(action)
 
 func _on_queue_selected(queue_type: String):
+	"""Handle Play button - join or create lobby"""
 	current_queue_type = queue_type
-	queue_joined.emit(current_mode, queue_type)
-	print("Joining %s queue for %s mode" % [queue_type, current_mode])
+	
+	if has_node("/root/MultiplayerManager"):
+		var mp_manager = get_node("/root/MultiplayerManager")
+		
+		# Make sure mode is selected
+		mp_manager.select_game_mode(current_mode_id)
+		
+		# TODO: Scan for existing lobbies with same mode
+		print("Searching for %s lobby with mode: %s" % [queue_type, current_mode_id])
+		
+		# For MVP, immediately create/join lobby
+		mp_manager.join_or_create_lobby()
+	else:
+		# Fallback to direct scene change
+		print("MultiplayerManager not found, loading GameLobby directly")
+		get_tree().change_scene_to_file("res://Pyramids/scenes/ui/menus/GameLobby.tscn")
 
 func _on_back_pressed():
 	get_tree().change_scene_to_file("res://Pyramids/scenes/ui/menus/MainMenu.tscn")
@@ -376,167 +425,29 @@ func _update_stats_display():
 		value.add_theme_color_override("font_color", UIStyleManager.colors.gray_900)
 		stats_grid.add_child(value)
 
-func _update_mode_settings(mode_name: String):
-	"""Update the game mode settings display using GameModeManager"""
-	# Clear existing
-	for child in settings_grid.get_children():
-		child.queue_free()
-	
-	# Get actual mode config from GameModeManager
-	var mode_id = _get_mode_id_from_name(mode_name)
-	var mode_config = GameModeManager.available_modes.get(mode_id, {})
-	
-	# Create info rows matching SinglePlayerModeSelect style
-	var mode_settings = [
-		{"icon": "🏁", "text": _format_rounds_info(mode_config)},
-		{"icon": "⏱️", "text": _format_timer_info(mode_config)},  # Fixed emoji
-		{"icon": "🎴", "text": _format_draw_info(mode_config)},
-		{"icon": "🔓", "text": _format_slot_info(mode_config)},
-		{"icon": "⚡", "text": _format_combo_info(mode_config)}
-	]
-	
-	for setting in mode_settings:
-		var info_box = HBoxContainer.new()
-		info_box.add_theme_constant_override("separation", 8)
-		
-		# Icon
-		var icon = Label.new()
-		icon.text = setting.icon
-		icon.add_theme_font_size_override("font_size", 16)
-		icon.custom_minimum_size.x = 24
-		info_box.add_child(icon)
-		
-		# Label and value combined
-		var label_value = Label.new()
-		label_value.text = setting.text
-		label_value.add_theme_color_override("font_color", UIStyleManager.colors.gray_700)
-		label_value.add_theme_font_size_override("font_size", 16)  # Fixed: Match stats font size
-		info_box.add_child(label_value)
-		
-		# Add the whole row to grid (single column)
-		settings_grid.add_child(info_box)
-		
-		# Add empty cell for second column
-		var spacer = Control.new()
-		settings_grid.add_child(spacer)
-
 func _get_mode_id_from_name(mode_name: String) -> String:
 	"""Convert display name to mode ID"""
 	match mode_name:
 		"Classic": return "classic"
-		"Rush": return "timed_rush"  # Changed from "Blitz"
-		"Puzzle": return "puzzle_master"
+		"Rush": return "timed_rush"
+		"Test": return "test"
 		_: return "classic"
 
-func _cycle_mode():
-	"""Enhanced mode cycling that updates settings panel"""
-	var modes = ["Classic", "Blitz", "Puzzle"]
-	var current_index = modes.find(current_mode)
-	current_index = (current_index + 1) % modes.size()
-	current_mode = modes[current_index]
-	mode_selector.text = "Mode: " + current_mode
-	
-	# Update the settings panel
-	_update_mode_settings(current_mode)
-	
-	mode_selected.emit(current_mode)
-
-func _setup_game_mode_settings_panel():
-	"""Configure the game mode settings grid"""
-	# Add title label
-	var settings_title = Label.new()
-	settings_title.text = "Mode Settings"
-	settings_title.add_theme_font_size_override("font_size", 16)
-	settings_title.add_theme_color_override("font_color", UIStyleManager.colors.gray_700)
-	settings_margin.add_child(settings_title)
-	settings_margin.move_child(settings_title, 0)
-	
-	# Add separator
-	var sep = HSeparator.new()
-	sep.add_theme_constant_override("separation", 8)
-	settings_margin.add_child(sep)
-	settings_margin.move_child(sep, 1)
-	
-	# Configure grid
-	settings_grid.columns = 2
-	settings_grid.add_theme_constant_override("h_separation", 30)
-	settings_grid.add_theme_constant_override("v_separation", 8)
-
-func _setup_player_stats_panel():
-	"""Configure the player stats grid"""
-	# Add title label
-	var stats_title = Label.new()
-	stats_title.text = "Your Stats"
-	stats_title.add_theme_font_size_override("font_size", 16)
-	stats_title.add_theme_color_override("font_color", UIStyleManager.colors.gray_700)
-	stats_margin.add_child(stats_title)
-	stats_margin.move_child(stats_title, 0)
-	
-	# Add separator
-	var sep = HSeparator.new()
-	sep.add_theme_constant_override("separation", 8)
-	stats_margin.add_child(sep)
-	stats_margin.move_child(sep, 1)
-	
-	# Configure grid
-	stats_grid.columns = 2
-	stats_grid.add_theme_constant_override("h_separation", 30)
-	stats_grid.add_theme_constant_override("v_separation", 8)
-
-func _format_rounds_info(config: Dictionary) -> String:
-	"""Format rounds information"""
-	var rounds = config.get("max_rounds", 10)
-	if rounds == 1:
-		return "1 round"
-	else:
-		return "%d rounds" % rounds
-
-func _format_timer_info(config: Dictionary) -> String:
-	"""Format timer information"""
-	if not config.get("timer_enabled", false):
-		return "No timer"
-	
-	var base = config.get("base_timer", 60)
-	var decrease = config.get("timer_decrease_per_round", 0)
-	
-	if decrease > 0:
-		return "%ds (-%ds)" % [base, decrease]
-	else:
-		return "%ds" % base
-
-func _format_draw_info(config: Dictionary) -> String:
-	"""Format draw pile information"""
-	var base = config.get("base_draw_limit", 24)
-	var decrease = config.get("draw_limit_decrease", 0)
-	
-	if base >= 999:
-		return "Unlimited"
-	elif decrease > 0:
-		return "%d (-%d)" % [base, decrease]
-	else:
-		return "%d" % base
-
-func _format_slot_info(config: Dictionary) -> String:
-	"""Format slot unlock information"""
-	var slot2 = config.get("slot_2_unlock", 2)
-	var slot3 = config.get("slot_3_unlock", 6)
-	
-	if slot2 >= 999:
-		return "Locked"
-	else:
-		return "%d, %d" % [slot2, slot3]
-
-func _format_combo_info(config: Dictionary) -> String:
-	"""Format combo timeout information"""
-	var timeout = config.get("combo_timeout", 10.0)
-	
-	if timeout >= 999:
-		return "No limit"
-	else:
-		return "%.0fs" % timeout
-
-# Update _cycle_mode or mode change handler:
+# Update handler for mode changes
 func _on_mode_changed(mode: String):
+	"""Handle mode name change (for display)"""
 	current_mode = mode
-	_update_mode_settings(mode)
 	mode_selected.emit(mode)
+
+func _on_mode_id_changed(mode_id: String):
+	"""Handle mode ID change (for game logic)"""
+	current_mode_id = mode_id
+	
+	# Update GameSettingsPanel
+	if game_settings_component and game_settings_component.has_method("update_mode"):
+		game_settings_component.update_mode(mode_id)
+	
+	# Update MultiplayerManager
+	if has_node("/root/MultiplayerManager"):
+		var mp_manager = get_node("/root/MultiplayerManager")
+		mp_manager.select_game_mode(mode_id)

@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://dv1s83j0oc07w"]
 
-[ext_resource type="Script" uid="uid://lta3fip83r5u" path="res://Pyramids/scripts/ui/menus/GameSettingsPanel.gd" id="1_j2s5d"]
+[ext_resource type="Script" uid="uid://lta3fip83r5u" path="res://Pyramids/scripts/ui/menus/DELETEGameSettingsPanel.gd" id="1_j2s5d"]
 
 [node name="GameSettingsPanel" type="Control"]
 layout_mode = 3

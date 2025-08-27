@@ -78,7 +78,7 @@ func _create_mini_profile_card():
 			mini_profile_card.add_child(label)
 			add_child(mini_profile_card)
 			return
-	
+
 	# Connect signals
 	if mini_profile_card.has_signal("player_clicked"):
 		mini_profile_card.player_clicked.connect(_on_player_clicked)
