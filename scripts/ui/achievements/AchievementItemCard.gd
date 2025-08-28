@@ -1,6 +1,6 @@
 # AchievementItemCard.gd - Achievement display card with flip-to-description functionality
 # Location: res://Pyramids/scripts/ui/achievements/AchievementItemCard.gd
-# Last Updated: Removed ProgressInfoLabel and cleaned up duplicates [Date]
+# Last Updated: Updated for new achievement_definitions structure [2025-08-28]
 
 extends PanelContainer
 
@@ -21,14 +21,13 @@ signal achievement_clicked(achievement_id: String)
 @onready var title_label: Label = $BackContainer/TitleLabel
 @onready var description_label: Label = $BackContainer/DescriptionLabel
 
-
 var achievement_id: String
 var achievement_data: Dictionary
 var is_flipped: bool = false
 
 func setup(id: String):
 	achievement_id = id
-	achievement_data = AchievementManager.achievements[id]
+	achievement_data = AchievementManager.achievement_definitions[id]  # UPDATED
 	
 	# Wait for nodes to be ready if needed
 	if not is_node_ready():
@@ -44,9 +43,9 @@ func setup(id: String):
 	front_container.visible = true
 	back_container.visible = false
 	
-	# Apply rarity styling
-	var rarity = achievement_data.get("rarity", AchievementManager.Rarity.COMMON)
-	_apply_rarity_style(rarity)
+	# Apply tier-based styling instead of rarity
+	var tier = achievement_data.get("tier", 1)
+	_apply_tier_style(tier)
 
 func _setup_front_side():
 	# Load icon
@@ -136,10 +135,20 @@ func _update_visual_state():
 	
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 
-func _apply_rarity_style(rarity):
-	# Create border style based on rarity
+func _apply_tier_style(tier: int):
+	# Create border style based on tier (1=bronze, 2=silver, 3=gold)
 	var border_style = StyleBoxFlat.new()
-	var color = AchievementManager.get_rarity_color(rarity)
+	var color = Color.WHITE
+	
+	match tier:
+		1:  # Bronze
+			color = Color(0.72, 0.45, 0.20)  # Bronze color
+		2:  # Silver  
+			color = Color(0.75, 0.75, 0.75)  # Silver color
+		3:  # Gold
+			color = Color(1.0, 0.84, 0.0)    # Gold color
+		_:
+			color = Color(0.6, 0.6, 0.6)      # Default gray
 	
 	border_style.bg_color = Color(1.0, 1.0, 1.0, 0.847)
 	border_style.border_color = color
@@ -152,8 +161,8 @@ func _apply_rarity_style(rarity):
 	border_style.corner_radius_bottom_left = 12
 	border_style.corner_radius_bottom_right = 12
 	
-	# Apply glow for higher rarities
-	if rarity >= AchievementManager.Rarity.RARE:
+	# Apply glow for gold tier
+	if tier == 3:
 		border_style.shadow_color = color
 		border_style.shadow_color.a = 0.3
 		border_style.shadow_size = 5

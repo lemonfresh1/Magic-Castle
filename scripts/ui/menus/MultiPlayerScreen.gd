@@ -38,7 +38,6 @@ var game_settings_panel_script = preload("res://Pyramids/scripts/ui/components/G
 @onready var right_panel: PanelContainer = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel
 @onready var right_margin: MarginContainer = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer
 @onready var right_vbox: VBoxContainer = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox
-var swipe_mode_button_scene = preload("res://Pyramids/scenes/ui/components/SwipeModeButton.tscn")
 @onready var mode_selector: Button = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/ModeSelector
 @onready var ranked_button: Button = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/RankedButton
 @onready var unranked_button: Button = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/UnrankedButton
@@ -48,6 +47,9 @@ var swipe_mode_button_scene = preload("res://Pyramids/scenes/ui/components/Swipe
 var leaderboard_panel: Control
 var mode_description_label: RichTextLabel
 var game_settings_component: Control  # NEW: Reusable settings panel
+var multiplayer_leaderboard_script = preload("res://Pyramids/scripts/ui/components/MultiplayerLeaderboard.gd")
+var swipe_mode_button_scene = preload("res://Pyramids/scenes/ui/components/SwipeModeButton.tscn")
+
 
 # State
 var current_mode: String = "Classic"
@@ -147,34 +149,16 @@ func _setup_styles():
 		right_section_main.add_theme_constant_override("separation", 15)
 
 func _setup_leaderboard():
-	"""Add leaderboard to left section"""
-	leaderboard_panel = highscores_panel_scene.instantiate()
+	"""Add multiplayer leaderboard to left section"""
+	
+	# Create container that extends HighscoresPanel
+	leaderboard_panel = PanelContainer.new()
+	leaderboard_panel.set_script(multiplayer_leaderboard_script)
 	left_section.add_child(leaderboard_panel)
 	
-	# Configure for multiplayer
-	leaderboard_panel.setup({
-		"title": "Leaderboard",
-		"columns": [
-			{"key": "rank", "label": "#", "width": 30, "align": "left", "format": "rank"},
-			{"key": "player", "label": "Player", "width": 120, "align": "left", "format": "player"},
-			{"key": "mmr", "label": "MMR", "width": 60, "align": "center", "format": "number"},
-			{"key": "winrate", "label": "Win%", "width": 50, "align": "right", "format": "percent"}
-		],
-		"filters": [
-			{"id": "global", "label": "Global", "default": true},
-			{"id": "regional", "label": "Regional"},
-			{"id": "friends", "label": "Friends"},
-			{"id": "clan", "label": "Clan"}
-		],
-		"row_actions": ["challenge", "friend"],
-		"filter_position": "top",
-		"max_rows": 50,
-		"show_title": true,
-		"data_provider": _fetch_leaderboard_data
-	})
-	
+	# The script's _ready() will configure it automatically
 	leaderboard_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-
+	
 func _setup_buttons():
 	"""Configure existing buttons"""
 	# Top action buttons
@@ -307,29 +291,62 @@ func _setup_game_settings_component():
 		})
 
 func _load_player_stats():
-	"""Load and display player statistics"""
+	"""Load and display player statistics from StatsManager"""
+	var total_first_place = 0
+	var total_games = 0
+	var total_average_rank = 0.0
+	var modes_with_games = 0
+	
+	# Calculate combined stats across all multiplayer modes
+	if StatsManager:
+		for mode in ["classic", "timed_rush", "test"]:
+			var mode_stats = StatsManager.get_multiplayer_stats(mode)
+			if mode_stats.games > 0:
+				total_first_place += mode_stats.first_place
+				total_games += mode_stats.games
+				total_average_rank += mode_stats.average_rank
+				modes_with_games += 1
+	
+	# Calculate overall average rank
+	if modes_with_games > 0:
+		total_average_rank = total_average_rank / float(modes_with_games)
+	
+	# Calculate win rate (first place percentage)
+	var winrate = 0
+	if total_games > 0:
+		winrate = int(float(total_first_place) / float(total_games) * 100.0)
+	
+	# Simple MMR calculation based on performance
+	var mmr = 1000
+	if total_games > 0:
+		# Base MMR on first place finishes and average rank
+		mmr = 1000 + (total_first_place * 50) - int((total_average_rank - 1) * 25)
+		mmr = max(100, mmr)  # Minimum MMR of 100
+	
+	# Determine rank based on MMR
+	var rank = "Unranked"
+	if total_games >= 5:  # Need at least 5 games to be ranked
+		if mmr >= 2000:
+			rank = "Diamond"
+		elif mmr >= 1750:
+			rank = "Platinum"
+		elif mmr >= 1500:
+			rank = "Gold"
+		elif mmr >= 1250:
+			rank = "Silver"
+		else:
+			rank = "Bronze"
+	
 	player_stats = {
-		"mmr": 1250,
-		"wins": 42,
-		"losses": 18,
-		"winrate": 70,
-		"streak": 3,
-		"rank": "Gold II"
+		"mmr": mmr,
+		"first_place": total_first_place,
+		"average_rank": total_average_rank,
+		"winrate": winrate,
+		"rank": rank,
+		"games": total_games
 	}
 	
 	_update_stats_display()
-
-func _fetch_leaderboard_data(context: Dictionary) -> Array:
-	"""Mock leaderboard data"""
-	var mock_data = []
-	for i in range(50):
-		mock_data.append({
-			"rank": i + 1,
-			"player": "Player" + str(i + 1),
-			"mmr": 2000 - (i * 10),
-			"winrate": 75 - (i * 0.5)
-		})
-	return mock_data
 
 func _on_lobby_action(action: String):
 	print("Lobby action: " + action)
@@ -395,10 +412,10 @@ func _update_stats_display():
 	var stats_to_show = [
 		{"icon": "🏆", "label": "Rank", "value": player_stats.get("rank", "Unranked")},
 		{"icon": "📊", "label": "MMR", "value": str(player_stats.get("mmr", 0))},
+		{"icon": "🥇", "label": "1st Place", "value": str(player_stats.get("first_place", 0))},
 		{"icon": "📈", "label": "Win Rate", "value": str(player_stats.get("winrate", 0)) + "%"},
-		{"icon": "🔥", "label": "Streak", "value": str(player_stats.get("streak", 0))},
-		{"icon": "✅", "label": "Wins", "value": str(player_stats.get("wins", 0))},
-		{"icon": "🎮", "label": "Games", "value": str(player_stats.get("wins", 0) + player_stats.get("losses", 0))}
+		{"icon": "⭐", "label": "Avg Rank", "value": "%.1f" % player_stats.get("average_rank", 0.0)},
+		{"icon": "🎮", "label": "Games", "value": str(player_stats.get("games", 0))}
 	]
 	
 	for stat in stats_to_show:
@@ -446,6 +463,10 @@ func _on_mode_id_changed(mode_id: String):
 	# Update GameSettingsPanel
 	if game_settings_component and game_settings_component.has_method("update_mode"):
 		game_settings_component.update_mode(mode_id)
+	
+	# Update MultiplayerLeaderboard - NEW!
+	if leaderboard_panel and leaderboard_panel.has_method("refresh_for_mode"):
+		leaderboard_panel.refresh_for_mode(mode_id)
 	
 	# Update MultiplayerManager
 	if has_node("/root/MultiplayerManager"):

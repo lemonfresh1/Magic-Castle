@@ -103,7 +103,8 @@ func get_lifetime_spent() -> int:
 
 # === ACHIEVEMENT INTEGRATION ===
 func _on_achievement_unlocked(achievement_id: String):
-	var achievement = AchievementManager.achievements.get(achievement_id, {})
+	# Updated to use achievement_definitions instead of achievements
+	var achievement = AchievementManager.achievement_definitions.get(achievement_id, {})
 	var star_reward = achievement.get("stars", 0)
 	
 	if star_reward > 0:

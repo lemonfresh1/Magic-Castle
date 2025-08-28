@@ -120,7 +120,7 @@ func show_summary(final_score: int, rounds_data: Array) -> void:
 
 	# Count achievement stars
 	for achievement_id in achievements_unlocked:
-		var achievement = AchievementManager.achievements[achievement_id]
+		var achievement = AchievementManager.achievement_definitions[achievement_id]  # FIXED
 		achievement_stars += achievement.stars
 
 	# Total for display
@@ -147,6 +147,25 @@ func show_summary(final_score: int, rounds_data: Array) -> void:
 			StatsManager.save_stats()  # Force save to disk
 		else:
 			print("PostGameSummary: No game mode set, cannot save score")
+			
+	if MultiplayerManager and MultiplayerManager.current_lobby_id != "":
+		# For now, simulate a multiplayer game completion
+		var placement = 1  # Assume first place for testing
+		var mp_score = final_score  # Use the existing parameter
+		
+		var mode = MultiplayerManager.get_selected_mode()
+		
+		# Track the multiplayer game
+		StatsManager.track_multiplayer_game(
+			mode,           # "classic", "timed_rush", etc.
+			placement,      # 1-8
+			mp_score,       # score
+			10,            # combo (TODO: get from actual game)
+			120.5,         # clear_time (TODO: calculate from actual game)
+			1              # player_count (TODO: get from lobby)
+		)
+		
+		print("Tracked multiplayer game: Mode=%s, Place=%d, Score=%d" % [mode, placement, mp_score])
 
 func _calculate_progression() -> void:
 	# Calculate base game XP
@@ -173,24 +192,22 @@ func _calculate_progression() -> void:
 	# CRITICAL: Calculate achievement XP that will be awarded
 	var achievement_xp_total = 0
 	for achievement_id in achievements_unlocked:
-		var achievement = AchievementManager.achievements.get(achievement_id, {})
-		var rarity = achievement.get("rarity", AchievementManager.Rarity.COMMON)
+		var achievement = AchievementManager.achievement_definitions.get(achievement_id, {})  # FIXED
+		var tier = achievement.get("tier", 1)  # FIXED: Use tier instead of rarity
 		var xp = XPManager.XP_ACHIEVEMENT_BASE
-		match rarity:
-			AchievementManager.Rarity.UNCOMMON:
-				xp *= 2
-			AchievementManager.Rarity.RARE:
+		match tier:
+			1:  # Bronze
+				xp *= 1
+			2:  # Silver
 				xp *= 3
-			AchievementManager.Rarity.EPIC:
+			3:  # Gold
 				xp *= 5
-			AchievementManager.Rarity.LEGENDARY:
-				xp *= 10
 		achievement_xp_total += xp
 	
 	# Total XP that will be gained
 	xp_gained = game_xp + achievement_xp_total
 	
-	# FIXED: Calculate level changes using actual XP requirements
+	# Calculate level changes using actual XP requirements
 	var temp_xp = starting_xp + xp_gained
 	var temp_level = starting_level
 	
@@ -480,7 +497,7 @@ func _animate_xp_bar() -> void:
 		# Award all stars at once
 		var achievement_stars = 0
 		for achievement_id in achievements_unlocked:
-			var achievement = AchievementManager.achievements[achievement_id]
+			var achievement = AchievementManager.achievement_definitions[achievement_id]  # FIXED
 			achievement_stars += achievement.stars
 
 		if achievement_stars > 0:

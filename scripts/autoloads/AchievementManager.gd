@@ -1,6 +1,6 @@
-# AchievementManager.gd - Enhanced achievement system with progress tracking
+# AchievementManager.gd - Systematic achievement system with 3 tiers per stat
 # Path: res://Pyramids/scripts/autoloads/AchievementManager.gd
-# Added 9 new long-term achievements, "new" badge system, rarity tiers
+# Last Updated: Simplified to 3-tier system for all tracked stats [2025-08-28]
 extends Node
 
 signal achievement_unlocked(achievement_id: String)
@@ -8,267 +8,203 @@ signal achievement_progress_updated(achievement_id: String, progress: float)
 
 const SAVE_PATH = "user://achievements.save"
 
-# Rarity tiers for visual display
-enum Rarity {
-	COMMON,      # Gray - 45%
-	UNCOMMON,    # Green - 30%
-	RARE,        # Blue - 15%
-	EPIC,        # Purple - 7%
-	LEGENDARY,   # Orange - 2.5%
-	MYTHIC       # Red - 0.5%
+# Tier definitions for consistent progression
+const TIER_MULTIPLIERS = {
+	"bronze": 1,
+	"silver": 5,
+	"gold": 20
 }
 
-# Achievement definitions (18 total)
-var achievements = {
-	# === STARTER TIER (5-10 stars) ===
-	"first_game": {
-		"name": "First Steps",
-		"description": "Complete your first game",
-		"stars": 5,
-		"rarity": Rarity.COMMON,
-		"requirement": {"type": "games_played", "value": 1},
-		"icon": "Play.png"
-	},
-	"board_clear": {
-		"name": "Winner",
-		"description": "Clear a board",
-		"stars": 10,
-		"rarity": Rarity.COMMON,
-		"requirement": {"type": "boards_cleared", "value": 1},
-		"icon": "Trophy.png"
-	},
-	"play_10": {
-		"name": "Dedicated",
-		"description": "Play 10 games",
-		"stars": 10,
-		"rarity": Rarity.COMMON,
-		"requirement": {"type": "games_played", "value": 10},
-		"icon": "Team.png"
-	},
-	"combo_5": {
-		"name": "Combo Starter", 
-		"description": "Reach a 5 card combo",
-		"stars": 10,
-		"rarity": Rarity.COMMON,
-		"requirement": {"type": "combo", "value": 5},
-		"icon": "Flower.png"
-	},
-	"speed_clear": {
-		"name": "Speed Demon",
-		"description": "Clear a board in under 50 seconds",
-		"stars": 10,
-		"rarity": Rarity.COMMON,
-		"requirement": {"type": "speed_clear", "value": 50},
-		"icon": "Gear.png"
-	},
-	
-	# === SKILL TIER (15-25 stars) ===
-	"combo_10": {
-		"name": "Combo Master",
-		"description": "Reach a 10 card combo", 
-		"stars": 20,
-		"rarity": Rarity.UNCOMMON,
-		"requirement": {"type": "combo", "value": 10},
-		"icon": "Flower2.png"
-	},
-	"all_peaks": {
-		"name": "Peak Performance",
-		"description": "Clear all 3 peaks in one game",
-		"stars": 15,
-		"rarity": Rarity.UNCOMMON,
-		"requirement": {"type": "peaks_cleared", "value": 3},
-		"icon": "Sun.png"
-	},
-	"score_10k": {
-		"name": "High Scorer",
-		"description": "Score over 10,000 points",
-		"stars": 20,
-		"rarity": Rarity.UNCOMMON,
-		"requirement": {"type": "score", "value": 10000},
-		"icon": "Coin2.png"
-	},
-	"perfect_round": {
-		"name": "Flawless",
-		"description": "Complete a round with no invalid clicks",
-		"stars": 25,
-		"rarity": Rarity.UNCOMMON,
-		"requirement": {"type": "perfect_round", "value": 1},
-		"icon": "Lightbulb.png"
-	},
-	"ace_hunter": {
-		"name": "Ace Hunter",
-		"description": "Play 50 Aces",
-		"stars": 15,
-		"rarity": Rarity.UNCOMMON,
-		"requirement": {"type": "aces_played", "value": 50},
-		"icon": "Cloud.png"
-	},
-	"king_slayer": {
-		"name": "King Slayer",
-		"description": "Play 50 Kings",
-		"stars": 15,
-		"rarity": Rarity.UNCOMMON,
-		"requirement": {"type": "kings_played", "value": 50},
-		"icon": "Coin.png"
-	},
-	"suit_master": {
-		"name": "Suit Master",
-		"description": "Get 100 suit bonuses",
-		"stars": 20,
-		"rarity": Rarity.RARE,
-		"requirement": {"type": "suit_bonuses", "value": 100},
-		"icon": "Cutlery.png"
-	},
-	
-	# === GRIND TIER (30-50 stars) ===
-	"peak_crusher": {
-		"name": "Peak Crusher",
-		"description": "Clear 100 peaks total",
-		"stars": 30,
-		"rarity": Rarity.RARE,
-		"requirement": {"type": "total_peaks", "value": 100},
-		"icon": "CookingPot.png"
-	},
-	"card_collector": {
-		"name": "Card Collector",
-		"description": "Draw 500 cards from the pile",
-		"stars": 35,
-		"rarity": Rarity.RARE,
-		"requirement": {"type": "cards_drawn", "value": 500},
-		"icon": "Exit.png"
-	},
-	"tap_master": {
-		"name": "Tap Master",
-		"description": "Successfully play 1000 cards",
-		"stars": 40,
-		"rarity": Rarity.EPIC,
-		"requirement": {"type": "cards_played", "value": 1000},
-		"icon": "Eye.png"
-	},
-	"veteran": {
-		"name": "Veteran",
-		"description": "Play 100 games",
-		"stars": 45,
-		"rarity": Rarity.EPIC,
-		"requirement": {"type": "games_played", "value": 100},
-		"icon": "FlowerPot.png"
-	},
-	"perfect_week": {
-		"name": "Perfect Week",
-		"description": "Complete 7 perfect rounds",
-		"stars": 50,
-		"rarity": Rarity.EPIC,
-		"requirement": {"type": "perfect_rounds", "value": 7},
-		"icon": "Info.png"
-	},
-	
-	# === LEGENDARY TIER (100 stars) ===
-	"million_club": {
-		"name": "Million Club",
-		"description": "Reach 1,000,000 total score",
-		"stars": 100,
-		"rarity": Rarity.LEGENDARY,
-		"requirement": {"type": "total_score", "value": 1000000},
-		"icon": "Key.png"
-	}
-}
+# Icon cycling - reuse icons across achievements
+const ICON_LIST = [
+	"Play.png", "Trophy.png", "Team.png", "Flower.png", "Gear.png",
+	"Flower2.png", "Sun.png", "Coin2.png", "Lightbulb.png", "Cloud.png",
+	"Coin.png", "Cutlery.png", "CookingPot.png", "Exit.png", "Eye.png",
+	"FlowerPot.png", "Info.png", "Key.png"
+]
 
+# Achievement definitions - 3 tiers for each stat type
+var achievement_definitions = {}
 var unlocked_achievements: Array[String] = []
-var achievement_progress = {}  # id -> float (0.0 to 1.0)
-var seen_achievements: Array[String] = []  # Tracks which are no longer "new"
-var session_unlocked_achievements: Array[String] = []  # Achievements unlocked this session
-
+var achievement_progress = {}
+var seen_achievements: Array[String] = []
+var session_unlocked_achievements: Array[String] = []
 
 func _ready():
+	_generate_achievements()
 	load_achievements()
 
+func _generate_achievements():
+	"""Generate achievements programmatically for all tracked stats"""
+	var icon_index = 0
+	
+	# Define stat progressions with base values
+	var stat_configs = [
+		# Core gameplay
+		{"stat": "games_played", "name": "Player", "base": 1, "multipliers": [1, 50, 200]},
+		{"stat": "total_rounds", "name": "Round Master", "base": 1, "multipliers": [5, 100, 500]},
+		{"stat": "total_score", "name": "Score Hunter", "base": 1000, "multipliers": [1, 50, 500]},
+		{"stat": "highscore", "name": "High Scorer", "base": 1000, "multipliers": [5, 20, 50]},
+		
+		# Card interactions
+		{"stat": "cards_clicked", "name": "Card Tapper", "base": 1, "multipliers": [100, 1000, 5000]},
+		{"stat": "cards_drawn", "name": "Draw Master", "base": 1, "multipliers": [50, 500, 2000]},
+		{"stat": "invalid_clicks", "name": "Precision", "base": 100, "multipliers": [1, 0.5, 0.1]}, # Less is better
+		
+		# Combos and streaks
+		{"stat": "combo", "name": "Combo King", "base": 1, "multipliers": [5, 15, 30]},
+		{"stat": "perfect_rounds", "name": "Perfectionist", "base": 1, "multipliers": [1, 10, 50]},
+		{"stat": "suit_bonuses", "name": "Suit Master", "base": 1, "multipliers": [20, 100, 500]},
+		
+		# Peak achievements
+		{"stat": "total_peaks_cleared", "name": "Peak Crusher", "base": 1, "multipliers": [10, 100, 500]},
+		{"stat": "peak_clears_3", "name": "Triple Threat", "base": 1, "multipliers": [1, 10, 50]},
+		
+		# Speed achievements  
+		{"stat": "fastest_clear", "name": "Speed Runner", "base": 120, "multipliers": [1, 0.5, 0.25]}, # Less is better
+		{"stat": "time_ran_out", "name": "Time Fighter", "base": 50, "multipliers": [1, 0.5, 0.1]}, # Less is better
+		
+		# Efficiency
+		{"stat": "most_cards_remaining", "name": "Efficient", "base": 1, "multipliers": [5, 15, 25]},
+		{"stat": "highest_round_reached", "name": "Endurance", "base": 1, "multipliers": [5, 10, 15]}
+	]
+	
+	# Generate 3 tiers for each stat
+	for config in stat_configs:
+		var tiers = ["bronze", "silver", "gold"]
+		var tier_names = ["Novice", "Expert", "Master"]
+		var tier_stars = [5, 20, 50]
+		
+		for i in range(3):
+			var tier = tiers[i]
+			var achievement_id = "%s_%s" % [config.stat, tier]
+			var requirement_value = int(config.base * config.multipliers[i])
+			
+			# For "less is better" stats, invert the display
+			var description = ""
+			if config.stat in ["invalid_clicks", "fastest_clear", "time_ran_out"]:
+				if config.stat == "fastest_clear":
+					description = "Clear a round in under %d seconds" % requirement_value
+				elif config.stat == "time_ran_out":
+					description = "Complete %d rounds before time expires" % requirement_value
+				else:
+					description = "Make fewer than %d invalid clicks total" % requirement_value
+			else:
+				# Format large numbers nicely
+				var formatted_value = _format_number(requirement_value)
+				if config.stat == "highscore":
+					description = "Reach a score of %s" % formatted_value
+				elif config.stat == "combo":
+					description = "Get a %d card combo" % requirement_value
+				elif config.stat == "peak_clears_3":
+					description = "Clear all 3 peaks %d times" % requirement_value
+				else:
+					description = "Reach %s %s" % [formatted_value, config.stat.replace("_", " ")]
+			
+			achievement_definitions[achievement_id] = {
+				"name": "%s %s" % [tier_names[i], config.name],
+				"description": description,
+				"stars": tier_stars[i],
+				"requirement": {"type": config.stat, "value": requirement_value},
+				"icon": ICON_LIST[icon_index % ICON_LIST.size()],
+				"tier": i + 1
+			}
+			
+			icon_index += 1
+
 func check_achievements():
+	"""Simplified achievement checking"""
 	var stats = StatsManager.get_total_stats()
 	var current_game = StatsManager.current_game_stats
 	
-	for id in achievements:
+	for id in achievement_definitions:
 		if id in unlocked_achievements:
 			continue
-			
-		var achievement = achievements[id]
-		var requirement = achievement.requirement
-		var current_value = 0
-		var unlocked = false
 		
-		match requirement.type:
-			"games_played":
-				current_value = stats.games_played
-			"boards_cleared":
-				current_value = stats.rounds_cleared
-			"combo":
-				current_value = current_game.highest_combo
-			"score":
-				current_value = StatsManager.get_highscore().score
-			"peaks_cleared":
-				if ScoreSystem and ScoreSystem.peaks_cleared_indices.size() >= requirement.value:
-					current_value = requirement.value
-					unlocked = true
-			"perfect_round":
-				current_value = current_game.perfect_rounds.size()
-			"speed_clear":
-				if GameState.board_cleared and GameState.round_time_limit > 0:
-					var time_taken = GameState.round_time_limit - GameState.time_remaining
-					if time_taken <= requirement.value:
-						unlocked = true
-			"aces_played":
-				current_value = stats.aces_played
-			"kings_played":
-				current_value = stats.kings_played
-			"suit_bonuses":
-				current_value = stats.suit_bonuses
-			"total_peaks":
-				current_value = stats.total_peaks_cleared
-			"cards_drawn":
-				current_value = stats.cards_drawn
-			"cards_played":
-				current_value = stats.cards_clicked
-			"perfect_rounds":
-				current_value = stats.perfect_rounds
-			"total_score":
-				current_value = stats.total_score
+		var achievement = achievement_definitions[id]
+		var requirement = achievement.requirement
+		var current_value = _get_stat_value(requirement.type, stats, current_game)
+		
+		# Special handling for "less is better" stats
+		var unlocked = false
+		if requirement.type in ["invalid_clicks", "fastest_clear", "time_ran_out"]:
+			if requirement.type == "fastest_clear" and stats.fastest_clear > 0:
+				unlocked = stats.fastest_clear <= requirement.value
+			elif requirement.type == "time_ran_out":
+				# This is actually "rounds completed without timeout"
+				var successful_rounds = stats.total_rounds - stats.time_ran_out
+				unlocked = successful_rounds >= requirement.value
+			elif requirement.type == "invalid_clicks":
+				unlocked = stats.games_played >= 10 and stats.invalid_clicks <= requirement.value
+		else:
+			unlocked = current_value >= requirement.value
 		
 		# Update progress
-		var progress = min(float(current_value) / float(requirement.value), 1.0)
-		var old_progress = achievement_progress.get(id, 0.0)
+		var progress = 0.0
+		if requirement.type in ["fastest_clear"]:
+			if stats.fastest_clear > 0:
+				progress = min(float(requirement.value) / float(stats.fastest_clear), 1.0)
+		elif requirement.type in ["invalid_clicks", "time_ran_out"]:
+			# Special progress calculation for inverse stats
+			progress = 1.0 if unlocked else 0.5  # Binary for now
+		else:
+			progress = min(float(current_value) / float(requirement.value), 1.0)
 		
+		var old_progress = achievement_progress.get(id, 0.0)
 		if progress > old_progress:
 			achievement_progress[id] = progress
 			achievement_progress_updated.emit(id, progress)
 		
-		# Check for unlock
-		if not unlocked:
-			unlocked = current_value >= requirement.value
-			
 		if unlocked:
 			unlock_achievement(id)
+
+func _get_stat_value(stat_type: String, stats: Dictionary, current_game: Dictionary):
+	"""Get current value for a stat type"""
+	match stat_type:
+		"games_played": return stats.games_played
+		"total_rounds": return stats.total_rounds
+		"total_score": return stats.total_score
+		"highscore": return StatsManager.get_highscore().score
+		"cards_clicked": return stats.cards_clicked
+		"cards_drawn": return stats.cards_drawn
+		"invalid_clicks": return stats.invalid_clicks
+		"combo": return StatsManager.get_longest_combo().combo
+		"perfect_rounds": return stats.perfect_rounds
+		"suit_bonuses": return stats.suit_bonuses
+		"total_peaks_cleared": return stats.total_peaks_cleared
+		"peak_clears_3": return stats.peak_clears.get("3", 0)
+		"fastest_clear": return stats.fastest_clear if stats.fastest_clear > 0 else 999
+		"time_ran_out": return stats.time_ran_out
+		"most_cards_remaining": return stats.most_cards_remaining
+		"highest_round_reached": return stats.highest_round_reached
+		_: return 0
+
+func _format_number(num: int) -> String:
+	"""Format large numbers for display"""
+	if num >= 1000000:
+		return "%.1fM" % (num / 1000000.0)
+	elif num >= 1000:
+		return "%dK" % (num / 1000)
+	else:
+		return str(num)
 
 func unlock_achievement(id: String):
 	if id in unlocked_achievements:
 		return
-		
+	
 	unlocked_achievements.append(id)
 	achievement_progress[id] = 1.0
-	session_unlocked_achievements.append(id)  # This is already here
-	
-	# It's "new" until player sees it
-	if id not in seen_achievements:
-		# This will trigger the NEW badge in UI
-		pass
+	session_unlocked_achievements.append(id)
 	
 	save_achievements()
 	achievement_unlocked.emit(id)
 	
-	var achievement = achievements[id]
+	var achievement = achievement_definitions[id]
 	print("Achievement Unlocked: %s (+%d stars)" % [achievement.name, achievement.stars])
 	
-	# Award XP for achievement - BUT CHECK IF REWARDS ARE ENABLED
+	# Award XP if enabled
 	if XPManager and XPManager.has_method("add_achievement_xp"):
-		if XPManager.rewards_enabled:  # Only if rewards are enabled
+		if XPManager.rewards_enabled:
 			XPManager.add_achievement_xp(id)
 
 func mark_achievement_seen(id: String):
@@ -284,19 +220,33 @@ func get_achievement_progress(id: String) -> float:
 		return 1.0
 	return achievement_progress.get(id, 0.0)
 
-func get_rarity_color(rarity: Rarity) -> Color:
-	match rarity:
-		Rarity.COMMON: return Color(0.6, 0.6, 0.6)      # Gray
-		Rarity.UNCOMMON: return Color(0.3, 0.8, 0.3)    # Green
-		Rarity.RARE: return Color(0.3, 0.5, 0.9)        # Blue
-		Rarity.EPIC: return Color(0.7, 0.3, 0.9)        # Purple
-		Rarity.LEGENDARY: return Color(0.9, 0.6, 0.2)   # Orange
-		Rarity.MYTHIC: return Color(0.9, 0.2, 0.2)      # Red
-		_: return Color.WHITE
+func get_total_stars_earned() -> int:
+	var total = 0
+	for id in unlocked_achievements:
+		if achievement_definitions.has(id):
+			total += achievement_definitions[id].stars
+	return total
+
+func is_unlocked(id: String) -> bool:
+	return id in unlocked_achievements
+
+func get_achievements_for_stat(stat_type: String) -> Array:
+	"""Get all achievements for a specific stat type"""
+	var results = []
+	for id in achievement_definitions:
+		if achievement_definitions[id].requirement.type == stat_type:
+			results.append(id)
+	return results
+
+func get_tier_for_achievement(id: String) -> int:
+	"""Get tier (1-3) for an achievement"""
+	if achievement_definitions.has(id):
+		return achievement_definitions[id].get("tier", 1)
+	return 0
 
 func save_achievements():
 	var save_data = {
-		"version": 2,  # Increment for migration
+		"version": 3,
 		"unlocked": unlocked_achievements,
 		"progress": achievement_progress,
 		"seen": seen_achievements
@@ -315,25 +265,19 @@ func load_achievements():
 			file.close()
 			
 			if save_data and save_data.has("unlocked"):
-				unlocked_achievements.assign(save_data.unlocked)
+				# Migrate old achievement IDs if needed
+				var migrated_unlocked = []
+				for old_id in save_data.unlocked:
+					# Check if it's an old format achievement
+					if achievement_definitions.has(old_id):
+						migrated_unlocked.append(old_id)
+					# Skip old achievements that don't exist anymore
+				
+				unlocked_achievements.assign(migrated_unlocked)
 				achievement_progress = save_data.get("progress", {})
 				seen_achievements.assign(save_data.get("seen", []))
-				
-				# Migrate if old version
-				if save_data.get("version", 1) < 2:
-					seen_achievements.clear()  # All unlocked are "new" after update
 
-func is_unlocked(id: String) -> bool:
-	return id in unlocked_achievements
-
-func get_total_stars_earned() -> int:
-	var total = 0
-	for id in unlocked_achievements:
-		if achievements.has(id):
-			total += achievements[id].stars
-	return total
-
-func reset_all_achievements() -> void:
+func reset_all_achievements():
 	print("Resetting all achievements...")
 	unlocked_achievements.clear()
 	achievement_progress.clear()

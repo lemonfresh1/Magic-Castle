@@ -198,12 +198,6 @@ func _ready() -> void:
 	else:
 		pass
 
-	if achievements_overlay and achievements_overlay.has_node("AchievementsPanel"):
-		var achievements_panel = achievements_overlay.get_node("AchievementsPanel")
-		achievements_panel.achievements_closed.connect(_on_achievements_closed)
-	else:
-		pass
-
 func _create_buttons() -> void:
 	for i in range(button_configs.size()):
 		var config = button_configs[i]

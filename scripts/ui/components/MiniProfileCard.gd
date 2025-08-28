@@ -195,7 +195,12 @@ func _configure_scene_nodes() -> void:
 
 func _configure_stat_labels() -> void:
 	"""Configure the stat labels for emoji display using UIStyleManager typography"""
-	var labels = [mmr_label, win_rate_label, games_label]
+	# Update label references to match new stats
+	# win_rate_label stays the same
+	# games_label stays the same  
+	# mmr_label becomes avg_rank_label
+	
+	var labels = [win_rate_label, games_label, mmr_label]  # mmr_label will show avg rank
 	
 	var stat_font_size = 16
 	if UIStyleManager and UIStyleManager.typography:
@@ -313,12 +318,7 @@ func _create_display_cards() -> void:
 			card.clicked.connect(_on_display_item_clicked)
 
 # === STATE MANAGEMENT ===
-
-func set_player_data(data: Dictionary) -> void:
-	"""Main entry point for updating card data"""
-	player_data = data
-	is_empty = data.get("is_empty", false)
-	
+	# FOR set_player_data
 	# TODO: Future Enhancement - ProfileUI Display Configuration
 	# Allow players to select up to 3 items to display on their MiniProfileCard:
 	# - Equipped cosmetics (card_back, card_front, board) 
@@ -332,12 +332,38 @@ func set_player_data(data: Dictionary) -> void:
 	# if data.has("display_items"):
 	#     # This would show achievements/badges selected by player
 	#     pass
+
+func set_player_data(data: Dictionary) -> void:
+	"""Main entry point for updating card data"""
+	player_data = data
+	is_empty = data.get("is_empty", false)
 	
-	# Override display_items with equipped cosmetics
+	if not is_empty and StatsManager:
+		# Get the current game mode from MultiplayerManager if available
+		var current_mode = "classic"
+		if has_node("/root/MultiplayerManager"):
+			var mp_manager = get_node("/root/MultiplayerManager")
+			current_mode = mp_manager.get_selected_mode()
+		
+		# Get stats for the current mode
+		var mode_stats = StatsManager.get_multiplayer_stats(current_mode)
+		
+		# Calculate win rate as percentage
+		var win_rate = 0.0
+		if mode_stats.games > 0:
+			win_rate = float(mode_stats.first_place) / float(mode_stats.games)
+		
+		# Override stats with real data from new structure
+		player_data["stats"] = {
+			"games": mode_stats.games,
+			"win_rate": win_rate,
+			"average_rank": mode_stats.average_rank
+		}
+	
+	# Override display_items with equipped cosmetics (unchanged)
 	var equipped = data.get("equipped", {})
 	var equipped_items = []
 	
-	# Add equipped items in specific order: card_back, card_front, board
 	if equipped.has("card_back") and equipped.card_back != "":
 		equipped_items.append(equipped.card_back)
 	else:
@@ -353,7 +379,6 @@ func set_player_data(data: Dictionary) -> void:
 	else:
 		equipped_items.append("")
 	
-	# Replace the display_items in player_data with equipped items
 	player_data["display_items"] = equipped_items
 	
 	if is_empty:
@@ -407,7 +432,12 @@ func set_occupied_state() -> void:
 	_hide_plus_symbol()
 	
 	if name_label:
-		name_label.text = player_data.get("name", "Player")
+		# Use SettingsSystem name if available, otherwise fall back to player_data
+		var display_name = player_data.get("name", "Player")
+		if SettingsSystem:
+			display_name = SettingsSystem.player_name
+		
+		name_label.text = display_name
 		name_label.modulate = Color.WHITE
 		
 		var name_font_size = UIStyleManager.typography["size_body_large"] if UIStyleManager else 20
@@ -520,24 +550,14 @@ func show_emoji(emoji_id: String):
 # === UPDATE FUNCTIONS ===
 
 func _update_stats_display() -> void:
-	"""Update stats with emoji format"""
+	"""Update stats with emoji format - Win Rate, Games, Average Rank"""
 	var stats = player_data.get("stats", {})
 	
 	var stat_font_size = 16
 	if UIStyleManager and UIStyleManager.typography:
 		stat_font_size = UIStyleManager.typography.get("size_body_small", 16)
 	
-	if mmr_label:
-		var mmr = stats.get("mmr", 0)
-		if mmr >= 1000:
-			mmr_label.text = "👑 %.1fK" % (mmr / 1000.0)
-		else:
-			mmr_label.text = "👑 %d" % mmr
-		mmr_label.modulate = Color.WHITE
-		mmr_label.add_theme_color_override("font_color", Color.WHITE)
-		mmr_label.add_theme_font_size_override("font_size", stat_font_size)
-		mmr_label.visible = true
-	
+	# Win Rate (keep as is)
 	if win_rate_label:
 		var win_rate = stats.get("win_rate", 0.0)
 		win_rate_label.text = "🎯 %d%%" % int(win_rate * 100)
@@ -546,13 +566,26 @@ func _update_stats_display() -> void:
 		win_rate_label.add_theme_font_size_override("font_size", stat_font_size)
 		win_rate_label.visible = true
 	
+	# Games Played (keep as is)
 	if games_label:
 		var games = stats.get("games", 0)
-		games_label.text = "⚔️ %d" % games
+		games_label.text = "🎮 %d" % games
 		games_label.modulate = Color.WHITE
 		games_label.add_theme_color_override("font_color", Color.WHITE)
 		games_label.add_theme_font_size_override("font_size", stat_font_size)
 		games_label.visible = true
+	
+	# Average Rank (replace MMR display)
+	if mmr_label:  # Reusing mmr_label to show average rank
+		var avg_rank = stats.get("average_rank", 0.0)
+		if avg_rank > 0:
+			mmr_label.text = "⭐ %.1f" % avg_rank
+		else:
+			mmr_label.text = "⭐ -"  # No games played yet
+		mmr_label.modulate = Color.WHITE
+		mmr_label.add_theme_color_override("font_color", Color.WHITE)
+		mmr_label.add_theme_font_size_override("font_size", stat_font_size)
+		mmr_label.visible = true
 
 func _update_display_items() -> void:
 	"""Update the 3 display item cards using UnifiedItemCard"""
@@ -777,9 +810,9 @@ func debug_populate_with_mock_data() -> void:
 		"level": 42,
 		"prestige": 8,
 		"stats": {
-			"games": 250,
-			"win_rate": 0.68,
-			"mmr": 2450
+			"games": 25,
+			"win_rate": 0.32,  # 32% first place rate
+			"average_rank": 2.4  # Average placement
 		},
 		"frame_id": "",
 		"display_items": ["first_game", "", "combo_5"],

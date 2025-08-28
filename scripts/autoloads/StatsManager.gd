@@ -1,10 +1,10 @@
 # StatsManager.gd - Enhanced statistics tracking for achievements
 # Path: res://Pyramids/scripts/autoloads/StatsManager.gd  
-# Added tracking for aces, kings, total peaks cleared, and more granular stats
+# Last Updated: Cleaned up unnecessary stats, prepared for multiplayer [2025-08-28]
 extends Node
 
 const SAVE_PATH = "user://stats.save"
-const STATS_VERSION = 2  # Increment for new stats
+const STATS_VERSION = 3  # Incremented for cleanup
 
 var mode_highscores: Dictionary = {}  # mode_id -> Array of {player_name, score, timestamp}
 var player_best_scores: Dictionary = {}  # mode_id -> best_score
@@ -41,31 +41,24 @@ var current_game_stats = {
 	"time_started": 0,
 	"perfect_rounds": [],
 	"round_invalid_clicks": 0,
-	"aces_played": 0,      # NEW
-	"kings_played": 0,     # NEW
-	"suit_bonuses": 0      # NEW
+	"suit_bonuses": 0
 }
 
+# Enhanced multiplayer stats structure
 var multiplayer_stats = {
-	"classic": {"wins": 0, "losses": 0, "games": 0, "win_rate": 0.0},
-	"timed_rush": {"wins": 0, "losses": 0, "games": 0, "win_rate": 0.0}, 
-	"test": {"wins": 0, "losses": 0, "games": 0, "win_rate": 0.0}
+	"classic": _create_multiplayer_stats(),
+	"timed_rush": _create_multiplayer_stats(),
+	"test": _create_multiplayer_stats()
 }
 
 func _ready() -> void:
 	print("StatsManager initializing...")
 	load_stats()
-	
-	# Connect to signals for new tracking
-	SignalBus.card_selected.connect(_on_card_selected)
-	
 	print("StatsManager ready")
 
 func _create_mode_stats() -> Dictionary:
 	return {
 		"games_played": 0,
-		"rounds_cleared": 0,
-		"rounds_failed": 0,
 		"total_rounds": 0,
 		"time_ran_out": 0,
 		"cards_clicked": 0,
@@ -78,39 +71,31 @@ func _create_mode_stats() -> Dictionary:
 		"suit_bonuses": 0,
 		"total_score": 0,
 		"highest_round_reached": 0,
-		# NEW stats for achievements
-		"aces_played": 0,
-		"kings_played": 0,
-		"total_peaks_cleared": 0  # Sum of all peaks (1+2+3)
+		"total_peaks_cleared": 0
 	}
 
-# === NEW TRACKING METHODS ===
-func _on_card_selected(card: Control):
-	if not card or not card.card_data:
-		return
-		
-	# Track aces and kings
-	if card.card_data.rank == 1:  # Ace
-		current_game_stats.aces_played += 1
-	elif card.card_data.rank == 13:  # King
-		current_game_stats.kings_played += 1
+func _create_multiplayer_stats() -> Dictionary:
+	return {
+		"games": 0,
+		"first_place": 0,  # Track 1st place finishes
+		"placements": [0, 0, 0, 0, 0, 0, 0, 0],  # Track positions 1-8
+		"average_rank": 0.0,
+		"highscore": 0,
+		"longest_combo": 0,
+		"fastest_clear": -1.0,  # Time in seconds
+		"total_score": 0,
+		"average_score": 0.0
+	}
 
-func track_suit_bonus(mode: String) -> void:
-	current_game_stats.suit_bonuses += 1
-	if stats.mode_stats.has(mode):
-		stats.mode_stats[mode].suit_bonuses += 1
-	stats.total_stats.suit_bonuses += 1
-
-# === SAVE/LOAD (Updated) ===
+# === SAVE/LOAD ===
 func save_stats() -> void:
 	var save_file = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if save_file:
-		# Save EVERYTHING - stats, highscores, and player bests
 		var save_data = {
 			"stats": stats,
 			"mode_highscores": mode_highscores,
 			"player_best_scores": player_best_scores,
-			"multiplayer_stats": multiplayer_stats  # Add this
+			"multiplayer_stats": multiplayer_stats
 		}
 		save_file.store_var(save_data)
 		save_file.close()
@@ -123,14 +108,20 @@ func load_stats() -> void:
 			var loaded_data = save_file.get_var()
 			save_file.close()
 			
-			# Handle old format (just stats) or new format (with highscores)
 			if loaded_data:
 				if loaded_data.has("stats"):
 					# New format with separate sections
 					stats = loaded_data.stats
 					mode_highscores = loaded_data.get("mode_highscores", {})
 					player_best_scores = loaded_data.get("player_best_scores", {})
-					multiplayer_stats = loaded_data.get("multiplayer_stats", {})
+					
+					# Handle old multiplayer_stats format
+					var old_mp_stats = loaded_data.get("multiplayer_stats", {})
+					if old_mp_stats and not old_mp_stats.is_empty():
+						_migrate_multiplayer_stats(old_mp_stats)
+					else:
+						multiplayer_stats = old_mp_stats
+					
 					print("Loaded stats with %d mode highscores" % mode_highscores.size())
 				elif loaded_data.has("version"):
 					# Old format - just stats
@@ -144,42 +135,82 @@ func load_stats() -> void:
 	else:
 		print("No stats file found at %s" % SAVE_PATH)
 
+func _migrate_multiplayer_stats(old_stats: Dictionary) -> void:
+	"""Migrate old win/loss format to new placement format"""
+	for mode in old_stats:
+		if not multiplayer_stats.has(mode):
+			multiplayer_stats[mode] = _create_multiplayer_stats()
+		
+		var old = old_stats[mode]
+		var new = multiplayer_stats[mode]
+		
+		# Migrate basic stats
+		new.games = old.get("games", 0)
+		new.first_place = old.get("wins", 0)  # Old wins become first place
+		
+		# If they had wins, add them to placement tracking
+		if old.get("wins", 0) > 0:
+			new.placements[0] = old.get("wins", 0)  # First place
+		
+		# Estimate other placements from losses (distribute evenly for now)
+		var losses = old.get("losses", 0)
+		if losses > 0:
+			# Distribute losses across positions 2-4 for estimation
+			for i in range(1, min(4, 8)):
+				new.placements[i] = losses / 3
+		
+		# Calculate average rank (rough estimate)
+		_calculate_average_rank(new)
+
 func _migrate_stats_if_needed() -> void:
 	if stats.version < STATS_VERSION:
 		print("Migrating stats from version %d to %d" % [stats.version, STATS_VERSION])
 		
-		# Add new fields to existing stats
+		# Remove deprecated fields from existing stats
 		for mode in stats.mode_stats:
-			if not stats.mode_stats[mode].has("aces_played"):
-				stats.mode_stats[mode]["aces_played"] = 0
-			if not stats.mode_stats[mode].has("kings_played"):
-				stats.mode_stats[mode]["kings_played"] = 0
-			if not stats.mode_stats[mode].has("total_peaks_cleared"):
-				# Calculate from existing peak_clears
+			var mode_stat = stats.mode_stats[mode]
+			# Remove old fields if they exist
+			if mode_stat.has("rounds_cleared"):
+				mode_stat.erase("rounds_cleared")
+			if mode_stat.has("rounds_failed"):
+				mode_stat.erase("rounds_failed")
+			if mode_stat.has("aces_played"):
+				mode_stat.erase("aces_played")
+			if mode_stat.has("kings_played"):
+				mode_stat.erase("kings_played")
+			
+			# Ensure total_peaks_cleared exists
+			if not mode_stat.has("total_peaks_cleared"):
 				var total = 0
-				var peak_data = stats.mode_stats[mode].get("peak_clears", {})
+				var peak_data = mode_stat.get("peak_clears", {})
 				total += peak_data.get("1", 0)
 				total += peak_data.get("2", 0) * 2
 				total += peak_data.get("3", 0) * 3
-				stats.mode_stats[mode]["total_peaks_cleared"] = total
+				mode_stat["total_peaks_cleared"] = total
 		
-		# Update total_stats too
-		if not stats.total_stats.has("aces_played"):
-			stats.total_stats["aces_played"] = 0
-		if not stats.total_stats.has("kings_played"):
-			stats.total_stats["kings_played"] = 0
-		if not stats.total_stats.has("total_peaks_cleared"):
-			var total = 0
-			var peak_data = stats.total_stats.get("peak_clears", {})
-			total += peak_data.get("1", 0)
-			total += peak_data.get("2", 0) * 2
-			total += peak_data.get("3", 0) * 3
-			stats.total_stats["total_peaks_cleared"] = total
+		# Clean up total_stats too
+		var total = stats.total_stats
+		if total.has("rounds_cleared"):
+			total.erase("rounds_cleared")
+		if total.has("rounds_failed"):
+			total.erase("rounds_failed")
+		if total.has("aces_played"):
+			total.erase("aces_played")
+		if total.has("kings_played"):
+			total.erase("kings_played")
+		
+		if not total.has("total_peaks_cleared"):
+			var total_peaks = 0
+			var peak_data = total.get("peak_clears", {})
+			total_peaks += peak_data.get("1", 0)
+			total_peaks += peak_data.get("2", 0) * 2
+			total_peaks += peak_data.get("3", 0) * 3
+			total["total_peaks_cleared"] = total_peaks
 		
 		stats.version = STATS_VERSION
 		save_stats()
 
-# === GAME TRACKING (Updated) ===
+# === GAME TRACKING ===
 func start_game(mode: String) -> void:
 	print("StatsManager: Starting game in %s mode" % mode)
 	current_game_stats = {
@@ -190,8 +221,6 @@ func start_game(mode: String) -> void:
 		"time_started": Time.get_ticks_msec(),
 		"perfect_rounds": [],
 		"round_invalid_clicks": 0,
-		"aces_played": 0,
-		"kings_played": 0,
 		"suit_bonuses": 0
 	}
 	
@@ -211,8 +240,6 @@ func end_game(mode: String, final_score: int, rounds_completed: int) -> void:
 		mode_stat.cards_drawn += current_game_stats.cards_drawn
 		mode_stat.invalid_clicks += current_game_stats.invalid_clicks
 		mode_stat.total_score += final_score
-		mode_stat.aces_played += current_game_stats.aces_played
-		mode_stat.kings_played += current_game_stats.kings_played
 		
 		if rounds_completed > mode_stat.highest_round_reached:
 			mode_stat.highest_round_reached = rounds_completed
@@ -222,8 +249,6 @@ func end_game(mode: String, final_score: int, rounds_completed: int) -> void:
 	stats.total_stats.cards_drawn += current_game_stats.cards_drawn
 	stats.total_stats.invalid_clicks += current_game_stats.invalid_clicks
 	stats.total_stats.total_score += final_score
-	stats.total_stats.aces_played += current_game_stats.aces_played
-	stats.total_stats.kings_played += current_game_stats.kings_played
 	
 	# Check for new highscore
 	if final_score > stats.highscore.score:
@@ -245,6 +270,12 @@ func end_game(mode: String, final_score: int, rounds_completed: int) -> void:
 	
 	save_stats()
 
+func track_suit_bonus(mode: String) -> void:
+	current_game_stats.suit_bonuses += 1
+	if stats.mode_stats.has(mode):
+		stats.mode_stats[mode].suit_bonuses += 1
+	stats.total_stats.suit_bonuses += 1
+
 func track_peak_clears(peaks_cleared: int, mode: String) -> void:
 	if stats.mode_stats.has(mode) and peaks_cleared > 0:
 		stats.mode_stats[mode].peak_clears[str(peaks_cleared)] += 1
@@ -259,8 +290,6 @@ func track_round_end(round: int, cleared: bool, score: int, time_left: float, re
 		mode_stat.total_rounds += 1
 		
 		if cleared:
-			mode_stat.rounds_cleared += 1
-			
 			# Track fastest clear
 			var clear_time = GameState.round_time_limit - time_left
 			if mode_stat.fastest_clear < 0 or clear_time < mode_stat.fastest_clear:
@@ -271,8 +300,6 @@ func track_round_end(round: int, cleared: bool, score: int, time_left: float, re
 			if cards_remaining > mode_stat.most_cards_remaining:
 				mode_stat.most_cards_remaining = cards_remaining
 		else:
-			mode_stat.rounds_failed += 1
-			
 			if reason == "Time's up!":
 				mode_stat.time_ran_out += 1
 		
@@ -284,7 +311,6 @@ func track_round_end(round: int, cleared: bool, score: int, time_left: float, re
 	# Update totals
 	stats.total_stats.total_rounds += 1
 	if cleared:
-		stats.total_stats.rounds_cleared += 1
 		var clear_time = GameState.round_time_limit - time_left
 		if stats.total_stats.fastest_clear < 0 or clear_time < stats.total_stats.fastest_clear:
 			stats.total_stats.fastest_clear = clear_time
@@ -293,7 +319,6 @@ func track_round_end(round: int, cleared: bool, score: int, time_left: float, re
 		if cards_remaining > stats.total_stats.most_cards_remaining:
 			stats.total_stats.most_cards_remaining = cards_remaining
 	else:
-		stats.total_stats.rounds_failed += 1
 		if reason == "Time's up!":
 			stats.total_stats.time_ran_out += 1
 	
@@ -314,6 +339,72 @@ func track_round_end(round: int, cleared: bool, score: int, time_left: float, re
 	
 	save_stats()
 
+# === MULTIPLAYER TRACKING ===
+func track_multiplayer_game(mode: String, placement: int, score: int, combo: int, clear_time: float, player_count: int) -> void:
+	"""Track a multiplayer game with placement (1-8)"""
+	if not multiplayer_stats.has(mode):
+		multiplayer_stats[mode] = _create_multiplayer_stats()
+	
+	var stat = multiplayer_stats[mode]
+	
+	# Update basic counters
+	stat.games += 1
+	stat.total_score += score
+	stat.average_score = float(stat.total_score) / float(stat.games)
+	
+	# Track placement
+	if placement > 0 and placement <= 8:
+		stat.placements[placement - 1] += 1
+		if placement == 1:
+			stat.first_place += 1
+	
+	# Update records
+	if score > stat.highscore:
+		stat.highscore = score
+	
+	if combo > stat.longest_combo:
+		stat.longest_combo = combo
+	
+	if clear_time > 0 and (stat.fastest_clear < 0 or clear_time < stat.fastest_clear):
+		stat.fastest_clear = clear_time
+	
+	# Calculate average rank
+	_calculate_average_rank(stat)
+	
+	# Also save as highscore in leaderboard if applicable
+	save_score(mode + "_mp", score, SettingsSystem.player_name)
+	save_stats()
+
+func _calculate_average_rank(stat: Dictionary) -> void:
+	"""Calculate average placement from placement array"""
+	var total_rank = 0
+	var total_games = 0
+	
+	for i in range(8):
+		var count = stat.placements[i]
+		if count > 0:
+			total_rank += (i + 1) * count  # i+1 because index 0 = 1st place
+			total_games += count
+	
+	if total_games > 0:
+		stat.average_rank = float(total_rank) / float(total_games)
+	else:
+		stat.average_rank = 0.0
+
+func get_multiplayer_stats(mode: String) -> Dictionary:
+	"""Get multiplayer stats for a specific mode"""
+	if not multiplayer_stats.has(mode):
+		return _create_multiplayer_stats()
+	return multiplayer_stats[mode]
+
+func get_win_percentage(mode: String) -> float:
+	"""Get first place percentage for a mode"""
+	var stat = get_multiplayer_stats(mode)
+	if stat.games > 0:
+		return float(stat.first_place) / float(stat.games) * 100.0
+	return 0.0
+
+# === TRACKING HELPERS ===
 func track_card_clicked() -> void:
 	current_game_stats.cards_clicked += 1
 
@@ -328,92 +419,7 @@ func track_combo(combo: int) -> void:
 	if combo > current_game_stats.highest_combo:
 		current_game_stats.highest_combo = combo
 
-# === GETTERS ===
-func get_highscore() -> Dictionary:
-	return stats.highscore
-
-func get_longest_combo() -> Dictionary:
-	return stats.longest_combo
-
-func get_best_round_score(round: int) -> Dictionary:
-	var round_key = str(round)
-	if stats.best_rounds.has(round_key):
-		return stats.best_rounds[round_key]
-	return {"score": 0, "seed": 0, "date": "", "mode": ""}
-
-func get_mode_stats(mode: String) -> Dictionary:
-	if stats.mode_stats.has(mode):
-		return stats.mode_stats[mode]
-	return _create_mode_stats()
-
-func get_total_stats() -> Dictionary:
-	return stats.total_stats
-
-func get_average_score(mode: String = "") -> float:
-	var stat_dict = stats.total_stats if mode == "" else get_mode_stats(mode)
-	if stat_dict.games_played > 0:
-		return float(stat_dict.total_score) / float(stat_dict.games_played)
-	return 0.0
-
-func get_clear_rate(mode: String = "") -> float:
-	var stat_dict = stats.total_stats if mode == "" else get_mode_stats(mode)
-	if stat_dict.total_rounds > 0:
-		return float(stat_dict.rounds_cleared) / float(stat_dict.total_rounds) * 100.0
-	return 0.0
-
-func get_perfect_round_rate(mode: String = "") -> float:
-	var stat_dict = stats.total_stats if mode == "" else get_mode_stats(mode)
-	if stat_dict.total_rounds > 0:
-		return float(stat_dict.perfect_rounds) / float(stat_dict.total_rounds) * 100.0
-	return 0.0
-
-# === UTILITIES ===
-func _get_current_date() -> String:
-	var datetime = Time.get_datetime_dict_from_system()
-	return "%04d-%02d-%02d %02d:%02d" % [
-		datetime.year, datetime.month, datetime.day,
-		datetime.hour, datetime.minute
-	]
-
-func reset_all_stats() -> void:
-	print("Resetting all statistics...")
-	stats = {
-		"version": STATS_VERSION,
-		"best_rounds": {},
-		"highscore": {"score": 0, "seed": 0, "date": "", "mode": ""},
-		"longest_combo": {"combo": 0, "seed": 0, "date": "", "mode": ""},
-		"mode_stats": {
-			"tri_peaks": _create_mode_stats(),
-			"rush": _create_mode_stats(),
-			"chill": _create_mode_stats(),
-			"test": _create_mode_stats()
-		},
-		"total_stats": _create_mode_stats()
-	}
-	save_stats()
-	print("All statistics reset")
-
-# === DEBUG ===
-func print_stats_summary() -> void:
-	print("\n=== STATS SUMMARY ===")
-	print("Highscore: %d (%s mode)" % [stats.highscore.score, stats.highscore.mode])
-	print("Longest Combo: %d" % stats.longest_combo.combo)
-	print("Total Games: %d" % stats.total_stats.games_played)
-	print("Total Score: %d" % stats.total_stats.total_score)
-	print("Average Score: %.1f" % get_average_score())
-	print("Clear Rate: %.1f%%" % get_clear_rate())
-	print("Perfect Round Rate: %.1f%%" % get_perfect_round_rate())
-	print("Aces Played: %d" % stats.total_stats.aces_played)
-	print("Kings Played: %d" % stats.total_stats.kings_played)
-	print("Total Peaks Cleared: %d" % stats.total_stats.total_peaks_cleared)
-	print("====================\n")
-
-func _unhandled_key_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed:
-		if event.keycode == KEY_S:
-			print_stats_summary()
-
-
+# === LEADERBOARD FUNCTIONS ===
 func save_score(mode_id: String, score: int, player_name: String = "Player"):
 	"""Save a score for a specific game mode"""
 	if not mode_highscores.has(mode_id):
@@ -437,7 +443,7 @@ func save_score(mode_id: String, score: int, player_name: String = "Player"):
 	if not player_best_scores.has(mode_id) or score > player_best_scores[mode_id]:
 		player_best_scores[mode_id] = score
 	
-	save_stats() 
+	save_stats()
 
 func get_top_scores(mode_id: String, count: int = 5) -> Array:
 	"""Get top scores for a specific mode"""
@@ -469,21 +475,108 @@ func get_player_rank(mode_id: String) -> int:
 	
 	return rank
 
-func track_multiplayer_game(mode: String, won: bool, score: int, player_count: int):
-	if not multiplayer_stats.has(mode):
-		multiplayer_stats[mode] = {"wins": 0, "losses": 0, "games": 0, "win_rate": 0.0}
-	
-	var stat = multiplayer_stats[mode]
-	stat.games += 1
-	if won:
-		stat.wins += 1
-	else:
-		stat.losses += 1
-	stat.win_rate = float(stat.wins) / float(stat.games) * 100.0
-	
-	# Also save as highscore if applicable
-	save_score(mode + "_mp", score, SettingsSystem.player_name)
-	save_stats()
+# === GETTERS ===
+func get_highscore() -> Dictionary:
+	return stats.highscore
 
-func get_multiplayer_stats(mode: String) -> Dictionary:
-	return multiplayer_stats.get(mode, {"wins": 0, "losses": 0, "games": 0, "win_rate": 0.0})
+func get_longest_combo() -> Dictionary:
+	return stats.longest_combo
+
+func get_best_round_score(round: int) -> Dictionary:
+	var round_key = str(round)
+	if stats.best_rounds.has(round_key):
+		return stats.best_rounds[round_key]
+	return {"score": 0, "seed": 0, "date": "", "mode": ""}
+
+func get_mode_stats(mode: String) -> Dictionary:
+	if stats.mode_stats.has(mode):
+		return stats.mode_stats[mode]
+	return _create_mode_stats()
+
+func get_total_stats() -> Dictionary:
+	return stats.total_stats
+
+func get_average_score(mode: String = "") -> float:
+	var stat_dict = stats.total_stats if mode == "" else get_mode_stats(mode)
+	if stat_dict.games_played > 0:
+		return float(stat_dict.total_score) / float(stat_dict.games_played)
+	return 0.0
+
+func get_clear_rate(mode: String = "") -> float:
+	"""Get percentage of successful rounds"""
+	var stat_dict = stats.total_stats if mode == "" else get_mode_stats(mode)
+	if stat_dict.total_rounds > 0:
+		# Successful rounds = total_rounds - time_ran_out
+		var successful = stat_dict.total_rounds - stat_dict.time_ran_out
+		return float(successful) / float(stat_dict.total_rounds) * 100.0
+	return 0.0
+
+func get_perfect_round_rate(mode: String = "") -> float:
+	var stat_dict = stats.total_stats if mode == "" else get_mode_stats(mode)
+	if stat_dict.total_rounds > 0:
+		return float(stat_dict.perfect_rounds) / float(stat_dict.total_rounds) * 100.0
+	return 0.0
+
+# === UTILITIES ===
+func _get_current_date() -> String:
+	var datetime = Time.get_datetime_dict_from_system()
+	return "%04d-%02d-%02d %02d:%02d" % [
+		datetime.year, datetime.month, datetime.day,
+		datetime.hour, datetime.minute
+	]
+
+func reset_all_stats() -> void:
+	print("Resetting all statistics...")
+	stats = {
+		"version": STATS_VERSION,
+		"best_rounds": {},
+		"highscore": {"score": 0, "seed": 0, "date": "", "mode": ""},
+		"longest_combo": {"combo": 0, "seed": 0, "date": "", "mode": ""},
+		"mode_stats": {
+			"tri_peaks": _create_mode_stats(),
+			"rush": _create_mode_stats(),
+			"chill": _create_mode_stats(),
+			"test": _create_mode_stats()
+		},
+		"total_stats": _create_mode_stats()
+	}
+	multiplayer_stats = {
+		"classic": _create_multiplayer_stats(),
+		"timed_rush": _create_multiplayer_stats(),
+		"test": _create_multiplayer_stats()
+	}
+	save_stats()
+	print("All statistics reset")
+
+# === DEBUG ===
+func print_stats_summary() -> void:
+	print("\n=== STATS SUMMARY ===")
+	print("Highscore: %d (%s mode)" % [stats.highscore.score, stats.highscore.mode])
+	print("Longest Combo: %d" % stats.longest_combo.combo)
+	print("Total Games: %d" % stats.total_stats.games_played)
+	print("Total Score: %d" % stats.total_stats.total_score)
+	print("Average Score: %.1f" % get_average_score())
+	print("Clear Rate: %.1f%%" % get_clear_rate())
+	print("Perfect Round Rate: %.1f%%" % get_perfect_round_rate())
+	print("Total Peaks Cleared: %d" % stats.total_stats.total_peaks_cleared)
+	print("====================\n")
+
+func print_multiplayer_summary(mode: String = "classic") -> void:
+	var stat = get_multiplayer_stats(mode)
+	print("\n=== MULTIPLAYER STATS (%s) ===" % mode)
+	print("Games Played: %d" % stat.games)
+	print("First Place: %d (%.1f%%)" % [stat.first_place, get_win_percentage(mode)])
+	print("Average Rank: %.2f" % stat.average_rank)
+	print("Highscore: %d" % stat.highscore)
+	print("Longest Combo: %d" % stat.longest_combo)
+	print("Average Score: %.1f" % stat.average_score)
+	if stat.fastest_clear > 0:
+		print("Fastest Clear: %.1fs" % stat.fastest_clear)
+	print("====================\n")
+
+func _unhandled_key_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed:
+		if event.keycode == KEY_S:
+			print_stats_summary()
+		elif event.keycode == KEY_M:
+			print_multiplayer_summary()

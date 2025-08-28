@@ -1,6 +1,6 @@
 [gd_scene load_steps=5 format=3 uid="uid://0ddccgvkkcmo"]
 
-[ext_resource type="Script" uid="uid://bdwottn72lx64" path="res://Pyramids/scripts/ui/menus/AchievementItem.gd" id="1_qs4db"]
+[ext_resource type="Script" uid="uid://bdwottn72lx64" path="res://Pyramids/scripts/ui/menus/DELETEAchievementItem.gd" id="1_qs4db"]
 [ext_resource type="StyleBox" uid="uid://bsrpgd3orlj87" path="res://Pyramids/res/PanelStandardLayout.tres" id="1_talt7"]
 [ext_resource type="Texture2D" uid="uid://c4en11ap74lae" path="res://Pyramids/assets/icons/achievements/Trophy.png" id="2_pqq20"]
 
