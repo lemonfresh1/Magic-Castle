@@ -29,7 +29,8 @@ extends Control
 @onready var holiday_event_container: VBoxContainer = $Panel/MarginContainer/VBoxContainer/Events/ScrollContainer/HBoxContainer/HolidayEventContainer
 
 # Preload scenes
-const AchievementUnlocked = preload("res://Pyramids/scenes/ui/components/AchievementUnlocked.tscn")
+const UnifiedAchievementCardScript = preload("res://Pyramids/scripts/ui/achievements/UnifiedAchievementCard.gd")
+const UnifiedAchievementCardScene = preload("res://Pyramids/scenes/ui/achievements/UnifiedAchievementCard.tscn")
 const MiniMission = preload("res://Pyramids/scenes/ui/components/MiniMission.tscn")
 
 # Game data
@@ -120,8 +121,8 @@ func show_summary(final_score: int, rounds_data: Array) -> void:
 
 	# Count achievement stars
 	for achievement_id in achievements_unlocked:
-		var achievement = AchievementManager.achievement_definitions[achievement_id]  # FIXED
-		achievement_stars += achievement.stars
+		var achievement = AchievementManager.achievement_definitions.get(achievement_id, {})
+		achievement_stars += achievement.get("star_reward", 0)
 
 	# Total for display
 	stars_gained = level_stars + achievement_stars
@@ -225,6 +226,9 @@ func _calculate_progression() -> void:
 	mmr_change = 0
 
 func _check_achievements() -> void:
+	# CRITICAL: Check for new achievement unlocks FIRST
+	AchievementManager.check_achievements()
+	
 	# Get newly unlocked achievements from this session
 	achievements_unlocked = AchievementManager.get_and_clear_session_achievements()
 	
@@ -356,7 +360,7 @@ func _update_events_display() -> void:
 	events_container.visible = has_any_events
 
 func _populate_achievements() -> void:
-	# Clear existing
+	# Clear existing (except title)
 	for child in achievements_container.get_children():
 		if child.name != "TitleLabel":
 			child.queue_free()
@@ -366,11 +370,18 @@ func _populate_achievements() -> void:
 	if title:
 		UIStyleManager.apply_label_style(title, "body")
 	
-	# Add each unlocked achievement
+	# Add each unlocked achievement tier using new card
 	for achievement_id in achievements_unlocked:
-		var achievement_item = AchievementUnlocked.instantiate()
-		achievement_item.setup(achievement_id)
-		achievements_container.add_child(achievement_item)
+		# Extract base_id and tier from achievement_id (format: "base_id_tier_N")
+		var parts = achievement_id.rsplit("_tier_", false, 1)
+		if parts.size() == 2:
+			var base_id = parts[0]
+			var achievement_card = UnifiedAchievementCardScene.instantiate()
+			achievement_card.setup(base_id, UnifiedAchievementCardScript.DisplayMode.POSTGAME)
+			achievements_container.add_child(achievement_card)
+			# Move the card after the title label
+			if title:
+				achievements_container.move_child(achievement_card, -1)
 
 func _populate_missions(container: VBoxContainer, missions: Array) -> void:
 	# Clear existing (except title)
@@ -498,8 +509,8 @@ func _animate_xp_bar() -> void:
 		var achievement_stars = 0
 		for achievement_id in achievements_unlocked:
 			var achievement = AchievementManager.achievement_definitions[achievement_id]  # FIXED
-			achievement_stars += achievement.stars
-
+			achievement_stars += achievement.get("star_reward", 0)
+		
 		if achievement_stars > 0:
 			StarManager.add_stars(achievement_stars, "achievement_rewards")
 		

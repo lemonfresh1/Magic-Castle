@@ -1,174 +1,376 @@
-# AchievementsUI.gd - Achievements interface with 4 per row layout
-# Location: res://Pyramids/scripts/ui/achievements/AchievementsUI.gd
-# Last Updated: Updated for new achievement_definitions structure [2025-08-28]
+# AchievementUI.gd - Main achievement display UI
+# Location: res://Pyramids/scripts/ui/achievements/AchievementUI.gd
+# Last Updated: Fixed sorting, styling, and auto-selection [2025-08-28]
 
 extends PanelContainer
 
-signal achievements_closed
+# Node references matching your scene structure
+@onready var margin_container: MarginContainer = $MarginContainer
+@onready var vbox_container: VBoxContainer = $MarginContainer/VBoxContainer
+@onready var filter_button: OptionButton = $MarginContainer/VBoxContainer/HBoxContainer/FilterButton
+@onready var scroll_container: ScrollContainer = $MarginContainer/VBoxContainer/ScrollContainer
+@onready var achievements_container: VBoxContainer = $MarginContainer/VBoxContainer/ScrollContainer/AchievementsContainer
 
-@onready var tab_container: TabContainer = $MarginContainer/TabContainer
-@onready var achievement_item_scene = preload("res://Pyramids/scenes/ui/achievements/AchievementItemCard.tscn")
+# Filter options
+enum FilterType {
+	PROGRESS_HIGH_LOW,
+	PROGRESS_LOW_HIGH,
+	TIER_HIGH_LOW,
+	TIER_LOW_HIGH,
+}
 
-var sort_mode: String = "tier_low"  # tier_low, tier_high, alphabetical, stars_low, stars_high
-var filter_mode: String = "all"  # all, completed, open
-var achievement_cards = []
+var current_filter: FilterType = FilterType.PROGRESS_HIGH_LOW
+var achievement_cards: Array[UnifiedAchievementCard] = []
 
 func _ready():
-	# Wait for next frame to ensure @onready vars are initialized
-	await get_tree().process_frame
-	
-	if not tab_container:
-		push_error("AchievementsUI: TabContainer not found!")
-		return
-	
 	# Apply panel styling
-	UIStyleManager.apply_panel_style(self, "achievements_ui")
+	if UIStyleManager:
+		UIStyleManager.apply_panel_style(self, "achievements_ui")
 	
-	_setup_achievements_tab()
-	_populate_achievements()
-
-func _setup_achievements_tab():
-	var achievements_tab = tab_container.get_node_or_null("Achievements")
-	if not achievements_tab:
-		push_error("AchievementsUI: Achievements tab not found!")
-		return
+	# Setup filter button
+	_setup_filter_button()
 	
-	# Find and connect filter/sort buttons
-	var filter_button = achievements_tab.find_child("FilterButton", true, false)
-	var sort_button = achievements_tab.find_child("SortButton", true, false)
-	
-	if filter_button:
-		if not filter_button.item_selected.is_connected(_on_filter_changed):
-			filter_button.item_selected.connect(_on_filter_changed)
-		# Apply filter styling with purple theme for achievements
-		UIStyleManager.style_filter_button(filter_button, Color("#a487ff"))
-	
-	if sort_button:
-		if not sort_button.item_selected.is_connected(_on_sort_changed):
-			sort_button.item_selected.connect(_on_sort_changed)
-		# Apply same styling to sort button
-		UIStyleManager.style_filter_button(sort_button, Color("#a487ff"))
-	
-	# Fix scroll container sizing (exactly like InventoryUI)
-	var scroll_container = achievements_tab.find_child("ScrollContainer", true, false)
+	# Setup scroll container sizing
 	if scroll_container:
-		scroll_container.self_modulate.a = 0
 		scroll_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		scroll_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		scroll_container.custom_minimum_size = Vector2(600, 300)
+		scroll_container.custom_minimum_size = Vector2(600, 345)
+	
+	# Ensure the achievements container expands
+	if achievements_container:
+		achievements_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		achievements_container.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		achievements_container.add_theme_constant_override("separation", 10)
+	
+	# Load achievements with default claimable-first sorting
+	load_achievements()
+	
+	# Connect to achievement signals
+	if AchievementManager:
+		AchievementManager.achievement_unlocked.connect(_on_achievement_unlocked)
+		AchievementManager.achievement_claimed.connect(_on_achievement_claimed)
 
-func _populate_achievements():
-	var achievements_tab = tab_container.get_node_or_null("Achievements")
-	if not achievements_tab:
+	debug_speed_demon()
+
+func _setup_filter_button():
+	"""Setup the filter dropdown"""
+	if not filter_button:
 		return
-	
-	var scroll_container = achievements_tab.find_child("ScrollContainer", true, false)
-	
-	if scroll_container:
-		# Create grid if it doesn't exist (exactly like InventoryUI)
-		var grid = scroll_container.get_child(0) if scroll_container.get_child_count() > 0 else null
-		if not grid:
-			grid = GridContainer.new()
-			grid.name = "AchievementsGrid"
-			grid.columns = 4
-			grid.add_theme_constant_override("h_separation", 15)
-			grid.add_theme_constant_override("v_separation", 15)
-			grid.self_modulate.a = 0
-			scroll_container.add_child(grid)
 		
-		_populate_grid(grid)
-
-func _populate_grid(grid: GridContainer):
-	# Clear existing items
-	for child in grid.get_children():
-		child.queue_free()
+	filter_button.clear()
+	filter_button.add_item("Progress: High to Low")  # 0
+	filter_button.add_item("Progress: Low to High")  # 1
+	filter_button.add_item("Tier: High to Low")  # 2
+	filter_button.add_item("Tier: Low to High")  # 3
 	
+	filter_button.selected = 0  # Default to Progress High to Low
+	filter_button.item_selected.connect(_on_filter_changed)
+
+func load_achievements():
+	"""Load all achievements with proper sorting"""
 	# Clear existing cards
+	_clear_achievement_list()
 	achievement_cards.clear()
 	
-	# Get all achievement IDs - UPDATED to use achievement_definitions
-	var achievement_ids = []
-	for id in AchievementManager.achievement_definitions:
-		achievement_ids.append(id)
+	# Get all base achievements
+	var base_achievements = AchievementManager.get_all_base_achievements()
 	
-	# Apply filter
-	match filter_mode:
-		"completed":
-			achievement_ids = achievement_ids.filter(func(id): return AchievementManager.is_unlocked(id))
-		"open":
-			achievement_ids = achievement_ids.filter(func(id): return not AchievementManager.is_unlocked(id))
+	# Create cards for each achievement
+	for base_id in base_achievements:
+		var card = _create_achievement_card(base_id)
+		if card:
+			achievement_cards.append(card)
+			achievements_container.add_child(card)
 	
-	# Apply sort - UPDATED for new structure
-	match sort_mode:
-		"tier_low":
-			achievement_ids.sort_custom(func(a, b): 
-				var tier_a = AchievementManager.achievement_definitions[a].get("tier", 1)
-				var tier_b = AchievementManager.achievement_definitions[b].get("tier", 1)
-				return tier_a < tier_b
-			)
-		"tier_high":
-			achievement_ids.sort_custom(func(a, b): 
-				var tier_a = AchievementManager.achievement_definitions[a].get("tier", 1)
-				var tier_b = AchievementManager.achievement_definitions[b].get("tier", 1)
-				return tier_a > tier_b
-			)
-		"stars_low":
-			achievement_ids.sort_custom(func(a, b): 
-				var stars_a = AchievementManager.achievement_definitions[a].stars
-				var stars_b = AchievementManager.achievement_definitions[b].stars
-				return stars_a < stars_b
-			)
-		"stars_high":
-			achievement_ids.sort_custom(func(a, b): 
-				var stars_a = AchievementManager.achievement_definitions[a].stars
-				var stars_b = AchievementManager.achievement_definitions[b].stars
-				return stars_a > stars_b
-			)
-		"alphabetical":
-			achievement_ids.sort_custom(func(a, b): 
-				var name_a = AchievementManager.achievement_definitions[a].name
-				var name_b = AchievementManager.achievement_definitions[b].name
-				return name_a < name_b
-			)
+	# Add invisible separator at the end
+	var bottom_separator = Control.new()
+	bottom_separator.custom_minimum_size = Vector2(0, 2)
+	bottom_separator.modulate.a = 0
+	achievements_container.add_child(bottom_separator)
 	
-	# Add achievement items directly to grid (like InventoryUI does)
-	for id in achievement_ids:
-		var item = achievement_item_scene.instantiate()
-		grid.add_child(item)
-		item.setup(id)
-		achievement_cards.append(item)
+	# Apply default Progress High to Low sorting with claimable on top
+	current_filter = FilterType.PROGRESS_HIGH_LOW
+	filter_button.selected = 0
+	_apply_sorting()
+	
+	# Auto-select appropriate tier for each card
+	for card in achievement_cards:
+		_auto_select_tier_for_card(card)
 
-func _on_sort_changed(index: int):
-	# Updated sort options to match new system
-	match index:
-		0:
-			sort_mode = "tier_low"
-		1:
-			sort_mode = "tier_high"
-		2:
-			sort_mode = "alphabetical"
-		3:
-			sort_mode = "stars_low"
-		4:
-			sort_mode = "stars_high"
+func _create_achievement_card(base_id: String) -> UnifiedAchievementCard:
+	"""Create a single achievement card"""
+	var card_scene = preload("res://Pyramids/scenes/ui/achievements/UnifiedAchievementCard.tscn")
+	if not card_scene:
+		push_error("Failed to load UnifiedAchievementCard scene")
+		return null
+		
+	var card = card_scene.instantiate() as UnifiedAchievementCard
+	card.setup(base_id, UnifiedAchievementCard.DisplayMode.FULL)
 	
-	_populate_achievements()
+	# Connect signals
+	card.claim_requested.connect(_on_claim_requested)
+	card.tier_selected.connect(_on_tier_selected)
+	
+	return card
+
+func _auto_select_tier_for_card(card: UnifiedAchievementCard):
+	"""Auto-select the appropriate tier for a card"""
+	var unlocked_tier = card.unlocked_tier
+	var claimed_tier = card.claimed_tier
+	
+	# Priority: highest claimable tier, otherwise current progress tier
+	if unlocked_tier > claimed_tier:
+		# Select the highest claimable tier (highest unclaimed)
+		card.select_tier(unlocked_tier)
+	elif unlocked_tier > 0:
+		# Select the current progress tier (next tier to unlock)
+		card.select_tier(min(unlocked_tier + 1, 5))
+	else:
+		# No progress yet, select tier 1
+		card.select_tier(1)
+
+func _apply_sorting():
+	"""Apply current filter/sort to achievement cards - claimable always on top"""
+	# Sort by the selected method (claimable priority is built into each sort function)
+	match current_filter:
+		FilterType.PROGRESS_HIGH_LOW:
+			achievement_cards.sort_custom(_sort_progress_high)
+		FilterType.PROGRESS_LOW_HIGH:
+			achievement_cards.sort_custom(_sort_progress_low)
+		FilterType.TIER_HIGH_LOW:
+			achievement_cards.sort_custom(_sort_tier_high)
+		FilterType.TIER_LOW_HIGH:
+			achievement_cards.sort_custom(_sort_tier_low)
+	
+	# Re-order children in container, preserving separators
+	var index = 1  # Start at 1 to skip top separator
+	for card in achievement_cards:
+		achievements_container.move_child(card, index)
+		index += 1
+
+func _sort_progress_high(a: UnifiedAchievementCard, b: UnifiedAchievementCard) -> bool:
+	"""Sort by highest progress first, claimed last"""
+	# Claimable always go first
+	var a_claimable = a.get_claimable_count() > 0
+	var b_claimable = b.get_claimable_count() > 0
+	if a_claimable != b_claimable:
+		return a_claimable
+	
+	# Fully claimed always go to bottom
+	if a.claimed_tier == 5 and b.claimed_tier != 5:
+		return false
+	if b.claimed_tier == 5 and a.claimed_tier != 5:
+		return true
+	
+	# Both not fully claimed: sort by progress
+	if a.claimed_tier < 5 and b.claimed_tier < 5:
+		var a_progress = a.get_progress_for_sorting()
+		var b_progress = b.get_progress_for_sorting()
+		if abs(a_progress - b_progress) > 0.01:
+			return a_progress > b_progress
+	
+	# Secondary: tier
+	return a.get_tier_for_sorting() > b.get_tier_for_sorting()
+
+func _sort_progress_low(a: UnifiedAchievementCard, b: UnifiedAchievementCard) -> bool:
+	"""Sort by lowest progress first, claimed last"""
+	# Claimable always go first
+	var a_claimable = a.get_claimable_count() > 0
+	var b_claimable = b.get_claimable_count() > 0
+	if a_claimable != b_claimable:
+		return a_claimable
+	
+	# Fully claimed always go to bottom
+	if a.claimed_tier == 5 and b.claimed_tier != 5:
+		return false
+	if b.claimed_tier == 5 and a.claimed_tier != 5:
+		return true
+	
+	# Both not fully claimed: sort by progress
+	if a.claimed_tier < 5 and b.claimed_tier < 5:
+		var a_progress = a.get_progress_for_sorting()
+		var b_progress = b.get_progress_for_sorting()
+		if abs(a_progress - b_progress) > 0.01:
+			return a_progress < b_progress
+	
+	# Secondary: tier
+	return a.get_tier_for_sorting() < b.get_tier_for_sorting()
+
+func _sort_tier_high(a: UnifiedAchievementCard, b: UnifiedAchievementCard) -> bool:
+	"""Sort by highest tier first"""
+	# Claimable always go first
+	var a_claimable = a.get_claimable_count() > 0
+	var b_claimable = b.get_claimable_count() > 0
+	if a_claimable != b_claimable:
+		return a_claimable
+	
+	var a_tier = a.get_tier_for_sorting()
+	var b_tier = b.get_tier_for_sorting()
+	if a_tier != b_tier:
+		return a_tier > b_tier
+	
+	# Secondary: progress
+	return a.get_progress_for_sorting() > b.get_progress_for_sorting()
+
+func _sort_tier_low(a: UnifiedAchievementCard, b: UnifiedAchievementCard) -> bool:
+	"""Sort by lowest tier first"""
+	# Claimable always go first
+	var a_claimable = a.get_claimable_count() > 0
+	var b_claimable = b.get_claimable_count() > 0
+	if a_claimable != b_claimable:
+		return a_claimable
+	
+	var a_tier = a.get_tier_for_sorting()
+	var b_tier = b.get_tier_for_sorting()
+	if a_tier != b_tier:
+		return a_tier < b_tier
+	
+	# Secondary: progress (excluding claimed)
+	if a.claimed_tier < 5 and b.claimed_tier < 5:
+		return a.get_progress_for_sorting() > b.get_progress_for_sorting()
+	
+	return a.claimed_tier < b.claimed_tier
 
 func _on_filter_changed(index: int):
+	"""Handle filter option change"""
 	match index:
-		0:
-			filter_mode = "all"
-		1:
-			filter_mode = "completed"
-		2:
-			filter_mode = "open"
+		0: current_filter = FilterType.PROGRESS_HIGH_LOW
+		1: current_filter = FilterType.PROGRESS_LOW_HIGH
+		2: current_filter = FilterType.TIER_HIGH_LOW
+		3: current_filter = FilterType.TIER_LOW_HIGH
 	
-	_populate_achievements()
+	_apply_sorting()
 
-func show_achievements():
-	visible = true
-	_populate_achievements()
+func _on_achievement_unlocked(base_id: String, tier: int):
+	"""Handle achievement unlock from AchievementManager"""
+	# Find and update the card
+	for card in achievement_cards:
+		if card.achievement_base_id == base_id:
+			# Refresh the card
+			card.unlocked_tier = AchievementManager.get_unlocked_tier(base_id)
+			card.setup(base_id, UnifiedAchievementCard.DisplayMode.FULL)
+			
+			# Auto-select appropriate tier
+			_auto_select_tier_for_card(card)
+			break
+	
+	# Re-apply sorting with claimable on top
+	_apply_sorting()
 
-func hide_achievements():
-	visible = false
-	achievements_closed.emit()
+func _on_achievement_claimed(base_id: String, tier: int):
+	"""Handle achievement claim from AchievementManager"""
+	# Find and update the card
+	for card in achievement_cards:
+		if card.achievement_base_id == base_id:
+			# Update claimed status
+			card.claimed_tier = AchievementManager.get_claimed_tier(base_id)
+			card.has_claimable = card.claimed_tier < card.unlocked_tier
+			
+			# Auto-select next tier after claiming
+			_auto_select_next_tier_after_claim(card)
+			break
+	
+	# Don't auto-resort to prevent jumping, but update if needed
+	if current_filter == FilterType.PROGRESS_HIGH_LOW:
+		_apply_sorting()
+
+func _auto_select_next_tier_after_claim(card: UnifiedAchievementCard):
+	"""After claiming, auto-select the next appropriate tier"""
+	var unlocked_tier = card.unlocked_tier
+	var claimed_tier = card.claimed_tier
+	
+	if unlocked_tier > claimed_tier:
+		# Still have claimable tiers, select highest unclaimed
+		card.select_tier(unlocked_tier)
+	elif unlocked_tier < 5:
+		# Select the next tier to work towards
+		card.select_tier(unlocked_tier + 1)
+	else:
+		# All tiers complete, keep on tier 5
+		card.select_tier(5)
+
+func _on_claim_requested(base_id: String, tier: int):
+	"""Handle claim request from a card"""
+	# The card handles claiming internally
+	# Just update our tracking
+	for card in achievement_cards:
+		if card.achievement_base_id == base_id:
+			card.has_claimable = card.claimed_tier < card.unlocked_tier
+			break
+
+func _on_tier_selected(base_id: String, tier: int):
+	"""Handle tier selection from a card"""
+	# Could be used for analytics or other features
+	pass
+
+func _clear_achievement_list():
+	"""Clear all achievement cards from container"""
+	if not achievements_container:
+		return
+		
+	for child in achievements_container.get_children():
+		child.queue_free()
+
+func refresh():
+	"""Refresh the entire achievement display"""
+	load_achievements()
+
+func reset_to_default_sorting():
+	"""Reset to default claimable-first sorting when returning to screen"""
+	current_filter = FilterType.PROGRESS_HIGH_LOW
+	filter_button.selected = 0
+	_apply_sorting()
+	
+	# Re-select appropriate tiers
+	for card in achievement_cards:
+		_auto_select_tier_for_card(card)
+
+# Public API for other systems
+func get_claimable_count() -> int:
+	"""Get total number of claimable achievement tiers"""
+	var count = 0
+	for card in achievement_cards:
+		count += card.get_claimable_count()
+	return count
+
+func claim_all():
+	"""Claim all available achievement tiers"""
+	for card in achievement_cards:
+		var claimable = card.get_claimable_count()
+		for i in range(claimable):
+			var tier_to_claim = card.claimed_tier + 1
+			AchievementManager.claim_achievement_tier(card.achievement_base_id, tier_to_claim)
+	
+	# Refresh after claiming all
+	refresh()
+
+func highlight_new_achievements():
+	"""Scroll to and highlight new achievements"""
+	for card in achievement_cards:
+		if card.new_badge and card.new_badge.visible:
+			# Scroll to this card
+			await get_tree().process_frame
+			var card_position = card.position.y
+			scroll_container.scroll_vertical = int(card_position)
+			break
+
+# Called when screen becomes visible again
+func on_screen_entered():
+	"""Called when returning to achievements screen"""
+	reset_to_default_sorting()
+
+func debug_speed_demon():
+	print("Speed Demon unlocked tier: ", AchievementManager.get_unlocked_tier("speed_demon"))
+	print("Speed Demon claimed tier: ", AchievementManager.get_claimed_tier("speed_demon"))
+	
+	# Check what the current fastest_clear stat is
+	var stats = StatsManager.get_total_stats()
+	print("Current fastest_clear: ", stats.fastest_clear)
+	
+	# Check each tier's requirement
+	for i in range(1, 6):
+		var achievement_id = "speed_demon_tier_%d" % i
+		var achievement = AchievementManager.achievement_definitions[achievement_id]
+		var req = achievement.requirement
+		var would_unlock = stats.fastest_clear <= req.value and stats.fastest_clear > 0
+		print("Tier %d: requires < %d seconds, would unlock: %s" % [i, req.value, would_unlock])

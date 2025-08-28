@@ -51,6 +51,10 @@ var multiplayer_stats = {
 	"test": _create_multiplayer_stats()
 }
 
+var daily_logins: int = 0
+var last_login_date: String = ""
+var login_streak: int = 0
+
 func _ready() -> void:
 	print("StatsManager initializing...")
 	load_stats()
@@ -338,6 +342,18 @@ func track_round_end(round: int, cleared: bool, score: int, time_left: float, re
 	current_game_stats.round_invalid_clicks = 0
 	
 	save_stats()
+
+func check_daily_login():
+	var today = Time.get_date_string_from_system()
+	if last_login_date != today:
+		last_login_date = today
+		daily_logins += 1
+		# Check if consecutive
+		var yesterday = Time.get_date_string_from_unix_time(Time.get_unix_time_from_system() - 86400)
+		if last_login_date == yesterday:
+			login_streak += 1
+		else:
+			login_streak = 1
 
 # === MULTIPLAYER TRACKING ===
 func track_multiplayer_game(mode: String, placement: int, score: int, combo: int, clear_time: float, player_count: int) -> void:

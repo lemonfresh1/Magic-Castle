@@ -597,27 +597,43 @@ func _update_display_items() -> void:
 			var card = display_cards[i]
 			
 			if item_id == "":
-				# Empty slot - hide the card or show empty state
 				card.visible = false
 			else:
-				card.visible = true
+				# Check if it's an achievement (base_id format without _tier_)
+				var is_achievement = false
+				for base_id in AchievementManager.get_all_base_achievements():
+					if item_id == base_id:
+						is_achievement = true
+						break
 				
-				# Get item from ItemManager
-				if ItemManager:
-					var item_data = ItemManager.get_item(item_id)
-					if item_data:
-						# Use setup_with_preset for MINI_DISPLAY size
-						if card.has_method("setup_with_preset"):
-							card.setup_with_preset(item_data, UnifiedItemCard.SizePreset.MINI_DISPLAY)
+				if is_achievement:
+					# Load UnifiedAchievementCard for achievements
+					var achievement_scene = load("res://Pyramids/scenes/ui/achievements/UnifiedAchievementCard.tscn")
+					if achievement_scene:
+						# Remove existing card and replace with achievement
+						card.queue_free()
+						var achievement_card = achievement_scene.instantiate()
+						achievement_card.setup(item_id, UnifiedAchievementCard.DisplayMode.MINI)
+						achievement_card.custom_minimum_size = Vector2(50, 50)
+						achievement_card.size = Vector2(50, 50)
+						display_container.add_child(achievement_card)
+						display_cards[i] = achievement_card
+				else:
+					# Regular item handling (existing code)
+					card.visible = true
+					if ItemManager:
+						var item_data = ItemManager.get_item(item_id)
+						if item_data:
+							if card.has_method("setup_with_preset"):
+								card.setup_with_preset(item_data, UnifiedItemCard.SizePreset.MINI_DISPLAY)
+							else:
+								card.setup(item_data, UnifiedItemCard.DisplayMode.SHOWCASE)
+								card.size_preset = UnifiedItemCard.SizePreset.MINI_DISPLAY
+								if card.has_method("_apply_size_preset"):
+									card._apply_size_preset()
 						else:
-							# Fallback to regular setup
-							card.setup(item_data, UnifiedItemCard.DisplayMode.SHOWCASE)
-							card.size_preset = UnifiedItemCard.SizePreset.MINI_DISPLAY
-							if card.has_method("_apply_size_preset"):
-								card._apply_size_preset()
-					else:
-						push_warning("Item not found: " + item_id)
-						card.visible = false
+							push_warning("Item not found: " + item_id)
+							card.visible = false
 
 func _update_overlay_controls() -> void:
 	"""Update ready sign and kick button visibility"""

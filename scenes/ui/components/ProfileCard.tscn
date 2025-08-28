@@ -150,6 +150,7 @@ vertical_icon_alignment = 2
 expand_icon = true
 
 [node name="InboxButton" type="Button" parent="MarginContainer/HeaderContainer/ButtonContainer/HBoxContainer"]
+visible = false
 custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
 size_flags_horizontal = 4
@@ -188,6 +189,7 @@ vertical_icon_alignment = 2
 expand_icon = true
 
 [node name="StatsButton" type="Button" parent="MarginContainer/HeaderContainer/ButtonContainer/HBoxContainer"]
+visible = false
 custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
 size_flags_horizontal = 4
@@ -207,6 +209,7 @@ vertical_icon_alignment = 2
 expand_icon = true
 
 [node name="ClanButton" type="Button" parent="MarginContainer/HeaderContainer/ButtonContainer/HBoxContainer"]
+visible = false
 custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
 size_flags_horizontal = 4
@@ -226,6 +229,7 @@ vertical_icon_alignment = 2
 expand_icon = true
 
 [node name="FollowersButton" type="Button" parent="MarginContainer/HeaderContainer/ButtonContainer/HBoxContainer"]
+visible = false
 custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
 size_flags_horizontal = 4
@@ -245,6 +249,7 @@ vertical_icon_alignment = 2
 expand_icon = true
 
 [node name="ReferralButton" type="Button" parent="MarginContainer/HeaderContainer/ButtonContainer/HBoxContainer"]
+visible = false
 custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
 size_flags_horizontal = 4

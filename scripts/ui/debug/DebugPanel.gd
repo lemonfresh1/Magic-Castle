@@ -743,10 +743,150 @@ func _reset_all():
 
 # Unlock functions
 func _unlock_all_achievements():
-	if AchievementManager:
-		for achievement_id in AchievementManager.achievements:
-			AchievementManager.unlock_achievement(achievement_id)
-	print("All achievements unlocked!")
+	"""Unlock all achievement tiers (15 achievements × 5 tiers)"""
+	if not AchievementManager:
+		print("AchievementManager not available")
+		return
+	
+	print("Unlocking all achievements...")
+	var unlocked_count = 0
+	
+	# Get all base achievements
+	var base_achievements = AchievementManager.get_all_base_achievements()
+	
+	for base_id in base_achievements:
+		# Unlock all 5 tiers for this achievement
+		for tier in range(1, 6):
+			# Set the unlocked tier directly (bypass sequential requirement)
+			AchievementManager.unlocked_tiers[base_id] = tier
+			
+			# Mark progress as complete
+			var achievement_id = "%s_tier_%d" % [base_id, tier]
+			AchievementManager.achievement_progress[achievement_id] = 1.0
+			unlocked_count += 1
+	
+	# Save the changes
+	AchievementManager.save_achievements()
+	
+	# Emit signals for UI updates
+	for base_id in base_achievements:
+		AchievementManager.achievement_unlocked.emit(base_id, 5)
+	
+	print("All achievements unlocked! (%d tiers total)" % unlocked_count)
+
+func _unlock_single_achievement_tier():
+	"""Unlock just the next tier of each achievement"""
+	if not AchievementManager:
+		print("AchievementManager not available")
+		return
+		
+	print("Unlocking next tier for each achievement...")
+	var unlocked_count = 0
+	
+	var base_achievements = AchievementManager.get_all_base_achievements()
+	
+	for base_id in base_achievements:
+		var current_tier = AchievementManager.get_unlocked_tier(base_id)
+		if current_tier < 5:
+			var next_tier = current_tier + 1
+			AchievementManager.unlock_achievement_tier(base_id, next_tier)
+			unlocked_count += 1
+			print("  %s -> Tier %d" % [base_id, next_tier])
+	
+	print("Unlocked %d new tiers!" % unlocked_count)
+
+func _claim_all_achievements():
+	"""Claim all unlocked but unclaimed achievement rewards"""
+	if not AchievementManager:
+		print("AchievementManager not available")
+		return
+		
+	print("Claiming all available achievement rewards...")
+	var claimed_count = 0
+	var total_stars = 0
+	var total_xp = 0
+	
+	var base_achievements = AchievementManager.get_all_base_achievements()
+	
+	for base_id in base_achievements:
+		var unlocked = AchievementManager.get_unlocked_tier(base_id)
+		var claimed = AchievementManager.get_claimed_tier(base_id)
+		
+		# Claim all unclaimed tiers
+		for tier in range(claimed + 1, unlocked + 1):
+			if AchievementManager.claim_achievement_tier(base_id, tier):
+				var achievement_id = "%s_tier_%d" % [base_id, tier]
+				var achievement = AchievementManager.achievement_definitions[achievement_id]
+				total_stars += achievement.star_reward
+				total_xp += achievement.xp_reward
+				claimed_count += 1
+				print("  Claimed: %s" % achievement.name)
+	
+	print("Claimed %d achievement tiers! (+%d⭐ +%dXP)" % [claimed_count, total_stars, total_xp])
+
+func _unlock_achievements_up_to_tier(tier: int):
+	"""Unlock all achievements up to a specific tier"""
+	if not AchievementManager:
+		print("AchievementManager not available")
+		return
+	
+	tier = clamp(tier, 1, 5)
+	print("Unlocking all achievements up to tier %d..." % tier)
+	
+	var base_achievements = AchievementManager.get_all_base_achievements()
+	
+	for base_id in base_achievements:
+		# Set the unlocked tier directly
+		AchievementManager.unlocked_tiers[base_id] = tier
+		
+		# Mark progress as complete for all tiers up to this one
+		for t in range(1, tier + 1):
+			var achievement_id = "%s_tier_%d" % [base_id, t]
+			AchievementManager.achievement_progress[achievement_id] = 1.0
+	
+	# Save and emit
+	AchievementManager.save_achievements()
+	for base_id in base_achievements:
+		AchievementManager.achievement_unlocked.emit(base_id, tier)
+	
+	print("Done! All achievements at tier %d" % tier)
+
+func _print_achievement_status():
+	"""Print current achievement status to console"""
+	if not AchievementManager:
+		print("AchievementManager not available")
+		return
+		
+	print("\n=== ACHIEVEMENT STATUS ===")
+	var base_achievements = AchievementManager.get_all_base_achievements()
+	var total_unlocked = 0
+	var total_claimed = 0
+	var total_claimable = 0
+	
+	for base_id in base_achievements:
+		var unlocked = AchievementManager.get_unlocked_tier(base_id)
+		var claimed = AchievementManager.get_claimed_tier(base_id)
+		var claimable = unlocked - claimed
+		
+		total_unlocked += unlocked
+		total_claimed += claimed
+		total_claimable += claimable
+		
+		var status = ""
+		if unlocked == 0:
+			status = "Not started"
+		elif claimed == unlocked:
+			status = "Tier %d (all claimed)" % unlocked
+		else:
+			status = "Tier %d (claimed: %d, can claim: %d)" % [unlocked, claimed, claimable]
+		
+		print("  %s: %s" % [base_id.pad_zeros(20), status])
+	
+	print("\nSummary:")
+	print("  Total Unlocked Tiers: %d / 75" % total_unlocked)
+	print("  Total Claimed Tiers: %d / 75" % total_claimed)
+	print("  Claimable Now: %d" % total_claimable)
+	print("========================\n")
 
 func _unlock_all_items():
 	print("Unlocking all shop items...")

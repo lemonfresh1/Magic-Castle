@@ -1,9 +1,246 @@
-[gd_scene format=3 uid="uid://ce0xwn0pleon"]
+[gd_scene load_steps=8 format=3 uid="uid://ce0xwn0pleon"]
+
+[ext_resource type="Script" uid="uid://d3430lbfj16ql" path="res://Pyramids/scripts/ui/achievements/UnifiedAchievementCard.gd" id="1_yv3o1"]
+[ext_resource type="Texture2D" uid="uid://bwsekxbon1vw1" path="res://Pyramids/assets/ui/bp_xp.png" id="2_wlmos"]
+[ext_resource type="Texture2D" uid="uid://c6gvbst0mo8mk" path="res://Pyramids/assets/ui/bp_star.png" id="3_3638x"]
+[ext_resource type="Texture2D" uid="uid://1im0oi5dnetp" path="res://Pyramids/assets/ui/bp_date.png" id="4_2y5jc"]
+[ext_resource type="Texture2D" uid="uid://bqrtwa65sepju" path="res://Pyramids/assets/ui/bp_cog.png" id="5_wlmos"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_yv3o1"]
+bg_color = Color(0.6, 0.6, 0.6, 0)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_wlmos"]
+bg_color = Color(0.6, 0.6, 0.6, 0.356863)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
 
 [node name="UnifiedAchievementCard" type="Control"]
+custom_minimum_size = Vector2(550, 123)
 layout_mode = 3
+anchors_preset = 0
+offset_right = 550.0
+offset_bottom = 119.0
+script = ExtResource("1_yv3o1")
+
+[node name="PanelContainer" type="PanelContainer" parent="."]
+clip_contents = true
+layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_right = -2.0
 grow_horizontal = 2
 grow_vertical = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="PanelContainer"]
+layout_mode = 2
+theme_override_constants/margin_left = 5
+theme_override_constants/margin_top = 5
+theme_override_constants/margin_right = 5
+theme_override_constants/margin_bottom = 5
+
+[node name="HBoxContainer" type="HBoxContainer" parent="PanelContainer/MarginContainer"]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_constants/separation = 10
+
+[node name="LeftSection" type="VBoxContainer" parent="PanelContainer/MarginContainer/HBoxContainer"]
+layout_mode = 2
+
+[node name="IconContainer" type="PanelContainer" parent="PanelContainer/MarginContainer/HBoxContainer/LeftSection"]
+layout_mode = 2
+
+[node name="IconTexture" type="TextureRect" parent="PanelContainer/MarginContainer/HBoxContainer/LeftSection/IconContainer"]
+layout_mode = 2
+texture = ExtResource("2_wlmos")
+expand_mode = 5
+stretch_mode = 5
+
+[node name="StarsContainer" type="HBoxContainer" parent="PanelContainer/MarginContainer/HBoxContainer/LeftSection"]
+layout_mode = 2
+
+[node name="ButtonStar1" type="Button" parent="PanelContainer/MarginContainer/HBoxContainer/LeftSection/StarsContainer"]
+custom_minimum_size = Vector2(15, 15)
+layout_mode = 2
+theme_override_constants/h_separation = 0
+theme_override_styles/focus = SubResource("StyleBoxFlat_yv3o1")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_yv3o1")
+theme_override_styles/hover = SubResource("StyleBoxFlat_yv3o1")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_wlmos")
+theme_override_styles/normal = SubResource("StyleBoxFlat_yv3o1")
+toggle_mode = true
+icon = ExtResource("3_3638x")
+icon_alignment = 1
+expand_icon = true
+
+[node name="ButtonStar2" type="Button" parent="PanelContainer/MarginContainer/HBoxContainer/LeftSection/StarsContainer"]
+custom_minimum_size = Vector2(15, 15)
+layout_mode = 2
+theme_override_constants/h_separation = 0
+theme_override_styles/focus = SubResource("StyleBoxFlat_yv3o1")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_yv3o1")
+theme_override_styles/hover = SubResource("StyleBoxFlat_yv3o1")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_wlmos")
+theme_override_styles/normal = SubResource("StyleBoxFlat_yv3o1")
+toggle_mode = true
+icon = ExtResource("3_3638x")
+icon_alignment = 1
+expand_icon = true
+
+[node name="ButtonStar3" type="Button" parent="PanelContainer/MarginContainer/HBoxContainer/LeftSection/StarsContainer"]
+custom_minimum_size = Vector2(15, 15)
+layout_mode = 2
+theme_override_constants/h_separation = 0
+theme_override_styles/focus = SubResource("StyleBoxFlat_yv3o1")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_yv3o1")
+theme_override_styles/hover = SubResource("StyleBoxFlat_yv3o1")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_wlmos")
+theme_override_styles/normal = SubResource("StyleBoxFlat_yv3o1")
+toggle_mode = true
+icon = ExtResource("3_3638x")
+icon_alignment = 1
+expand_icon = true
+
+[node name="ButtonStar4" type="Button" parent="PanelContainer/MarginContainer/HBoxContainer/LeftSection/StarsContainer"]
+custom_minimum_size = Vector2(15, 15)
+layout_mode = 2
+theme_override_constants/h_separation = 0
+theme_override_styles/focus = SubResource("StyleBoxFlat_yv3o1")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_yv3o1")
+theme_override_styles/hover = SubResource("StyleBoxFlat_yv3o1")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_wlmos")
+theme_override_styles/normal = SubResource("StyleBoxFlat_yv3o1")
+toggle_mode = true
+icon = ExtResource("3_3638x")
+icon_alignment = 1
+expand_icon = true
+
+[node name="ButtonStar5" type="Button" parent="PanelContainer/MarginContainer/HBoxContainer/LeftSection/StarsContainer"]
+custom_minimum_size = Vector2(15, 15)
+layout_mode = 2
+theme_override_constants/h_separation = 0
+theme_override_styles/focus = SubResource("StyleBoxFlat_yv3o1")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_yv3o1")
+theme_override_styles/hover = SubResource("StyleBoxFlat_yv3o1")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_wlmos")
+theme_override_styles/normal = SubResource("StyleBoxFlat_yv3o1")
+toggle_mode = true
+icon = ExtResource("3_3638x")
+icon_alignment = 1
+expand_icon = true
+
+[node name="CenterSection" type="VBoxContainer" parent="PanelContainer/MarginContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+
+[node name="NameLabel" type="Label" parent="PanelContainer/MarginContainer/HBoxContainer/CenterSection"]
+layout_mode = 2
+text = "Player Killer"
+
+[node name="DescriptionLabel" type="Label" parent="PanelContainer/MarginContainer/HBoxContainer/CenterSection"]
+layout_mode = 2
+text = "This is an achievement descirption"
+autowrap_mode = 3
+
+[node name="ProgressBar" type="ProgressBar" parent="PanelContainer/MarginContainer/HBoxContainer/CenterSection"]
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+size_flags_vertical = 4
+show_percentage = false
+
+[node name="ProgressLabel" type="Label" parent="PanelContainer/MarginContainer/HBoxContainer/CenterSection/ProgressBar"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -35.5
+offset_top = -11.5
+offset_right = 35.5
+offset_bottom = 11.5
+grow_horizontal = 2
+grow_vertical = 2
+text = "200/1000"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="RightSection" type="VBoxContainer" parent="PanelContainer/MarginContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 10
+size_flags_vertical = 4
+size_flags_stretch_ratio = 0.3
+
+[node name="StarHBox" type="HBoxContainer" parent="PanelContainer/MarginContainer/HBoxContainer/RightSection"]
+layout_mode = 2
+size_flags_horizontal = 8
+
+[node name="StarLabel" type="Label" parent="PanelContainer/MarginContainer/HBoxContainer/RightSection/StarHBox"]
+layout_mode = 2
+text = "200"
+
+[node name="StarIcon" type="TextureRect" parent="PanelContainer/MarginContainer/HBoxContainer/RightSection/StarHBox"]
+layout_mode = 2
+texture = ExtResource("3_3638x")
+expand_mode = 2
+stretch_mode = 5
+
+[node name="XPHBox" type="HBoxContainer" parent="PanelContainer/MarginContainer/HBoxContainer/RightSection"]
+layout_mode = 2
+size_flags_horizontal = 8
+
+[node name="XPLabel" type="Label" parent="PanelContainer/MarginContainer/HBoxContainer/RightSection/XPHBox"]
+layout_mode = 2
+text = "200"
+
+[node name="XPIcon" type="TextureRect" parent="PanelContainer/MarginContainer/HBoxContainer/RightSection/XPHBox"]
+layout_mode = 2
+texture = ExtResource("2_wlmos")
+expand_mode = 2
+stretch_mode = 5
+
+[node name="DateHBox" type="HBoxContainer" parent="PanelContainer/MarginContainer/HBoxContainer/RightSection"]
+layout_mode = 2
+size_flags_horizontal = 8
+
+[node name="DateLabel" type="Label" parent="PanelContainer/MarginContainer/HBoxContainer/RightSection/DateHBox"]
+layout_mode = 2
+text = "10.10.2025"
+
+[node name="DateIcon" type="TextureRect" parent="PanelContainer/MarginContainer/HBoxContainer/RightSection/DateHBox"]
+layout_mode = 2
+texture = ExtResource("4_2y5jc")
+expand_mode = 2
+stretch_mode = 5
+
+[node name="CategoryHBox" type="HBoxContainer" parent="PanelContainer/MarginContainer/HBoxContainer/RightSection"]
+layout_mode = 2
+size_flags_horizontal = 8
+
+[node name="CategoryLabel" type="Label" parent="PanelContainer/MarginContainer/HBoxContainer/RightSection/CategoryHBox"]
+layout_mode = 2
+text = "10.10.2025"
+
+[node name="CategoryIcon" type="TextureRect" parent="PanelContainer/MarginContainer/HBoxContainer/RightSection/CategoryHBox"]
+layout_mode = 2
+texture = ExtResource("5_wlmos")
+expand_mode = 2
+stretch_mode = 5
+
+[node name="NewBadge" type="PanelContainer" parent="."]
+layout_mode = 1
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="NewLabel" type="Label" parent="NewBadge"]
+layout_mode = 2
+size_flags_horizontal = 4
+text = "New!"
+horizontal_alignment = 1
