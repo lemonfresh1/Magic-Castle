@@ -13,6 +13,12 @@
 
 extends Node
 
+@onready var theme = ThemeConstants
+
+# Debug
+var debug_enabled: bool = true  # Per-script debug toggle
+var global_debug: bool = true   # Ready for global toggle integration
+
 # Design system colors - from your design doc
 var colors = {
 	# Primary Colors
@@ -416,14 +422,54 @@ static func validate_no_hardcoded_styles(script_path: String) -> bool:
 	return true
 
 func _ready():
-	print("UIStyleManager initialized")
+	_debug_log("Initializing...")
+	
+	# Safe redirect - if ThemeConstants loaded, use it; otherwise fall back to local
+	if theme:
+		_debug_log("ThemeConstants loaded - redirecting variables")
+		
+		# Redirect all local variables to theme variables
+		colors = theme.colors
+		typography = theme.typography
+		spacing = theme.spacing
+		dimensions = theme.dimensions
+		borders = theme.borders
+		shadows = theme.shadows
+		opacity = theme.opacity
+		animations = theme.animations
+		battle_pass_style = theme.battle_pass_style
+		holiday_style = theme.holiday_style
+		panel_style_config = theme.panel_style_config
+		scroll_config = theme.scroll_config
+		filter_style_config = theme.filter_style_config
+		game_style = theme.game_style
+		card_colors = theme.card_colors
+		item_card_style = theme.item_card_style
+		mode_colors = theme.mode_colors
+		
+		_debug_log("Now using ThemeConstants data")
+		_debug_log("Redirected %d theme dictionaries" % 16)
+	else:
+		push_error("⚠️ ThemeConstants not found - using local fallback data")
+		_debug_log("ERROR: ThemeConstants not found in autoloads")
+		_debug_log("Check that ThemeConstants loads BEFORE UIStyleManager")
+	
+	print("UIStyleManager ready - using %s data source" % ("ThemeConstants" if theme else "local"))
+
+func _debug_log(message: String) -> void:
+	if debug_enabled and global_debug:
+		print("[UISTYLEMANAGER] %s" % message)
 
 # Helper functions to access design system values
 func get_color(color_name: String) -> Color:
-	return colors.get(color_name, Color.WHITE)
+	var result = colors.get(color_name, Color.WHITE)
+	_debug_log("get_color('%s') = %s" % [color_name, result])
+	return result
 
 func get_spacing(key: String) -> int:
-	return spacing.get(key, spacing.space_4)
+	var result = spacing.get(key, spacing.space_4)
+	_debug_log("get_spacing('%s') = %d" % [key, result])
+	return result
 
 func get_dimension(key: String):
 	return dimensions.get(key, 100)
@@ -1279,3 +1325,21 @@ func get_mode_color(mode_id: String, variant: String = "primary") -> Color:
 	
 	# Fallback to primary color
 	return colors.primary if variant == "primary" else colors.primary_dark
+
+func debug_verify_theme_bridge() -> void:
+	_debug_log("=== THEME BRIDGE VERIFICATION ===")
+	_debug_log("Theme loaded: %s" % (theme != null))
+	if theme:
+		_debug_log("Sample color test:")
+		_debug_log("  colors.primary = %s" % colors.primary)
+		_debug_log("  theme.colors.primary = %s" % theme.colors.primary)
+		_debug_log("  Match: %s" % (colors.primary == theme.colors.primary))
+		
+		# Additional verification
+		_debug_log("Dictionary references check:")
+		_debug_log("  colors dict id: %s" % colors.get_instance_id())
+		_debug_log("  theme.colors id: %s" % theme.colors.get_instance_id())
+		_debug_log("  Same object: %s" % (colors.get_instance_id() == theme.colors.get_instance_id()))
+	else:
+		_debug_log("Theme is null - using fallback data")
+	_debug_log("=================================")

@@ -431,7 +431,7 @@ func _setup_category():
 func _get_achievement_category(base_id: String) -> String:
 	"""Get achievement category - only 3 categories"""
 	# Core gameplay achievements
-	if base_id in ["games_played", "score_hunter", "highscore_master", "round_warrior", "speed_demon"]:
+	if base_id in ["games_played", "score_hunter", "highscore_master", "speed_demon"]:
 		return "Core"
 	# Skill achievements
 	elif base_id in ["combo_master", "perfect_player", "peak_crusher", "efficiency_expert", "suit_specialist"]:

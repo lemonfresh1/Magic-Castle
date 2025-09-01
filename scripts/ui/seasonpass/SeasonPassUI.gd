@@ -6,6 +6,8 @@ extends PanelContainer
 
 signal season_pass_ui_closed
 
+const StyledButton = preload("res://Pyramids/scripts/ui/components/StyledButton.gd")
+
 @onready var tab_container: TabContainer = $MarginContainer/TabContainer
 @onready var mission_card_scene = preload("res://Pyramids/scenes/ui/missions/MissionCard.tscn")
 @onready var pass_layout_scene = preload("res://Pyramids/scenes/ui/components/PassLayout.tscn")
@@ -345,14 +347,13 @@ func _populate_overview_content(vbox: VBoxContainer) -> void:
 	
 	# Purchase premium button if not owned
 	if not season_info.has_premium:
-		var purchase_button = Button.new()
+		var purchase_button = StyledButton.new()
 		purchase_button.text = "Unlock Battle Pass - 1000 Stars"
 		purchase_button.custom_minimum_size = Vector2(300, 60)
+		purchase_button.button_style = "primary"  # Set via property
+		purchase_button.button_size = "large"    # Set via property
 		purchase_button.pressed.connect(_on_purchase_premium)
 		vbox.add_child(purchase_button)
-		
-		# Use UIStyleManager for button styling
-		UIStyleManager.apply_button_style(purchase_button, "primary", "large")
 
 func _populate_missions_content(vbox: VBoxContainer) -> void:
 	"""Initial population of missions - only called once per tab"""
