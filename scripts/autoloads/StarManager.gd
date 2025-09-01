@@ -14,10 +14,13 @@ var lifetime_earned: int = 0
 var lifetime_spent: int = 0
 var rewards_enabled: bool = true
 
-
 # Transaction history (last 50)
 var transaction_history: Array = []
 const MAX_HISTORY = 50
+
+# Debug
+var debug_enabled: bool = false  # Per-script debug toggle
+var global_debug: bool = true   # Ready for global toggle integration
 
 func _ready():
 	print("StarManager initializing...")
@@ -27,6 +30,10 @@ func _ready():
 	AchievementManager.achievement_unlocked.connect(_on_achievement_unlocked)
 	
 	print("StarManager ready - Balance: %d stars" % total_stars)
+
+func _debug_log(message: String) -> void:
+	if debug_enabled and global_debug:
+		print("[STARMANAGER] %s" % message)
 
 # === EARNING STARS ===
 func add_stars(amount: int, source: String = "") -> void:
@@ -40,14 +47,19 @@ func add_stars(amount: int, source: String = "") -> void:
 			break
 	
 	if not should_bypass and not rewards_enabled and source != "post_game_total":
-		print("[StarManager] Blocked %d stars from %s (rewards disabled)" % [amount, source])
+		_debug_log("❌ Blocked %d stars from %s (rewards disabled)" % [amount, source])
 		return
 		
 	if amount <= 0:
 		return
 	
+	var old_balance = total_stars
 	total_stars += amount
 	lifetime_earned += amount
+	
+	_debug_log("✅ Added %d stars from %s" % [amount, source])
+	_debug_log("   Balance: %d → %d" % [old_balance, total_stars])
+	_debug_log("   Lifetime earned: %d" % lifetime_earned)
 	
 	# Record transaction
 	_add_transaction({
@@ -61,8 +73,7 @@ func add_stars(amount: int, source: String = "") -> void:
 	save_stars()
 	stars_changed.emit(total_stars, amount)
 	
-	print("[StarManager] Earned %d stars from %s. New balance: %d" % [amount, source, total_stars])
-	print("[StarManager] Signal emitted with %d connected listeners" % stars_changed.get_connections().size())
+	_debug_log("   Signal emitted to %d listeners" % stars_changed.get_connections().size())
 
 # === SPENDING STARS ===
 func spend_stars(amount: int, item: String) -> bool:

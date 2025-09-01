@@ -6,6 +6,7 @@ extends Node
 signal xp_gained(amount: int, source: String)
 signal level_up(new_level: int, rewards: Dictionary)
 signal prestige_up(prestige_level: int)
+signal level_up_occurred(old_level: int, new_level: int, rewards: Dictionary)
 
 const SAVE_PATH = "user://xp_data.save"
 
@@ -13,6 +14,10 @@ const SAVE_PATH = "user://xp_data.save"
 var current_xp: int = 0
 var current_level: int = 1
 var current_prestige: int = 0  # 0=none, 1-5=bronze, 6-10=silver, 11-15=gold, 16-20=diamond
+
+# DEBUG
+var debug_enabled: bool = false  # Per-script debug toggle
+var global_debug: bool = true   # Ready for global toggle integration
 
 # Level Requirements (1-50)
 const LEVEL_XP_REQUIREMENTS = [
@@ -119,24 +124,45 @@ func _ready():
 	_check_daily_reset()
 	print("XPManager ready - Level %d (Prestige %d)" % [current_level, current_prestige])
 
+func _debug_log(message: String) -> void:
+	if debug_enabled and global_debug:
+		print("[XPMANAGER] %s" % message)
+
 # === XP EARNING ===
 func add_xp(amount: int, source: String = "gameplay"):
-	# Skip if rewards are disabled (during gameplay)
-	if not rewards_enabled:
-		print("XP: Blocked %d XP from %s (rewards disabled)" % [amount, source])
+	# Allow certain sources to bypass rewards_enabled check (like achievements!)
+	var bypass_sources = ["achievement", "debug", "admin", "shop_refund"]
+	var should_bypass = false
+	
+	for bypass_source in bypass_sources:
+		if bypass_source in source:
+			should_bypass = true
+			break
+	
+	# Skip if rewards are disabled (unless bypassed)
+	if not should_bypass and not rewards_enabled:
+		_debug_log("❌ Blocked %d XP from %s (rewards disabled)" % [amount, source])
 		return
 		
 	# Apply soft cap multiplier
 	var actual_amount = int(amount * xp_multiplier)
 
-	print("XP: Adding %d XP from %s (multiplier: %.2f)" % [actual_amount, source, xp_multiplier])
+	_debug_log("✅ Adding %d XP from %s (base: %d, multiplier: %.2f)" % [actual_amount, source, amount, xp_multiplier])
 
+	var old_xp = current_xp
+	var old_level = current_level
 	current_xp += actual_amount
 	xp_gained.emit(actual_amount, source)
 	
+	_debug_log("   XP: %d → %d (Level %d)" % [old_xp, current_xp, current_level])
+	
 	# Check for level up
+	var levels_before = current_level
 	while current_xp >= get_xp_for_next_level() and current_level < 50:
 		_level_up()
+	
+	if current_level > levels_before:
+		_debug_log("   🎉 LEVELED UP: %d → %d" % [levels_before, current_level])
 	
 	# Check for prestige
 	if current_level >= 50 and current_xp >= get_xp_for_next_level():
@@ -188,23 +214,26 @@ func add_achievement_xp(achievement_id: String):
 
 # === LEVEL PROGRESSION ===
 func _level_up():
-	current_xp -= get_xp_for_next_level()
+	var xp_needed = get_xp_for_next_level()
+	current_xp -= xp_needed
 	var old_level = current_level
 	current_level += 1
 	
 	# Get rewards from table
 	var rewards = LEVEL_REWARDS.get(current_level, {"stars": 50})
 	
-	# CHANGE: Only add stars if rewards are enabled (not during PostGameSummary calculation)
-	if rewards.has("stars") and rewards_enabled:
+	_debug_log("📈 LEVEL UP: %d → %d" % [old_level, current_level])
+	_debug_log("   Rewards: %s" % str(rewards))
+	_debug_log("   XP overflow: %d" % current_xp)
+	
+	# ALWAYS award stars
+	if rewards.has("stars"):
+		_debug_log("   ⭐ Awarding %d stars for level %d" % [rewards.stars, current_level])
 		StarManager.add_stars(rewards.stars, "level_up_%d" % current_level)
 	
+	# Emit signals for UIs to handle
 	level_up.emit(current_level, rewards)
-	print("LEVEL UP! Now level %d. Earned %d stars!" % [current_level, rewards.get("stars", 0)])
-	
-	# Only show celebration if rewards are enabled (in PostGameSummary)
-	if rewards_enabled:
-		_show_level_up_celebration(old_level, current_level, rewards)
+	level_up_occurred.emit(old_level, current_level, rewards)
 
 func _prestige_up():
 	if current_prestige >= 20:  # Max prestige (Diamond V)
@@ -360,20 +389,3 @@ func reset_xp():
 	current_prestige = 0
 	daily_games_played = 0
 	save_xp_data()
-
-func _show_level_up_celebration(old_level: int, new_level: int, rewards: Dictionary) -> void:
-	# Don't show during game initialization
-	if not get_tree() or not get_tree().root:
-		return
-		
-	# Check if celebration already exists to avoid duplicates
-	var existing = get_tree().root.get_node_or_null("LevelUpCelebration")
-	if existing:
-		existing.queue_free()
-	
-	# Create and show new celebration
-	var celebration_scene = preload("res://Pyramids/scenes/ui/effects/LevelUpCelebration.tscn")
-	var celebration = celebration_scene.instantiate()
-	celebration.name = "LevelUpCelebration"
-	get_tree().root.add_child(celebration)
-	celebration.show_level_up(old_level, new_level, rewards)

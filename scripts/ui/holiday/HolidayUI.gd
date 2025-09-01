@@ -15,6 +15,8 @@ var pass_layout: PassLayout
 var is_initializing: bool = false
 var has_been_initialized: bool = false  # Track if we've already initialized
 var mission_cards = {}  # {mission_id: card_instance}
+var pending_level_ups: Array = []
+var claim_in_progress: bool = false
 
 # Holiday theme colors
 const HOLIDAY_RED = "#DC2626"
@@ -64,6 +66,9 @@ func _ready():
 	
 	# Finally, populate the current tab
 	_populate_current_tab()
+	
+	if XPManager:
+		XPManager.level_up_occurred.connect(_on_level_up_occurred)
 
 func _initialize_all_tabs():
 	"""Initialize all tabs and wait for their completion"""
@@ -431,11 +436,15 @@ func _populate_missions_content(vbox: VBoxContainer) -> void:
 		# Store reference to card
 		mission_cards[mission.id] = card
 		
-		# Connect claim signal
+				# Connect claim signal
 		if card.has_signal("mission_claimed"):
 			card.mission_claimed.connect(func(mission_id): 
-				UnifiedMissionManager.claim_mission(mission_id, "holiday")
-				_update_mission_visibility()  # Just update visibility, don't recreate
+				claim_in_progress = true
+				pending_level_ups.clear()
+				UnifiedMissionManager.claim_mission(mission_id, "holiday") # "season_pass" or "holiday"
+				_update_mission_visibility()
+				call_deferred("_show_pending_notifications")
+				claim_in_progress = false
 			)
 	
 	# Apply initial filter
@@ -646,3 +655,22 @@ func hide_holiday_ui():
 func show_holiday_event():
 	"""Alias for compatibility"""
 	show_holiday_ui()
+
+func _on_level_up_occurred(old_level: int, new_level: int, rewards: Dictionary):
+	"""Track level-ups during mission claims"""
+	if claim_in_progress:
+		pending_level_ups.append({
+			"old_level": old_level,
+			"new_level": new_level,
+			"rewards": rewards
+		})
+
+func _show_pending_notifications():
+	"""Show level-up notification if any occurred"""
+	if pending_level_ups.size() > 0:
+		var notification_path = "res://Pyramids/scenes/ui/dialogs/UnifiedRewardNotification.tscn"
+		if ResourceLoader.exists(notification_path):
+			var notification = load(notification_path).instantiate()
+			get_tree().root.add_child(notification)
+			notification.show_level_ups(pending_level_ups)
+		pending_level_ups.clear()

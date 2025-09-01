@@ -11,6 +11,8 @@ signal mission_ui_closed
 
 var filter_mode: String = "all"  # all, completed, open - SINGLE filter for both tabs
 var mission_cards = {}  # mission_id -> card instance
+var pending_level_ups: Array = []
+var claim_in_progress: bool = false
 
 func _ready():
 	# Wait for next frame to ensure nodes are ready
@@ -31,6 +33,9 @@ func _ready():
 	
 	# Populate current tab
 	_populate_current_tab()
+	
+	if XPManager:
+		XPManager.level_up_occurred.connect(_on_level_up_occurred)
 
 func _initialize_all_tabs():
 	"""Initialize all tabs"""
@@ -174,24 +179,37 @@ func _populate_missions_content(vbox: VBoxContainer) -> void:
 		return false
 	)
 	
-	# Create mission cards
+	# Update the claim handler connection
 	for mission in missions:
 		var card = mission_card_scene.instantiate()
 		vbox.add_child(card)
-		card.setup(mission, mission_type)  # Use mission_type not "season"
+		card.setup(mission, mission_type)
 		
 		# Store reference to card
 		mission_cards[mission.id] = card
 		
-		# Connect claim signal
+		# Modified claim handler with level-up tracking
 		if card.has_signal("mission_claimed"):
 			card.mission_claimed.connect(func(mission_id): 
+				claim_in_progress = true
+				pending_level_ups.clear()
 				UnifiedMissionManager.claim_mission(mission_id, "standard")
-				_update_mission_visibility()  # Just update visibility, don't recreate
+				_update_mission_visibility()
+				call_deferred("_show_pending_notifications")
+				claim_in_progress = false
 			)
 	
 	# Apply initial filter
 	_apply_mission_filter()
+
+func _on_level_up_occurred(old_level: int, new_level: int, rewards: Dictionary):
+	"""Track level-ups during mission claims"""
+	if claim_in_progress:
+		pending_level_ups.append({
+			"old_level": old_level,
+			"new_level": new_level,
+			"rewards": rewards
+		})
 
 func _on_filter_changed(index: int):
 	"""Handle filter change - SINGLE filter for both tabs"""
@@ -348,3 +366,11 @@ func hide_mission_ui():
 func refresh_missions():
 	"""Called to refresh mission display"""
 	_refresh_missions()
+
+func _show_pending_notifications():
+	"""Show combined notification for mission + level-ups"""
+	if pending_level_ups.size() > 0:
+		var notification = preload("res://Pyramids/scenes/ui/dialogs/UnifiedRewardNotification.tscn").instantiate()
+		get_tree().root.add_child(notification)
+		notification.show_level_ups(pending_level_ups)
+		pending_level_ups.clear()

@@ -21,6 +21,11 @@ enum FilterType {
 
 var current_filter: FilterType = FilterType.PROGRESS_HIGH_LOW
 var achievement_cards: Array[UnifiedAchievementCard] = []
+var pending_level_ups: Array = []
+var claim_in_progress: bool = false
+
+var debug_enabled: bool = false
+var global_debug: bool = true
 
 func _ready():
 	# Apply panel styling
@@ -50,7 +55,12 @@ func _ready():
 		AchievementManager.achievement_unlocked.connect(_on_achievement_unlocked)
 		AchievementManager.achievement_claimed.connect(_on_achievement_claimed)
 
-	debug_speed_demon()
+	if XPManager:
+		XPManager.level_up_occurred.connect(_on_level_up_occurred)
+
+func _debug_log(message: String) -> void:
+	if debug_enabled and global_debug:
+		print("[ACHIEVEMENTUI] %s" % message)
 
 func _setup_filter_button():
 	"""Setup the filter dropdown"""
@@ -289,14 +299,50 @@ func _auto_select_next_tier_after_claim(card: UnifiedAchievementCard):
 		# All tiers complete, keep on tier 5
 		card.select_tier(5)
 
+func _on_level_up_occurred(old_level: int, new_level: int, rewards: Dictionary):
+	"""Track ALL level-ups while achievements screen is open"""
+	_debug_log("📈 LEVEL UP SIGNAL RECEIVED: %d → %d" % [old_level, new_level])
+	
+	if visible:
+		pending_level_ups.append({
+			"old_level": old_level,
+			"new_level": new_level,
+			"rewards": rewards
+		})
+		_debug_log("   ✅ Level-up tracked (achievements screen visible)")
+		# DON'T show immediately - wait for claim to finish
+
 func _on_claim_requested(base_id: String, tier: int):
-	"""Handle claim request from a card"""
-	# The card handles claiming internally
-	# Just update our tracking
+	"""Handle claim request from a card - FIXED"""
+	_debug_log("========== CLAIM START ==========")
+	_debug_log("Claiming %s tier %d" % [base_id, tier])
+	
+	# DON'T clear if we already have level-ups tracked!
+	if pending_level_ups.size() > 0:
+		_debug_log("Already have %d level-ups tracked, keeping them" % pending_level_ups.size())
+	else:
+		pending_level_ups.clear()
+	
+	claim_in_progress = true
+	
+	# Update the card display
 	for card in achievement_cards:
 		if card.achievement_base_id == base_id:
+			card.claimed_tier = AchievementManager.get_claimed_tier(base_id)
 			card.has_claimable = card.claimed_tier < card.unlocked_tier
+			card.setup(base_id, UnifiedAchievementCard.DisplayMode.FULL)
+			_auto_select_next_tier_after_claim(card)
 			break
+	
+	_debug_log("Pending level-ups to show: %d" % pending_level_ups.size())
+	
+	# Show notifications if any
+	if pending_level_ups.size() > 0:
+		_debug_log("🎉 Showing notification...")
+		_show_pending_notifications()
+	
+	claim_in_progress = false
+	_debug_log("========== CLAIM END ==========")
 
 func _on_tier_selected(base_id: String, tier: int):
 	"""Handle tier selection from a card"""
@@ -359,18 +405,32 @@ func on_screen_entered():
 	"""Called when returning to achievements screen"""
 	reset_to_default_sorting()
 
-func debug_speed_demon():
-	print("Speed Demon unlocked tier: ", AchievementManager.get_unlocked_tier("speed_demon"))
-	print("Speed Demon claimed tier: ", AchievementManager.get_claimed_tier("speed_demon"))
-	
-	# Check what the current fastest_clear stat is
-	var stats = StatsManager.get_total_stats()
-	print("Current fastest_clear: ", stats.fastest_clear)
-	
-	# Check each tier's requirement
-	for i in range(1, 6):
-		var achievement_id = "speed_demon_tier_%d" % i
-		var achievement = AchievementManager.achievement_definitions[achievement_id]
-		var req = achievement.requirement
-		var would_unlock = stats.fastest_clear <= req.value and stats.fastest_clear > 0
-		print("Tier %d: requires < %d seconds, would unlock: %s" % [i, req.value, would_unlock])
+func _show_pending_notifications():
+	"""Show level-up notification if any occurred during achievement claims"""
+	if pending_level_ups.size() > 0:
+		_debug_log("Showing %d pending level-ups from achievement claims" % pending_level_ups.size())
+		
+		# Use UnifiedRewardNotification for achievement level-ups
+		var notification_path = "res://Pyramids/scenes/ui/dialogs/UnifiedRewardNotification.tscn"
+		if ResourceLoader.exists(notification_path):
+			var notification = load(notification_path).instantiate()
+			get_tree().root.add_child(notification)
+			
+			# Show level-ups with achievement context
+			var context_data = {
+				"trigger_source": "achievement",
+				"total_stars_earned": 0,
+				"total_xp_earned": 0
+			}
+			
+			# Calculate total stars from level-ups
+			for level_data in pending_level_ups:
+				if level_data.rewards.has("stars"):
+					context_data.total_stars_earned += level_data.rewards.stars
+			
+			# Show the notification
+			notification.show_level_ups_with_context(pending_level_ups, context_data)
+		else:
+			push_error("[AchievementUI] UnifiedRewardNotification scene not found!")
+		
+		pending_level_ups.clear()

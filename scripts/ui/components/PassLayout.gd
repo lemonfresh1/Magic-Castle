@@ -81,6 +81,12 @@ var has_been_setup: bool = false  # Track if initial setup is done
 var has_scrolled_to_current: bool = false  # Track if we've done initial scroll
 var suppress_scroll: bool = false
 var is_batch_claiming: bool = false
+var pending_level_ups: Array = []  # NEW: Track level-ups during claims
+var claim_in_progress: bool = false  # NEW: Track if we're claiming
+
+# Add debug variables
+var debug_enabled: bool = true  # NEW
+var global_debug: bool = true   # NEW
 
 func _ready():
 	if DEBUG:
@@ -128,8 +134,19 @@ func _ready():
 	# Update initial labels
 	_update_labels()
 	
+	if XPManager:
+		XPManager.level_up_occurred.connect(_on_level_up_occurred)
+		_debug_log("Connected to XPManager.level_up_occurred")
+	
 	if DEBUG:
 		print("[PassLayout] _ready() complete - waiting for parent to call setup_pass()")
+	
+	if DEBUG:
+		print("[PassLayout] _ready() complete - waiting for parent to call setup_pass()")
+
+func _debug_log(message: String) -> void:
+	if debug_enabled and global_debug and DEBUG:
+		print("[PASSLAYOUT] %s" % message)
 
 func _connect_manager_signals():
 	"""Connect to the appropriate manager signals based on pass type"""
@@ -329,44 +346,148 @@ func _create_tier_column(tier_data: Dictionary) -> TierColumn:
 	return column
 
 func _on_tier_column_input(event: InputEvent, column: TierColumn):
-	"""Handle clicks on tier columns"""
+	"""Handle clicks on tier columns - FIXED VERSION"""
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		tier_clicked.emit(column.tier_number)
 		
-		# Get the click position relative to the column
 		var local_pos = column.get_local_mouse_position()
 		
 		if DEBUG:
 			print("[PassLayout] Click at Y position: %d in tier %d" % [local_pos.y, column.tier_number])
 		
-		# Determine which card was clicked based on Y position
 		if local_pos.y < HEADER_ZONE_END:
-			# Clicked on header, do nothing
 			return
 		elif local_pos.y < FREE_ZONE_END:
-			# Clicked on FREE card
+			# FREE card clicked
 			if column.is_unlocked and not column.free_claimed and column.free_reward_data.size() > 0:
 				if DEBUG:
 					print("[PassLayout] Claiming FREE reward for tier %d" % column.tier_number)
+				
+				# FIXED: Capture data BEFORE any async operations
+				var reward_data = column.free_reward_data.duplicate()
+				var tier_num = column.tier_number
+				
+				claim_in_progress = true
+				pending_level_ups.clear()
+				
 				var manager = _get_current_manager()
-				if manager.claim_tier_rewards(column.tier_number, true, false):
+				if manager.claim_tier_rewards(tier_num, true, false):
 					column.claim_reward(true)
-					reward_claimed.emit(column.tier_number, false)
-					print("[PassLayout] Successfully claimed FREE tier %d" % column.tier_number)
-					# FIXED: Show popup for free reward
-					_show_claim_popup([column.free_reward_data], column.tier_number, true)
+					reward_claimed.emit(tier_num, false)
+					print("[PassLayout] Successfully claimed FREE tier %d" % tier_num)
+					
+					# Wait for XP processing
+					await get_tree().process_frame
+					# Use captured data instead of column reference
+					_show_claim_popup_with_level_check([reward_data], tier_num, true)
+				
+				claim_in_progress = false
 		else:
-			# Clicked on PREMIUM card
+			# PREMIUM card clicked
 			if column.is_unlocked and is_premium and not column.premium_claimed and column.premium_reward_data.size() > 0:
 				if DEBUG:
 					print("[PassLayout] Claiming PREMIUM reward for tier %d" % column.tier_number)
+				
+				# FIXED: Capture data BEFORE any async operations
+				var reward_data = column.premium_reward_data.duplicate()
+				var tier_num = column.tier_number
+				
+				claim_in_progress = true
+				pending_level_ups.clear()
+				
 				var manager = _get_current_manager()
-				if manager.claim_tier_rewards(column.tier_number, false, true):
+				if manager.claim_tier_rewards(tier_num, false, true):
 					column.claim_reward(false)
-					reward_claimed.emit(column.tier_number, true)
-					print("[PassLayout] Successfully claimed PREMIUM tier %d" % column.tier_number)
-					# FIXED: Show popup for premium reward
-					_show_claim_popup([column.premium_reward_data], column.tier_number, false)
+					reward_claimed.emit(tier_num, true)
+					print("[PassLayout] Successfully claimed PREMIUM tier %d" % tier_num)
+					
+					# Wait for XP processing
+					await get_tree().process_frame
+					# Use captured data instead of column reference
+					_show_claim_popup_with_level_check([reward_data], tier_num, false)
+				
+				claim_in_progress = false
+
+func _show_claim_popup_with_level_check(rewards: Array, tier_num: int = -1, is_free: bool = true):
+	"""Show popup with level-up check"""
+	if pending_level_ups.size() > 0:
+		_debug_log("Showing popup with %d level-ups" % pending_level_ups.size())
+		_show_claim_popup_with_level_ups(rewards, tier_num, is_free)
+	else:
+		_debug_log("Showing regular popup (no level-ups)")
+		_show_claim_popup(rewards, tier_num, is_free)
+
+# NEW: Add this function to show popups with level-ups
+func _show_claim_popup_with_level_ups(rewards: Array, tier_num: int = -1, is_free: bool = true):
+	"""Show popup with level-up information"""
+	if rewards.size() == 0:
+		return
+	
+	_debug_log("Creating popup with level-ups - Rewards: %d, Level-ups: %d" % [rewards.size(), pending_level_ups.size()])
+	
+	var popup_scene_path = "res://Pyramids/scenes/ui/popups/RewardClaimPopup.tscn"
+	
+	if not ResourceLoader.exists(popup_scene_path):
+		push_error("[PassLayout] RewardClaimPopup scene not found!")
+		return
+		
+	var popup_scene = load(popup_scene_path)
+	if not popup_scene:
+		push_error("[PassLayout] Failed to load RewardClaimPopup scene!")
+		return
+		
+	var popup = popup_scene.instantiate()
+	
+	# Create CanvasLayer for guaranteed top rendering
+	var canvas_layer = CanvasLayer.new()
+	canvas_layer.layer = 100
+	canvas_layer.name = "RewardPopupLayer"
+	get_tree().root.add_child(canvas_layer)
+	canvas_layer.add_child(popup)
+	
+	# Get the actual visible window size
+	var visible_rect = get_viewport().get_visible_rect()
+	var window_size = visible_rect.size
+	var popup_size = Vector2(600, 350)
+	
+	# Center in the actual visible window
+	popup.position = (window_size - popup_size) / 2
+	popup.size = popup_size
+	
+	# Set these BEFORE setup
+	popup.visible = true
+	popup.modulate = Color.WHITE
+	popup.z_index = 999
+	
+	# Setup content based on single or batch
+	if rewards.size() == 1 and tier_num > 0:
+		# Single reward with level-ups
+		var reward_data = rewards[0]
+		if popup.has_method("setup_with_level_ups"):
+			popup.setup_with_level_ups(reward_data, pending_level_ups)
+			_debug_log("Called setup_with_level_ups() for single reward")
+	else:
+		# Batch rewards with level-ups
+		if popup.has_method("setup_batch_with_level_ups"):
+			popup.setup_batch_with_level_ups(rewards, pending_level_ups)
+			_debug_log("Called setup_batch_with_level_ups() for batch")
+	
+	# Clear pending level-ups after showing
+	pending_level_ups.clear()
+	
+	# Force to front
+	popup.show()
+	popup.move_to_front()
+	
+	# Connect to close popup when button is pressed
+	if popup.has_signal("confirmed"):
+		popup.confirmed.connect(func():
+			_debug_log("User clicked Awesome!")
+			if is_instance_valid(popup):
+				popup.queue_free()
+			if is_instance_valid(canvas_layer):
+				canvas_layer.queue_free()
+		)
 
 func _try_claim_reward(tier_number: int, is_premium_reward: bool) -> bool:
 	"""Try to claim a tier reward through the appropriate manager"""
@@ -588,6 +709,16 @@ func _on_level_up(new_level: int):
 		if is_instance_valid(column):
 			column.set_current(i + 1 == current_tier)
 
+func _on_level_up_occurred(old_level: int, new_level: int, rewards: Dictionary):
+	"""Track level-ups during tier claims"""
+	if claim_in_progress or is_batch_claiming:
+		pending_level_ups.append({
+			"old_level": old_level,
+			"new_level": new_level,
+			"rewards": rewards
+		})
+		_debug_log("Level-up tracked: %d → %d (rewards: %s)" % [old_level, new_level, str(rewards)])
+
 func _on_progress_updated():
 	"""Handle any progress update from managers"""
 	refresh()
@@ -626,6 +757,7 @@ func _on_buy_levels_pressed():
 func _on_claim_all_pressed():
 	"""Handle claim all button press"""
 	is_batch_claiming = true
+	pending_level_ups.clear()  # NEW: Clear level-ups before batch
 	
 	print("[DEBUG] Claim All button pressed")
 	var claimed_any = false
@@ -648,37 +780,23 @@ func _on_claim_all_pressed():
 			continue
 		
 		var tier_num = i + 1
-		print("[DEBUG] Checking tier %d - unlocked: %s, free_claimed: %s, premium_claimed: %s" % 
-			[tier_num, column.is_unlocked, column.free_claimed, column.premium_claimed])
 		
 		if column.is_unlocked:
 			# Claim free rewards
 			if not column.free_claimed and column.free_reward_data.size() > 0:
-				print("[DEBUG] Attempting to claim free rewards for tier %d" % tier_num)
-				print("[DEBUG] Free reward data: %s" % str(column.free_reward_data))
-				
 				if _try_claim_reward(tier_num, false):
 					column.claim_reward(true)
 					reward_claimed.emit(tier_num, false)
 					all_claimed_rewards.append(column.free_reward_data.duplicate())
 					claimed_any = true
-					print("[DEBUG] Successfully claimed free tier %d" % tier_num)
-				else:
-					print("[DEBUG] Failed to claim free tier %d" % tier_num)
 			
 			# Claim premium rewards if available
 			if is_premium and not column.premium_claimed and column.premium_reward_data.size() > 0:
-				print("[DEBUG] Attempting to claim premium rewards for tier %d" % tier_num)
-				print("[DEBUG] Premium reward data: %s" % str(column.premium_reward_data))
-				
 				if _try_claim_reward(tier_num, true):
 					column.claim_reward(false)
 					reward_claimed.emit(tier_num, true)
 					all_claimed_rewards.append(column.premium_reward_data.duplicate())
 					claimed_any = true
-					print("[DEBUG] Successfully claimed premium tier %d" % tier_num)
-				else:
-					print("[DEBUG] Failed to claim premium tier %d" % tier_num)
 	
 	is_batch_claiming = false
 	refresh()  # Single refresh at the end
@@ -690,10 +808,19 @@ func _on_claim_all_pressed():
 		_update_button_states()
 		print("[PassLayout] All available rewards claimed!")
 		
+		# NEW: Wait for XP processing
+		await get_tree().process_frame
+		
 		# Show batch popup if we have rewards
 		if all_claimed_rewards.size() > 0:
 			print("[DEBUG] Showing batch claim popup with %d rewards" % all_claimed_rewards.size())
-			_show_batch_claim_popup(all_claimed_rewards)
+			
+			# NEW: Check for level-ups and use appropriate method
+			if pending_level_ups.size() > 0:
+				_debug_log("Batch claim with %d level-ups" % pending_level_ups.size())
+				_show_batch_claim_popup_with_level_ups(all_claimed_rewards)
+			else:
+				_show_batch_claim_popup(all_claimed_rewards)
 		else:
 			print("[DEBUG] No rewards to show in popup (array empty)")
 	else:
@@ -861,3 +988,7 @@ func get_visible_tiers() -> Array:
 				visible.append(i + 1)
 	
 	return visible
+
+func _show_batch_claim_popup_with_level_ups(rewards: Array):
+	"""Show popup for batch claimed rewards with level-ups"""
+	_show_claim_popup_with_level_ups(rewards, -1, false)  # -1 tier means batch

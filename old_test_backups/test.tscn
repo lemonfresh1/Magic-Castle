@@ -1,6 +1,10 @@
-[gd_scene load_steps=2 format=3 uid="uid://8gb13xws8vbo"]
+[gd_scene load_steps=3 format=3 uid="uid://8gb13xws8vbo"]
 
-[ext_resource type="Texture2D" uid="uid://hp5mntcfta8v" path="res://Pyramids/old_test_backups/Screenshot 2025-08-07 at 14.58.55.png" id="1_m4nu8"]
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_7nhcm"]
+load_path = "res://.godot/imported/player_ach_t5.png-e9ee0d651fabd291e4718a99e19b0a76.ctex"
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_x6d7i"]
+load_path = "res://.godot/imported/player_ach_t5_cut.png-28519947d0f2c66179198fb76f5fc820.ctex"
 
 [node name="Control" type="Control"]
 layout_mode = 3
@@ -10,13 +14,34 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="TextureRect" type="TextureRect" parent="."]
+[node name="ColorRect" type="ColorRect" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-texture = ExtResource("1_m4nu8")
-expand_mode = 5
+color = Color(1, 0.156863, 1, 1)
+
+[node name="VBoxContainer" type="HBoxContainer" parent="."]
+self_modulate = Color(1, 1, 1, 0)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="TextureRect" type="TextureRect" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+texture = SubResource("CompressedTexture2D_7nhcm")
+expand_mode = 3
+stretch_mode = 5
+
+[node name="TextureRect2" type="TextureRect" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+texture = SubResource("CompressedTexture2D_x6d7i")
+expand_mode = 3
 stretch_mode = 5

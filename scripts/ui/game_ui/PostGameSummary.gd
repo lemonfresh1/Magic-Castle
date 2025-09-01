@@ -46,6 +46,10 @@ var achievements_unlocked: Array = []
 var missions_progressed: Array = []
 var is_custom_lobby: bool = false
 
+# Debug
+var debug_enabled: bool = false  # Per-script debug toggle  
+var global_debug: bool = true   # Ready for global toggle integration
+
 func _ready() -> void:
 	# Set high z-index
 	z_index = 1000
@@ -82,8 +86,16 @@ func _ready() -> void:
 	# Hide rematch by default
 	rematch_button.visible = false
 
+func _debug_log(message: String) -> void:
+	if debug_enabled and global_debug:
+		print("[POSTGAMESUMMARY] %s" % message)
+
 func show_summary(final_score: int, rounds_data: Array) -> void:
 	visible = true
+	
+	_debug_log("=== POST GAME SUMMARY START ===")
+	_debug_log("Final score: %d" % final_score)
+	_debug_log("Rounds completed: %d" % rounds_data.size())
 	
 	# Store initial state BEFORE any rewards
 	starting_xp = XPManager.current_xp
@@ -91,14 +103,17 @@ func show_summary(final_score: int, rounds_data: Array) -> void:
 	starting_stars = StarManager.get_balance()
 	starting_mmr = 0
 	
+	_debug_log("Starting state - XP: %d, Level: %d, Stars: %d" % [starting_xp, starting_level, starting_stars])
+	
 	# CRITICAL: Get achievements FIRST before enabling rewards
 	_check_achievements()  # This populates achievements_unlocked
 	
 	# IMPORTANT: Keep rewards DISABLED during calculation
 	XPManager.rewards_enabled = false
 	StarManager.rewards_enabled = false
+	_debug_log("Rewards disabled for calculation phase")
 	
-	# Calculate what we WILL award (including achievements)
+	# Calculate what we WILL award (NOT including achievement stars!)
 	_calculate_progression()
 	
 	# Update daily games AFTER XP calculation
@@ -106,26 +121,6 @@ func show_summary(final_score: int, rounds_data: Array) -> void:
 	
 	# Check achievements one more time to ensure they're ready
 	AchievementManager.check_achievements()
-	
-	# Calculate total stars we'll award
-	stars_gained = 0
-	var level_stars = 0
-	var achievement_stars = 0
-
-	# Count level stars for DISPLAY
-	if levels_gained > 0:
-		for i in range(levels_gained):
-			var level = starting_level + i + 1
-			var level_rewards = XPManager.LEVEL_REWARDS.get(level, {})
-			level_stars += level_rewards.get("stars", 50)
-
-	# Count achievement stars
-	for achievement_id in achievements_unlocked:
-		var achievement = AchievementManager.achievement_definitions.get(achievement_id, {})
-		achievement_stars += achievement.get("star_reward", 0)
-
-	# Total for display
-	stars_gained = level_stars + achievement_stars
 	
 	# Check missions - NOW ASYNC
 	await _check_missions()
@@ -137,39 +132,36 @@ func show_summary(final_score: int, rounds_data: Array) -> void:
 	# Update buttons
 	rematch_button.visible = is_custom_lobby
 	
+	_debug_log("Starting progression animation...")
 	# Start animations - THIS is where we actually award everything
 	_animate_progression()
 	
 	if StatsManager:
-		var mode_id = GameModeManager.get_current_mode()  # This already exists and works!
+		var mode_id = GameModeManager.get_current_mode()
 		if mode_id != "":
-			print("PostGameSummary: Saving score %d for mode %s" % [final_score, mode_id])
+			_debug_log("Saving score %d for mode %s" % [final_score, mode_id])
 			StatsManager.save_score(mode_id, final_score)
-			StatsManager.save_stats()  # Force save to disk
-		else:
-			print("PostGameSummary: No game mode set, cannot save score")
+			StatsManager.save_stats()
 			
 	if MultiplayerManager and MultiplayerManager.current_lobby_id != "":
-		# For now, simulate a multiplayer game completion
-		var placement = 1  # Assume first place for testing
-		var mp_score = final_score  # Use the existing parameter
-		
+		var placement = 1
+		var mp_score = final_score
 		var mode = MultiplayerManager.get_selected_mode()
 		
-		# Track the multiplayer game
 		StatsManager.track_multiplayer_game(
-			mode,           # "classic", "timed_rush", etc.
-			placement,      # 1-8
-			mp_score,       # score
-			10,            # combo (TODO: get from actual game)
-			120.5,         # clear_time (TODO: calculate from actual game)
-			1              # player_count (TODO: get from lobby)
+			mode,
+			placement,
+			mp_score,
+			10,
+			120.5,
+			1
 		)
-		
-		print("Tracked multiplayer game: Mode=%s, Place=%d, Score=%d" % [mode, placement, mp_score])
+		_debug_log("Tracked multiplayer game: Mode=%s, Place=%d, Score=%d" % [mode, placement, mp_score])
 
 func _calculate_progression() -> void:
-	# Calculate base game XP
+	_debug_log("Calculating progression rewards...")
+	
+	# Calculate base game XP ONLY (no achievement XP)
 	var xp_breakdown = {
 		"base": 50,
 		"rounds": GameState.round_stats.size() * 10,
@@ -186,27 +178,16 @@ func _calculate_progression() -> void:
 	if XPManager.daily_games_played == 0:
 		xp_breakdown.first_win = 100
 	
+	_debug_log("XP Breakdown: base=%d, rounds=%d, peaks=%d, first_win=%d" % 
+		[xp_breakdown.base, xp_breakdown.rounds, xp_breakdown.peaks, xp_breakdown.first_win])
+	
 	# Apply multiplier
 	var subtotal = xp_breakdown.base + xp_breakdown.rounds + xp_breakdown.peaks + xp_breakdown.first_win
 	var game_xp = int(subtotal * XPManager.xp_multiplier)
 	
-	# CRITICAL: Calculate achievement XP that will be awarded
-	var achievement_xp_total = 0
-	for achievement_id in achievements_unlocked:
-		var achievement = AchievementManager.achievement_definitions.get(achievement_id, {})  # FIXED
-		var tier = achievement.get("tier", 1)  # FIXED: Use tier instead of rarity
-		var xp = XPManager.XP_ACHIEVEMENT_BASE
-		match tier:
-			1:  # Bronze
-				xp *= 1
-			2:  # Silver
-				xp *= 3
-			3:  # Gold
-				xp *= 5
-		achievement_xp_total += xp
-	
-	# Total XP that will be gained
-	xp_gained = game_xp + achievement_xp_total
+	# Total XP gained (NO achievement XP)
+	xp_gained = game_xp
+	_debug_log("Total game XP: %d (subtotal: %d × multiplier: %.2f)" % [game_xp, subtotal, XPManager.xp_multiplier])
 	
 	# Calculate level changes using actual XP requirements
 	var temp_xp = starting_xp + xp_gained
@@ -221,17 +202,34 @@ func _calculate_progression() -> void:
 			break
 	
 	levels_gained = temp_level - starting_level
+	_debug_log("Levels gained: %d (%d → %d)" % [levels_gained, starting_level, temp_level])
+	
+	# FIX: Calculate stars from levels ONLY (NO achievement stars!)
+	stars_gained = 0
+	if levels_gained > 0:
+		for i in range(levels_gained):
+			var level = starting_level + i + 1
+			var level_rewards = XPManager.LEVEL_REWARDS.get(level, {})
+			var level_stars = level_rewards.get("stars", 50)
+			stars_gained += level_stars
+			_debug_log("   Level %d stars: %d" % [level, level_stars])
+	
+	_debug_log("Total stars from levels: %d" % stars_gained)
+	_debug_log("Achievements unlocked: %s" % str(achievements_unlocked))
 	
 	# TODO: Calculate MMR change when implemented
 	mmr_change = 0
 
 func _check_achievements() -> void:
+	_debug_log("Checking achievements...")
+	
 	# CRITICAL: Check for new achievement unlocks FIRST
 	AchievementManager.check_achievements()
 	
 	# Get newly unlocked achievements from this session
 	achievements_unlocked = AchievementManager.get_and_clear_session_achievements()
 	
+	_debug_log("Achievements unlocked this game: %s" % str(achievements_unlocked))
 	# DON'T update daily games here - do it after XP calculation
 
 func _check_missions() -> void:
@@ -369,6 +367,7 @@ func _populate_achievements() -> void:
 	var title = achievements_container.get_node_or_null("TitleLabel")
 	if title:
 		UIStyleManager.apply_label_style(title, "body")
+		title.text = "Achievements Unlocked"  # Make it clear these are just unlocked
 	
 	# Add each unlocked achievement tier using new card
 	for achievement_id in achievements_unlocked:
@@ -410,11 +409,12 @@ func _animate_progression() -> void:
 	tween.tween_callback(_animate_xp_bar)
 
 func _animate_xp_bar() -> void:
+	_debug_log("Animating XP bar...")
 	
 	# Set initial progress
 	var current_level = starting_level
 	var current_xp = starting_xp
-	var display_level = starting_level  # Track displayed level separately
+	var display_level = starting_level
 	
 	# Get the correct XP requirement for starting level
 	var old_level = XPManager.current_level
@@ -425,8 +425,9 @@ func _animate_xp_bar() -> void:
 	xp_progress_bar.max_value = max_xp
 	xp_progress_bar.value = current_xp
 	
-
-	# Calculate total animation time (minimum 0.3s per level)
+	_debug_log("Starting animation - Current XP: %d/%d" % [current_xp, max_xp])
+	
+	# Calculate total animation time
 	var bars_to_fill = levels_gained if levels_gained > 0 else 1
 	var min_time_per_bar = 0.8
 	var total_animation_time = bars_to_fill * min_time_per_bar
@@ -437,45 +438,32 @@ func _animate_xp_bar() -> void:
 		var final_xp = starting_xp + xp_gained
 		tween.tween_property(xp_progress_bar, "value", final_xp, min_time_per_bar)
 		
-		# Actually award everything
+		# Award game XP only
 		tween.tween_callback(func():
-			# Enable rewards temporarily
+			_debug_log("Awarding game XP: %d" % xp_gained)
 			XPManager.rewards_enabled = true
-			StarManager.rewards_enabled = true
-			
-			# Give all XP at once (includes achievement XP)
 			XPManager.add_xp(xp_gained, "game_complete")
-			
-			if stars_gained > 0:
-				StarManager.add_stars(stars_gained, "post_game_total")
-			
-			# Disable rewards again
 			XPManager.rewards_enabled = false
-			StarManager.rewards_enabled = false
+			_debug_log("=== POST GAME SUMMARY END ===")
 		)
-
 		return
 	
-	# Animate through level ups with counting label
+	# Animate through level ups
 	var tween = create_tween()
 	var total_xp_remaining = xp_gained
 	var xp_used = 0
 	
 	for i in range(levels_gained):
-		# Calculate XP needed to reach next level from current position
 		var xp_to_next_level = max_xp - current_xp
 		xp_used += xp_to_next_level
 		
-		# Animate to full bar (always take min_time_per_bar)
 		tween.tween_property(xp_progress_bar, "value", max_xp, min_time_per_bar)
 		
-		# Update level when bar fills
 		tween.tween_callback(func():
-			display_level += 1  # Increment display level
-			current_level += 1  # Increment actual level
+			display_level += 1
+			current_level += 1
 			current_xp = 0
 			
-			# Get next level's XP requirement
 			var temp_old_level = XPManager.current_level
 			XPManager.current_level = current_level
 			max_xp = XPManager.get_xp_for_next_level()
@@ -485,42 +473,32 @@ func _animate_xp_bar() -> void:
 			xp_progress_bar.value = 0
 		)
 		
-		# Small pause between level ups for visual clarity
-		if i < levels_gained - 1:  # Don't pause after last level
+		if i < levels_gained - 1:
 			tween.tween_interval(0.05)
 	
-	# Calculate remaining XP after all level ups
-	var remaining_xp = total_xp_remaining - xp_used
-	
 	# Final animation to actual XP position
+	var remaining_xp = total_xp_remaining - xp_used
 	if remaining_xp > 0:
 		tween.tween_property(xp_progress_bar, "value", remaining_xp, min_time_per_bar * 0.5)
 	
-	# At the end, actually award everything
+	# Award game XP only (no achievement rewards)
 	tween.tween_callback(func():
-		# Enable rewards temporarily for these specific awards
+		_debug_log("Awarding game XP: %d" % xp_gained)
 		XPManager.rewards_enabled = true
-		StarManager.rewards_enabled = true
-		
-		# Give all XP at once (this already includes achievement XP from our calculation)
 		XPManager.add_xp(xp_gained, "game_complete")
-		
-		# Award all stars at once
-		var achievement_stars = 0
-		for achievement_id in achievements_unlocked:
-			var achievement = AchievementManager.achievement_definitions[achievement_id]  # FIXED
-			achievement_stars += achievement.get("star_reward", 0)
-		
-		if achievement_stars > 0:
-			StarManager.add_stars(achievement_stars, "achievement_rewards")
-		
-		# Disable rewards again
 		XPManager.rewards_enabled = false
-		StarManager.rewards_enabled = false
+		_debug_log("Level-up stars awarded automatically by XPManager")
+		_debug_log("=== POST GAME SUMMARY END ===")
 	)
 
 func _on_continue_pressed() -> void:
 	visible = false
+	
+	# CRITICAL: Re-enable rewards when returning to menu!
+	XPManager.rewards_enabled = true
+	StarManager.rewards_enabled = true
+	_debug_log("Re-enabled rewards on exit")
+	
 	# Clear mission tracker states when returning to menu
 	if MissionStateTracker:
 		MissionStateTracker.clear_states()
@@ -528,6 +506,12 @@ func _on_continue_pressed() -> void:
 
 func _on_rematch_pressed() -> void:
 	visible = false
+	
+	# CRITICAL: Re-enable rewards for rematch!
+	XPManager.rewards_enabled = true
+	StarManager.rewards_enabled = true
+	_debug_log("Re-enabled rewards for rematch")
+	
 	# TODO: Implement rematch in custom lobby
 	GameState.reset_game_completely()
 	GameState.start_new_game()

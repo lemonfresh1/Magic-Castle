@@ -30,22 +30,28 @@ var achievement_progress = {}
 var new_achievements = []  # List of newly unlocked but not viewed achievements
 var session_achievements = []  # Achievements unlocked in this session
 
+# Debug
+var debug_enabled: bool = false  # Per-script debug toggle
+var global_debug: bool = true   # Ready for global toggle integration
 
 func _ready():
 	_generate_achievements()
 	load_achievements()
+	
+func _debug_log(message: String) -> void:
+	if debug_enabled and global_debug:
+		print("[ACHIEVEMENTMANAGER] %s" % message)
 
 func _generate_achievements():
-	"""Generate 15 core achievements with 5 tiers each"""
+	"""Generate 14 core achievements with 5 tiers each"""
 	
-	# Define the 15 core achievements with their tier progressions
+	# Define the 14 core achievements with their tier progressions
 	var achievements = [
-		# === CORE GAMEPLAY (5) ===
+		# === CORE GAMEPLAY (4) ===
 		{
-			"id": "games_played",
+			"id": "dedicated_player",
 			"name": "Dedicated Player",
 			"base_desc": "Play {value} games",
-			"icon": "Play.png",
 			"values": [1, 10, 50, 200, 1000],
 			"stat": "games_played"
 		},
@@ -53,7 +59,6 @@ func _generate_achievements():
 			"id": "score_hunter", 
 			"name": "Score Hunter",
 			"base_desc": "Score {value} points total",
-			"icon": "Trophy.png",
 			"values": [1000, 10000, 100000, 500000, 2000000],
 			"stat": "total_score"
 		},
@@ -61,110 +66,90 @@ func _generate_achievements():
 			"id": "highscore_master",
 			"name": "Highscore Master",
 			"base_desc": "Reach a highscore of {value}",
-			"icon": "Star.png",
-			"values": [1000, 5000, 15000, 30000, 50000],
+			"values": [1000, 10000, 25000, 50000, 80000],
 			"stat": "highscore"
-		},
-		{
-			"id": "round_warrior",
-			"name": "Round Warrior",
-			"base_desc": "Complete {value} rounds",
-			"icon": "Shield.png",
-			"values": [5, 50, 250, 1000, 5000],
-			"stat": "total_rounds"
 		},
 		{
 			"id": "speed_demon",
 			"name": "Speed Demon",
 			"base_desc": "Clear a round in under {value} seconds",
-			"icon": "Lightning.png",
-			"values": [120, 90, 60, 45, 30],
+			"values": [50, 45, 40, 35, 30],
 			"stat": "fastest_clear",
 			"inverse": true  # Lower is better
 		},
 		
-		# === SKILL & COMBOS (5) ===
+		# === SKILL & COMBOS (4) ===
 		{
 			"id": "combo_master",
 			"name": "Combo Master",
 			"base_desc": "Achieve a {value}x combo",
-			"icon": "Fire.png",
-			"values": [5, 10, 20, 30, 50],
+			"values": [5, 10, 18, 25, 28],
 			"stat": "combo"
 		},
 		{
 			"id": "perfect_player",
 			"name": "Perfect Player",
 			"base_desc": "Get {value} perfect rounds",
-			"icon": "Diamond.png",
 			"values": [1, 10, 50, 150, 500],
 			"stat": "perfect_rounds"
-		},
-		{
-			"id": "peak_crusher",
-			"name": "Peak Crusher",
-			"base_desc": "Clear all 3 peaks {value} times",
-			"icon": "Mountain.png",
-			"values": [1, 10, 50, 200, 1000],
-			"stat": "peak_clears_3"
 		},
 		{
 			"id": "efficiency_expert",
 			"name": "Efficiency Expert",
 			"base_desc": "Win with {value}+ cards remaining",
-			"icon": "Target.png",
-			"values": [5, 10, 15, 20, 25],
+			"values": [5, 8, 12, 15, 18],
 			"stat": "most_cards_remaining"
 		},
 		{
 			"id": "suit_specialist",
 			"name": "Suit Specialist",
 			"base_desc": "Collect {value} suit bonuses",
-			"icon": "Cards.png",
 			"values": [10, 50, 200, 500, 2000],
 			"stat": "suit_bonuses"
 		},
 		
-		# === MULTIPLAYER & SOCIAL (5) ===
+		# === MULTIPLAYER & SOCIAL (6) ===
 		{
-			"id": "mp_champion",
+			"id": "multiplayer_champion",
 			"name": "Multiplayer Champion",
 			"base_desc": "Win {value} multiplayer games",
-			"icon": "Crown.png",
 			"values": [1, 10, 50, 150, 500],
 			"stat": "mp_wins"
 		},
 		{
-			"id": "mp_participant",
+			"id": "social_player",
 			"name": "Social Player",
 			"base_desc": "Play {value} multiplayer games",
-			"icon": "Team.png",
 			"values": [5, 25, 100, 300, 1000],
 			"stat": "mp_games"
 		},
 		{
-			"id": "win_streak",
+			"id": "unstoppable",
 			"name": "Unstoppable",
 			"base_desc": "Get a {value} game win streak",
-			"icon": "Sword.png",
-			"values": [3, 5, 10, 15, 25],
+			"values": [3, 5, 7, 12, 20],
 			"stat": "best_win_streak"
 		},
 		{
 			"id": "daily_dedication",
 			"name": "Daily Dedication",
-			"base_desc": "Complete daily missions for {value} days",
-			"icon": "Calendar.png",
-			"values": [1, 7, 30, 60, 100],
-			"stat": "daily_streak"
+			"base_desc": "Login for {value} consecutive days",
+			"values": [1, 7, 30, 120, 365],
+			"stat": "login_streak"
 		},
 		{
 			"id": "collection_master",
 			"name": "Collection Master",
 			"base_desc": "Collect {value} unique items",
-			"icon": "Chest.png",
-			"values": [5, 20, 50, 100, 200],
+			"values": [5, 10, 25, 50, 100],
 			"stat": "items_collected"
+		},
+		{
+			"id": "progamer",
+			"name": "Pro Gamer",
+			"base_desc": "Reach {value} MMR",
+			"values": [1100, 1300, 1500, 2000, 2500],
+			"stat": "mmr"
 		}
 	]
 	
@@ -174,11 +159,14 @@ func _generate_achievements():
 			var achievement_id = "%s_tier_%d" % [achievement.id, tier + 1]
 			var tier_value = achievement.values[tier]
 			
+			# Generate icon filename based on achievement id and tier
+			var icon_filename = "%s_ach_t%d.png" % [achievement.id, tier + 1]
+			
 			achievement_definitions[achievement_id] = {
 				"base_id": achievement.id,
 				"name": "%s %s" % [TIER_NAMES[tier], achievement.name],
 				"description": achievement.base_desc.replace("{value}", str(tier_value)),
-				"icon": achievement.icon,
+				"icon": icon_filename,  # Now tier-specific
 				"tier": tier + 1,
 				"tier_name": TIER_NAMES[tier],
 				"tier_color": TIER_COLORS[tier],
@@ -251,8 +239,11 @@ func unlock_achievement_tier(base_id: String, tier: int):
 	"""Unlock a specific tier of an achievement"""
 	var current_tier = get_unlocked_tier(base_id)
 	
+	_debug_log("🔓 Attempting to unlock %s tier %d (current: %d)" % [base_id, tier, current_tier])
+	
 	# Can only unlock the next tier
 	if tier != current_tier + 1:
+		_debug_log("   ❌ Cannot unlock tier %d (not next tier)" % tier)
 		return
 	
 	# Update unlocked tier
@@ -263,7 +254,7 @@ func unlock_achievement_tier(base_id: String, tier: int):
 	if achievement_id not in new_achievements:
 		new_achievements.append(achievement_id)
 	
-	# ADD THIS: Track for session
+	# Track for session
 	if achievement_id not in session_achievements:
 		session_achievements.append(achievement_id)
 	
@@ -275,42 +266,62 @@ func unlock_achievement_tier(base_id: String, tier: int):
 	achievement_unlocked.emit(base_id, tier)
 	
 	var achievement = achievement_definitions[achievement_id]
-	print("Achievement Unlocked: %s" % achievement.name)
+	_debug_log("   ✅ UNLOCKED: %s" % achievement.name)
+	_debug_log("   Rewards available: %d⭐ %dXP" % [achievement.star_reward, achievement.xp_reward])
 
 func claim_achievement_tier(base_id: String, tier: int):
-	"""Claim rewards for an unlocked achievement tier"""
+	"""Claim rewards for an unlocked achievement tier - NOW WITH MULTI-TIER CLAIMING"""
+	_debug_log("💰 Claiming %s tier %d" % [base_id, tier])
+	
 	# Check if unlocked
 	if get_unlocked_tier(base_id) < tier:
+		_debug_log("   ❌ Cannot claim - tier %d not unlocked" % tier)
 		return false
 	
 	# Check if already claimed
 	if get_claimed_tier(base_id) >= tier:
+		_debug_log("   ❌ Already claimed tier %d" % tier)
 		return false
 	
-	# Get achievement data
-	var achievement_id = "%s_tier_%d" % [base_id, tier]
-	var achievement = achievement_definitions[achievement_id]
+	# NEW: Claim all unclaimed lower tiers first
+	var current_claimed = get_claimed_tier(base_id)
+	var total_stars = 0
+	var total_xp = 0
+	var tiers_claimed = []
 	
-	# Award rewards
+	# Claim from lowest unclaimed to requested tier
+	for claim_tier in range(current_claimed + 1, tier + 1):
+		var achievement_id = "%s_tier_%d" % [base_id, claim_tier]
+		var achievement = achievement_definitions[achievement_id]
+		
+		_debug_log("   📦 Claiming tier %d: %s" % [claim_tier, achievement.name])
+		_debug_log("      Rewards: %d⭐ %dXP" % [achievement.star_reward, achievement.xp_reward])
+		
+		total_stars += achievement.star_reward
+		total_xp += achievement.xp_reward
+		tiers_claimed.append(claim_tier)
+		
+		# Remove from new list
+		if achievement_id in new_achievements:
+			new_achievements.erase(achievement_id)
+	
+	# Award all rewards at once
 	if StarManager:
-		# FIX: Changed from add_balance to add_stars
-		StarManager.add_stars(achievement.star_reward, "achievement_%s" % achievement_id)
+		StarManager.add_stars(total_stars, "achievement_%s_tiers_%s" % [base_id, tiers_claimed])
+		_debug_log("   ⭐ Total stars awarded: %d" % total_stars)
 	
 	if XPManager and XPManager.has_method("add_xp"):
-		XPManager.add_xp(achievement.xp_reward, "achievement_%s" % achievement_id)
+		XPManager.add_xp(total_xp, "achievement_%s_tiers_%s" % [base_id, tiers_claimed])
+		_debug_log("   📊 Total XP awarded: %d" % total_xp)
 	
-	# Update claimed tier
+	# Update claimed tier to highest claimed
 	claimed_tiers[base_id] = tier
-	
-	# Remove from new list
-	if achievement_id in new_achievements:
-		new_achievements.erase(achievement_id)
 	
 	# Save and emit
 	save_achievements()
 	achievement_claimed.emit(base_id, tier)
 	
-	print("Achievement Claimed: %s (+%d⭐ +%dXP)" % [achievement.name, achievement.star_reward, achievement.xp_reward])
+	_debug_log("   ✅ Successfully claimed tiers %s" % str(tiers_claimed))
 	return true
 
 func get_unlocked_tier(base_id: String) -> int:
@@ -357,22 +368,63 @@ func get_all_base_achievements() -> Array:
 func _get_stat_value(stat_type: String, stats: Dictionary, current_game: Dictionary):
 	"""Get current value for a stat type"""
 	match stat_type:
-		"games_played": return stats.games_played
-		"total_score": return stats.total_score
-		"highscore": return StatsManager.get_highscore().score
-		"total_rounds": return stats.total_rounds
-		"fastest_clear": return stats.fastest_clear if stats.fastest_clear > 0 else 999
-		"combo": return StatsManager.get_longest_combo().combo
-		"perfect_rounds": return stats.perfect_rounds
-		"peak_clears_3": return stats.peak_clears.get("3", 0)
-		"most_cards_remaining": return stats.most_cards_remaining
-		"suit_bonuses": return stats.suit_bonuses
-		"mp_wins": return stats.mp_first_place if stats.has("mp_first_place") else 0
-		"mp_games": return stats.mp_games_played if stats.has("mp_games_played") else 0
-		"best_win_streak": return stats.best_win_streak if stats.has("best_win_streak") else 0
-		"daily_streak": return stats.login_streak if stats.has("login_streak") else 0
-		"items_collected": return EquipmentManager.get_owned_count() if EquipmentManager else 0
-		_: return 0
+		"games_played": 
+			return stats.games_played
+		"total_score": 
+			return stats.total_score
+		"highscore": 
+			return StatsManager.get_highscore().score
+		"total_rounds": 
+			return stats.total_rounds
+		"fastest_clear": 
+			return stats.fastest_clear if stats.fastest_clear > 0 else 999
+		"combo": 
+			return StatsManager.get_longest_combo().combo
+		"perfect_rounds": 
+			return stats.perfect_rounds
+		"peak_clears_3": 
+			return stats.peak_clears.get("3", 0)
+		"most_cards_remaining": 
+			return stats.most_cards_remaining
+		"suit_bonuses": 
+			return stats.suit_bonuses
+		"mp_wins":
+			# Aggregate wins across all multiplayer modes
+			var total_wins = 0
+			if StatsManager.multiplayer_stats:
+				for mode in StatsManager.multiplayer_stats:
+					total_wins += StatsManager.multiplayer_stats[mode].get("first_place", 0)
+			return total_wins
+		"mp_games":
+			# Aggregate games across all multiplayer modes
+			var total_games = 0
+			if StatsManager.multiplayer_stats:
+				for mode in StatsManager.multiplayer_stats:
+					total_games += StatsManager.multiplayer_stats[mode].get("games", 0)
+			return total_games
+		"best_win_streak":
+			# Get best win streak across all modes
+			var best_streak = 0
+			if StatsManager.multiplayer_stats:
+				for mode in StatsManager.multiplayer_stats:
+					var mode_streak = StatsManager.multiplayer_stats[mode].get("best_win_streak", 0)
+					if mode_streak > best_streak:
+						best_streak = mode_streak
+			return best_streak
+		"login_streak":
+			# Directly access the login_streak property
+			return StatsManager.login_streak if StatsManager else 0
+		"items_collected":
+			# Get count from EquipmentManager
+			return EquipmentManager.get_owned_count() if EquipmentManager else 0
+		"mmr":
+			# Get MMR from MultiplayerManager's player data
+			if MultiplayerManager:
+				var player_data = MultiplayerManager.get_local_player_data()
+				return player_data.get("stats", {}).get("mmr", 1000)
+			return 1000  # Default MMR
+		_: 
+			return 0
 
 func save_achievements():
 	var save_data = {

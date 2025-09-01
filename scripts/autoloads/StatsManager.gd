@@ -8,6 +8,8 @@ const STATS_VERSION = 3  # Incremented for cleanup
 
 var mode_highscores: Dictionary = {}  # mode_id -> Array of {player_name, score, timestamp}
 var player_best_scores: Dictionary = {}  # mode_id -> best_score
+var daily_reward_claimed_today: bool = false
+var last_claim_date: String = ""
 
 # Main stats dictionary
 var stats = {
@@ -88,7 +90,9 @@ func _create_multiplayer_stats() -> Dictionary:
 		"longest_combo": 0,
 		"fastest_clear": -1.0,  # Time in seconds
 		"total_score": 0,
-		"average_score": 0.0
+		"average_score": 0.0,
+		"current_win_streak": 0,  # NEW: Current consecutive wins
+		"best_win_streak": 0      # NEW: Best win streak ever
 	}
 
 # === SAVE/LOAD ===
@@ -99,11 +103,14 @@ func save_stats() -> void:
 			"stats": stats,
 			"mode_highscores": mode_highscores,
 			"player_best_scores": player_best_scores,
-			"multiplayer_stats": multiplayer_stats
+			"multiplayer_stats": multiplayer_stats,
+			"daily_logins": daily_logins,      # NEW: Save login data
+			"last_login_date": last_login_date, # NEW: Save last login
+			"login_streak": login_streak        # NEW: Save streak
 		}
 		save_file.store_var(save_data)
 		save_file.close()
-		print("Stats saved successfully (including %d mode highscores)" % mode_highscores.size())
+		print("Stats saved successfully (including %d mode highscores and %d day streak)" % [mode_highscores.size(), login_streak])
 
 func load_stats() -> void:
 	if FileAccess.file_exists(SAVE_PATH):
@@ -119,6 +126,11 @@ func load_stats() -> void:
 					mode_highscores = loaded_data.get("mode_highscores", {})
 					player_best_scores = loaded_data.get("player_best_scores", {})
 					
+					# Load login data
+					daily_logins = loaded_data.get("daily_logins", 0)
+					last_login_date = loaded_data.get("last_login_date", "")
+					login_streak = loaded_data.get("login_streak", 0)
+					
 					# Handle old multiplayer_stats format
 					var old_mp_stats = loaded_data.get("multiplayer_stats", {})
 					if old_mp_stats and not old_mp_stats.is_empty():
@@ -126,7 +138,7 @@ func load_stats() -> void:
 					else:
 						multiplayer_stats = old_mp_stats
 					
-					print("Loaded stats with %d mode highscores" % mode_highscores.size())
+					print("Loaded stats with %d mode highscores and %d day streak" % [mode_highscores.size(), login_streak])
 				elif loaded_data.has("version"):
 					# Old format - just stats
 					stats = loaded_data
@@ -150,7 +162,11 @@ func _migrate_multiplayer_stats(old_stats: Dictionary) -> void:
 		
 		# Migrate basic stats
 		new.games = old.get("games", 0)
-		new.first_place = old.get("wins", 0)  # Old wins become first place
+		new.first_place = old.get("wins", old.get("first_place", 0))  # Handle both old names
+		
+		# Migrate win streaks if they exist
+		new.current_win_streak = old.get("current_win_streak", 0)
+		new.best_win_streak = old.get("best_win_streak", 0)
 		
 		# If they had wins, add them to placement tracking
 		if old.get("wins", 0) > 0:
@@ -345,15 +361,35 @@ func track_round_end(round: int, cleared: bool, score: int, time_left: float, re
 
 func check_daily_login():
 	var today = Time.get_date_string_from_system()
+	
 	if last_login_date != today:
+		var yesterday = _get_yesterday_date_string()
+		
+		# Check if consecutive login
+		if last_login_date == yesterday:
+			# Consecutive day - increment streak
+			login_streak += 1
+		elif last_login_date == "":
+			# First login ever
+			login_streak = 1
+		else:
+			# Missed a day - reset streak
+			login_streak = 1
+		
+		# Update login tracking
 		last_login_date = today
 		daily_logins += 1
-		# Check if consecutive
-		var yesterday = Time.get_date_string_from_unix_time(Time.get_unix_time_from_system() - 86400)
-		if last_login_date == yesterday:
-			login_streak += 1
-		else:
-			login_streak = 1
+		
+		# Save after updating
+		save_stats()
+		
+		print("Daily login tracked - Streak: %d, Total logins: %d" % [login_streak, daily_logins])
+
+func _get_yesterday_date_string() -> String:
+	"""Get yesterday's date as a string"""
+	var yesterday_unix = Time.get_unix_time_from_system() - 86400  # 24 hours in seconds
+	var yesterday_dict = Time.get_datetime_dict_from_unix_time(yesterday_unix)
+	return "%04d-%02d-%02d" % [yesterday_dict.year, yesterday_dict.month, yesterday_dict.day]
 
 # === MULTIPLAYER TRACKING ===
 func track_multiplayer_game(mode: String, placement: int, score: int, combo: int, clear_time: float, player_count: int) -> void:
@@ -373,6 +409,13 @@ func track_multiplayer_game(mode: String, placement: int, score: int, combo: int
 		stat.placements[placement - 1] += 1
 		if placement == 1:
 			stat.first_place += 1
+			# Update win streak
+			stat.current_win_streak += 1
+			if stat.current_win_streak > stat.best_win_streak:
+				stat.best_win_streak = stat.current_win_streak
+		else:
+			# Reset current streak on non-win
+			stat.current_win_streak = 0
 	
 	# Update records
 	if score > stat.highscore:
@@ -596,3 +639,79 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			print_stats_summary()
 		elif event.keycode == KEY_M:
 			print_multiplayer_summary()
+
+func check_and_claim_daily_reward() -> Dictionary:
+	"""Check if daily reward is available and claim it"""
+	var today = Time.get_date_string_from_system()
+	var result = {
+		"can_claim": false,
+		"claimed": false,
+		"streak_continued": false,
+		"streak_broken": false,
+		"new_streak": 0,
+		"rewards": {"stars": 10, "xp": 50}  # Base rewards
+	}
+	
+	# Check if already claimed today
+	if last_claim_date == today:
+		result.can_claim = false
+		return result
+	
+	# Can claim - check streak
+	var yesterday = _get_yesterday_date_string()
+	
+	if last_claim_date == yesterday:
+		# Continuing streak
+		login_streak += 1
+		result.streak_continued = true
+	elif last_claim_date == "":
+		# First ever claim
+		login_streak = 1
+	else:
+		# Broke streak
+		login_streak = 1
+		result.streak_broken = true
+	
+	# Update tracking
+	last_claim_date = today
+	daily_logins += 1
+	result.claimed = true
+	result.can_claim = false
+	result.new_streak = login_streak
+	
+	# Bonus rewards for streaks
+	if login_streak >= 7:
+		result.rewards.stars = 15
+		result.rewards.xp = 75
+	if login_streak >= 30:
+		result.rewards.stars = 20
+		result.rewards.xp = 100
+	
+	# Apply rewards
+	if StarManager:
+		StarManager.add_stars(result.rewards.stars, "daily_login")
+	if XPManager:
+		XPManager.add_xp(result.rewards.xp, "daily_login")
+	
+	save_stats()
+	return result
+
+func has_unclaimed_daily_reward() -> bool:
+	"""Check if daily reward is available to claim"""
+	var today = Time.get_date_string_from_system()
+	return last_claim_date != today
+
+func get_current_login_streak() -> int:
+	"""Get the current login streak, accounting for unclaimed today"""
+	var today = Time.get_date_string_from_system()
+	var yesterday = _get_yesterday_date_string()
+	
+	# If we claimed yesterday but not today yet, streak is still valid
+	if last_claim_date == yesterday:
+		return login_streak
+	# If we claimed today, return current streak
+	elif last_claim_date == today:
+		return login_streak
+	# Otherwise streak is broken
+	else:
+		return 0

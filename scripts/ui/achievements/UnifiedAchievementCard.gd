@@ -164,23 +164,49 @@ func _setup_icon():
 	# Configure icon container size based on display mode
 	if icon_container:
 		if display_mode == DisplayMode.POSTGAME:
-			icon_container.custom_minimum_size = Vector2(44, 44)  # Slightly bigger
-			icon_container.size_flags_vertical = Control.SIZE_SHRINK_CENTER  # Center vertically
+			icon_container.custom_minimum_size = Vector2(44, 44)
+			icon_container.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		elif display_mode == DisplayMode.MINI:
 			icon_container.custom_minimum_size = Vector2(40, 40)
 		else:
 			icon_container.custom_minimum_size = Vector2(60, 60)
 
-	# Configure TextureRect properly
+	# Configure TextureRect with fallback system
 	if icon_texture:
-		var icon_path = "res://Pyramids/assets/icons/achievements/" + achievement.icon
+		var icon_path = "res://Pyramids/assets/icons/achievements/white_icons_cut/" + achievement.icon
+		var texture_to_use: Texture2D = null
+		
+		# Try to load the tier-specific icon
 		if ResourceLoader.exists(icon_path):
-			icon_texture.texture = load(icon_path)
-			icon_texture.custom_minimum_size = icon_container.custom_minimum_size - Vector2(10, 10)
-			icon_texture.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+			texture_to_use = load(icon_path)
+		else:
+			# Fallback 1: Try to use tier 1 icon of same achievement
+			var fallback_icon = "%s_ach_t1.png" % achievement_base_id
+			var fallback_path = "res://Pyramids/assets/icons/achievements/white_icons_cut/" + fallback_icon
+			if ResourceLoader.exists(fallback_path):
+				texture_to_use = load(fallback_path)
+				print("Using tier 1 icon as fallback for %s" % achievement.icon)
+			else:
+				# Fallback 2: Try a generic placeholder icon
+				var placeholder_path = "res://Pyramids/assets/icons/achievements/placeholder.png"
+				if ResourceLoader.exists(placeholder_path):
+					texture_to_use = load(placeholder_path)
+					print("Using placeholder for missing icon: %s" % achievement.icon)
+				else:
+					# Fallback 3: Keep existing texture if any
+					print("Warning: No icon found for %s, keeping existing texture" % achievement.icon)
+		
+		# Apply the texture if we found one
+		if texture_to_use:
+			icon_texture.texture = texture_to_use
+			# Make icon fill the container better - reduced padding
+			icon_texture.custom_minimum_size = icon_container.custom_minimum_size - Vector2(4, 4)
+			# Change to FIT_HEIGHT to ensure it fills vertically
+			icon_texture.expand_mode = TextureRect.EXPAND_FIT_HEIGHT_PROPORTIONAL
 			icon_texture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			icon_texture.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-			icon_texture.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			# Ensure it expands to fill available space
+			icon_texture.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			icon_texture.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	
 	# Apply tier border color to icon container
 	if icon_container:
@@ -189,6 +215,11 @@ func _setup_icon():
 		border_style.border_color = achievement.tier_color
 		border_style.set_border_width_all(3)
 		border_style.set_corner_radius_all(8)
+		# Add small padding inside the border
+		border_style.content_margin_left = 2
+		border_style.content_margin_right = 2
+		border_style.content_margin_top = 2
+		border_style.content_margin_bottom = 2
 		icon_container.add_theme_stylebox_override("panel", border_style)
 
 func _setup_star_buttons():
