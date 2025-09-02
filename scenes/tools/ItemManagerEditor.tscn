@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3 uid="uid://b7ojcpx4ik5nh"]
+[gd_scene load_steps=3 format=3 uid="uid://b7ojcpx4ik5nh"]
 
 [ext_resource type="Script" uid="uid://cvpwaapku88dx" path="res://Pyramids/scenes/tools/ItemManagerEditor.gd" id="1_8hx3w"]
+[ext_resource type="Script" uid="uid://c5xs6ntwdsk3t" path="res://Pyramids/scripts/ui/components/StyledButton.gd" id="2_tnina"]
 
 [node name="ItemManagerEditor" type="Control"]
 layout_mode = 3
@@ -31,22 +32,32 @@ layout_mode = 2
 [node name="RefreshButton" type="Button" parent="VBoxContainer/HeaderContainer/ButtonContainer"]
 layout_mode = 2
 text = "Refresh"
+script = ExtResource("2_tnina")
+metadata/_custom_type_script = "uid://c5xs6ntwdsk3t"
 
 [node name="ExportAllButton" type="Button" parent="VBoxContainer/HeaderContainer/ButtonContainer"]
 layout_mode = 2
 text = "Export all"
+script = ExtResource("2_tnina")
+metadata/_custom_type_script = "uid://c5xs6ntwdsk3t"
 
 [node name="SaveAllButton" type="Button" parent="VBoxContainer/HeaderContainer/ButtonContainer"]
 layout_mode = 2
 text = "Save all"
+script = ExtResource("2_tnina")
+metadata/_custom_type_script = "uid://c5xs6ntwdsk3t"
 
 [node name="ReloadButton" type="Button" parent="VBoxContainer/HeaderContainer/ButtonContainer"]
 layout_mode = 2
 text = "Save all"
+script = ExtResource("2_tnina")
+metadata/_custom_type_script = "uid://c5xs6ntwdsk3t"
 
 [node name="ExitButton" type="Button" parent="VBoxContainer/HeaderContainer/ButtonContainer"]
 layout_mode = 2
 text = "Save all"
+script = ExtResource("2_tnina")
+metadata/_custom_type_script = "uid://c5xs6ntwdsk3t"
 
 [node name="HSeparator" type="HSeparator" parent="VBoxContainer"]
 layout_mode = 2

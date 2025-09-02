@@ -157,6 +157,7 @@ var opacity = {
 	"full": 1.0,
 	"claimed": 0.6,      # Dimmed claimed rewards
 	"locked": 0.4,       # Locked rewards
+	"backdrop": 0.5,
 	"lock_strong": 0.8,  # Lock overlay - not reached
 	"lock_medium": 0.6,  # Lock overlay - no premium
 	"lock_weak": 0.5,    # Lock overlay - default
