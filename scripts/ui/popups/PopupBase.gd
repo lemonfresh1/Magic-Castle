@@ -1,5 +1,6 @@
-# PopupBase.gd - Base class for all popups, works WITH UIStyleManager
+# PopupBase.gd - Base class for all popups using StyledPanel/StyledButton
 # Location: res://Pyramids/scripts/ui/popups/PopupBase.gd
+# Last Updated: Refactored to use self-styling components
 
 extends Control
 class_name PopupBase
@@ -10,10 +11,9 @@ signal cancelled
 
 # UI Structure
 var backdrop: ColorRect
-var panel: PanelContainer
+var panel: StyledPanel  # Changed from PanelContainer
 var content_container: VBoxContainer
 var title_label: Label
-var close_button: Button
 
 # Configuration
 @export var show_backdrop: bool = true
@@ -25,7 +25,6 @@ func _ready():
 	# Create UI structure
 	_create_backdrop()
 	_create_panel()
-	_create_close_button()
 	
 	# Position and size
 	_center_popup()
@@ -38,7 +37,7 @@ func _ready():
 
 func _create_backdrop():
 	backdrop = ColorRect.new()
-	backdrop.color = Color(0, 0, 0, ThemeConstants.opacity.get("backdrop", 0.5))
+	backdrop.color = Color(0, 0, 0, 0.5)  # 50% black
 	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(backdrop)
@@ -49,50 +48,34 @@ func _create_backdrop():
 	backdrop.visible = show_backdrop
 
 func _create_panel():
-	panel = PanelContainer.new()
+	# Use StyledPanel instead of PanelContainer
+	panel = StyledPanel.new()
 	panel.custom_minimum_size = popup_size
 	panel.size = popup_size
+	panel.panel_style = "modal"  # Use modal style
+	panel.with_shadow = true
+	panel.corner_radius_size = "medium"
 	add_child(panel)
-	
-	# Apply styling using UIStyleManager
-	UIStyleManager.apply_panel_style(panel)
 	
 	# Create margin container
 	var margin = MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 20)
-	margin.add_theme_constant_override("margin_right", 20)
+	margin.add_theme_constant_override("margin_left", 24)
+	margin.add_theme_constant_override("margin_right", 24)
 	margin.add_theme_constant_override("margin_top", 20)
 	margin.add_theme_constant_override("margin_bottom", 20)
 	panel.add_child(margin)
 	
 	# Create content container
 	content_container = VBoxContainer.new()
-	content_container.add_theme_constant_override("separation", 15)
+	content_container.add_theme_constant_override("separation", 16)
 	margin.add_child(content_container)
 	
 	# Create title
 	title_label = Label.new()
-	title_label.add_theme_font_size_override("font_size", 24)
-	title_label.add_theme_color_override("font_color", UIStyleManager.get_color("gray_900"))
+	title_label.add_theme_font_size_override("font_size", ThemeConstants.typography.size_title)
+	title_label.add_theme_color_override("font_color", ThemeConstants.colors.gray_900)
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content_container.add_child(title_label)
-
-func _create_close_button():
-	close_button = Button.new()
-	close_button.text = "×"
-	close_button.flat = true
-	close_button.custom_minimum_size = Vector2(30, 30)
-	panel.add_child(close_button)
-	
-	# Position in top-right corner
-	close_button.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	close_button.position = Vector2(-35, 5)
-	
-	# Style
-	close_button.add_theme_font_size_override("font_size", 24)
-	close_button.add_theme_color_override("font_color", UIStyleManager.get_color("gray_400"))
-	
-	close_button.pressed.connect(close)
 
 func _center_popup():
 	var viewport_size = get_viewport().get_visible_rect().size
