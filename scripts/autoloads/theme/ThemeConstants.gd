@@ -383,5 +383,12 @@ var mode_colors = {
 	}
 }
 
+var popup_sizes = {
+	"small": Vector2(350, 250),
+	"medium": Vector2(400, 300),
+	"large": Vector2(500, 400),
+	"purchase": Vector2(450, 350)
+}
+
 func _ready():
 	print("ThemeConstants loaded with %d color definitions" % colors.size())

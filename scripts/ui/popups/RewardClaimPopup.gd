@@ -1,6 +1,6 @@
-# RewardClaimPopup.gd - Enhanced popup for rewards AND level-ups
+# RewardClaimPopup.gd - Enhanced popup for rewards AND level-ups (Using ThemeConstants)
 # Location: res://Pyramids/scripts/ui/popups/RewardClaimPopup.gd
-# Last Updated: Added level-up display capability for pass claims
+# Last Updated: Replaced UIStyleManager with ThemeConstants
 
 extends PanelContainer
 class_name RewardClaimPopup
@@ -31,7 +31,7 @@ var title_label: Label
 var level_up_container: VBoxContainer  # NEW: Container for level-up display
 var rewards_container: CenterContainer
 var message_label: Label
-var accept_button: Button
+var accept_button: StyledButton  # Changed to StyledButton
 
 func _debug_log(message: String) -> void:
 	if debug_enabled and global_debug and DEBUG:
@@ -56,30 +56,47 @@ func _ready():
 func _create_popup_structure():
 	"""Create the popup UI structure programmatically"""
 	var margin_container = MarginContainer.new()
-	margin_container.add_theme_constant_override("margin_left", UIStyleManager.get_spacing("space_4"))
-	margin_container.add_theme_constant_override("margin_right", UIStyleManager.get_spacing("space_4"))
-	margin_container.add_theme_constant_override("margin_top", UIStyleManager.get_spacing("space_4"))
-	margin_container.add_theme_constant_override("margin_bottom", UIStyleManager.get_spacing("space_4"))
+	if ThemeConstants:
+		margin_container.add_theme_constant_override("margin_left", ThemeConstants.spacing.space_4)
+		margin_container.add_theme_constant_override("margin_right", ThemeConstants.spacing.space_4)
+		margin_container.add_theme_constant_override("margin_top", ThemeConstants.spacing.space_4)
+		margin_container.add_theme_constant_override("margin_bottom", ThemeConstants.spacing.space_4)
+	else:
+		# Fallback values
+		margin_container.add_theme_constant_override("margin_left", 16)
+		margin_container.add_theme_constant_override("margin_right", 16)
+		margin_container.add_theme_constant_override("margin_top", 16)
+		margin_container.add_theme_constant_override("margin_bottom", 16)
 	add_child(margin_container)
 	
 	var vbox = VBoxContainer.new()
 	vbox.name = "MainVBox"
-	vbox.add_theme_constant_override("separation", UIStyleManager.get_spacing("space_3"))
+	if ThemeConstants:
+		vbox.add_theme_constant_override("separation", ThemeConstants.spacing.space_3)
+	else:
+		vbox.add_theme_constant_override("separation", 12)
 	margin_container.add_child(vbox)
 	
 	# Title label
 	title_label = Label.new()
 	title_label.name = "TitleLabel"
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title_label.add_theme_font_size_override("font_size", UIStyleManager.get_font_size("size_h3"))
-	title_label.add_theme_color_override("font_color", UIStyleManager.get_color("primary"))
+	if ThemeConstants:
+		title_label.add_theme_font_size_override("font_size", ThemeConstants.typography.size_h3)
+		title_label.add_theme_color_override("font_color", ThemeConstants.colors.primary)
+	else:
+		title_label.add_theme_font_size_override("font_size", 32)
+		title_label.add_theme_color_override("font_color", Color("#10b981"))
 	vbox.add_child(title_label)
 	
 	# NEW: Level-up container (above rewards)
 	level_up_container = VBoxContainer.new()
 	level_up_container.name = "LevelUpContainer"
 	level_up_container.visible = false  # Hidden by default
-	level_up_container.add_theme_constant_override("separation", UIStyleManager.get_spacing("space_2"))
+	if ThemeConstants:
+		level_up_container.add_theme_constant_override("separation", ThemeConstants.spacing.space_2)
+	else:
+		level_up_container.add_theme_constant_override("separation", 8)
 	vbox.add_child(level_up_container)
 	
 	# Rewards container
@@ -92,8 +109,12 @@ func _create_popup_structure():
 	message_label = Label.new()
 	message_label.name = "MessageLabel"
 	message_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	message_label.add_theme_font_size_override("font_size", UIStyleManager.get_font_size("size_body"))
-	message_label.add_theme_color_override("font_color", UIStyleManager.get_color("gray_700"))
+	if ThemeConstants:
+		message_label.add_theme_font_size_override("font_size", ThemeConstants.typography.size_body)
+		message_label.add_theme_color_override("font_color", ThemeConstants.colors.gray_700)
+	else:
+		message_label.add_theme_font_size_override("font_size", 18)
+		message_label.add_theme_color_override("font_color", Color("#374151"))
 	message_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	message_label.custom_minimum_size.x = 350
 	message_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -103,13 +124,13 @@ func _create_popup_structure():
 	var button_container = CenterContainer.new()
 	vbox.add_child(button_container)
 	
-	accept_button = Button.new()
+	accept_button = StyledButton.new()
 	accept_button.name = "AcceptButton"
 	accept_button.text = "Awesome!"
 	accept_button.custom_minimum_size = Vector2(120, 36)
 	button_container.add_child(accept_button)
 	
-	UIStyleManager.apply_button_style(accept_button, "primary", "medium")
+	accept_button.set_button_style("primary", "medium")
 	accept_button.pressed.connect(_on_accept_pressed)
 
 func setup(rewards: Dictionary, icon_texture: Texture2D = null):
@@ -271,7 +292,10 @@ func _create_level_up_display(level_ups: Array):
 	else:
 		level_label.text = "Level %d → Level %d" % [level_ups[0].old_level, level_ups[-1].new_level]
 	
-	level_label.add_theme_font_size_override("font_size", UIStyleManager.get_font_size("size_h4"))
+	if ThemeConstants:
+		level_label.add_theme_font_size_override("font_size", ThemeConstants.typography.size_title)
+	else:
+		level_label.add_theme_font_size_override("font_size", 24)
 	level_label.add_theme_color_override("font_color", Color("#92400E"))  # Dark amber
 	level_content.add_child(level_label)
 	
@@ -284,7 +308,10 @@ func _create_level_up_display(level_ups: Array):
 	if total_level_stars > 0:
 		var star_label = Label.new()
 		star_label.text = "Level rewards: Earned %d stars from level ups" % total_level_stars
-		star_label.add_theme_font_size_override("font_size", UIStyleManager.get_font_size("size_body"))
+		if ThemeConstants:
+			star_label.add_theme_font_size_override("font_size", ThemeConstants.typography.size_body)
+		else:
+			star_label.add_theme_font_size_override("font_size", 18)
 		star_label.add_theme_color_override("font_color", Color("#B45309"))  # Medium amber
 		level_content.add_child(star_label)
 	
