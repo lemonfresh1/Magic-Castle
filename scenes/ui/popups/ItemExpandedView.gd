@@ -1,70 +1,55 @@
-# ItemExpandedView.gd - Modal popup for detailed item/reward preview (STYLED)
+# ItemExpandedView.gd - Modal popup for detailed item/reward preview (SCENE-BASED)
 # Location: res://Pyramids/scripts/ui/popups/ItemExpandedView.gd
-# Last Updated: Applied consistent styling with popup system
+# Last Updated: Scene-based implementation with StyledPanel
 
-extends PanelContainer
+extends Control
 
 signal closed
 
-# Node references
-@onready var close_button: StyledButton = null
-@onready var item_card: Control = null
-@onready var title_label: Label = null
-@onready var backdrop: Control = null
+# Scene nodes
+@onready var popup_panel: StyledPanel = $StyledPanel
+
+# Dynamically created nodes
+var close_button: StyledButton = null
+var item_card: Control = null
+var title_label: Label = null
 
 # Popup data
 var item_data: UnifiedItemData = null
 var reward_data: Dictionary = {}
 
 func _ready():
-	# Create a full-screen backdrop to capture clicks outside
-	backdrop = Control.new()
-	backdrop.name = "Backdrop"
-	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
-	backdrop.z_index = 998  # Just below the popup
+	# Set full screen
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	z_index = 999
 	
-	# Semi-transparent dark background for backdrop - match PopupBase opacity
-	var backdrop_bg = ColorRect.new()
-	backdrop_bg.color = Color(0, 0, 0, 0.75)  # 75% opacity like PopupBase
-	backdrop_bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	backdrop_bg.mouse_filter = Control.MOUSE_FILTER_STOP
-	backdrop.add_child(backdrop_bg)
+	# Create the content inside StyledPanel
+	_create_popup_content()
 	
-	# Add backdrop to root BEFORE adding self
-	get_tree().root.add_child(backdrop)
+	# Make it modal
+	mouse_filter = Control.MOUSE_FILTER_STOP
 	
-	# Connect backdrop click
-	backdrop_bg.gui_input.connect(_on_backdrop_clicked)
+	# Add fade-in animation
+	modulate.a = 0
+	var tween = create_tween()
+	tween.tween_property(self, "modulate:a", 1.0, 0.15)
+
+func _create_popup_content():
+	"""Create the UI elements inside the StyledPanel"""
+	# Create margin container for padding
+	var margin_container = MarginContainer.new()
+	margin_container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	margin_container.add_theme_constant_override("margin_left", 16)
+	margin_container.add_theme_constant_override("margin_right", 16)
+	margin_container.add_theme_constant_override("margin_top", 16)
+	margin_container.add_theme_constant_override("margin_bottom", 16)
+	popup_panel.add_child(margin_container)
 	
-	z_index = 999  # On top of backdrop
-	
-	# Apply StyledPanel appearance if available
-	if ThemeConstants:
-		# Create panel style matching StyledPanel
-		var style = StyleBoxFlat.new()
-		style.bg_color = ThemeConstants.colors.gray_900  # Dark background
-		style.border_color = ThemeConstants.colors.primary  # Primary color border
-		style.set_border_width_all(3)
-		style.set_corner_radius_all(12)  # Rounded corners like other popups
-		style.set_content_margin_all(16)
-		add_theme_stylebox_override("panel", style)
-	else:
-		# Fallback style
-		var style = StyleBoxFlat.new()
-		style.bg_color = Color(0.05, 0.05, 0.05, 0.98)
-		style.border_color = Color(0.8, 0.8, 0.8, 1.0)
-		style.set_border_width_all(2)
-		style.set_corner_radius_all(4)
-		style.set_content_margin_all(8)
-		add_theme_stylebox_override("panel", style)
-	
-	# Create container for layout
+	# Create main vertical container
 	var vbox = VBoxContainer.new()
-	vbox.name = "VBox"
-	vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	vbox.name = "Content"
 	vbox.add_theme_constant_override("separation", 8)
-	add_child(vbox)
+	margin_container.add_child(vbox)
 	
 	# Create header with title and close button
 	var header = HBoxContainer.new()
@@ -72,7 +57,7 @@ func _ready():
 	header.custom_minimum_size = Vector2(0, 32)
 	vbox.add_child(header)
 	
-	# Title label with primary color like PopupBase
+	# Title label with primary color
 	title_label = Label.new()
 	title_label.name = "TitleLabel"
 	title_label.text = "Item"
@@ -85,41 +70,21 @@ func _ready():
 	title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title_label)
 	
-	# Style close button like other popups
+	# Create StyledButton for close button
 	close_button = StyledButton.new()
 	close_button.name = "CloseButton"
 	close_button.text = "✕"
 	close_button.custom_minimum_size = Vector2(32, 32)
-	close_button.flat = true
+	close_button.button_style = "transparent"
+	close_button.button_size = "small"
 	
-	# Apply button styling
-	if ThemeConstants:
-		var button_style = StyleBoxFlat.new()
-		button_style.bg_color = Color.TRANSPARENT
-		button_style.set_corner_radius_all(4)
-		
-		var hover_style = button_style.duplicate()
-		hover_style.bg_color = ThemeConstants.colors.gray_700
-		
-		var pressed_style = button_style.duplicate()
-		pressed_style.bg_color = ThemeConstants.colors.gray_600
-		
-		close_button.add_theme_stylebox_override("normal", button_style)
-		close_button.add_theme_stylebox_override("hover", hover_style)
-		close_button.add_theme_stylebox_override("pressed", pressed_style)
-		close_button.add_theme_font_size_override("font_size", 20)
-		close_button.add_theme_color_override("font_color", ThemeConstants.colors.gray_300)
-		close_button.add_theme_color_override("font_hover_color", ThemeConstants.colors.white)
-		close_button.add_theme_color_override("font_pressed_color", ThemeConstants.colors.gray_400)
-	else:
-		close_button.add_theme_font_size_override("font_size", 16)
-		close_button.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
-		close_button.add_theme_color_override("font_hover_color", Color.WHITE)
-		close_button.add_theme_color_override("font_pressed_color", Color(0.6, 0.6, 0.6))
+	# Override close button colors for dark popup background
+	close_button.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+	close_button.add_theme_color_override("font_hover_color", Color.WHITE)
+	close_button.add_theme_color_override("font_pressed_color", Color(0.6, 0.6, 0.6))
+	close_button.add_theme_font_size_override("font_size", 20)
 	
 	header.add_child(close_button)
-	
-	# Connect close button
 	close_button.pressed.connect(_on_close_pressed)
 	
 	# Add separator with primary color
@@ -142,19 +107,7 @@ func _ready():
 	
 	# Store reference
 	item_card = card_container
-	
-	# Make it modal
-	mouse_filter = Control.MOUSE_FILTER_STOP
-	
-	# Store backdrop reference for cleanup
-	set_meta("backdrop", backdrop)
-	
-	# Add fade-in animation
-	modulate.a = 0
-	var tween = create_tween()
-	tween.tween_property(self, "modulate:a", 1.0, 0.15)
 
-# Rest of the functions remain the same...
 func setup_item(item: UnifiedItemData):
 	"""Setup popup with UnifiedItemData - handles portrait/landscape"""
 	item_data = item
@@ -169,29 +122,28 @@ func setup_item(item: UnifiedItemData):
 	
 	# Set appropriate popup size based on item type
 	# Add padding for border and header
-	var padding = 32  # Increased padding for better appearance
+	var padding = 32  # Padding inside panel
 	var header_height = 56  # Header + separator height
 	
 	if is_landscape:
 		# Landscape size for boards
 		var card_size = Vector2(192, 126)
-		custom_minimum_size = Vector2(card_size.x + padding, card_size.y + header_height + padding)
-		size = custom_minimum_size
+		popup_panel.custom_minimum_size = Vector2(card_size.x + padding, card_size.y + header_height + padding)
+		popup_panel.size = popup_panel.custom_minimum_size
 	else:
 		# Portrait size for cards  
 		var card_size = Vector2(90, 126)
-		custom_minimum_size = Vector2(card_size.x + padding, card_size.y + header_height + padding)
-		size = custom_minimum_size
+		popup_panel.custom_minimum_size = Vector2(card_size.x + padding, card_size.y + header_height + padding)
+		popup_panel.size = popup_panel.custom_minimum_size
+	
+	# Center the popup
+	popup_panel.position = (get_viewport_rect().size - popup_panel.size) * 0.5
 	
 	# Create the item card display
 	_create_item_display()
 	
 	# Force layout update
 	await get_tree().process_frame
-	
-	# Ensure we're properly sized
-	if size != custom_minimum_size:
-		size = custom_minimum_size
 
 func setup_reward(reward: Dictionary):
 	"""Setup popup with reward dictionary"""
@@ -208,6 +160,16 @@ func setup_reward(reward: Dictionary):
 			title_label.text = reward_data.cosmetic_type.capitalize()
 		else:
 			title_label.text = "Reward"
+	
+	# Set standard reward size
+	var padding = 32
+	var header_height = 56
+	var card_size = Vector2(90, 126)
+	popup_panel.custom_minimum_size = Vector2(card_size.x + padding, card_size.y + header_height + padding)
+	popup_panel.size = popup_panel.custom_minimum_size
+	
+	# Center the popup
+	popup_panel.position = (get_viewport_rect().size - popup_panel.size) * 0.5
 	
 	# Create display
 	_create_reward_display()
@@ -427,13 +389,7 @@ func _close_popup():
 	tween.tween_property(self, "modulate:a", 0.0, 0.1)
 	tween.tween_callback(func():
 		closed.emit()
-		
-		# Remove backdrop first
-		if backdrop and is_instance_valid(backdrop):
-			backdrop.queue_free()
-		
-		# Then remove self
-		queue_free()
+		queue_free()  # This will clean up everything
 	)
 
 func _input(event: InputEvent):
@@ -441,7 +397,7 @@ func _input(event: InputEvent):
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			# Check if click is outside popup bounds
-			var popup_rect = Rect2(global_position, size)
+			var popup_rect = Rect2(popup_panel.global_position, popup_panel.size)
 			
 			if not popup_rect.has_point(event.position):
 				_close_popup()

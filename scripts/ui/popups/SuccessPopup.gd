@@ -1,6 +1,6 @@
-# SuccessPopup.gd - Success notification popup (FIXED ICON SIZING)
+# SuccessPopup.gd - Success notification popup
 # Location: res://Pyramids/scripts/ui/popups/SuccessPopup.gd
-# Last Updated: Fixed icon sizing for battlepass
+# Last Updated: Scene-based implementation with item/icon support
 
 extends PopupBase
 class_name SuccessPopup
@@ -26,7 +26,7 @@ func setup_with_item(title: String, message: String, item: UnifiedItemData, butt
 	if ItemManager:
 		var card_scene = preload("res://Pyramids/scenes/ui/items/UnifiedItemCard.tscn")
 		var card = card_scene.instantiate()
-		card.custom_minimum_size = Vector2(80, 80)
+		card.custom_minimum_size = Vector2(120, 120)
 		card.setup(item, UnifiedItemCard.DisplayMode.INVENTORY)
 		add_to_asset_container(card)
 	
@@ -45,8 +45,8 @@ func setup_with_icon(title: String, message: String, icon_path: String, button_t
 	if icon_path != "":
 		var texture_rect = TextureRect.new()
 		texture_rect.texture = load(icon_path)
-		texture_rect.custom_minimum_size = Vector2(64, 64)
-		texture_rect.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL  # This keeps aspect ratio
+		texture_rect.custom_minimum_size = Vector2(80, 80)
+		texture_rect.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
 		texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		add_to_asset_container(texture_rect)
 	

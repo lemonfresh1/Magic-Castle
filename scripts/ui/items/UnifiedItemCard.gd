@@ -1410,47 +1410,47 @@ func _show_expanded_view():
 	
 	# Wait for popup to be properly sized
 	await get_tree().process_frame
-	
-	# SMART POSITIONING
-	var screen_size = get_viewport().size
-	var popup_size = popup.size
-	var card_global_rect = Rect2(global_position, size)
-	var margin = 20  # Distance from screen edge
-	var spacing = 10  # Distance from clicked card
-	
-	var popup_pos = Vector2()
-	
-	# Horizontal positioning
-	# Try to position to the RIGHT of the card
-	var right_pos = card_global_rect.position.x + card_global_rect.size.x + spacing
-	var left_pos = card_global_rect.position.x - popup_size.x - spacing
-	var center_pos = card_global_rect.position.x + (card_global_rect.size.x - popup_size.x) / 2
-	
-	# Check which positions would fit on screen
-	var can_fit_right = (right_pos + popup_size.x + margin) <= screen_size.x
-	var can_fit_left = left_pos >= margin
-	var can_fit_center = center_pos >= margin and (center_pos + popup_size.x + margin) <= screen_size.x
-	
-	# Prefer right, then left, then center
-	if can_fit_right:
-		popup_pos.x = right_pos
-	elif can_fit_left:
-		popup_pos.x = left_pos
-	elif can_fit_center:
-		popup_pos.x = center_pos
-	else:
-		# Last resort: clamp to screen bounds
-		popup_pos.x = clamp(center_pos, margin, screen_size.x - popup_size.x - margin)
-	
-	# Vertical positioning
-	# Try to center vertically with the card
-	var center_y = card_global_rect.position.y + (card_global_rect.size.y - popup_size.y) / 2
-	
-	# Ensure it fits on screen vertically
-	popup_pos.y = clamp(center_y, margin, screen_size.y - popup_size.y - margin)
-	
-	# Apply position
-	popup.position = popup_pos
+	#
+	## SMART POSITIONING
+	#var screen_size = get_viewport().size
+	#var popup_size = popup.size
+	#var card_global_rect = Rect2(global_position, size)
+	#var margin = 20  # Distance from screen edge
+	#var spacing = 10  # Distance from clicked card
+	#
+	#var popup_pos = Vector2()
+	#
+	## Horizontal positioning
+	## Try to position to the RIGHT of the card
+	#var right_pos = card_global_rect.position.x + card_global_rect.size.x + spacing
+	#var left_pos = card_global_rect.position.x - popup_size.x - spacing
+	#var center_pos = card_global_rect.position.x + (card_global_rect.size.x - popup_size.x) / 2
+	#
+	## Check which positions would fit on screen
+	#var can_fit_right = (right_pos + popup_size.x + margin) <= screen_size.x
+	#var can_fit_left = left_pos >= margin
+	#var can_fit_center = center_pos >= margin and (center_pos + popup_size.x + margin) <= screen_size.x
+	#
+	## Prefer right, then left, then center
+	#if can_fit_right:
+		#popup_pos.x = right_pos
+	#elif can_fit_left:
+		#popup_pos.x = left_pos
+	#elif can_fit_center:
+		#popup_pos.x = center_pos
+	#else:
+		## Last resort: clamp to screen bounds
+		#popup_pos.x = clamp(center_pos, margin, screen_size.x - popup_size.x - margin)
+	#
+	## Vertical positioning
+	## Try to center vertically with the card
+	#var center_y = card_global_rect.position.y + (card_global_rect.size.y - popup_size.y) / 2
+	#
+	## Ensure it fits on screen vertically
+	#popup_pos.y = clamp(center_y, margin, screen_size.y - popup_size.y - margin)
+	#
+	## Apply position
+	#popup.position = popup_pos
 	
 	# Make sure it's on top
 	popup.z_index = 999

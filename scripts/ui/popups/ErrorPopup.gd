@@ -23,9 +23,8 @@ func setup(title: String, message: String, button_text: String = "OK"):
 	set_confirm_button_text(button_text)
 	hide_cancel_button()
 	
-	# Use secondary/neutral style for error acknowledgment
-	if confirm_button:
-		confirm_button.set_button_style("secondary", "medium")
+	# Defer button styling
+	call_deferred("_apply_error_button_styles")
 
 func setup_insufficient_funds(required: int, current: int, currency: String = "stars"):
 	"""Specific setup for insufficient funds error"""
@@ -40,5 +39,10 @@ func setup_insufficient_funds(required: int, current: int, currency: String = "s
 	set_confirm_button_text("OK")
 	hide_cancel_button()
 	
+	# Defer button styling
+	call_deferred("_apply_error_button_styles")
+
+func _apply_error_button_styles():
+	"""Apply button styles after initialization"""
 	if confirm_button:
-		confirm_button.set_button_style("secondary", "medium")
+		confirm_button.set_button_style("danger", "medium")  # Red button for error
