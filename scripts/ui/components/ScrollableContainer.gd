@@ -1,422 +1,197 @@
-# PopupTestScene.gd - Comprehensive test scene for all popup types (SCENE-BASED)
-# Location: res://Pyramids/scripts/test/PopupTestScene.gd
-# Last Updated: Updated for scene-based popup system
+# ScrollableContainer.gd - Self-styling scroll container with auto-structure
+# Location: res://Pyramids/scripts/ui/components/ScrollableContainer.gd  
+# Last Updated: Created as replacement for UIStyleManager.setup_scrollable_content [Date]
 
-extends Control
+extends ScrollContainer
+class_name ScrollableContainer
 
-# Scenes
-var unified_item_card_scene = preload("res://Pyramids/scenes/ui/items/UnifiedItemCard.tscn")
-var popup_base_scene = preload("res://Pyramids/scenes/ui/popups/PopupBase.tscn")
+# Configuration overrides (optional)
+@export var custom_width: int = -1  # -1 means use default from ThemeConstants
+@export var custom_height: int = -1
+@export var custom_margin_left: int = -1
+@export var custom_margin_right: int = -1
+@export var custom_margin_top: int = -1
+@export var custom_margin_bottom: int = -1
+@export var custom_separation: int = -1
+@export var auto_hide_scrollbars: bool = true
 
-# Test data
-var test_stars: int = 500
-var test_items = []
-var owned_items = ["card_classic", "board_green"]  # Start with defaults
-var equipped_items = {"card_front": "card_classic", "board": "board_green", "emoji": []}
+# Internal node references
+var margin_container: MarginContainer
+var content_container: VBoxContainer
 
-# UI References
-var star_label: Label
-var star_input: SpinBox
-var items_grid: GridContainer
-var popup_buttons_container: VBoxContainer
-var scroll_container: ScrollContainer
+# Runtime config cache
+var _config_applied: bool = false
 
 func _ready():
-	# Set control size
-	custom_minimum_size = Vector2(1200, 540)
-	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_setup_structure()
+	_apply_config()
 	
-	_create_ui()
-	_load_test_items()
-	_populate_items()
-	_create_popup_test_buttons()
+	# Re-apply on export changes in editor
+	if Engine.is_editor_hint():
+		set_notify_transform(true)
 
-func _create_ui():
-	# Main container
-	var main_vbox = VBoxContainer.new()
-	main_vbox.add_theme_constant_override("separation", 20)
-	add_child(main_vbox)
-	
-	# Header with star balance
-	var header = HBoxContainer.new()
-	header.add_theme_constant_override("separation", 20)
-	main_vbox.add_child(header)
-	
-	var star_container = HBoxContainer.new()
-	star_container.add_theme_constant_override("separation", 10)
-	header.add_child(star_container)
-	
-	var star_icon = Label.new()
-	star_icon.text = "⭐"
-	star_icon.add_theme_font_size_override("font_size", 24)
-	star_container.add_child(star_icon)
-	
-	star_label = Label.new()
-	star_label.text = "Stars: %d" % test_stars
-	star_label.add_theme_font_size_override("font_size", 24)
-	star_container.add_child(star_label)
-	
-	star_input = SpinBox.new()
-	star_input.value = test_stars
-	star_input.max_value = 9999
-	star_input.min_value = 0
-	star_input.value_changed.connect(_on_stars_changed)
-	star_container.add_child(star_input)
-	
-	# Add spacer
-	var spacer = Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(spacer)
-	
-	# Title
-	var title = Label.new()
-	title.text = "Popup System Test Scene (Scene-Based)"
-	title.add_theme_font_size_override("font_size", 28)
-	title.add_theme_color_override("font_color", ThemeConstants.colors.primary)
-	header.add_child(title)
-	
-	# Scroll container for all content
-	scroll_container = ScrollContainer.new()
-	scroll_container.custom_minimum_size = Vector2(1000, 450)
-	scroll_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	main_vbox.add_child(scroll_container)
-	
-	var content_vbox = VBoxContainer.new()
-	content_vbox.add_theme_constant_override("separation", 20)
-	content_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll_container.add_child(content_vbox)
-	
-	# Section 1: Items (Shop/Inventory simulation)
-	var items_section = _create_section("Items (Click to test Purchase/Equip)", content_vbox)
-	
-	items_grid = GridContainer.new()
-	items_grid.columns = 6
-	items_grid.add_theme_constant_override("h_separation", 10)
-	items_grid.add_theme_constant_override("v_separation", 10)
-	items_section.add_child(items_grid)
-	
-	# Add owned/unowned indicators
-	var legend = HBoxContainer.new()
-	legend.add_theme_constant_override("separation", 20)
-	items_section.add_child(legend)
-	
-	var unowned_label = Label.new()
-	unowned_label.text = "🛒 = Unowned (click to purchase)"
-	unowned_label.add_theme_font_size_override("font_size", 14)
-	legend.add_child(unowned_label)
-	
-	var owned_label = Label.new()
-	owned_label.text = "✓ = Owned (click to equip)"
-	owned_label.add_theme_font_size_override("font_size", 14)
-	legend.add_child(owned_label)
-	
-	# Section 2: Popup Test Buttons
-	var popup_section = _create_section("Direct Popup Tests", content_vbox)
-	
-	popup_buttons_container = VBoxContainer.new()
-	popup_buttons_container.add_theme_constant_override("separation", 10)
-	popup_section.add_child(popup_buttons_container)
+func _notification(what: int):
+	# Re-apply config when export vars change in editor
+	if what == NOTIFICATION_TRANSFORM_CHANGED and Engine.is_editor_hint():
+		_apply_config()
 
-func _create_section(title: String, parent: Control) -> VBoxContainer:
-	var section = VBoxContainer.new()
-	section.add_theme_constant_override("separation", 10)
-	parent.add_child(section)
+func _setup_structure():
+	"""Create the internal MarginContainer → VBoxContainer structure"""
+	# Clear any existing children (in case this replaces an existing ScrollContainer)
+	for child in get_children():
+		if child is MarginContainer and child.name == "MarginContainer":
+			margin_container = child
+			# Look for existing VBoxContainer
+			for grandchild in child.get_children():
+				if grandchild is VBoxContainer and grandchild.name == "ContentVBox":
+					content_container = grandchild
+					return  # Structure already exists
 	
-	# Section header
-	var header = HBoxContainer.new()
-	section.add_child(header)
+	# Create MarginContainer if not found
+	if not margin_container:
+		margin_container = MarginContainer.new()
+		margin_container.name = "MarginContainer"
+		margin_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		margin_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		add_child(margin_container)
 	
-	var label = Label.new()
-	label.text = title
-	label.add_theme_font_size_override("font_size", 20)
-	label.add_theme_color_override("font_color", ThemeConstants.colors.primary)
-	header.add_child(label)
-	
-	var separator = HSeparator.new()
-	section.add_child(separator)
-	
-	return section
+	# Create VBoxContainer if not found
+	if not content_container:
+		content_container = VBoxContainer.new()
+		content_container.name = "ContentVBox"
+		content_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		margin_container.add_child(content_container)
 
-func _load_test_items():
-	if not ItemManager:
-		push_error("ItemManager not available")
+func _apply_config():
+	"""Apply configuration from ThemeConstants"""
+	# Skip if already applied and not in editor
+	if _config_applied and not Engine.is_editor_hint():
 		return
 	
-	# Get variety of items for testing
-	var categories = ["card_fronts", "card_backs", "boards", "emojis", "avatars", "frames"]
-	for category in categories:
-		var items = ItemManager.get_items_by_category(category)
-		for item in items:
-			if test_items.size() >= 18:  # Limit for testing
-				break
-			test_items.append(item)
-		if test_items.size() >= 18:
-			break
-
-func _populate_items():
-	# Clear grid
-	for child in items_grid.get_children():
-		child.queue_free()
+	var theme_constants = ThemeConstants
+	if not theme_constants:
+		push_error("ScrollableContainer: ThemeConstants not found in autoloads")
+		return
 	
-	# Wait for cleanup
-	await get_tree().process_frame
+	var config = theme_constants.scroll_config
+	if not config:
+		push_error("ScrollableContainer: scroll_config not found in ThemeConstants")
+		return
 	
-	# Create cards
-	for item in test_items:
-		if not item is UnifiedItemData:
-			continue
-			
-		var card = unified_item_card_scene.instantiate()
-		items_grid.add_child(card)  # Add to tree first
-		
-		var is_owned = item.id in owned_items
-		var display_mode = UnifiedItemCard.DisplayMode.SHOP if not is_owned else UnifiedItemCard.DisplayMode.INVENTORY
-		
-		card.setup(item, display_mode)
-		
-		# Connect WITHOUT binding - card already emits the item
-		card.clicked.connect(_on_item_clicked)
-
-func _create_popup_test_buttons():
-	# Row 1: Success variants
-	var row1 = HBoxContainer.new()
-	row1.add_theme_constant_override("separation", 10)
-	popup_buttons_container.add_child(row1)
+	# Get configuration values (use custom if set, otherwise use theme defaults)
+	var width = custom_width if custom_width > 0 else config.get("width", 600)
+	var height = custom_height if custom_height > 0 else config.get("height", 300)
+	var margin_left = custom_margin_left if custom_margin_left >= 0 else config.get("margin_left", 5)
+	var margin_right = custom_margin_right if custom_margin_right >= 0 else config.get("margin_right", 5)
+	var margin_top = custom_margin_top if custom_margin_top >= 0 else config.get("margin_top", 2)
+	var margin_bottom = custom_margin_bottom if custom_margin_bottom >= 0 else config.get("margin_bottom", 9)
+	var separation = custom_separation if custom_separation >= 0 else config.get("content_separation", 10)
 	
-	var success_btn = Button.new()
-	success_btn.text = "Test Success (with item)"
-	success_btn.pressed.connect(_test_success_with_item)
-	row1.add_child(success_btn)
+	# Apply to ScrollContainer
+	custom_minimum_size = Vector2(width, height)
+	size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	size_flags_vertical = Control.SIZE_EXPAND_FILL
 	
-	var success_icon_btn = Button.new()
-	success_icon_btn.text = "Test Success (battlepass)"
-	success_icon_btn.pressed.connect(_test_success_with_icon)
-	row1.add_child(success_icon_btn)
-	
-	# Row 2: Error variants
-	var row2 = HBoxContainer.new()
-	row2.add_theme_constant_override("separation", 10)
-	popup_buttons_container.add_child(row2)
-	
-	var error_btn = Button.new()
-	error_btn.text = "Test Error (Insufficient Funds)"
-	error_btn.pressed.connect(_test_error_insufficient)
-	row2.add_child(error_btn)
-	
-	var error_generic_btn = Button.new()
-	error_generic_btn.text = "Test Error (Generic)"
-	error_generic_btn.pressed.connect(_test_error_generic)
-	row2.add_child(error_generic_btn)
-	
-	# Row 3: Kick/Leave
-	var row3 = HBoxContainer.new()
-	row3.add_theme_constant_override("separation", 10)
-	popup_buttons_container.add_child(row3)
-	
-	var kick_btn = Button.new()
-	kick_btn.text = "Test Kick Popup"
-	kick_btn.pressed.connect(_test_kick_popup)
-	row3.add_child(kick_btn)
-	
-	var leave_btn = Button.new()
-	leave_btn.text = "Test Leave Popup"
-	leave_btn.pressed.connect(_test_leave_popup)
-	row3.add_child(leave_btn)
-	
-	# Row 4: Special cases
-	var row4 = HBoxContainer.new()
-	row4.add_theme_constant_override("separation", 10)
-	popup_buttons_container.add_child(row4)
-	
-	var emoji_max_btn = Button.new()
-	emoji_max_btn.text = "Test Emoji at Max (4 equipped)"
-	emoji_max_btn.pressed.connect(_test_emoji_at_max)
-	row4.add_child(emoji_max_btn)
-	
-	var reward_btn = Button.new()
-	reward_btn.text = "Test Reward Popup"
-	reward_btn.pressed.connect(_test_reward_popup)
-	row4.add_child(reward_btn)
-	
-	# Row 5: Purchase variations
-	var row5 = HBoxContainer.new()
-	row5.add_theme_constant_override("separation", 10)
-	popup_buttons_container.add_child(row5)
-	
-	var purchase_item_btn = Button.new()
-	purchase_item_btn.text = "Test Purchase (Item)"
-	purchase_item_btn.pressed.connect(_test_purchase_item)
-	row5.add_child(purchase_item_btn)
-	
-	var purchase_bp_btn = Button.new()
-	purchase_bp_btn.text = "Test Purchase (Battle Pass)"
-	purchase_bp_btn.pressed.connect(_test_purchase_battlepass)
-	row5.add_child(purchase_bp_btn)
-
-# === Item Click Handlers ===
-
-func _on_item_clicked(item: UnifiedItemData):
-	print("Item clicked: %s (owned: %s)" % [item.display_name, item.id in owned_items])
-	
-	var is_owned = item.id in owned_items
-	
-	if not is_owned:
-		# Show purchase popup
-		_show_purchase_popup(item)
+	# Configure scroll modes
+	if auto_hide_scrollbars:
+		horizontal_scroll_mode = ScrollContainer.ScrollMode.SCROLL_MODE_AUTO
+		vertical_scroll_mode = ScrollContainer.ScrollMode.SCROLL_MODE_AUTO
 	else:
-		# Show equip popup
-		_show_equip_popup(item)
-
-func _show_purchase_popup(item: UnifiedItemData):
-	# Using scene-based popup
-	var popup = popup_base_scene.instantiate()
-	popup.set_script(preload("res://Pyramids/scripts/ui/popups/PurchasePopup.gd"))
-	get_tree().root.add_child(popup)
+		horizontal_scroll_mode = ScrollContainer.ScrollMode.SCROLL_MODE_SHOW_ALWAYS
+		vertical_scroll_mode = ScrollContainer.ScrollMode.SCROLL_MODE_SHOW_ALWAYS
 	
-	popup.setup_with_item("Confirm Purchase", item, 200, "stars")
+	# Style the scrollbars
+	_style_scrollbars(theme_constants)
 	
-	popup.confirmed.connect(func():
-		print("Purchase confirmed: %s" % item.display_name)
-		test_stars -= 200
-		_update_star_display()
-		owned_items.append(item.id)
-		_populate_items()
-		
-		# Show success
-		var success = popup_base_scene.instantiate()
-		success.set_script(preload("res://Pyramids/scripts/ui/popups/SuccessPopup.gd"))
-		get_tree().root.add_child(success)
-		success.setup_with_item("Purchase Complete!", "You now own %s!" % item.display_name, item)
-		success.display()
-	)
+	# Apply margins to MarginContainer
+	if margin_container:
+		margin_container.add_theme_constant_override("margin_left", margin_left)
+		margin_container.add_theme_constant_override("margin_right", margin_right)
+		margin_container.add_theme_constant_override("margin_top", margin_top)
+		margin_container.add_theme_constant_override("margin_bottom", margin_bottom)
 	
-	popup.cancelled.connect(func():
-		print("Purchase cancelled: %s" % item.display_name)
-	)
+	# Apply separation to VBoxContainer
+	if content_container:
+		content_container.add_theme_constant_override("separation", separation)
 	
-	popup.display()
+	_config_applied = true
 
-func _show_equip_popup(item: UnifiedItemData):
-	var category = item.get_category_name()
+func _style_scrollbars(theme_constants):
+	"""Apply styling to scrollbars"""
+	# Create scrollbar styles
+	var scrollbar_style = StyleBoxFlat.new()
+	scrollbar_style.bg_color = theme_constants.colors.gray_100
+	scrollbar_style.set_corner_radius_all(4)
 	
-	# Using scene-based popup
-	var popup = popup_base_scene.instantiate()
-	popup.set_script(preload("res://Pyramids/scripts/ui/popups/EquipPopup.gd"))
-	get_tree().root.add_child(popup)
+	var grabber_style = StyleBoxFlat.new()
+	grabber_style.bg_color = theme_constants.colors.gray_400
+	grabber_style.set_corner_radius_all(4)
 	
-	# Use the new setup_with_item method
-	popup.setup_with_item(item)
+	var grabber_hover = StyleBoxFlat.new()
+	grabber_hover.bg_color = theme_constants.colors.gray_500
+	grabber_hover.set_corner_radius_all(4)
 	
-	popup.confirmed.connect(func():
-		print("Equip confirmed: %s" % item.display_name)
-		
-		# Update equipped state
-		if category == "emoji":
-			if equipped_items.emoji.size() >= 4:
-				equipped_items.emoji.erase(equipped_items.emoji[0])
-			equipped_items.emoji.append(item.id)
-		else:
-			equipped_items[category] = item.id
-		
-		_populate_items()
-	)
+	var grabber_pressed = StyleBoxFlat.new()
+	grabber_pressed.bg_color = theme_constants.colors.gray_600
+	grabber_pressed.set_corner_radius_all(4)
 	
-	popup.display()
+	# Apply to vertical scrollbar
+	add_theme_stylebox_override("scroll", scrollbar_style)
+	add_theme_stylebox_override("grabber", grabber_style)
+	add_theme_stylebox_override("grabber_highlight", grabber_hover)
+	add_theme_stylebox_override("grabber_pressed", grabber_pressed)
 
-# === Test Button Handlers ===
+# === PUBLIC API ===
 
-func _test_success_with_item():
-	if test_items.size() > 0:
-		var popup = popup_base_scene.instantiate()
-		popup.set_script(preload("res://Pyramids/scripts/ui/popups/SuccessPopup.gd"))
-		get_tree().root.add_child(popup)
-		popup.setup_with_item("Purchase Complete!", "You now own this item!", test_items[0])
-		popup.display()
+func get_content_container() -> VBoxContainer:
+	"""Get the VBoxContainer where content should be added"""
+	if not content_container:
+		_setup_structure()
+	return content_container
 
-func _test_success_with_icon():
-	var popup = popup_base_scene.instantiate()
-	popup.set_script(preload("res://Pyramids/scripts/ui/popups/SuccessPopup.gd"))
-	get_tree().root.add_child(popup)
-	popup.setup_with_icon("Battle Pass Purchased!", "You now have access to premium rewards!", 
-		"res://Pyramids/assets/ui/bp_star.png", "Awesome!")
-	popup.display()
+func clear_content():
+	"""Clear all content from the container"""
+	if content_container:
+		for child in content_container.get_children():
+			child.queue_free()
 
-func _test_error_insufficient():
-	var popup = popup_base_scene.instantiate()
-	popup.set_script(preload("res://Pyramids/scripts/ui/popups/ErrorPopup.gd"))
-	get_tree().root.add_child(popup)
-	
-	# Use the new setup_insufficient_funds method
-	var required = 1000
-	popup.setup_insufficient_funds(required, test_stars, "stars")
-	popup.display()
+func add_content(node: Node):
+	"""Convenience method to add content to the container"""
+	if not content_container:
+		_setup_structure()
+	content_container.add_child(node)
 
-func _test_error_generic():
-	var popup = popup_base_scene.instantiate()
-	popup.set_script(preload("res://Pyramids/scripts/ui/popups/ErrorPopup.gd"))
-	get_tree().root.add_child(popup)
-	popup.setup("Error", "Something went wrong. Please try again.")
-	popup.display()
+func set_content_separation(separation: int):
+	"""Update the separation between content items"""
+	custom_separation = separation
+	if content_container:
+		content_container.add_theme_constant_override("separation", separation)
 
-func _test_kick_popup():
-	var popup = popup_base_scene.instantiate()
-	popup.set_script(preload("res://Pyramids/scripts/ui/popups/KickPopup.gd"))
-	get_tree().root.add_child(popup)
-	popup.setup("Kick Player", "", "TestPlayer123")
-	popup.confirmed.connect(func(): print("Kick confirmed"))
-	popup.cancelled.connect(func(): print("Kick cancelled"))
-	popup.display()
+func set_margins(left: int = -1, right: int = -1, top: int = -1, bottom: int = -1):
+	"""Update margins at runtime"""
+	if left >= 0:
+		custom_margin_left = left
+	if right >= 0:
+		custom_margin_right = right
+	if top >= 0:
+		custom_margin_top = top
+	if bottom >= 0:
+		custom_margin_bottom = bottom
+	_apply_config()
 
-func _test_leave_popup():
-	var popup = popup_base_scene.instantiate()
-	popup.set_script(preload("res://Pyramids/scripts/ui/popups/LeavePopup.gd"))
-	get_tree().root.add_child(popup)
-	popup.setup("Leave Lobby?", "Are you sure you want to leave the current lobby?")
-	popup.confirmed.connect(func(): print("Leave confirmed"))
-	popup.cancelled.connect(func(): print("Stay selected"))
-	popup.display()
+func refresh_config():
+	"""Force refresh configuration from ThemeConstants"""
+	_config_applied = false
+	_apply_config()
 
-func _test_emoji_at_max():
-	# Set up 4 emojis equipped
-	equipped_items.emoji = ["emoji_cool", "emoji_cry", "emoji_curse", "emoji_love"]
-	
-	# Find an emoji item to try to equip
-	for item in test_items:
-		if item.category == UnifiedItemData.Category.EMOJI and item.id not in equipped_items.emoji:
-			owned_items.append(item.id)  # Make sure it's owned
-			_show_equip_popup(item)
-			break
+# === COMPATIBILITY HELPERS ===
 
-func _test_reward_popup():
-	# RewardClaimPopup doesn't use the scene approach yet
-	var rewards = {"stars": 100}
-	var popup = RewardClaimPopup.new()
-	get_tree().root.add_child(popup)
-	popup.setup(rewards)
+func get_margin_container() -> MarginContainer:
+	"""Get the margin container for compatibility with existing code"""
+	if not margin_container:
+		_setup_structure()
+	return margin_container
 
-func _test_purchase_item():
-	if test_items.size() > 0:
-		# Find an unowned item
-		for item in test_items:
-			if item.id not in owned_items:
-				_show_purchase_popup(item)
-				break
-
-func _test_purchase_battlepass():
-	var popup = popup_base_scene.instantiate()
-	popup.set_script(preload("res://Pyramids/scripts/ui/popups/PurchasePopup.gd"))
-	get_tree().root.add_child(popup)
-	popup.setup_with_icon("Confirm Purchase", "Purchase Premium Battle Pass?", 
-		"res://Pyramids/assets/ui/bp_star.png", 999, "stars")
-	popup.display()
-
-# === Helpers ===
-
-func _on_stars_changed(value: float):
-	test_stars = int(value)
-	_update_star_display()
-
-func _update_star_display():
-	star_label.text = "Stars: %d" % test_stars
-	star_input.set_value_no_signal(test_stars)
+func get_vbox_container() -> VBoxContainer:
+	"""Alias for get_content_container() for compatibility"""
+	return get_content_container()

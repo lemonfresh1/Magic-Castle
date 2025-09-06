@@ -11,7 +11,8 @@ func _ready():
 	print("PopupQueue initialized")
 
 func show_popup(popup: PopupBase):
-	"""Queue a popup for display"""
+	print("PopupQueue.show_popup called")
+	print("  Current popup: ", current_popup)
 	if current_popup == null:
 		_display_popup(popup)
 	else:

@@ -1,15 +1,15 @@
 # InventoryUI.gd - Inventory interface showing owned items
 # Location: res://Pyramids/scripts/ui/inventory/InventoryUI.gd  
-# Last Updated: Cleaned up, removed debug prints [Date]
+# Last Updated: Updated to use DialogService popup system [Date]
 #
 # InventoryUI handles:
 # - Displaying owned items from EquipmentManager
 # - Filtering owned items by category/equipped status
-# - Initiating equip/unequip actions
+# - Initiating equip actions via DialogService
 # - Showing item details and equipped status
 #
-# Flow: EquipmentManager → InventoryUI → EquipDialog → EquipmentManager (equip)
-# Dependencies: EquipmentManager (for ownership/equipped state), ItemManager (for item data)
+# Flow: EquipmentManager → InventoryUI → DialogService → EquipPopup → EquipmentManager (equip)
+# Dependencies: EquipmentManager (for ownership/equipped state), ItemManager (for item data), DialogService (for popups)
 
 extends PanelContainer
 
@@ -38,9 +38,14 @@ func _ready():
 	if not is_node_ready():
 		return
 	
+	if PopupQueue:
+		PopupQueue.current_popup = null
+		PopupQueue.clear_queue()
+	
 	UIStyleManager.apply_panel_style(self, "inventory_ui")
 	
 	_connect_equipment_signals()
+	_connect_dialog_signals()
 	_setup_tabs()
 	_populate_inventory()
 
@@ -53,7 +58,7 @@ func _setup_tabs():
 		"card_skins": tab_container.get_node_or_null("Cards"),
 		"card_backs": tab_container.get_node_or_null("Card Backs"),
 		"board_skins": tab_container.get_node_or_null("Boards"),
-		"mini_profile_cards": tab_container.get_node_or_null("Mini Profiles"),  # NEW
+		"mini_profile_cards": tab_container.get_node_or_null("Mini Profiles"),
 		"avatars": tab_container.get_node_or_null("Avatars"),
 		"frames": tab_container.get_node_or_null("Frames"),
 		"emojis": tab_container.get_node_or_null("Emojis"),
@@ -129,9 +134,8 @@ func _populate_inventory():
 		else:
 			var grid = GridContainer.new()
 			grid.name = "ItemGrid"
-			# FIXED: Updated columns to match ShopUI (6 for regular, 3 for landscape)
 			var is_landscape = category_id in ["boards", "board_skins", "mini_profile_cards"]
-			grid.columns = 3 if is_landscape else 6  # Changed from 2/4 to 3/6
+			grid.columns = 3 if is_landscape else 6
 			grid.add_theme_constant_override("h_separation", 10)
 			grid.add_theme_constant_override("v_separation", 10)
 			scroll_container.add_child(grid)
@@ -148,7 +152,7 @@ func _get_owned_items_for_category(category_id: String) -> Array:
 		"card_backs": "card_back",
 		"board_skins": "board",
 		"boards": "board",
-		"mini_profile_cards": "mini_profile_card",  # NEW
+		"mini_profile_cards": "mini_profile_card",
 		"avatars": "avatar",
 		"frames": "frame",
 		"emojis": "emoji"
@@ -276,7 +280,6 @@ func _populate_flow_container(container: VBoxContainer, items: Array, tab_id: St
 		if not item is UnifiedItemData:
 			continue
 		
-		# FIXED: Check for both BOARD and MINI_PROFILE_CARD
 		var columns_needed = 2 if item.category in [UnifiedItemData.Category.BOARD, UnifiedItemData.Category.MINI_PROFILE_CARD] else 1
 		
 		if current_row == null or current_columns_used + columns_needed > MAX_COLUMNS:
@@ -286,7 +289,7 @@ func _populate_flow_container(container: VBoxContainer, items: Array, tab_id: St
 			container.add_child(current_row)
 			current_columns_used = 0
 		
-		var card = _create_inventory_card(item, tab_id)  # or _create_inventory_card
+		var card = _create_inventory_card(item, tab_id)
 		if card:
 			if columns_needed == 2:
 				card.custom_minimum_size = UIStyleManager.get_item_card_style("size_landscape")
@@ -316,7 +319,6 @@ func _populate_flow_container_by_type(container: VBoxContainer, items: Array, ta
 		items_by_type[cat_name].append(item)
 	
 	var first_category = true
-	# FIXED: Added mini_profile_card to the categories list
 	for category in ["card_front", "card_back", "board", "mini_profile_card", "avatar", "frame", "emoji"]:
 		if not items_by_type.has(category):
 			continue
@@ -336,7 +338,6 @@ func _populate_flow_container_by_type(container: VBoxContainer, items: Array, ta
 		var MAX_COLUMNS = 6
 		
 		for item in items_by_type[category]:
-			# FIXED: Check for both BOARD and MINI_PROFILE_CARD
 			var columns_needed = 2 if item.category in [UnifiedItemData.Category.BOARD, UnifiedItemData.Category.MINI_PROFILE_CARD] else 1
 			
 			if current_row == null or current_columns_used + columns_needed > MAX_COLUMNS:
@@ -381,7 +382,7 @@ func _create_inventory_card(item, tab_id: String):
 	card.setup(item, UnifiedItemCard.DisplayMode.INVENTORY)
 	
 	if not card.clicked.is_connected(_on_item_clicked):
-		card.clicked.connect(func(clicked_item): _on_item_clicked(item))
+		card.clicked.connect(_on_item_clicked)  # Remove the lambda
 	
 	return card
 
@@ -456,6 +457,16 @@ func _connect_equipment_signals():
 	if not EquipmentManager.item_unequipped.is_connected(_on_item_unequipped_signal):
 		EquipmentManager.item_unequipped.connect(_on_item_unequipped_signal)
 
+func _connect_dialog_signals():
+	"""Connect to DialogService signals for popup handling"""
+	if not DialogService:
+		push_error("DialogService not found!")
+		return
+	
+	# Connect to equip confirmation
+	if not DialogService.popup_confirmed.is_connected(_on_popup_confirmed):
+		DialogService.popup_confirmed.connect(_on_popup_confirmed)
+
 func _add_grid_spacer_row(grid: GridContainer):
 	"""Add a full row of minimal spacers"""
 	for i in range(4):
@@ -469,7 +480,7 @@ func _get_type_display_name(type: String) -> String:
 		"card_front": return "Card Fronts"
 		"card_back": return "Card Backs"
 		"board": return "Boards"
-		"mini_profile_card": return "Mini Profile Cards"  # ADDED
+		"mini_profile_card": return "Mini Profile Cards"
 		"avatar": return "Avatars"
 		"frame": return "Frames"
 		"emoji": return "Emojis"
@@ -502,43 +513,54 @@ func _on_filter_changed(index: int, tab_id: String):
 	_apply_filters(tab_id)
 
 func _on_item_clicked(item: UnifiedItemData):
-	"""Handle item click - equip/unequip"""
+	print("InventoryUI received click for: ", item.display_name if item else "null item")
 	if not item or not EquipmentManager:
+		print("Early return - item or EquipmentManager missing")
 		return
 	
-	if EquipmentManager.is_item_equipped(item.id):
-		var dialog = AcceptDialog.new()
-		dialog.title = "Item Equipped"
-		dialog.dialog_text = "%s is already equipped.\nWould you like to unequip it?" % item.display_name
-		dialog.ok_button_text = "Unequip"
-		dialog.add_cancel_button("Keep Equipped")
+	# Always show equip popup - no unequip option
+	if DialogService:
+		# Show equip confirmation
+		var popup = DialogService.show_equip(item.display_name, item.get_category_name(), item.id)
 		
-		dialog.get_ok_button().pressed.connect(func():
-			EquipmentManager.unequip_item(item.id)
-			_refresh_current_tab()
-		)
-		
-		get_viewport().add_child(dialog)
-		dialog.popup_centered()
-		return
-	
-	var success = EquipmentManager.equip_item(item.id)
-	if success:
-		_refresh_current_tab()
-		
-		var dialog = AcceptDialog.new()
-		dialog.title = "Item Equipped"
-		dialog.dialog_text = "%s has been equipped!" % item.display_name
-		dialog.ok_button_text = "OK"
-		get_viewport().add_child(dialog)
-		dialog.popup_centered()
+		# Store the item data for later use when confirmed
+		if popup:
+			popup.set_meta("item_to_equip", item)
 	else:
-		push_warning("Failed to equip item: " + item.id)
+		push_error("DialogService not available!")
+
+func _on_popup_confirmed(popup_type: String, data: Dictionary):
+	"""Handle confirmation from DialogService popups"""
+	if popup_type != "equip":
+		return
+	
+	# Get the item from the data
+	var item_id = data.get("item_id", "")
+	if item_id == "":
+		push_error("No item_id in equip confirmation data")
+		return
+	
+	# Equip the item
+	var success = EquipmentManager.equip_item(item_id)
+	
+	if success:
+		# Show success popup
+		if DialogService:
+			var item = ItemManager.get_item(item_id) if ItemManager else null
+			var item_name = item.display_name if item else item_id
+			DialogService.show_success("Item Equipped!", "%s has been equipped!" % item_name)
+		
+		# Refresh the current tab to update equipped badges
+		_refresh_current_tab()
+	else:
+		push_error("Failed to equip item: " + item_id)
+		if DialogService:
+			DialogService.show_error("Failed to equip item. Please try again.")
 
 func _on_item_equipped_signal(item_id: String, category: String):
-	"""Handle item equipped signal"""
+	"""Handle item equipped signal from EquipmentManager"""
 	_refresh_current_tab()
 
 func _on_item_unequipped_signal(item_id: String, category: String):
-	"""Handle item unequipped signal"""
+	"""Handle item unequipped signal from EquipmentManager"""
 	_refresh_current_tab()

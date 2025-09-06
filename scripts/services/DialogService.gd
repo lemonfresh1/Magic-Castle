@@ -1,19 +1,21 @@
 # DialogService.gd - Orchestrates popup display and business logic separation
 # Location: res://Pyramids/scripts/services/DialogService.gd
-# Last Updated: Created service layer for popup management
+# Last Updated: Fixed popup initialization - add to tree before setup
 
 extends Node
 
-# Preload popup scenes
-const EQUIP_POPUP = preload("res://Pyramids/scripts/ui/popups/EquipPopup.gd")
-const PURCHASE_POPUP = preload("res://Pyramids/scripts/ui/popups/PurchasePopup.gd")
-const SUCCESS_POPUP = preload("res://Pyramids/scripts/ui/popups/SuccessPopup.gd")
-const ERROR_POPUP = preload("res://Pyramids/scripts/ui/popups/ErrorPopup.gd")
-const KICK_POPUP = preload("res://Pyramids/scripts/ui/popups/KickPopup.gd")
-const LEAVE_POPUP = preload("res://Pyramids/scripts/ui/popups/LeavePopup.gd")
-const REWARD_CLAIM_POPUP = preload("res://Pyramids/scripts/ui/popups/RewardClaimPopup.gd")
-const ItemExpandedView = preload("res://Pyramids/scripts/ui/popups/ItemExpandedView.gd")
+# Scene preloads
+const POPUP_BASE_SCENE = preload("res://Pyramids/scenes/ui/popups/PopupBase.tscn")
+const REWARD_CLAIM_POPUP_SCENE = preload("res://Pyramids/scenes/ui/popups/RewardClaimPopup.tscn")
+const ITEM_EXPANDED_VIEW_SCENE = preload("res://Pyramids/scenes/ui/popups/ItemExpandedView.tscn")
 
+# Script preloads
+const EQUIP_POPUP_SCRIPT = preload("res://Pyramids/scripts/ui/popups/EquipPopup.gd")
+const PURCHASE_POPUP_SCRIPT = preload("res://Pyramids/scripts/ui/popups/PurchasePopup.gd")
+const SUCCESS_POPUP_SCRIPT = preload("res://Pyramids/scripts/ui/popups/SuccessPopup.gd")
+const ERROR_POPUP_SCRIPT = preload("res://Pyramids/scripts/ui/popups/ErrorPopup.gd")
+const KICK_POPUP_SCRIPT = preload("res://Pyramids/scripts/ui/popups/KickPopup.gd")
+const LEAVE_POPUP_SCRIPT = preload("res://Pyramids/scripts/ui/popups/LeavePopup.gd")
 
 # Global signals for popup events
 signal popup_confirmed(popup_type: String, data: Dictionary)
@@ -29,14 +31,36 @@ func _ready():
 # === Equip Dialogs ===
 func show_equip(item_name: String, category: String, item_id: String = "") -> PopupBase:
 	"""Show equip confirmation for an item"""
-	var popup = EQUIP_POPUP.new()
+	_debug_log("show_equip called for: %s (id: %s)" % [item_name, item_id])
 	
-	# Special message for emojis
-	var message = "Equip %s?" % item_name
-	if category == "emoji":
-		message = "Add %s to your emoji collection?\n(Max 4 emojis)" % item_name
+	# Create popup from scene and attach script
+	var popup = POPUP_BASE_SCENE.instantiate()
+	popup.set_script(EQUIP_POPUP_SCRIPT)
 	
-	popup.setup("Equip Item", message, item_name, category)
+	# Add to tree FIRST (needed for node references to work)
+	get_tree().root.add_child(popup)
+	
+	# Try to get the full item data to show the card visual
+	var item_data = null
+	if item_id != "" and ItemManager:
+		item_data = ItemManager.get_item(item_id)
+		_debug_log("Got item_data: %s" % (item_data.display_name if item_data else "null"))
+	
+	# Setup popup with item card if available, otherwise text-only
+	if item_data:
+		# Use the setup_with_item method to show the card visual
+		popup.setup_with_item(item_data)
+		
+		# Override message for emojis
+		if category == "emoji":
+			popup.show_message("Add %s to your emoji collection?\n(Max 4 emojis)" % item_name)
+	else:
+		# Fallback to text-only setup
+		var message = "Equip %s?" % item_name
+		if category == "emoji":
+			message = "Add %s to your emoji collection?\n(Max 4 emojis)" % item_name
+		
+		popup.setup("Equip Item", message, item_id, category)
 	
 	# Store data for signal emission
 	var data = {
@@ -57,13 +81,28 @@ func show_equip(item_name: String, category: String, item_id: String = "") -> Po
 	)
 	popup.closed.connect(func(): popup_closed.emit("equip", data))
 	
-	popup.show_popup()
+	# Remove from root and queue through PopupQueue
+	get_tree().root.remove_child(popup)
+	
+	# Queue through PopupQueue
+	if PopupQueue:
+		PopupQueue.show_popup(popup)
+	else:
+		push_error("PopupQueue not found!")
+		get_tree().root.add_child(popup)
+		popup.show_popup()
+	
 	return popup
 
 # === Purchase Dialogs ===
 func show_purchase(item_name: String, price: int, currency: String = "coins", item_id: String = "") -> PopupBase:
 	"""Show purchase confirmation dialog"""
-	var popup = PURCHASE_POPUP.new()
+	# Create popup from scene and attach script
+	var popup = POPUP_BASE_SCENE.instantiate()
+	popup.set_script(PURCHASE_POPUP_SCRIPT)
+	
+	# Add to tree FIRST (needed for node references to work)
+	get_tree().root.add_child(popup)
 	
 	var title = "Confirm Purchase"
 	var message = "Purchase %s for %d %s?" % [item_name, price, currency]
@@ -89,7 +128,17 @@ func show_purchase(item_name: String, price: int, currency: String = "coins", it
 	)
 	popup.closed.connect(func(): popup_closed.emit("purchase", data))
 	
-	popup.show_popup()
+	# Remove from root and queue through PopupQueue
+	get_tree().root.remove_child(popup)
+	
+	# Queue through PopupQueue
+	if PopupQueue:
+		PopupQueue.show_popup(popup)
+	else:
+		push_error("PopupQueue not found!")
+		get_tree().root.add_child(popup)
+		popup.show_popup()
+	
 	return popup
 
 func show_battle_pass_purchase(pass_type: String, price: int) -> PopupBase:
@@ -97,7 +146,13 @@ func show_battle_pass_purchase(pass_type: String, price: int) -> PopupBase:
 	var title = "Purchase %s Pass" % pass_type.capitalize()
 	var message = "Unlock the %s Pass for %d Stars?" % [pass_type.capitalize(), price]
 	
-	var popup = PURCHASE_POPUP.new()
+	# Create popup from scene and attach script
+	var popup = POPUP_BASE_SCENE.instantiate()
+	popup.set_script(PURCHASE_POPUP_SCRIPT)
+	
+	# Add to tree FIRST (needed for node references to work)
+	get_tree().root.add_child(popup)
+	
 	popup.setup(title, message, price, "stars")
 	
 	var data = {
@@ -110,7 +165,17 @@ func show_battle_pass_purchase(pass_type: String, price: int) -> PopupBase:
 	popup.cancelled.connect(func(): popup_cancelled.emit("battle_pass", data))
 	popup.closed.connect(func(): popup_closed.emit("battle_pass", data))
 	
-	popup.show_popup()
+	# Remove from root and queue through PopupQueue
+	get_tree().root.remove_child(popup)
+	
+	# Queue through PopupQueue
+	if PopupQueue:
+		PopupQueue.show_popup(popup)
+	else:
+		push_error("PopupQueue not found!")
+		get_tree().root.add_child(popup)
+		popup.show_popup()
+	
 	return popup
 
 func show_buy_levels(current_level: int, target_level: int, price_per_level: int) -> PopupBase:
@@ -120,7 +185,13 @@ func show_buy_levels(current_level: int, target_level: int, price_per_level: int
 	var title = "Buy Battle Pass Levels"
 	var message = "Buy %d levels for %d Stars?" % [levels_to_buy, total_price]
 	
-	var popup = PURCHASE_POPUP.new()
+	# Create popup from scene and attach script
+	var popup = POPUP_BASE_SCENE.instantiate()
+	popup.set_script(PURCHASE_POPUP_SCRIPT)
+	
+	# Add to tree FIRST (needed for node references to work)
+	get_tree().root.add_child(popup)
+	
 	popup.setup(title, message, total_price, "stars")
 	
 	var data = {
@@ -135,19 +206,45 @@ func show_buy_levels(current_level: int, target_level: int, price_per_level: int
 	popup.cancelled.connect(func(): popup_cancelled.emit("buy_levels", data))
 	popup.closed.connect(func(): popup_closed.emit("buy_levels", data))
 	
-	popup.show_popup()
+	# Remove from root and queue through PopupQueue
+	get_tree().root.remove_child(popup)
+	
+	# Queue through PopupQueue
+	if PopupQueue:
+		PopupQueue.show_popup(popup)
+	else:
+		push_error("PopupQueue not found!")
+		get_tree().root.add_child(popup)
+		popup.show_popup()
+	
 	return popup
 
 # === Success Dialogs ===
 func show_success(title: String = "Success!", message: String = "", button_text: String = "Great!") -> PopupBase:
 	"""Show generic success message"""
-	var popup = SUCCESS_POPUP.new()
+	# Create popup from scene and attach script
+	var popup = POPUP_BASE_SCENE.instantiate()
+	popup.set_script(SUCCESS_POPUP_SCRIPT)
+	
+	# Add to tree FIRST (needed for node references to work)
+	get_tree().root.add_child(popup)
+	
 	popup.setup(title, message, button_text)
 	
 	var data = {"type": "success", "title": title}
 	popup.closed.connect(func(): popup_closed.emit("success", data))
 	
-	popup.show_popup()
+	# Remove from root and queue through PopupQueue
+	get_tree().root.remove_child(popup)
+	
+	# Queue through PopupQueue
+	if PopupQueue:
+		PopupQueue.show_popup(popup)
+	else:
+		push_error("PopupQueue not found!")
+		get_tree().root.add_child(popup)
+		popup.show_popup()
+	
 	return popup
 
 func show_purchase_success(item_name: String) -> PopupBase:
@@ -157,13 +254,29 @@ func show_purchase_success(item_name: String) -> PopupBase:
 # === Error Dialogs ===
 func show_error(message: String, title: String = "Error") -> PopupBase:
 	"""Show an error message"""
-	var popup = ERROR_POPUP.new()
+	# Create popup from scene and attach script
+	var popup = POPUP_BASE_SCENE.instantiate()
+	popup.set_script(ERROR_POPUP_SCRIPT)
+	
+	# Add to tree FIRST (needed for node references to work)
+	get_tree().root.add_child(popup)
+	
 	popup.setup(title, message)
 	
 	var data = {"type": "error", "message": message}
 	popup.closed.connect(func(): popup_closed.emit("error", data))
 	
-	popup.show_popup()
+	# Remove from root and queue through PopupQueue
+	get_tree().root.remove_child(popup)
+	
+	# Queue through PopupQueue
+	if PopupQueue:
+		PopupQueue.show_popup(popup)
+	else:
+		push_error("PopupQueue not found!")
+		get_tree().root.add_child(popup)
+		popup.show_popup()
+	
 	return popup
 
 func show_insufficient_funds(required: int, current: int, currency: String = "coins") -> PopupBase:
@@ -188,10 +301,12 @@ func show_connection_error(error_type: String = "disconnect") -> PopupBase:
 	
 	return show_error(message, title)
 
-# === Reward Dialogs (using existing RewardClaimPopup) ===
+# === Reward Dialogs (using existing RewardClaimPopup scene) ===
+# DO NOT TOUCH - These work differently and should not be modified
 func show_reward(rewards: Dictionary, icon_texture: Texture2D = null) -> RewardClaimPopup:
 	"""Show single reward using existing RewardClaimPopup"""
-	var popup = REWARD_CLAIM_POPUP.new()
+	# DO NOT MODIFY - This uses its own scene and works correctly
+	var popup = REWARD_CLAIM_POPUP_SCENE.instantiate()
 	popup.setup(rewards, icon_texture)
 	
 	var data = {"rewards": rewards}
@@ -210,7 +325,8 @@ func show_reward(rewards: Dictionary, icon_texture: Texture2D = null) -> RewardC
 
 func show_rewards_with_level_up(rewards: Dictionary, level_ups: Array) -> RewardClaimPopup:
 	"""Show rewards with level-up information"""
-	var popup = REWARD_CLAIM_POPUP.new()
+	# DO NOT MODIFY - This uses its own scene and works correctly
+	var popup = REWARD_CLAIM_POPUP_SCENE.instantiate()
 	popup.setup_with_level_ups(rewards, level_ups)
 	
 	var data = {"rewards": rewards, "level_ups": level_ups}
@@ -228,7 +344,8 @@ func show_rewards_with_level_up(rewards: Dictionary, level_ups: Array) -> Reward
 
 func show_batch_rewards(rewards_array: Array) -> RewardClaimPopup:
 	"""Show multiple rewards using existing RewardClaimPopup"""
-	var popup = REWARD_CLAIM_POPUP.new()
+	# DO NOT MODIFY - This uses its own scene and works correctly
+	var popup = REWARD_CLAIM_POPUP_SCENE.instantiate()
 	popup.setup_batch(rewards_array)
 	
 	var data = {"rewards": rewards_array}
@@ -246,7 +363,8 @@ func show_batch_rewards(rewards_array: Array) -> RewardClaimPopup:
 
 func show_batch_rewards_with_level_up(rewards_array: Array, level_ups: Array) -> RewardClaimPopup:
 	"""Show batch rewards with level-up information"""
-	var popup = REWARD_CLAIM_POPUP.new()
+	# DO NOT MODIFY - This uses its own scene and works correctly
+	var popup = REWARD_CLAIM_POPUP_SCENE.instantiate()
 	popup.setup_batch_with_level_ups(rewards_array, level_ups)
 	
 	var data = {"rewards": rewards_array, "level_ups": level_ups}
@@ -269,7 +387,8 @@ func show_starbox_claim(xp: int, stars: int, streak: int) -> RewardClaimPopup:
 		"stars": stars
 	}
 	
-	var popup = REWARD_CLAIM_POPUP.new()
+	# DO NOT MODIFY - This uses its own scene and works correctly
+	var popup = REWARD_CLAIM_POPUP_SCENE.instantiate()
 	popup.setup(rewards)
 	
 	# TODO: Add streak display to popup
@@ -292,7 +411,13 @@ func show_starbox_claim(xp: int, stars: int, streak: int) -> RewardClaimPopup:
 # === Kick/Leave Dialogs ===
 func show_kick_player(player_name: String) -> PopupBase:
 	"""Show kick player confirmation"""
-	var popup = KICK_POPUP.new()
+	# Create popup from scene and attach script
+	var popup = POPUP_BASE_SCENE.instantiate()
+	popup.set_script(KICK_POPUP_SCRIPT)
+	
+	# Add to tree FIRST (needed for node references to work)
+	get_tree().root.add_child(popup)
+	
 	var title = "Kick Player"
 	var message = "Are you sure you want to kick %s from the lobby?" % player_name
 	
@@ -303,12 +428,28 @@ func show_kick_player(player_name: String) -> PopupBase:
 	popup.cancelled.connect(func(): popup_cancelled.emit("kick", data))
 	popup.closed.connect(func(): popup_closed.emit("kick", data))
 	
-	popup.show_popup()
+	# Remove from root and queue through PopupQueue
+	get_tree().root.remove_child(popup)
+	
+	# Queue through PopupQueue
+	if PopupQueue:
+		PopupQueue.show_popup(popup)
+	else:
+		push_error("PopupQueue not found!")
+		get_tree().root.add_child(popup)
+		popup.show_popup()
+	
 	return popup
 
 func show_leave_lobby() -> PopupBase:
 	"""Show leave lobby confirmation"""
-	var popup = LEAVE_POPUP.new()
+	# Create popup from scene and attach script
+	var popup = POPUP_BASE_SCENE.instantiate()
+	popup.set_script(LEAVE_POPUP_SCRIPT)
+	
+	# Add to tree FIRST (needed for node references to work)
+	get_tree().root.add_child(popup)
+	
 	var title = "Leave Lobby"
 	var message = "Are you sure you want to leave the lobby?"
 	
@@ -319,7 +460,17 @@ func show_leave_lobby() -> PopupBase:
 	popup.cancelled.connect(func(): popup_cancelled.emit("leave", data))
 	popup.closed.connect(func(): popup_closed.emit("leave", data))
 	
-	popup.show_popup()
+	# Remove from root and queue through PopupQueue
+	get_tree().root.remove_child(popup)
+	
+	# Queue through PopupQueue
+	if PopupQueue:
+		PopupQueue.show_popup(popup)
+	else:
+		push_error("PopupQueue not found!")
+		get_tree().root.add_child(popup)
+		popup.show_popup()
+	
 	return popup
 
 # === Utility Functions ===
