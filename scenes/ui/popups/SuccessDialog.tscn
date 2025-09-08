@@ -1,0 +1,73 @@
+[gd_scene load_steps=4 format=3 uid="uid://cjxdj6rc3avdh"]
+
+[ext_resource type="Script" uid="uid://cdl8ylwdypyiq" path="res://Pyramids/scripts/ui/popups/SuccessDialog.gd" id="1_6y3ec"]
+[ext_resource type="Script" uid="uid://dd2kyyy4exmcl" path="res://Pyramids/scripts/ui/components/StyledPanel.gd" id="1_rwpui"]
+[ext_resource type="Script" uid="uid://c5xs6ntwdsk3t" path="res://Pyramids/scripts/ui/components/StyledButton.gd" id="2_6y3ec"]
+
+[node name="SuccessDialog" type="ColorRect"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.74902)
+script = ExtResource("1_6y3ec")
+
+[node name="StyledPanel" type="PanelContainer" parent="."]
+custom_minimum_size = Vector2(200, 160)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -150.0
+offset_right = 200.0
+offset_bottom = 150.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_rwpui")
+panel_style = "modal"
+metadata/_custom_type_script = "uid://dd2kyyy4exmcl"
+
+[node name="MarginContainer" type="MarginContainer" parent="StyledPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 24
+
+[node name="VBoxContainer" type="VBoxContainer" parent="StyledPanel/MarginContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_override_constants/separation = 16
+
+[node name="TitleLabel" type="Label" parent="StyledPanel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.0627451, 0.72549, 0.505882, 1)
+theme_override_font_sizes/font_size = 24
+text = "Purchase Successful!"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ItemCardContainer" type="CenterContainer" parent="StyledPanel/MarginContainer/VBoxContainer"]
+custom_minimum_size = Vector2(60, 60)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+
+[node name="MessageLabel" type="Label" parent="StyledPanel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.215686, 0.254902, 0.317647, 1)
+theme_override_font_sizes/font_size = 18
+text = "Added to inventory!"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ConfirmButton" type="Button" parent="StyledPanel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "AWESOME!"
+script = ExtResource("2_6y3ec")
+metadata/_custom_type_script = "uid://c5xs6ntwdsk3t"

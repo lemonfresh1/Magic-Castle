@@ -1,6 +1,29 @@
-# AchievementUI.gd - Main achievement display UI
+# AchievementUI.gd - Main achievement display and management interface
 # Location: res://Pyramids/scripts/ui/achievements/AchievementUI.gd
-# Last Updated: Fixed sorting, styling, and auto-selection [2025-08-28]
+# Last Updated: Fixed popup system, kept original ScrollContainer structure
+#
+# Purpose: Displays all achievements in a scrollable grid with filtering and sorting options.
+# Manages achievement claiming, tracks level-ups during claims, and shows appropriate popups.
+# 
+# Dependencies:
+# - AchievementManager (autoload) - Core achievement data and state management
+# - XPManager (autoload) - Handles XP and level progression
+# - DialogService (autoload) - Manages popup display
+# - UIStyleManager (autoload) - Panel styling (root node only)
+# - UnifiedAchievementCard (scene) - Individual achievement display cards
+#
+# Scene Structure:
+# - Root: PanelContainer (script constraint - cannot change)
+# - ScrollContainer with AchievementsContainer child (original structure preserved)
+#
+# Flow:
+# 1. Load all base achievements from AchievementManager
+# 2. Create UnifiedAchievementCard for each achievement
+# 3. Apply sorting/filtering based on user selection
+# 4. Handle claim requests → track level-ups → show success popup if leveled up
+# 5. Auto-select appropriate tiers after claims
+#
+# Note: Root node is PanelContainer (cannot be changed to StyledPanel due to script constraint)
 
 extends PanelContainer
 
@@ -28,11 +51,11 @@ var debug_enabled: bool = false
 var global_debug: bool = true
 
 func _ready():
-	# Apply panel styling
+	# Apply panel styling (root node must stay as PanelContainer)
 	if UIStyleManager:
 		UIStyleManager.apply_panel_style(self, "achievements_ui")
 	
-	# Setup filter button
+	# Setup filter button with local styling
 	_setup_filter_button()
 	
 	# Setup scroll container sizing
@@ -63,7 +86,7 @@ func _debug_log(message: String) -> void:
 		print("[ACHIEVEMENTUI] %s" % message)
 
 func _setup_filter_button():
-	"""Setup the filter dropdown"""
+	"""Setup the filter dropdown with local styling"""
 	if not filter_button:
 		return
 		
@@ -75,6 +98,36 @@ func _setup_filter_button():
 	
 	filter_button.selected = 0  # Default to Progress High to Low
 	filter_button.item_selected.connect(_on_filter_changed)
+	
+	# Apply local styling to filter button if needed
+	_style_filter_button()
+
+func _style_filter_button():
+	"""Apply local styling to the filter button"""
+	if not filter_button or not ThemeConstants:
+		return
+	
+	# Create custom style for the OptionButton
+	var normal_style = StyleBoxFlat.new()
+	normal_style.bg_color = ThemeConstants.filter_style_config.normal_color
+	normal_style.set_corner_radius_all(ThemeConstants.filter_style_config.corner_radius)
+	normal_style.content_margin_left = ThemeConstants.filter_style_config.content_margin_h
+	normal_style.content_margin_right = ThemeConstants.filter_style_config.content_margin_h
+	normal_style.content_margin_top = ThemeConstants.filter_style_config.content_margin_v
+	normal_style.content_margin_bottom = ThemeConstants.filter_style_config.content_margin_v
+	
+	var hover_style = normal_style.duplicate()
+	hover_style.bg_color = ThemeConstants.filter_style_config.hover_color
+	
+	var pressed_style = normal_style.duplicate()
+	pressed_style.bg_color = ThemeConstants.filter_style_config.pressed_color
+	
+	# Apply styles
+	filter_button.add_theme_stylebox_override("normal", normal_style)
+	filter_button.add_theme_stylebox_override("hover", hover_style)
+	filter_button.add_theme_stylebox_override("pressed", pressed_style)
+	filter_button.add_theme_stylebox_override("disabled", normal_style)
+	filter_button.add_theme_stylebox_override("focus", normal_style)
 
 func load_achievements():
 	"""Load all achievements with proper sorting"""
@@ -313,7 +366,7 @@ func _on_level_up_occurred(old_level: int, new_level: int, rewards: Dictionary):
 		# DON'T show immediately - wait for claim to finish
 
 func _on_claim_requested(base_id: String, tier: int):
-	"""Handle claim request from a card - FIXED"""
+	"""Handle claim request from a card - Shows level-up popup if applicable"""
 	_debug_log("========== CLAIM START ==========")
 	_debug_log("Claiming %s tier %d" % [base_id, tier])
 	
@@ -336,13 +389,41 @@ func _on_claim_requested(base_id: String, tier: int):
 	
 	_debug_log("Pending level-ups to show: %d" % pending_level_ups.size())
 	
-	# Show notifications if any
+	# Show level-up popup if any level-ups occurred
 	if pending_level_ups.size() > 0:
-		_debug_log("🎉 Showing notification...")
-		_show_pending_notifications()
+		_debug_log("🎉 Showing level-up popup...")
+		_show_level_up_popup()
 	
 	claim_in_progress = false
 	_debug_log("========== CLAIM END ==========")
+
+func _show_level_up_popup():
+	"""Show level-up success popup using DialogService"""
+	if pending_level_ups.size() == 0:
+		return
+	
+	# Calculate level progression and total stars earned
+	var first_level = pending_level_ups[0].old_level
+	var final_level = pending_level_ups[-1].new_level
+	var total_stars = 0
+	
+	for level_data in pending_level_ups:
+		if level_data.rewards.has("stars"):
+			total_stars += level_data.rewards.stars
+	
+	# Format the message
+	var title = "Level Up! 🎉"
+	var message = "Level %d → %d\n+%d Stars" % [first_level, final_level, total_stars]
+	
+	# Show success popup through DialogService
+	if DialogService:
+		DialogService.show_success(title, message, "Awesome!")
+		_debug_log("Level-up popup shown: %s" % message)
+	else:
+		push_error("[AchievementUI] DialogService not found!")
+	
+	# Clear pending level-ups after showing
+	pending_level_ups.clear()
 
 func _on_tier_selected(base_id: String, tier: int):
 	"""Handle tier selection from a card"""
@@ -404,33 +485,3 @@ func highlight_new_achievements():
 func on_screen_entered():
 	"""Called when returning to achievements screen"""
 	reset_to_default_sorting()
-
-func _show_pending_notifications():
-	"""Show level-up notification if any occurred during achievement claims"""
-	if pending_level_ups.size() > 0:
-		_debug_log("Showing %d pending level-ups from achievement claims" % pending_level_ups.size())
-		
-		# Use UnifiedRewardNotification for achievement level-ups
-		var notification_path = "res://Pyramids/scenes/ui/dialogs/UnifiedRewardNotification.tscn"
-		if ResourceLoader.exists(notification_path):
-			var notification = load(notification_path).instantiate()
-			get_tree().root.add_child(notification)
-			
-			# Show level-ups with achievement context
-			var context_data = {
-				"trigger_source": "achievement",
-				"total_stars_earned": 0,
-				"total_xp_earned": 0
-			}
-			
-			# Calculate total stars from level-ups
-			for level_data in pending_level_ups:
-				if level_data.rewards.has("stars"):
-					context_data.total_stars_earned += level_data.rewards.stars
-			
-			# Show the notification
-			notification.show_level_ups_with_context(pending_level_ups, context_data)
-		else:
-			push_error("[AchievementUI] UnifiedRewardNotification scene not found!")
-		
-		pending_level_ups.clear()

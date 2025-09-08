@@ -1,6 +1,6 @@
 # ScrollableContainer.gd - Self-styling scroll container with auto-structure
 # Location: res://Pyramids/scripts/ui/components/ScrollableContainer.gd  
-# Last Updated: Created as replacement for UIStyleManager.setup_scrollable_content [Date]
+# Last Updated: Added option to hide scrollbars
 
 extends ScrollContainer
 class_name ScrollableContainer
@@ -14,6 +14,7 @@ class_name ScrollableContainer
 @export var custom_margin_bottom: int = -1
 @export var custom_separation: int = -1
 @export var auto_hide_scrollbars: bool = true
+@export var hide_scrollbars: bool = true  # NEW: completely hide scrollbars
 
 # Internal node references
 var margin_container: MarginContainer
@@ -93,14 +94,18 @@ func _apply_config():
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
 	
 	# Configure scroll modes
-	if auto_hide_scrollbars:
+	if hide_scrollbars:
+		# Completely hide scrollbars but keep scrolling functionality
+		horizontal_scroll_mode = ScrollContainer.ScrollMode.SCROLL_MODE_SHOW_NEVER
+		vertical_scroll_mode = ScrollContainer.ScrollMode.SCROLL_MODE_SHOW_NEVER
+	elif auto_hide_scrollbars:
 		horizontal_scroll_mode = ScrollContainer.ScrollMode.SCROLL_MODE_AUTO
 		vertical_scroll_mode = ScrollContainer.ScrollMode.SCROLL_MODE_AUTO
 	else:
 		horizontal_scroll_mode = ScrollContainer.ScrollMode.SCROLL_MODE_SHOW_ALWAYS
 		vertical_scroll_mode = ScrollContainer.ScrollMode.SCROLL_MODE_SHOW_ALWAYS
 	
-	# Style the scrollbars
+	# Style the scrollbars (even if hidden, in case they're shown later)
 	_style_scrollbars(theme_constants)
 	
 	# Apply margins to MarginContainer
@@ -182,6 +187,11 @@ func set_margins(left: int = -1, right: int = -1, top: int = -1, bottom: int = -
 func refresh_config():
 	"""Force refresh configuration from ThemeConstants"""
 	_config_applied = false
+	_apply_config()
+
+func set_scrollbar_visibility(visible: bool):
+	"""Control scrollbar visibility at runtime"""
+	hide_scrollbars = not visible
 	_apply_config()
 
 # === COMPATIBILITY HELPERS ===

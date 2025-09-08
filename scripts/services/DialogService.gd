@@ -1,6 +1,12 @@
 # DialogService.gd - Orchestrates popup display and business logic separation
 # Location: res://Pyramids/scripts/services/DialogService.gd
-# Last Updated: Fixed popup initialization - add to tree before setup
+# Last Updated: Added UnifiedItemData support for purchase popups with card display
+#
+# Purpose: Central service for managing all popup dialogs in the game
+# Dependencies: PopupQueue (autoload), ItemManager (autoload), various popup scripts
+# Use Cases: Purchase confirmations, equip dialogs, error messages, rewards, etc.
+# Flow: 1) UI calls DialogService → 2) Create popup → 3) Add to tree → 4) Setup → 5) Queue display
+# Notes: Must add popup to tree before setup for node references to work
 
 extends Node
 
@@ -95,8 +101,8 @@ func show_equip(item_name: String, category: String, item_id: String = "") -> Po
 	return popup
 
 # === Purchase Dialogs ===
-func show_purchase(item_name: String, price: int, currency: String = "coins", item_id: String = "") -> PopupBase:
-	"""Show purchase confirmation dialog"""
+func show_purchase(item_name: String, price: int, currency: String = "coins", item_id: String = "", item_data: UnifiedItemData = null) -> PopupBase:
+	"""Show purchase confirmation dialog - now accepts full item data for card display"""
 	# Create popup from scene and attach script
 	var popup = POPUP_BASE_SCENE.instantiate()
 	popup.set_script(PURCHASE_POPUP_SCRIPT)
@@ -104,10 +110,20 @@ func show_purchase(item_name: String, price: int, currency: String = "coins", it
 	# Add to tree FIRST (needed for node references to work)
 	get_tree().root.add_child(popup)
 	
-	var title = "Confirm Purchase"
-	var message = "Purchase %s for %d %s?" % [item_name, price, currency]
+	# Try to get the full item data if not provided but item_id exists
+	if not item_data and item_id != "" and ItemManager:
+		item_data = ItemManager.get_item(item_id)
+		_debug_log("Got item_data from ItemManager for purchase: %s" % (item_data.display_name if item_data else "null"))
 	
-	popup.setup(title, message, price, currency)
+	# Use setup_with_item if we have the data, otherwise fall back to basic setup
+	if item_data:
+		_debug_log("Using setup_with_item for purchase popup with: %s" % item_data.display_name)
+		popup.setup_with_item("Purchase", item_data, price, currency)
+	else:
+		_debug_log("Using basic setup for purchase popup (no item data)")
+		var title = "Confirm Purchase"
+		var message = "Purchase %s for %d %s?" % [item_name, price, currency]
+		popup.setup(title, message, price, currency)
 	
 	var data = {
 		"item_name": item_name,
@@ -121,6 +137,7 @@ func show_purchase(item_name: String, price: int, currency: String = "coins", it
 	popup.confirmed.connect(func():
 		_debug_log("Purchase confirmed: %s for %d %s" % [item_name, price, currency])
 		popup_confirmed.emit("purchase", data)
+		# REMOVED THE DIRECT PURCHASE CALL - ShopUI will handle this
 	)
 	popup.cancelled.connect(func():
 		_debug_log("Purchase cancelled: %s" % item_name)

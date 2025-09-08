@@ -455,13 +455,9 @@ func _on_item_purchased(item_id: String, price: int, currency: String):
 
 func _on_insufficient_funds(needed: int, current: int, currency: String):
 	"""Handle insufficient funds signal from ShopManager"""
-	var dialog = AcceptDialog.new()
-	dialog.title = "Insufficient Funds"
-	dialog.dialog_text = "You need %d %s but only have %d %s" % [needed, currency, current, currency]
-	dialog.ok_button_text = "OK"
-	
+	var dialog = preload("res://Pyramids/scenes/ui/popups/InsufficientFundsDialog.tscn").instantiate()
+	dialog.setup(needed, current)
 	get_viewport().add_child(dialog)
-	dialog.popup_centered()
 
 func _on_shop_refreshed(new_sales: Array):
 	"""Handle daily sales refresh"""
@@ -471,31 +467,22 @@ func _on_shop_refreshed(new_sales: Array):
 
 func _show_purchase_dialog(item: UnifiedItemData):
 	"""Show purchase confirmation dialog"""
-	var dialog = AcceptDialog.new()
-	dialog.title = "Confirm Purchase"
-	
 	var price = ShopManager.get_item_price(item.id) if ShopManager else item.base_price
 	var current_stars = StarManager.get_balance() if StarManager else 0
 	var can_afford = current_stars >= price
 	
-	dialog.dialog_text = "Purchase %s for %d ⭐?\n\nYour balance: %d ⭐\nAfter purchase: %d ⭐" % [
-		item.display_name,
-		price,
-		current_stars,
-		current_stars - price
-	]
+	if not can_afford:
+		# Use new dialog scene
+		var dialog = preload("res://Pyramids/scenes/ui/popups/InsufficientFundsDialog.tscn").instantiate()
+		dialog.setup(price, current_stars)
+		get_viewport().add_child(dialog)
+		return
 	
-	if can_afford:
-		dialog.ok_button_text = "Buy Now"
-		dialog.get_ok_button().pressed.connect(_confirm_purchase.bind(item))
-		dialog.get_ok_button().modulate = Color.WHITE
-	else:
-		dialog.ok_button_text = "Not Enough Stars"
-		dialog.get_ok_button().disabled = true
-		dialog.get_ok_button().modulate = Color(0.5, 0.5, 0.5)
-	
+	# Use new purchase dialog scene
+	var dialog = preload("res://Pyramids/scenes/ui/popups/PurchaseDialog.tscn").instantiate()
+	dialog.setup(item, price)
+	dialog.confirmed.connect(_confirm_purchase.bind(item))
 	get_viewport().add_child(dialog)
-	dialog.popup_centered()
 
 func _confirm_purchase(item: UnifiedItemData):
 	"""Process the purchase through ShopManager"""
@@ -508,10 +495,6 @@ func _confirm_purchase(item: UnifiedItemData):
 
 func _show_purchase_success(item: UnifiedItemData):
 	"""Show purchase success feedback"""
-	var dialog = AcceptDialog.new()
-	dialog.title = "Purchase Successful!"
-	dialog.dialog_text = "%s has been added to your inventory!" % item.display_name
-	dialog.ok_button_text = "Great!"
-	
+	var dialog = preload("res://Pyramids/scenes/ui/popups/SuccessDialog.tscn").instantiate()
+	dialog.setup(item)
 	get_viewport().add_child(dialog)
-	dialog.popup_centered()

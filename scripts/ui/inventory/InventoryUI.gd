@@ -1,6 +1,6 @@
 # InventoryUI.gd - Inventory interface showing owned items
 # Location: res://Pyramids/scripts/ui/inventory/InventoryUI.gd  
-# Last Updated: Updated to use DialogService popup system [Date]
+# Last Updated: Migrated to StyledPanel/ScrollableContainer components
 #
 # InventoryUI handles:
 # - Displaying owned items from EquipmentManager
@@ -11,7 +11,7 @@
 # Flow: EquipmentManager → InventoryUI → DialogService → EquipPopup → EquipmentManager (equip)
 # Dependencies: EquipmentManager (for ownership/equipped state), ItemManager (for item data), DialogService (for popups)
 
-extends PanelContainer
+extends StyledPanel  # Changed from PanelContainer
 
 # === SIGNALS ===
 signal inventory_closed
@@ -42,6 +42,7 @@ func _ready():
 		PopupQueue.current_popup = null
 		PopupQueue.clear_queue()
 	
+	# Use the traditional UIStyleManager for the root panel since we can't change it to StyledPanel
 	UIStyleManager.apply_panel_style(self, "inventory_ui")
 	
 	_connect_equipment_signals()
@@ -79,7 +80,7 @@ func _setup_tabs():
 		if sounds_index >= 0:
 			tab_container.set_tab_disabled(sounds_index, true)
 	
-	# Setup filter buttons
+	# Setup filter buttons (OptionButton stays as-is)
 	for category_id in tabs:
 		var tab = tabs[category_id]
 		if not tab:
@@ -87,7 +88,7 @@ func _setup_tabs():
 		
 		var filter_button = tab.find_child("FilterButton", true, false)
 		
-		if filter_button:
+		if filter_button and filter_button is OptionButton:
 			filter_button.clear()
 			if category_id == "all":
 				for option in FILTER_OPTIONS:
@@ -99,14 +100,44 @@ func _setup_tabs():
 			if not filter_button.item_selected.is_connected(_on_filter_changed):
 				filter_button.item_selected.connect(_on_filter_changed.bind(category_id))
 			
-			UIStyleManager.style_filter_button(filter_button, Color("#a487ff"))
+			# Style the OptionButton directly with theme overrides
+			_style_filter_button(filter_button, Color("#a487ff"))
 		
+		# ScrollableContainer should already be in the scene
 		var scroll_container = tab.find_child("ScrollContainer", true, false)
 		if scroll_container:
-			scroll_container.self_modulate.a = 0
-			scroll_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
-			scroll_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			scroll_container.custom_minimum_size = Vector2(600, 300)
+			# If it's already a ScrollableContainer, it will self-style
+			if scroll_container is ScrollableContainer:
+				# ScrollableContainer handles its own styling
+				pass
+			else:
+				# Old ScrollContainer - will need to be replaced in scene
+				scroll_container.self_modulate.a = 0
+				scroll_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
+				scroll_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				scroll_container.custom_minimum_size = Vector2(600, 300)
+
+func _style_filter_button(button: OptionButton, color: Color):
+	"""Apply filter button styling directly"""
+	# Create stylebox for the button
+	var style_normal = StyleBoxFlat.new()
+	style_normal.bg_color = color
+	style_normal.set_corner_radius_all(ThemeConstants.filter_style_config.corner_radius)
+	style_normal.content_margin_left = ThemeConstants.filter_style_config.content_margin_h
+	style_normal.content_margin_right = ThemeConstants.filter_style_config.content_margin_h
+	style_normal.content_margin_top = ThemeConstants.filter_style_config.content_margin_v
+	style_normal.content_margin_bottom = ThemeConstants.filter_style_config.content_margin_v
+	
+	# Apply styles
+	button.add_theme_stylebox_override("normal", style_normal)
+	button.add_theme_stylebox_override("hover", style_normal.duplicate())
+	button.add_theme_stylebox_override("pressed", style_normal.duplicate())
+	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	
+	# Text color
+	button.add_theme_color_override("font_color", Color.WHITE)
+	button.add_theme_color_override("font_hover_color", Color.WHITE)
+	button.add_theme_color_override("font_pressed_color", Color.WHITE)
 
 func _populate_inventory():
 	"""Populate all tabs with owned items"""
@@ -123,13 +154,19 @@ func _populate_inventory():
 		if not scroll_container:
 			continue
 		
-		# Clear existing
-		for child in scroll_container.get_children():
-			child.queue_free()
+		# Get the actual content container
+		var content_parent = scroll_container
+		if scroll_container is ScrollableContainer:
+			content_parent = scroll_container.get_content_container()
+		
+		# Clear existing content
+		for child in content_parent.get_children():
+			if child.name != "MarginContainer" and child.name != "ContentVBox":  # Don't remove ScrollableContainer's internal structure
+				child.queue_free()
 		
 		if category_id == "all":
 			var container = _create_flow_container()
-			scroll_container.add_child(container)
+			content_parent.add_child(container)
 			_populate_flow_container(container, items, category_id)
 		else:
 			var grid = GridContainer.new()
@@ -138,7 +175,7 @@ func _populate_inventory():
 			grid.columns = 3 if is_landscape else 6
 			grid.add_theme_constant_override("h_separation", 10)
 			grid.add_theme_constant_override("v_separation", 10)
-			scroll_container.add_child(grid)
+			content_parent.add_child(grid)
 			_populate_grid(grid, items, category_id)
 
 func _get_owned_items_for_category(category_id: String) -> Array:
@@ -291,10 +328,11 @@ func _populate_flow_container(container: VBoxContainer, items: Array, tab_id: St
 		
 		var card = _create_inventory_card(item, tab_id)
 		if card:
+			# Use ThemeConstants directly instead of UIStyleManager
 			if columns_needed == 2:
-				card.custom_minimum_size = UIStyleManager.get_item_card_style("size_landscape")
+				card.custom_minimum_size = ThemeConstants.item_card_style.size_landscape
 			else:
-				card.custom_minimum_size = UIStyleManager.get_item_card_style("size_portrait")
+				card.custom_minimum_size = ThemeConstants.item_card_style.size_portrait
 			
 			card.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 			current_row.add_child(card)
@@ -349,10 +387,11 @@ func _populate_flow_container_by_type(container: VBoxContainer, items: Array, ta
 			
 			var card = _create_inventory_card(item, tab_id)
 			if card:
+				# Use ThemeConstants directly
 				if columns_needed == 2:
-					card.custom_minimum_size = UIStyleManager.get_item_card_style("size_landscape")
+					card.custom_minimum_size = ThemeConstants.item_card_style.size_landscape
 				else:
-					card.custom_minimum_size = UIStyleManager.get_item_card_style("size_portrait")
+					card.custom_minimum_size = ThemeConstants.item_card_style.size_portrait
 				
 				card.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 				current_row.add_child(card)
@@ -382,7 +421,7 @@ func _create_inventory_card(item, tab_id: String):
 	card.setup(item, UnifiedItemCard.DisplayMode.INVENTORY)
 	
 	if not card.clicked.is_connected(_on_item_clicked):
-		card.clicked.connect(_on_item_clicked)  # Remove the lambda
+		card.clicked.connect(_on_item_clicked)
 	
 	return card
 
