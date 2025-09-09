@@ -23,6 +23,14 @@ const HOLIDAY_RED = "#DC2626"
 const HOLIDAY_GOLD = "#FCD34D"
 const HOLIDAY_WARM = "#FEF3C7"
 
+# Debug settings (add after var declarations)
+var debug_enabled: bool = false  # Set to true to enable debug logging
+var global_debug: bool = true    # Global debug flag
+
+func _debug_log(message: String) -> void:
+	if debug_enabled and global_debug:
+		print("[HOLIDAYUI] %s" % message)  # or [HOLIDAYUI] for HolidayUI
+
 func _ready():
 	print("\n[HolidayUI] _ready() called - Instance: ", get_instance_id())
 	print("[HolidayUI] Stack trace:")
@@ -664,13 +672,3 @@ func _on_level_up_occurred(old_level: int, new_level: int, rewards: Dictionary):
 			"new_level": new_level,
 			"rewards": rewards
 		})
-
-func _show_pending_notifications():
-	"""Show level-up notification if any occurred"""
-	if pending_level_ups.size() > 0:
-		var notification_path = "res://Pyramids/scenes/ui/dialogs/UnifiedRewardNotification.tscn"
-		if ResourceLoader.exists(notification_path):
-			var notification = load(notification_path).instantiate()
-			get_tree().root.add_child(notification)
-			notification.show_level_ups(pending_level_ups)
-		pending_level_ups.clear()

@@ -20,6 +20,13 @@ var mission_cards = {}  # {mission_id: card_instance}
 var pending_level_ups: Array = []
 var claim_in_progress: bool = false
 
+# Debug settings (add after var declarations)
+var debug_enabled: bool = false  # Set to true to enable debug logging
+var global_debug: bool = true    # Global debug flag
+
+func _debug_log(message: String) -> void:
+	if debug_enabled and global_debug:
+		print("[SEASONPASSUI] %s" % message)  # or [HOLIDAYUI] for HolidayUI
 
 func _ready():
 	print("\n[SeasonPassUI] _ready() called - Instance: ", get_instance_id())
@@ -626,13 +633,3 @@ func _on_level_up_occurred(old_level: int, new_level: int, rewards: Dictionary):
 			"new_level": new_level,
 			"rewards": rewards
 		})
-
-func _show_pending_notifications():
-	"""Show level-up notification if any occurred"""
-	if pending_level_ups.size() > 0:
-		var notification_path = "res://Pyramids/scenes/ui/dialogs/UnifiedRewardNotification.tscn"
-		if ResourceLoader.exists(notification_path):
-			var notification = load(notification_path).instantiate()
-			get_tree().root.add_child(notification)
-			notification.show_level_ups(pending_level_ups)
-		pending_level_ups.clear()

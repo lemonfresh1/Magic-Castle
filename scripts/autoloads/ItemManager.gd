@@ -222,7 +222,7 @@ func _ensure_defaults():
 		classic.is_purchasable = false
 		register_item(classic)
 	
-	if not all_items.has("board_green"):
+	if not all_items.has("classic_board"):
 		var green = UnifiedItemData.new()
 		green.id = "board_green"
 		green.display_name = "Classic Green"

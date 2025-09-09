@@ -1,6 +1,12 @@
 # MissionUI.gd - Daily and weekly missions interface
 # Location: res://Pyramids/scripts/ui/missions/MissionUI.gd
-# Last Updated: Refactored to match SeasonPassUI structure [Date]
+# Last Updated: Added level-up popup using DialogService [Current Date]
+#
+# Purpose: Manages the mission UI with daily/weekly tabs and claim functionality
+# Dependencies: UnifiedMissionManager (autoload), XPManager (autoload), DialogService (autoload)
+# Use Cases: Player views missions, claims rewards, sees level-up notifications
+# Flow: 1) Load missions → 2) Display in tabs → 3) Handle claims → 4) Show level-up if occurred
+# Notes: Uses deferred call for notifications to ensure UI updates complete first
 
 extends PanelContainer
 
@@ -14,6 +20,14 @@ var mission_cards = {}  # mission_id -> card instance
 var pending_level_ups: Array = []
 var claim_in_progress: bool = false
 
+# Debug settings
+var debug_enabled: bool = false  # Set to false for production
+var global_debug: bool = false    # Global debug flag
+
+func _debug_log(message: String) -> void:
+	if debug_enabled and global_debug:
+		print("[MISSIONUI] %s" % message)
+
 func _ready():
 	# Wait for next frame to ensure nodes are ready
 	await get_tree().process_frame
@@ -21,6 +35,8 @@ func _ready():
 	if not tab_container:
 		push_error("MissionUI: TabContainer not found!")
 		return
+	
+	_debug_log("MissionUI ready - initializing")
 	
 	# Apply panel styling
 	UIStyleManager.apply_panel_style(self, "mission_ui")
@@ -35,7 +51,9 @@ func _ready():
 	_populate_current_tab()
 	
 	if XPManager:
-		XPManager.level_up_occurred.connect(_on_level_up_occurred)
+		if not XPManager.level_up_occurred.is_connected(_on_level_up_occurred):
+			XPManager.level_up_occurred.connect(_on_level_up_occurred)
+			_debug_log("Connected to XPManager.level_up_occurred signal")
 
 func _initialize_all_tabs():
 	"""Initialize all tabs"""
@@ -191,12 +209,20 @@ func _populate_missions_content(vbox: VBoxContainer) -> void:
 		# Modified claim handler with level-up tracking
 		if card.has_signal("mission_claimed"):
 			card.mission_claimed.connect(func(mission_id): 
+				_debug_log("========== MISSION CLAIM START ==========")
+				_debug_log("Claiming mission: %s" % mission_id)
+				
 				claim_in_progress = true
 				pending_level_ups.clear()
+				
 				UnifiedMissionManager.claim_mission(mission_id, "standard")
 				_update_mission_visibility()
+				
+				_debug_log("Pending level-ups to show: %d" % pending_level_ups.size())
 				call_deferred("_show_pending_notifications")
+				
 				claim_in_progress = false
+				_debug_log("========== MISSION CLAIM END ==========")
 			)
 	
 	# Apply initial filter
@@ -204,12 +230,17 @@ func _populate_missions_content(vbox: VBoxContainer) -> void:
 
 func _on_level_up_occurred(old_level: int, new_level: int, rewards: Dictionary):
 	"""Track level-ups during mission claims"""
+	_debug_log("📈 LEVEL UP SIGNAL RECEIVED: %d → %d" % [old_level, new_level])
+	
 	if claim_in_progress:
 		pending_level_ups.append({
 			"old_level": old_level,
 			"new_level": new_level,
 			"rewards": rewards
 		})
+		_debug_log("   ✅ Level-up tracked (claim in progress)")
+	else:
+		_debug_log("   ⚠️ Level-up occurred but no claim in progress")
 
 func _on_filter_changed(index: int):
 	"""Handle filter change - SINGLE filter for both tabs"""
@@ -368,9 +399,32 @@ func refresh_missions():
 	_refresh_missions()
 
 func _show_pending_notifications():
-	"""Show combined notification for mission + level-ups"""
-	if pending_level_ups.size() > 0:
-		var notification = preload("res://Pyramids/scenes/ui/dialogs/UnifiedRewardNotification.tscn").instantiate()
-		get_tree().root.add_child(notification)
-		notification.show_level_ups(pending_level_ups)
-		pending_level_ups.clear()
+	"""Show level-up success popup using DialogService (matches AchievementUI)"""
+	if pending_level_ups.size() == 0:
+		_debug_log("No pending level-ups to show")
+		return
+	
+	_debug_log("🎉 Showing level-up popup...")
+	
+	# Calculate level progression and total stars earned
+	var first_level = pending_level_ups[0].old_level
+	var final_level = pending_level_ups[-1].new_level
+	var total_stars = 0
+	
+	for level_data in pending_level_ups:
+		if level_data.rewards.has("stars"):
+			total_stars += level_data.rewards.stars
+	
+	# Format the message (same format as AchievementUI)
+	var title = "Level Up! 🎉"
+	var message = "Level %d → %d\n+%d Stars" % [first_level, final_level, total_stars]
+	
+	# Show success popup through DialogService
+	if DialogService:
+		DialogService.show_success(title, message, "Awesome!")
+		_debug_log("Level-up popup shown: %s" % message)
+	else:
+		push_error("[MissionUI] DialogService not found!")
+	
+	# Clear pending level-ups after showing
+	pending_level_ups.clear()

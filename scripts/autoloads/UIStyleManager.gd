@@ -16,8 +16,8 @@ extends Node
 @onready var theme = ThemeConstants
 
 # Debug
-var debug_enabled: bool = true  # Per-script debug toggle
-var global_debug: bool = true   # Ready for global toggle integration
+var debug_enabled: bool = false  # Per-script debug toggle
+var global_debug: bool = false   # Ready for global toggle integration
 
 # Design system colors - from your design doc
 var colors = {

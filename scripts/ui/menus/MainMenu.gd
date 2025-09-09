@@ -483,9 +483,9 @@ func _on_profile_section_selected(section: String) -> void:
 	# All sections now use the same panel system
 	_toggle_menu_panel(section, button)
 
-func _create_menu_panel(scene_path: String, script_path: String = "") -> PanelContainer:
+func _create_menu_panel(scene_path: String, script_path: String = "") -> Control:
 	var scene = load(scene_path)
-	var instance = scene.instantiate() as PanelContainer
+	var instance = scene.instantiate() as Control
 	add_child(instance)
 	
 	# Apply standard positioning (same as profile card)

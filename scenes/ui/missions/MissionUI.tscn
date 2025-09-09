@@ -179,6 +179,7 @@ layout_mode = 2
 
 [node name="FilterButton" type="OptionButton" parent="MarginContainer/TabContainer/Daily Missions/MarginContainer/VBoxContainer"]
 layout_mode = 2
+size_flags_horizontal = 0
 theme_override_styles/hover = SubResource("StyleBoxFlat_115bk")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_n8fhq")
 theme_override_styles/normal = SubResource("StyleBoxFlat_em1yx")
@@ -216,6 +217,7 @@ layout_mode = 2
 
 [node name="FilterButton" type="OptionButton" parent="MarginContainer/TabContainer/Weekly Missions/MarginContainer/VBoxContainer"]
 layout_mode = 2
+size_flags_horizontal = 0
 theme_override_styles/hover = SubResource("StyleBoxFlat_115bk")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_n8fhq")
 theme_override_styles/normal = SubResource("StyleBoxFlat_em1yx")

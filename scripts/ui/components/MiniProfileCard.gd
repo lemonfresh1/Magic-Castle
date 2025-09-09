@@ -443,7 +443,7 @@ func set_occupied_state() -> void:
 		var name_font_size = UIStyleManager.typography["size_body_large"] if UIStyleManager else 20
 		
 		name_label.add_theme_font_size_override("font_size", name_font_size)
-		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		name_label.offset_left = 10
 		name_label.add_theme_color_override("font_color", Color.WHITE)
 		name_label.visible = true
@@ -591,22 +591,43 @@ func _update_display_items() -> void:
 	"""Update the 3 display item cards using UnifiedItemCard"""
 	var display_items = player_data.get("display_items", ["", "", ""])
 	
+	# DEBUG: Check what we're working with
+	print("[MiniProfileCard] _update_display_items called")
+	print("  - display_items: ", display_items)
+	print("  - display_cards array size: ", display_cards.size())
+	print("  - display_container exists: ", display_container != null)
+	
+	# If display_cards is empty, try to create them
+	if display_cards.size() == 0:
+		print("[MiniProfileCard] WARNING: display_cards is empty, trying to create them now")
+		_create_display_cards()
+		print("  - After creation, display_cards size: ", display_cards.size())
+	
 	for i in range(min(3, display_cards.size())):
 		if i < display_items.size():
 			var item_id = display_items[i]
 			var card = display_cards[i]
 			
+			print("  - Slot ", i, ": item_id='", item_id, "', card exists=", card != null)
+			
+			if not card:
+				print("    ERROR: Card is null for slot ", i)
+				continue
+			
 			if item_id == "":
 				card.visible = false
+				print("    -> Hidden (empty)")
 			else:
 				# Check if it's an achievement (base_id format without _tier_)
 				var is_achievement = false
-				for base_id in AchievementManager.get_all_base_achievements():
-					if item_id == base_id:
-						is_achievement = true
-						break
+				if AchievementManager:
+					for base_id in AchievementManager.get_all_base_achievements():
+						if item_id == base_id:
+							is_achievement = true
+							break
 				
 				if is_achievement:
+					print("    -> Achievement: ", item_id)
 					# Load UnifiedAchievementCard for achievements
 					var achievement_scene = load("res://Pyramids/scenes/ui/achievements/UnifiedAchievementCard.tscn")
 					if achievement_scene:
@@ -619,21 +640,39 @@ func _update_display_items() -> void:
 						display_container.add_child(achievement_card)
 						display_cards[i] = achievement_card
 				else:
-					# Regular item handling (existing code)
+					# Regular item handling
 					card.visible = true
 					if ItemManager:
 						var item_data = ItemManager.get_item(item_id)
+						print("    -> Item lookup for '", item_id, "': ", item_data != null)
 						if item_data:
+							print("      Item found: ", item_data.display_name)
 							if card.has_method("setup_with_preset"):
 								card.setup_with_preset(item_data, UnifiedItemCard.SizePreset.MINI_DISPLAY)
+								print("      -> setup_with_preset called")
 							else:
 								card.setup(item_data, UnifiedItemCard.DisplayMode.SHOWCASE)
 								card.size_preset = UnifiedItemCard.SizePreset.MINI_DISPLAY
 								if card.has_method("_apply_size_preset"):
 									card._apply_size_preset()
+								print("      -> setup called with SHOWCASE mode")
 						else:
 							push_warning("Item not found: " + item_id)
+							print("    WARNING: Item not found in ItemManager")
 							card.visible = false
+
+# Add this debug helper function to MiniProfileCard:
+func debug_check_display_cards() -> void:
+	"""Debug function to check display cards state"""
+	print("[MiniProfileCard] Debug check:")
+	print("  - display_container: ", display_container)
+	print("  - display_cards size: ", display_cards.size())
+	print("  - display_container children: ", display_container.get_child_count() if display_container else 0)
+	
+	if display_container:
+		for i in range(display_container.get_child_count()):
+			var child = display_container.get_child(i)
+			print("    Child ", i, ": ", child.name, " (", child.get_class(), ")")
 
 func _update_overlay_controls() -> void:
 	"""Update ready sign and kick button visibility"""

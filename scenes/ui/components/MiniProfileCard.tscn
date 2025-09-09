@@ -41,6 +41,7 @@ layout_mode = 2
 [node name="NameLabel" type="Label" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
 text = "Name"
+horizontal_alignment = 1
 
 [node name="MiddleSection" type="HBoxContainer" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
@@ -49,7 +50,8 @@ theme_override_constants/separation = 10
 
 [node name="ProfileContainer" type="Control" parent="MarginContainer/VBoxContainer/MiddleSection"]
 layout_mode = 2
-size_flags_horizontal = 3
+size_flags_horizontal = 6
+size_flags_vertical = 4
 
 [node name="StatsPanel" type="PanelContainer" parent="MarginContainer/VBoxContainer/MiddleSection"]
 layout_mode = 2

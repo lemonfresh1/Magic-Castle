@@ -32,7 +32,7 @@ var save_data = {
 		# Current categories
 		"card_front": "card_classic",
 		"card_back": "",
-		"board": "board_green",
+		"board": "classic_board",
 		"mini_profile_card": "",
 		"frame": "",
 		"avatar": "",
