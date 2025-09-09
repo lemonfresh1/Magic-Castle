@@ -122,10 +122,11 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_5kd37")
 theme_override_styles/tab_selected = SubResource("StyleBoxFlat_tn04k")
 theme_override_styles/tab_hovered = SubResource("StyleBoxFlat_wm5tf")
 theme_override_styles/tab_unselected = SubResource("StyleBoxFlat_0y0w8")
-current_tab = 0
+current_tab = 1
 tab_focus_mode = 0
 
 [node name="Overview" type="PanelContainer" parent="StyledPanel/MarginContainer/TabContainer"]
+visible = false
 self_modulate = Color(1, 1, 1, 0)
 custom_minimum_size = Vector2(698, 349)
 layout_mode = 2
@@ -153,7 +154,6 @@ script = ExtResource("3_qrxp4")
 metadata/_custom_type_script = "uid://bkqqop8sq8kgm"
 
 [node name="Customize" type="PanelContainer" parent="StyledPanel/MarginContainer/TabContainer"]
-visible = false
 self_modulate = Color(1, 1, 1, 0)
 custom_minimum_size = Vector2(698, 349)
 layout_mode = 2
@@ -195,8 +195,12 @@ theme_override_colors/font_color = Color(0.215686, 0.254902, 0.317647, 1)
 theme_override_font_sizes/font_size = 18
 text = "Click the display slots below to customize"
 
-[node name="PreviewContainer" type="CenterContainer" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/MiniProfileSection"]
+[node name="PreviewContainer" type="Control" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/MiniProfileSection"]
+clip_contents = true
+custom_minimum_size = Vector2(200, 200)
 layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
 
 [node name="ClearDisplayButton" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/MiniProfileSection"]
 layout_mode = 2

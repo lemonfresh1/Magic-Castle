@@ -1,6 +1,6 @@
 # ProfileUI.gd - Profile interface showing player stats and equipped items
 # Location: res://Pyramids/scripts/ui/profile/ProfileUI.gd
-# Last Updated: Fixed duplicate MiniProfileCard, proper cleanup [December 2024]
+# Last Updated: Merged fix - single instance with working display items [December 2024]
 #
 # Purpose: Main profile interface for viewing and customizing player profile
 # Dependencies: EquipmentManager, XPManager, StatsManager, SettingsSystem, ItemManager
@@ -48,13 +48,11 @@ var global_debug: bool = true
 
 # Dynamically created components
 var mini_profile_card = null  # Will be created dynamically like in PlayerSlot
+var card_initialized: bool = false  # Prevent duplicate initialization
 
 # Store references for easy iteration
 var emoji_slot_buttons: Array[Button] = []
 var current_edit_slot: int = -1  # Track which display slot is being edited
-
-# Track initialization state
-static var initialized_instances = []
 
 # === LIFECYCLE ===
 
@@ -62,15 +60,10 @@ func _ready():
 	if not is_node_ready():
 		return
 	
-	# Clean up any duplicate MiniProfileCards from previous instances
-	_cleanup_duplicate_cards()
-	
-	# Check if this instance was already initialized
-	if self in initialized_instances:
-		_debug_log("WARNING: ProfileUI instance already initialized, skipping")
+	# Prevent duplicate initialization
+	if card_initialized:
+		_debug_log("WARNING: ProfileUI already initialized, skipping")
 		return
-	
-	initialized_instances.append(self)
 	
 	_debug_log("ProfileUI ready, setting up components")
 	
@@ -111,64 +104,42 @@ func _ready():
 	# Connect button signals
 	_connect_button_signals()
 	
-	# DON'T create MiniProfileCard here - wait for show_profile()
-
-func _cleanup_duplicate_cards():
-	"""Clean up any duplicate MiniProfileCards from previous instances"""
-	if preview_container:
-		# Remove all existing MiniProfileCards
-		for child in preview_container.get_children():
-			if child.name == "MiniProfileCard" or child.has_method("set_player_data"):
-				_debug_log("Removing duplicate MiniProfileCard: " + child.name)
-				child.queue_free()
+	# Create MiniProfileCard immediately (like PlayerSlot does)
+	_create_mini_profile_card()
+	
+	# Mark as initialized
+	card_initialized = true
 
 func _create_mini_profile_card():
 	"""Create and setup the MiniProfileCard dynamically (following PlayerSlot pattern)"""
 	
-	# Clean up any existing cards first
-	_cleanup_duplicate_cards()
-	
-	# Reset our reference
-	mini_profile_card = null
+	# Check if already exists
+	if mini_profile_card != null and is_instance_valid(mini_profile_card):
+		_debug_log("MiniProfileCard already exists, skipping creation")
+		return
 	
 	# Try to find preview_container if not already set
 	if not preview_container:
-		# Try different possible paths
-		var possible_paths = [
-			"StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/MiniProfileSection/PreviewContainer",
-			"StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollableContainer/VBoxContainer/MiniProfileSection/PreviewContainer",
-		]
-		
-		for path in possible_paths:
-			var node = get_node_or_null(NodePath(path))
-			if node:
-				preview_container = node
-				_debug_log("Found preview_container at: " + path)
-				break
-		
-		# If still not found, try to find it recursively
+		preview_container = find_child("PreviewContainer", true, false)
 		if not preview_container:
-			var mini_profile_section = find_child("MiniProfileSection", true, false)
-			if mini_profile_section:
-				preview_container = mini_profile_section.find_child("PreviewContainer", true, false)
-				if preview_container:
-					_debug_log("Found preview_container via recursive search")
+			push_error("PreviewContainer not found - cannot add MiniProfileCard!")
+			return
 	
-	if not preview_container:
-		push_error("PreviewContainer not found - cannot add MiniProfileCard!")
-		return
+	# FORCE CONTAINER SIZE to prevent expansion
+	preview_container.custom_minimum_size = Vector2(200, 200)
+	preview_container.size = Vector2(200, 200)
+	preview_container.clip_contents = true  # Clip anything that goes over
 	
-	# CRITICAL: Ensure the entire hierarchy is visible before creating the card
+	# CRITICAL FIX FROM SCRIPT 2: Ensure visibility before adding card
 	preview_container.visible = true
 	if mini_profile_section:
 		mini_profile_section.visible = true
 	
-	# Make sure the Customize tab is active
-	if tab_container:
-		tab_container.current_tab = 1  # Switch to Customize tab
-		
-		# Wait for tab switch to complete
-		await get_tree().process_frame
+	# Clean up any existing MiniProfileCard in the container
+	for child in preview_container.get_children():
+		if child.name == "MiniProfileCard" or child.has_method("set_player_data"):
+			_debug_log("Removing existing MiniProfileCard from container")
+			child.queue_free()
 	
 	# Create MiniProfileCard dynamically like PlayerSlot does
 	var card_scene_path = "res://Pyramids/scenes/ui/components/MiniProfileCard.tscn"
@@ -178,44 +149,63 @@ func _create_mini_profile_card():
 		mini_profile_card = scene.instantiate()
 		_debug_log("Created MiniProfileCard from scene")
 	else:
-		# Try to create from script if scene doesn't exist
-		var card_script_path = "res://Pyramids/scripts/ui/components/MiniProfileCard.gd"
-		if ResourceLoader.exists(card_script_path):
-			var script = load(card_script_path)
-			mini_profile_card = PanelContainer.new()
-			mini_profile_card.set_script(script)
-			_debug_log("Created MiniProfileCard from script")
-		else:
-			push_error("MiniProfileCard not found (neither scene nor script)")
-			return
+		push_error("MiniProfileCard scene not found at: " + card_scene_path)
+		return
 	
-	# Configure size
-	mini_profile_card.custom_minimum_size = Vector2(200, 200)
+	# FORCE EXACT SIZE - no expansion allowed
+	mini_profile_card.set_custom_minimum_size(Vector2(200, 200))
 	mini_profile_card.size = Vector2(200, 200)
+	mini_profile_card.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	
+	# Prevent any size expansion
+	mini_profile_card.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	mini_profile_card.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	# Alternative: completely disable size flags
+	mini_profile_card.set_h_size_flags(0)  
+	mini_profile_card.set_v_size_flags(0)
+	
+	# Force clip contents to maintain size
+	mini_profile_card.clip_contents = true
 	
 	# Make sure it's visible
 	mini_profile_card.visible = true
 	
+	# Ensure mouse interaction is enabled for display items
+	mini_profile_card.mouse_filter = Control.MOUSE_FILTER_PASS
+	
 	# Connect signals
 	if mini_profile_card.has_signal("display_item_clicked"):
-		mini_profile_card.display_item_clicked.connect(_on_display_item_clicked)
-		_debug_log("Connected to MiniProfileCard display_item_clicked signal")
+		if not mini_profile_card.display_item_clicked.is_connected(_on_display_item_clicked):
+			mini_profile_card.display_item_clicked.connect(_on_display_item_clicked)
+			_debug_log("Connected to MiniProfileCard display_item_clicked signal")
 	
 	# Add to preview container
-	if preview_container:
-		preview_container.add_child(mini_profile_card)
-		_debug_log("Added MiniProfileCard to preview container")
-		
-		# Wait for the card to be fully in the scene tree
-		await mini_profile_card.ready
-		
-		# Give it another frame to ensure all children are ready
-		await get_tree().process_frame
-		
-		# Force a full redraw of the card and its children
+	preview_container.add_child(mini_profile_card)
+	_debug_log("Added MiniProfileCard to preview container")
+	
+	# CRITICAL FIX FROM SCRIPT 2: Wait for it to be in tree then refresh
+	await mini_profile_card.ready
+	await get_tree().process_frame
+	
+	# Force refresh after everything is ready
+	_refresh_mini_profile_card()
+
+func _refresh_mini_profile_card():
+	"""Deferred refresh of the mini profile card after it's in the tree"""
+	if mini_profile_card and is_instance_valid(mini_profile_card):
+		# Force a full redraw
 		mini_profile_card.queue_redraw()
 		
-		_debug_log("MiniProfileCard fully ready and refreshed")
+		# Call the debug refresh method if it exists (from Script 2)
+		if mini_profile_card.has_method("debug_force_display_refresh"):
+			mini_profile_card.debug_force_display_refresh()
+			_debug_log("Called debug_force_display_refresh on MiniProfileCard")
+		
+		# Also ensure all child nodes are visible
+		if mini_profile_card.has_method("_ensure_display_items_visible"):
+			mini_profile_card._ensure_display_items_visible()
+		
+		_debug_log("MiniProfileCard refresh complete")
 
 func _connect_button_signals():
 	"""Connect all button signals from scene nodes"""
@@ -368,6 +358,9 @@ func _update_customize_tab():
 			_debug_log("Player data sent: " + str(player_data))
 		else:
 			_debug_log("WARNING: MiniProfileCard doesn't have set_player_data method!")
+		
+		# 3. Force refresh after data update (key fix from Script 2)
+		call_deferred("_refresh_mini_profile_card")
 	else:
 		_debug_log("WARNING: MiniProfileCard is null or invalid!")
 	
@@ -477,18 +470,13 @@ func show_profile():
 	"""Show the profile UI"""
 	visible = true
 	
-	# Create MiniProfileCard if it doesn't exist
-	if not mini_profile_card or not is_instance_valid(mini_profile_card):
-		_debug_log("Creating MiniProfileCard on show")
-		await _create_mini_profile_card()
-	
-	# Update content
-	_update_overview()
-	_update_customize_tab()
-	
-	# Add delay to allow textures to load properly
-	await get_tree().create_timer(0.2).timeout
-	_debug_log("Profile fully shown")
+	# Update content (card should already exist from _ready)
+	if mini_profile_card and is_instance_valid(mini_profile_card):
+		_update_overview()
+		_update_customize_tab()
+	else:
+		_debug_log("WARNING: MiniProfileCard not found when showing profile")
+		# Don't recreate - it should have been created in _ready
 
 func hide_profile():
 	"""Hide the profile UI"""
@@ -607,14 +595,17 @@ func _add_equipped_item_label(parent: Node, category: String, display_name: Stri
 			label.add_theme_color_override("font_color", Color(0.4, 0.4, 0.4, 1))
 			parent.add_child(label)
 
-func _on_display_item_clicked(item_id: String):
-	"""Handle click on display slot in MiniProfileCard"""
-	_debug_log("Display item clicked: " + item_id)  # Debug to see if clicks work
+func _on_display_item_clicked(slot_index: int):
+	"""Handle click on display slot in MiniProfileCard - FIXED to receive slot index"""
+	_debug_log("Display slot %d clicked" % slot_index)
 	
 	if not EquipmentManager:
 		return
-		
-	# Get current showcase items
+	
+	# Store which slot was clicked for the popup
+	current_edit_slot = slot_index
+	
+	# Get current showcase items to see what's in this slot
 	var showcase_items = []
 	if EquipmentManager.save_data.has("equipped") and EquipmentManager.save_data.equipped.has("mini_profile_card_showcased_items"):
 		showcase_items = EquipmentManager.save_data.equipped.mini_profile_card_showcased_items.duplicate()
@@ -623,27 +614,11 @@ func _on_display_item_clicked(item_id: String):
 	while showcase_items.size() < 3:
 		showcase_items.append("")
 	
-	# Find which slot was clicked
-	var slot_index = -1
-	for i in range(showcase_items.size()):
-		if showcase_items[i] == item_id:
-			slot_index = i
-			break
+	var current_item = showcase_items[slot_index] if slot_index < showcase_items.size() else ""
+	_debug_log("Slot %d current item: %s - TODO: Show ItemSelectorPopup" % [slot_index, current_item])
 	
-	# If item not found, find first empty slot
-	if slot_index == -1:
-		for i in range(showcase_items.size()):
-			if showcase_items[i] == "":
-				slot_index = i
-				break
-	
-	# If still no slot, use first slot
-	if slot_index == -1:
-		slot_index = 0
-	
-	current_edit_slot = slot_index
-	_debug_log("Display slot %d clicked (current item: %s) - TODO: Show ItemSelectorPopup" % [slot_index, item_id])
 	# TODO: Show ItemSelectorPopup for this slot
+	# The popup should know which slot is being edited via current_edit_slot
 
 func _on_emoji_slot_pressed(slot_index: int):
 	"""Handle emoji slot button press"""
@@ -671,11 +646,3 @@ func _on_clear_emojis_pressed():
 		EquipmentManager.save_data.equipped.emojis = ["", "", "", ""]
 		EquipmentManager.save_data_changed.emit()
 		_update_emoji_slots()
-
-# === CLEANUP ===
-
-func _exit_tree():
-	"""Clean up when leaving the tree"""
-	# Remove from initialized instances
-	if self in initialized_instances:
-		initialized_instances.erase(self)
