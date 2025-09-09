@@ -1,6 +1,6 @@
 # ProfileUI.gd - Profile interface showing player stats and equipped items
 # Location: res://Pyramids/scripts/ui/profile/ProfileUI.gd
-# Last Updated: Merged fix - single instance with working display items [December 2024]
+# Last Updated: Added direct emoji selection system [December 2024]
 #
 # Purpose: Main profile interface for viewing and customizing player profile
 # Dependencies: EquipmentManager, XPManager, StatsManager, SettingsSystem, ItemManager
@@ -34,22 +34,23 @@ var global_debug: bool = true
 @onready var overview_content = $StyledPanel/MarginContainer/TabContainer/Overview/MarginContainer/ScrollContainer/VBoxContainer
 
 # Customize tab - containers only (MiniProfileCard will be created dynamically)
-@onready var customize_tab = $StyledPanel/MarginContainer/TabContainer/Customize
-@onready var mini_profile_section = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/MiniProfileSection
-@onready var preview_container = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/MiniProfileSection/PreviewContainer
-@onready var mini_profile_slots: VBoxContainer = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/MiniProfileSlots
-@onready var h_box_container: HBoxContainer = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/MiniProfileSlots/HBoxContainer
-@onready var button_slot_1: Button = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/MiniProfileSlots/HBoxContainer/ButtonSlot1
-@onready var button_slot_2: Button = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/MiniProfileSlots/HBoxContainer/ButtonSlot2
-@onready var button_slot_3: Button = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/MiniProfileSlots/HBoxContainer/ButtonSlot3
-@onready var clear_display_btn: StyledButton = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/MiniProfileSlots/ClearDisplayButton
+@onready var customize_tab: StyledPanel = $StyledPanel/MarginContainer/TabContainer/Customize
+@onready var mini_profile_section: VBoxContainer = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/MiniProfileSection
+@onready var preview_container: Control = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/MiniProfileSection/PreviewContainer
+@onready var h_box_container: HBoxContainer = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/MiniProfileSection/HBoxContainer
+@onready var button_slot_1: Button = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/MiniProfileSection/HBoxContainer/ButtonSlot1
+@onready var button_slot_2: Button = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/MiniProfileSection/HBoxContainer/ButtonSlot2
+@onready var button_slot_3: Button = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/MiniProfileSection/HBoxContainer/ButtonSlot3
+@onready var clear_display_btn: StyledButton = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/MiniProfileSection/ClearDisplayButton
 
 # Customize tab - Emoji section
-@onready var emoji_slot_1 = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/EmojiSection/EmojiSlotsContainer/HBoxContainer/EmojiSlot1
-@onready var emoji_slot_2 = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/EmojiSection/EmojiSlotsContainer/HBoxContainer/EmojiSlot2
-@onready var emoji_slot_3 = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/EmojiSection/EmojiSlotsContainer/HBoxContainer/EmojiSlot3
-@onready var emoji_slot_4 = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/EmojiSection/EmojiSlotsContainer/HBoxContainer/EmojiSlot4
-@onready var clear_emojis_btn = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/EmojiSection/ClearEmojisButton
+@onready var emoji_section: VBoxContainer = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/EmojiSection
+@onready var emoji_slot_1: Button = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/EmojiSection/EmojiSlotsContainer/HBoxContainer/EmojiSlot1
+@onready var emoji_slot_2: Button = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/EmojiSection/EmojiSlotsContainer/HBoxContainer/EmojiSlot2
+@onready var emoji_slot_3: Button = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/EmojiSection/EmojiSlotsContainer/HBoxContainer/EmojiSlot3
+@onready var emoji_slot_4: Button = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/EmojiSection/EmojiSlotsContainer/HBoxContainer/EmojiSlot4
+@onready var emoji_grid_scroll: ScrollContainer = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/EmojiSection/ScrollContainer
+@onready var emoji_grid: GridContainer = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/EmojiSection/ScrollContainer/GridContainer
 
 # Dynamically created components
 var mini_profile_card = null  # Will be created dynamically like in PlayerSlot
@@ -59,8 +60,13 @@ var card_initialized: bool = false  # Prevent duplicate initialization
 var emoji_slot_buttons: Array[Button] = []
 var current_edit_slot: int = -1  # Track which display slot is being edited
 
+# Showcase display slots
 var display_slot_buttons: Array[Button] = []
-var display_item_cards: Array = [] # UnifiedItemCards at 50x50
+var showcase_cards: Array = []  # UnifiedItemCards at 50x50
+
+# Emoji selection system
+var selected_emoji_slot: int = -1  # -1 = none selected, 0-3 = slot index
+var emoji_grid_buttons: Array = []  # Buttons in the grid
 
 # === LIFECYCLE ===
 
@@ -74,6 +80,12 @@ func _ready():
 		return
 	
 	_debug_log("ProfileUI ready, setting up components")
+	
+	# Clean up any existing showcase cards first
+	for card in showcase_cards:
+		if is_instance_valid(card):
+			card.queue_free()
+	showcase_cards.clear()
 	
 	# Debug: Check what ItemManager has for emojis
 	if ItemManager:
@@ -101,22 +113,216 @@ func _ready():
 			EquipmentManager.item_equipped.connect(_on_item_equipped)
 		if not EquipmentManager.item_unequipped.is_connected(_on_item_unequipped):
 			EquipmentManager.item_unequipped.connect(_on_item_unequipped)
+		# Connect to showcase changes
+		if not EquipmentManager.showcase_items_changed.is_connected(_update_showcase_slots):
+			EquipmentManager.showcase_items_changed.connect(_update_showcase_slots)
 	
 	# Setup button arrays - with null checks
 	var emoji_buttons: Array[Button] = []
 	for btn in [emoji_slot_1, emoji_slot_2, emoji_slot_3, emoji_slot_4]:
 		if btn:
 			emoji_buttons.append(btn)
+			# Make emoji slot buttons toggle mode
+			btn.toggle_mode = true
 	emoji_slot_buttons = emoji_buttons
+	
+	# Setup display slot buttons
+	display_slot_buttons = [button_slot_1, button_slot_2, button_slot_3]
 	
 	# Connect button signals
 	_connect_button_signals()
 	
+	# Setup showcase slots
+	_setup_showcase_slots()
+	
+	# Setup emoji grid for direct selection
+	_setup_emoji_grid()
+	
 	# Create MiniProfileCard immediately (like PlayerSlot does)
 	_create_mini_profile_card()
 	
+	# Update showcase slots with current data
+	_update_showcase_slots()
+	
 	# Mark as initialized
 	card_initialized = true
+
+func _setup_showcase_slots():
+	"""Create UnifiedItemCard instances for each showcase button"""
+	var buttons = [button_slot_1, button_slot_2, button_slot_3]
+	
+	for i in range(3):
+		var button = buttons[i]
+		if not button:
+			continue
+			
+		# Create UnifiedItemCard instance
+		var card_scene_path = "res://Pyramids/scenes/ui/items/UnifiedItemCard.tscn"
+		if not ResourceLoader.exists(card_scene_path):
+			_debug_log("UnifiedItemCard scene not found at: " + card_scene_path)
+			continue
+			
+		var card_scene = load(card_scene_path)
+		var card = card_scene.instantiate()
+		
+		# Use SHOWCASE preset to avoid ExpandedItemView popup behavior
+		card.size_preset = card.SizePreset.SHOWCASE
+		card.custom_minimum_size = Vector2(44, 44)
+		card.size = Vector2(44, 44)
+		card.mouse_filter = Control.MOUSE_FILTER_IGNORE  # Let button handle clicks
+		
+		# Add to button and center it
+		button.add_child(card)
+		card.set_anchors_preset(Control.PRESET_CENTER)
+		card.position = Vector2(-22, -22)  # Half of 44x44 to center
+		
+		# Initially hidden
+		card.visible = false
+		
+		# Store reference
+		showcase_cards.append(card)
+		
+		# Connect button click
+		if not button.pressed.is_connected(_on_showcase_slot_pressed):
+			button.pressed.connect(_on_showcase_slot_pressed.bind(i))
+		
+		# Set button text alignment to center
+		button.alignment = HORIZONTAL_ALIGNMENT_CENTER
+		
+		_debug_log("Setup showcase slot %d with UnifiedItemCard" % i)
+
+func _setup_emoji_grid():
+	"""Setup the emoji grid using pre-existing buttons in the scene"""
+	if not emoji_grid:
+		_debug_log("emoji_grid (GridContainer) not found in scene")
+		return
+	
+	# Clear our button array
+	emoji_grid_buttons.clear()
+	
+	# Get all button children from the grid
+	var all_buttons = []
+	for child in emoji_grid.get_children():
+		if child is Button:
+			all_buttons.append(child)
+			child.visible = false  # Hide all by default
+	
+	# Get owned emojis
+	var owned_emojis = _get_owned_emojis()
+	_debug_log("Setting up emoji grid with %d owned emojis" % owned_emojis.size())
+	
+	# Check if we have enough buttons
+	if owned_emojis.size() > all_buttons.size():
+		push_warning("[ProfileUI] NEED MORE EMOJI BUTTONS! Have %d buttons but %d emojis. Add more buttons to GridContainer in the scene!" % [all_buttons.size(), owned_emojis.size()])
+	
+	# Setup each owned emoji
+	for i in range(owned_emojis.size()):
+		if i >= all_buttons.size():
+			break  # No more buttons available
+		
+		var btn = all_buttons[i]
+		var emoji = owned_emojis[i]
+		
+		# Configure the button
+		btn.visible = true
+		btn.tooltip_text = emoji.display_name
+		
+		# Load emoji texture
+		if emoji.texture_path and emoji.texture_path != "":
+			var texture = load(emoji.texture_path)
+			if texture:
+				btn.icon = texture
+				btn.expand_icon = true
+				btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		
+		# Store emoji id in metadata
+		btn.set_meta("emoji_id", emoji.id)
+		
+		# Disconnect any previous signals
+		if btn.pressed.is_connected(_on_emoji_grid_pressed):
+			btn.pressed.disconnect(_on_emoji_grid_pressed)
+		
+		# Connect button press
+		btn.pressed.connect(_on_emoji_grid_pressed.bind(emoji.id))
+		
+		# Add to our tracking array
+		emoji_grid_buttons.append(btn)
+	
+	_debug_log("Configured %d emoji grid buttons" % emoji_grid_buttons.size())
+
+func _get_owned_emojis() -> Array:
+	"""Get all owned emoji items"""
+	var owned = []
+	
+	if not ItemManager or not EquipmentManager:
+		return owned
+	
+	var all_emojis = ItemManager.get_items_by_category("emoji")
+	
+	for emoji in all_emojis:
+		if EquipmentManager.is_item_owned(emoji.id):
+			owned.append(emoji)
+	
+	return owned
+
+func _update_emoji_grid_state():
+	pass
+
+func _update_showcase_slots():
+	"""Update the display of showcase slots"""
+	if not EquipmentManager:
+		return
+		
+	var showcased_items = EquipmentManager.get_showcased_items()
+	_debug_log("Updating showcase slots with items: " + str(showcased_items))
+	
+	for i in range(3):
+		var item_id = showcased_items[i] if i < showcased_items.size() else ""
+		var button = display_slot_buttons[i] if i < display_slot_buttons.size() else null
+		var card = showcase_cards[i] if i < showcase_cards.size() else null
+		
+		if not button:
+			continue
+			
+		if item_id == "":
+			# Empty slot - show "+" text
+			button.text = "+"
+			if card:
+				card.visible = false
+			_debug_log("Slot %d: empty (showing +)" % i)
+		else:
+			# Has item - show card
+			button.text = ""
+			if ItemManager:
+				var item = ItemManager.get_item(item_id)
+				if item and card:
+					# Setup the card with the item
+					if card.has_method("setup"):
+						card.setup(item, card.DisplayMode.SHOWCASE)
+					card.visible = true
+					_debug_log("Slot %d: showing %s" % [i, item_id])
+				else:
+					# Item not found or card missing
+					button.text = "?"
+					if card:
+						card.visible = false
+					_debug_log("Slot %d: item not found (%s)" % [i, item_id])
+			else:
+				button.text = "?"
+				if card:
+					card.visible = false
+
+func _on_showcase_slot_pressed(slot_index: int):
+	"""Handle showcase slot button press"""
+	var showcased_items = EquipmentManager.get_showcased_items() if EquipmentManager else []
+	var current_item = showcased_items[slot_index] if slot_index < showcased_items.size() else ""
+	
+	_debug_log("Showcase slot %d pressed. Current item: %s" % [slot_index, current_item if current_item != "" else "empty"])
+	
+	# Store which slot is being edited
+	current_edit_slot = slot_index
+	
+	# TODO: Open ItemSelectorPopup for this slot
 
 func _create_mini_profile_card():
 	"""Create and setup the MiniProfileCard dynamically (following PlayerSlot pattern)"""
@@ -271,14 +477,18 @@ func _connect_button_signals():
 				btn.pressed.connect(_on_emoji_slot_pressed.bind(i))
 				_debug_log("Connected emoji slot %d button" % i)
 	
-	# Clear buttons
+	# Showcase slot buttons (if not already connected in _setup_showcase_slots)
+	for i in range(display_slot_buttons.size()):
+		var btn = display_slot_buttons[i]
+		if btn and is_instance_valid(btn):
+			if not btn.pressed.is_connected(_on_showcase_slot_pressed):
+				btn.pressed.connect(_on_showcase_slot_pressed.bind(i))
+				_debug_log("Connected showcase slot %d button" % i)
+	
+	# Clear display button
 	if clear_display_btn and is_instance_valid(clear_display_btn):
 		if not clear_display_btn.pressed.is_connected(_on_clear_display_pressed):
 			clear_display_btn.pressed.connect(_on_clear_display_pressed)
-	
-	if clear_emojis_btn and is_instance_valid(clear_emojis_btn):
-		if not clear_emojis_btn.pressed.is_connected(_on_clear_emojis_pressed):
-			clear_emojis_btn.pressed.connect(_on_clear_emojis_pressed)
 
 # === UPDATE FUNCTIONS ===
 
@@ -420,6 +630,12 @@ func _update_customize_tab():
 	
 	# Update emoji slot buttons  
 	_update_emoji_slots()
+	
+	# Update emoji grid state
+	_update_emoji_grid_state()
+	
+	# Update showcase slots (now handled by signals, but call for initial update)
+	_update_showcase_slots()
 
 func _update_emoji_slots():
 	"""Update the emoji slot buttons with equipped emojis - handling StyledButton"""
@@ -495,7 +711,8 @@ func _update_emoji_slots():
 					btn.tooltip_text = emoji_item.display_name
 					
 					# Force visual update
-					btn.queue_redraw()
+					if btn and is_instance_valid(btn):
+						btn.queue_redraw()
 					
 					_debug_log("Set emoji %s on slot %d (button class: %s)" % [emoji_id, i, btn.get_class()])
 				else:
@@ -516,7 +733,8 @@ func _update_emoji_slots():
 				btn.texture_normal = null
 			btn.expand_icon = false
 			btn.tooltip_text = "Click to select emoji"
-			btn.queue_redraw()
+			if btn and is_instance_valid(btn):
+				btn.queue_redraw()
 
 # === PUBLIC INTERFACE ===
 
@@ -524,37 +742,45 @@ func show_profile():
 	"""Show the profile UI"""
 	visible = true
 	
+	# Clean up old showcase cards before updating
+	_cleanup_showcase_cards()
+	
+	# Recreate showcase slots
+	_setup_showcase_slots()
+	
+	# Re-setup emoji grid with existing scene buttons
+	_setup_emoji_grid()  # <-- Just call the setup again, don't create new buttons!
+	
 	# Update content (card should already exist from _ready)
 	if mini_profile_card and is_instance_valid(mini_profile_card):
 		_update_overview()
 		_update_customize_tab()
 	else:
 		_debug_log("WARNING: MiniProfileCard not found when showing profile")
-		# Don't recreate - it should have been created in _ready
 
 func hide_profile():
 	"""Hide the profile UI"""
 	visible = false
+	
+	# Clean up showcase cards to prevent tween issues
+	_cleanup_showcase_cards()
+	
 	profile_closed.emit()
 
-# === PRIVATE HELPERS ===
+func _cleanup_showcase_cards():
+	"""Properly clean up showcase cards to prevent tween/redraw issues"""
+	for card in showcase_cards:
+		if is_instance_valid(card):
+			# Stop any running tweens on the card
+			card.remove_from_group("_tween_processed")
+			for child in card.get_children():
+				if child is Tween:
+					child.kill()
+			card.queue_free()
+	showcase_cards.clear()
+	_debug_log("Cleaned up showcase cards")
 
-func _get_available_emojis() -> Array:
-	"""Get all available emoji items from ItemManager for popup selector"""
-	if not ItemManager:
-		_debug_log("ItemManager not available for getting emojis")
-		return []
-	
-	# Get all emoji items from ItemManager
-	var emojis = ItemManager.get_items_by_category("emoji")
-	_debug_log("Available emojis from ItemManager: " + str(emojis.size()))
-	
-	# Debug print first few
-	for i in range(min(3, emojis.size())):
-		var emoji = emojis[i]
-		_debug_log("  Emoji %d: %s (texture: %s)" % [i, emoji.id, emoji.texture_path])
-	
-	return emojis
+# === PRIVATE HELPERS ===
 
 func _get_current_player_data() -> Dictionary:
 	"""Get current player data for mini profile preview (following PlayerSlot format)"""
@@ -580,16 +806,8 @@ func _get_current_player_data() -> Dictionary:
 		if data.equipped.has("frame"):
 			data.frame_id = data.equipped.frame
 		
-		# Get display items (showcase items)
-		if EquipmentManager.save_data.has("equipped"):
-			var equipped = EquipmentManager.save_data.equipped
-			if equipped.has("mini_profile_card_showcased_items"):
-				data.display_items = equipped.mini_profile_card_showcased_items
-			else:
-				# Default to empty if not set
-				data.display_items = ["", "", ""]
-		else:
-			data.display_items = ["", "", ""]
+		# Get display items (showcase items) - USE THE NEW FUNCTION
+		data.display_items = EquipmentManager.get_showcased_items()
 	
 	# Get real stats from StatsManager
 	if StatsManager:
@@ -626,14 +844,116 @@ func _on_item_equipped(item_id: String, category: String):
 	# Only update if profile is visible to avoid unnecessary updates
 	if visible:
 		_update_overview()
-		_update_customize_tab()
+		#_update_customize_tab()
+		
+		# Update emoji grid if emoji was equipped
+		if category == "emoji":
+			_update_emoji_grid_state()
 
 func _on_item_unequipped(item_id: String, category: String):
 	"""Called when any item is unequipped via EquipmentManager"""
 	# Only update if profile is visible to avoid unnecessary updates
 	if visible:
 		_update_overview()
-		_update_customize_tab()
+		#_update_customize_tab()
+		
+		# Update emoji grid if emoji was unequipped
+		if category == "emoji":
+			_update_emoji_grid_state()
+
+func _on_emoji_slot_pressed(slot_index: int):
+	"""Handle emoji slot button press - now with direct selection"""
+	_debug_log("Emoji slot %d pressed" % slot_index)
+	
+	# Toggle slot selection
+	if selected_emoji_slot == slot_index:
+		# Clicking same slot - deselect
+		selected_emoji_slot = -1
+		emoji_slot_buttons[slot_index].button_pressed = false
+		_debug_log("Deselected slot %d" % slot_index)
+	else:
+		# Select new slot
+		# Untoggle previous
+		if selected_emoji_slot >= 0 and selected_emoji_slot < emoji_slot_buttons.size():
+			emoji_slot_buttons[selected_emoji_slot].button_pressed = false
+		
+		# Toggle new
+		selected_emoji_slot = slot_index
+		emoji_slot_buttons[slot_index].button_pressed = true
+		_debug_log("Selected slot %d for emoji placement" % slot_index)
+	
+	# Update visual state of emoji grid
+	_update_emoji_grid_state()
+
+func _on_emoji_grid_pressed(emoji_id: String):
+	"""Handle clicking an emoji from the available grid"""
+	_debug_log("Emoji grid pressed: %s" % emoji_id)
+	
+	if selected_emoji_slot < 0:
+		# No slot selected - flash the slot buttons to hint
+		_debug_log("No slot selected - select a slot first")
+		# Optional: Flash slot buttons
+		for btn in emoji_slot_buttons:
+			if btn:
+				var original_modulate = btn.modulate
+				btn.modulate = Color(1.5, 1.5, 1.5)  # Bright flash
+				await get_tree().create_timer(0.2).timeout
+				btn.modulate = original_modulate
+		return
+	
+	# Directly equip to selected slot
+	_equip_emoji_to_slot(selected_emoji_slot, emoji_id)
+	
+	# Update the slot button display immediately
+	_update_emoji_slots()
+	
+	# Update grid state to show new equipped status
+	_update_emoji_grid_state()
+	
+	# Keep slot selected for quick changes
+	# (uncomment next line to deselect after equipping)
+	# selected_emoji_slot = -1
+	# emoji_slot_buttons[selected_emoji_slot].button_pressed = false
+
+func _equip_emoji_to_slot(slot: int, emoji_id: String):
+	"""Helper to equip emoji at specific slot"""
+	_debug_log("Equipping %s to slot %d" % [emoji_id, slot])
+	
+	if not EquipmentManager:
+		return
+	
+	# Get current equipped emojis
+	var current = EquipmentManager.get_equipped_emojis()
+	while current.size() < 4:
+		current.append("")
+	
+	# Check if emoji is already in another slot
+	var existing_slot = current.find(emoji_id)
+	if existing_slot >= 0 and existing_slot != slot:
+		# Swap emojis between slots
+		var old_emoji = current[slot]
+		current[slot] = emoji_id
+		current[existing_slot] = old_emoji
+		_debug_log("Swapped emoji from slot %d to slot %d" % [existing_slot, slot])
+	else:
+		# Simple replacement
+		var old_emoji = current[slot]
+		current[slot] = emoji_id
+		
+		# Emit unequip for old emoji if it existed
+		if old_emoji != "" and old_emoji != emoji_id:
+			EquipmentManager.item_unequipped.emit(old_emoji, "emoji")
+	
+	# Update EquipmentManager
+	EquipmentManager.save_data.equipped.emoji = current
+	EquipmentManager.save_data_to_file()
+	
+	# Emit signals
+	if emoji_id != "":
+		EquipmentManager.item_equipped.emit(emoji_id, "emoji")
+	EquipmentManager.equipment_changed.emit("emoji")
+	
+	_debug_log("Emoji equipped successfully")
 
 # === PRIVATE HELPERS ===
 
@@ -651,66 +971,28 @@ func _add_equipped_item_label(parent: Node, category: String, display_name: Stri
 
 func _on_display_item_clicked(item_id: String):
 	"""Handle click on display slot in MiniProfileCard - receives item_id from signal"""
-	_debug_log("Display item clicked: %s" % item_id)
+	_debug_log("Display item clicked in MiniProfileCard: %s" % item_id)
 	
+	# The MiniProfileCard shows items from showcase array, not equipped items
+	# So we need to find which slot this item is in the showcase array
 	if not EquipmentManager:
 		return
 	
-	# Since MiniProfileCard shows equipped items (card_back, card_front, board) in that order,
-	# we need to determine which slot was clicked based on the equipped items
-	var equipped = EquipmentManager.get_equipped_items()
-	var display_items = []
-	
-	# Build the display items array the same way MiniProfileCard does
-	if equipped.has("card_back") and equipped.card_back != "":
-		display_items.append(equipped.card_back)
-	else:
-		display_items.append("")
-		
-	if equipped.has("card_front") and equipped.card_front != "":
-		display_items.append(equipped.card_front)
-	else:
-		display_items.append("")
-		
-	if equipped.has("board") and equipped.board != "":
-		display_items.append(equipped.board)
-	else:
-		display_items.append("")
+	var showcase_items = EquipmentManager.get_showcased_items()
 	
 	# Find which slot index this item_id corresponds to
 	var slot_index = -1
-	for i in range(display_items.size()):
-		if display_items[i] == item_id:
+	for i in range(showcase_items.size()):
+		if showcase_items[i] == item_id:
 			slot_index = i
 			break
 	
-	# If we couldn't find the slot (shouldn't happen), default to slot 0
 	if slot_index == -1:
-		_debug_log("WARNING: Couldn't find slot for item_id: %s, defaulting to slot 0" % item_id)
-		slot_index = 0
+		_debug_log("WARNING: Clicked item not found in showcase: %s" % item_id)
+		return
 	
-	# Store which slot was clicked for the popup
-	current_edit_slot = slot_index
-	
-	# Get current showcase items to see what's in this slot
-	var showcase_items = []
-	if EquipmentManager.save_data.has("equipped") and EquipmentManager.save_data.equipped.has("mini_profile_card_showcased_items"):
-		showcase_items = EquipmentManager.save_data.equipped.mini_profile_card_showcased_items.duplicate()
-	
-	# Ensure we have 3 slots
-	while showcase_items.size() < 3:
-		showcase_items.append("")
-	
-	var current_item = showcase_items[slot_index] if slot_index < showcase_items.size() else ""
-	_debug_log("Slot %d clicked (item: %s) - current showcase item: %s - TODO: Show ItemSelectorPopup" % [slot_index, item_id, current_item])
-	
-	# TODO: Show ItemSelectorPopup for this slot
-	# The popup should know which slot is being edited via current_edit_slot
-
-func _on_emoji_slot_pressed(slot_index: int):
-	"""Handle emoji slot button press"""
-	_debug_log("Emoji slot %d pressed - TODO: Show EmojiSelectorPopup" % slot_index)
-	# TODO: Show EmojiSelectorPopup for this slot
+	# Trigger the same handler as clicking the button
+	_on_showcase_slot_pressed(slot_index)
 
 func _debug_container_hierarchy():
 	"""Debug function to check all parent containers for click blocking"""
@@ -756,22 +1038,9 @@ func _debug_container_hierarchy():
 
 func _on_clear_display_pressed():
 	"""Clear all display items from mini profile"""
-	_debug_log("Clear display button pressed!") # Add this to verify clicks
+	_debug_log("Clear display button pressed!")
 	if EquipmentManager:
-		# Clear the showcase items
-		if not EquipmentManager.save_data.has("equipped"):
-			EquipmentManager.save_data.equipped = {}
-		EquipmentManager.save_data.equipped.mini_profile_card_showcased_items = ["", "", ""]
-		EquipmentManager.save_data_changed.emit()
-		_update_customize_tab()
-
-func _on_clear_emojis_pressed():
-	"""Clear all equipped emojis"""
-	_debug_log("Clearing all emojis")
-	if EquipmentManager:
-		# Clear all emoji slots
-		if not EquipmentManager.save_data.has("equipped"):
-			EquipmentManager.save_data.equipped = {}
-		EquipmentManager.save_data.equipped.emojis = ["", "", "", ""]
-		EquipmentManager.save_data_changed.emit()
-		_update_emoji_slots()
+		# Clear all showcase slots
+		for i in range(3):
+			EquipmentManager.update_showcased_item(i, "")
+		_debug_log("Cleared all showcase items")

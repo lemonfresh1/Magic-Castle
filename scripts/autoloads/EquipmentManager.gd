@@ -199,6 +199,7 @@ func equip_item(item_id: String) -> bool:
 	
 	return true
 
+
 func unequip_item(item_id: String) -> bool:
 	"""Unequip an item - returns true if successful"""
 	if not ItemManager:

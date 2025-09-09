@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3 uid="uid://fctclcng0bx3"]
+[gd_scene load_steps=16 format=3 uid="uid://fctclcng0bx3"]
 
 [ext_resource type="Script" uid="uid://cvcsbwdro8ufi" path="res://Pyramids/scripts/ui/profile/ProfileUI.gd" id="1_bkjyc"]
 [ext_resource type="Script" uid="uid://dd2kyyy4exmcl" path="res://Pyramids/scripts/ui/components/StyledPanel.gd" id="2_hfwgy"]
@@ -85,6 +85,19 @@ border_color = Color(0.377919, 0.377919, 0.377919, 1)
 corner_radius_top_right = 10
 corner_radius_bottom_right = 10
 corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hb2c7"]
+bg_color = Color(0.6, 0.6, 0.6, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hfwgy"]
+bg_color = Color(0.27451, 0, 1, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_qrxp4"]
+bg_color = Color(0.6, 0.6, 0.6, 0)
 
 [node name="ProfileUI" type="Control"]
 layout_mode = 3
@@ -175,38 +188,28 @@ size_flags_vertical = 3
 horizontal_scroll_mode = 3
 vertical_scroll_mode = 3
 
-[node name="VBoxContainer" type="VBoxContainer" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer"]
+[node name="HBoxContainer" type="HBoxContainer" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer"]
 layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
 
-[node name="MiniProfileSection" type="VBoxContainer" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer"]
+[node name="MiniProfileSection" type="VBoxContainer" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer"]
 layout_mode = 2
+size_flags_horizontal = 3
 
-[node name="TitleLabel" type="Label" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/MiniProfileSection"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.0627451, 0.72549, 0.505882, 1)
-theme_override_font_sizes/font_size = 24
-text = "Mini Profile Display"
-
-[node name="InfoLabel" type="Label" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/MiniProfileSection"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.215686, 0.254902, 0.317647, 1)
-theme_override_font_sizes/font_size = 18
-text = "Click the display slots below to customize"
-
-[node name="PreviewContainer" type="Control" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/MiniProfileSection"]
+[node name="PreviewContainer" type="Control" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/MiniProfileSection"]
 clip_contents = true
 custom_minimum_size = Vector2(200, 200)
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 4
 
-[node name="MiniProfileSlots" type="VBoxContainer" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer"]
+[node name="HBoxContainer" type="HBoxContainer" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/MiniProfileSection"]
 layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/separation = 25
 
-[node name="HBoxContainer" type="HBoxContainer" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/MiniProfileSlots"]
-layout_mode = 2
-
-[node name="ButtonSlot1" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/MiniProfileSlots/HBoxContainer"]
+[node name="ButtonSlot1" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/MiniProfileSection/HBoxContainer"]
 custom_minimum_size = Vector2(50, 50)
 layout_mode = 2
 toggle_mode = true
@@ -214,7 +217,7 @@ clip_text = true
 icon_alignment = 1
 expand_icon = true
 
-[node name="ButtonSlot2" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/MiniProfileSlots/HBoxContainer"]
+[node name="ButtonSlot2" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/MiniProfileSection/HBoxContainer"]
 custom_minimum_size = Vector2(50, 50)
 layout_mode = 2
 toggle_mode = true
@@ -222,67 +225,302 @@ clip_text = true
 icon_alignment = 1
 expand_icon = true
 
-[node name="ButtonSlot3" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/MiniProfileSlots/HBoxContainer"]
+[node name="ButtonSlot3" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/MiniProfileSection/HBoxContainer"]
 custom_minimum_size = Vector2(50, 50)
 layout_mode = 2
+size_flags_horizontal = 8
 toggle_mode = true
 clip_text = true
 icon_alignment = 1
 expand_icon = true
 
-[node name="ClearDisplayButton" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/MiniProfileSlots"]
+[node name="ClearDisplayButton" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/MiniProfileSection"]
 layout_mode = 2
 text = "Clear Display"
 script = ExtResource("5_48qfi")
 metadata/_custom_type_script = "uid://c5xs6ntwdsk3t"
 
-[node name="EmojiSection" type="VBoxContainer" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer"]
+[node name="VSeparator" type="VSeparator" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer"]
+custom_minimum_size = Vector2(10, 0)
 layout_mode = 2
 
-[node name="TitleLabel" type="Label" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/EmojiSection"]
+[node name="EmojiSection" type="VBoxContainer" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.0627451, 0.72549, 0.505882, 1)
-theme_override_font_sizes/font_size = 24
-text = "Active Emojis"
+size_flags_horizontal = 3
+theme_override_constants/separation = 5
 
-[node name="InfoLabel" type="Label" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/EmojiSection"]
+[node name="EmojiSlotsContainer" type="CenterContainer" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/EmojiSection"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.215686, 0.254902, 0.317647, 1)
-theme_override_font_sizes/font_size = 18
-text = "Select up to 4 emojis..."
+size_flags_vertical = 8
 
-[node name="EmojiSlotsContainer" type="CenterContainer" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/EmojiSection"]
+[node name="HBoxContainer" type="HBoxContainer" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/EmojiSection/EmojiSlotsContainer"]
 layout_mode = 2
 
-[node name="HBoxContainer" type="HBoxContainer" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/EmojiSection/EmojiSlotsContainer"]
-layout_mode = 2
-
-[node name="EmojiSlot1" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/EmojiSection/EmojiSlotsContainer/HBoxContainer"]
+[node name="EmojiSlot1" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/EmojiSection/EmojiSlotsContainer/HBoxContainer"]
 custom_minimum_size = Vector2(64, 64)
 layout_mode = 2
+theme_override_styles/hover = SubResource("StyleBoxFlat_hb2c7")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_hfwgy")
+theme_override_styles/normal = SubResource("StyleBoxFlat_hb2c7")
 clip_text = true
 expand_icon = true
 
-[node name="EmojiSlot2" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/EmojiSection/EmojiSlotsContainer/HBoxContainer"]
+[node name="EmojiSlot2" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/EmojiSection/EmojiSlotsContainer/HBoxContainer"]
 custom_minimum_size = Vector2(64, 64)
 layout_mode = 2
+theme_override_styles/hover = SubResource("StyleBoxFlat_hb2c7")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_hfwgy")
+theme_override_styles/normal = SubResource("StyleBoxFlat_hb2c7")
 clip_text = true
 expand_icon = true
 
-[node name="EmojiSlot3" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/EmojiSection/EmojiSlotsContainer/HBoxContainer"]
+[node name="EmojiSlot3" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/EmojiSection/EmojiSlotsContainer/HBoxContainer"]
 custom_minimum_size = Vector2(64, 64)
 layout_mode = 2
+theme_override_styles/hover = SubResource("StyleBoxFlat_hb2c7")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_hfwgy")
+theme_override_styles/normal = SubResource("StyleBoxFlat_hb2c7")
 clip_text = true
 expand_icon = true
 
-[node name="EmojiSlot4" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/EmojiSection/EmojiSlotsContainer/HBoxContainer"]
+[node name="EmojiSlot4" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/EmojiSection/EmojiSlotsContainer/HBoxContainer"]
 custom_minimum_size = Vector2(64, 64)
 layout_mode = 2
+theme_override_styles/hover = SubResource("StyleBoxFlat_hb2c7")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_hfwgy")
+theme_override_styles/normal = SubResource("StyleBoxFlat_hb2c7")
 clip_text = true
 expand_icon = true
 
-[node name="ClearEmojisButton" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/EmojiSection"]
+[node name="HSeparator" type="HSeparator" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/EmojiSection"]
 layout_mode = 2
-text = "Clear Emojis"
-script = ExtResource("5_48qfi")
-metadata/_custom_type_script = "uid://c5xs6ntwdsk3t"
+
+[node name="ScrollContainer" type="ScrollContainer" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/EmojiSection"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="GridContainer" type="GridContainer" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/EmojiSection/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 6
+size_flags_vertical = 3
+columns = 4
+
+[node name="EmojiGridButton1" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/EmojiSection/ScrollContainer/GridContainer"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+focus_mode = 0
+theme_override_styles/hover = SubResource("StyleBoxFlat_qrxp4")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_qrxp4")
+theme_override_styles/normal = SubResource("StyleBoxFlat_qrxp4")
+clip_text = true
+icon_alignment = 1
+expand_icon = true
+
+[node name="EmojiGridButton2" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/EmojiSection/ScrollContainer/GridContainer"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+focus_mode = 0
+theme_override_styles/hover = SubResource("StyleBoxFlat_qrxp4")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_qrxp4")
+theme_override_styles/normal = SubResource("StyleBoxFlat_qrxp4")
+clip_text = true
+icon_alignment = 1
+expand_icon = true
+
+[node name="EmojiGridButton3" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/EmojiSection/ScrollContainer/GridContainer"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+focus_mode = 0
+theme_override_styles/hover = SubResource("StyleBoxFlat_qrxp4")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_qrxp4")
+theme_override_styles/normal = SubResource("StyleBoxFlat_qrxp4")
+clip_text = true
+icon_alignment = 1
+expand_icon = true
+
+[node name="EmojiGridButton4" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/EmojiSection/ScrollContainer/GridContainer"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+focus_mode = 0
+theme_override_styles/hover = SubResource("StyleBoxFlat_qrxp4")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_qrxp4")
+theme_override_styles/normal = SubResource("StyleBoxFlat_qrxp4")
+clip_text = true
+icon_alignment = 1
+expand_icon = true
+
+[node name="EmojiGridButton5" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/EmojiSection/ScrollContainer/GridContainer"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+focus_mode = 0
+theme_override_styles/hover = SubResource("StyleBoxFlat_qrxp4")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_qrxp4")
+theme_override_styles/normal = SubResource("StyleBoxFlat_qrxp4")
+clip_text = true
+icon_alignment = 1
+expand_icon = true
+
+[node name="EmojiGridButton6" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/EmojiSection/ScrollContainer/GridContainer"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+focus_mode = 0
+theme_override_styles/hover = SubResource("StyleBoxFlat_qrxp4")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_qrxp4")
+theme_override_styles/normal = SubResource("StyleBoxFlat_qrxp4")
+clip_text = true
+icon_alignment = 1
+expand_icon = true
+
+[node name="EmojiGridButton7" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/EmojiSection/ScrollContainer/GridContainer"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+focus_mode = 0
+theme_override_styles/hover = SubResource("StyleBoxFlat_qrxp4")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_qrxp4")
+theme_override_styles/normal = SubResource("StyleBoxFlat_qrxp4")
+clip_text = true
+icon_alignment = 1
+expand_icon = true
+
+[node name="EmojiGridButton8" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/EmojiSection/ScrollContainer/GridContainer"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+focus_mode = 0
+theme_override_styles/hover = SubResource("StyleBoxFlat_qrxp4")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_qrxp4")
+theme_override_styles/normal = SubResource("StyleBoxFlat_qrxp4")
+clip_text = true
+icon_alignment = 1
+expand_icon = true
+
+[node name="EmojiGridButton9" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/EmojiSection/ScrollContainer/GridContainer"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+focus_mode = 0
+theme_override_styles/hover = SubResource("StyleBoxFlat_qrxp4")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_qrxp4")
+theme_override_styles/normal = SubResource("StyleBoxFlat_qrxp4")
+clip_text = true
+icon_alignment = 1
+expand_icon = true
+
+[node name="EmojiGridButton10" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/EmojiSection/ScrollContainer/GridContainer"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+focus_mode = 0
+theme_override_styles/hover = SubResource("StyleBoxFlat_qrxp4")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_qrxp4")
+theme_override_styles/normal = SubResource("StyleBoxFlat_qrxp4")
+clip_text = true
+icon_alignment = 1
+expand_icon = true
+
+[node name="EmojiGridButton11" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/EmojiSection/ScrollContainer/GridContainer"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+focus_mode = 0
+theme_override_styles/hover = SubResource("StyleBoxFlat_qrxp4")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_qrxp4")
+theme_override_styles/normal = SubResource("StyleBoxFlat_qrxp4")
+clip_text = true
+icon_alignment = 1
+expand_icon = true
+
+[node name="EmojiGridButton12" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/EmojiSection/ScrollContainer/GridContainer"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+focus_mode = 0
+theme_override_styles/hover = SubResource("StyleBoxFlat_qrxp4")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_qrxp4")
+theme_override_styles/normal = SubResource("StyleBoxFlat_qrxp4")
+clip_text = true
+icon_alignment = 1
+expand_icon = true
+
+[node name="EmojiGridButton13" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/EmojiSection/ScrollContainer/GridContainer"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+focus_mode = 0
+theme_override_styles/hover = SubResource("StyleBoxFlat_qrxp4")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_qrxp4")
+theme_override_styles/normal = SubResource("StyleBoxFlat_qrxp4")
+clip_text = true
+icon_alignment = 1
+expand_icon = true
+
+[node name="EmojiGridButton14" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/EmojiSection/ScrollContainer/GridContainer"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+focus_mode = 0
+theme_override_styles/hover = SubResource("StyleBoxFlat_qrxp4")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_qrxp4")
+theme_override_styles/normal = SubResource("StyleBoxFlat_qrxp4")
+clip_text = true
+icon_alignment = 1
+expand_icon = true
+
+[node name="EmojiGridButton15" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/EmojiSection/ScrollContainer/GridContainer"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+focus_mode = 0
+theme_override_styles/hover = SubResource("StyleBoxFlat_qrxp4")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_qrxp4")
+theme_override_styles/normal = SubResource("StyleBoxFlat_qrxp4")
+clip_text = true
+icon_alignment = 1
+expand_icon = true
+
+[node name="EmojiGridButton16" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/EmojiSection/ScrollContainer/GridContainer"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+focus_mode = 0
+theme_override_styles/hover = SubResource("StyleBoxFlat_qrxp4")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_qrxp4")
+theme_override_styles/normal = SubResource("StyleBoxFlat_qrxp4")
+clip_text = true
+icon_alignment = 1
+expand_icon = true
+
+[node name="EmojiGridButton17" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/EmojiSection/ScrollContainer/GridContainer"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+focus_mode = 0
+theme_override_styles/hover = SubResource("StyleBoxFlat_qrxp4")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_qrxp4")
+theme_override_styles/normal = SubResource("StyleBoxFlat_qrxp4")
+clip_text = true
+icon_alignment = 1
+expand_icon = true
+
+[node name="EmojiGridButton18" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/EmojiSection/ScrollContainer/GridContainer"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+focus_mode = 0
+theme_override_styles/hover = SubResource("StyleBoxFlat_qrxp4")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_qrxp4")
+theme_override_styles/normal = SubResource("StyleBoxFlat_qrxp4")
+clip_text = true
+icon_alignment = 1
+expand_icon = true
+
+[node name="EmojiGridButton19" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/EmojiSection/ScrollContainer/GridContainer"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+focus_mode = 0
+theme_override_styles/hover = SubResource("StyleBoxFlat_qrxp4")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_qrxp4")
+theme_override_styles/normal = SubResource("StyleBoxFlat_qrxp4")
+clip_text = true
+icon_alignment = 1
+expand_icon = true
+
+[node name="EmojiGridButton20" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/EmojiSection/ScrollContainer/GridContainer"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+focus_mode = 0
+theme_override_styles/hover = SubResource("StyleBoxFlat_qrxp4")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_qrxp4")
+theme_override_styles/normal = SubResource("StyleBoxFlat_qrxp4")
+clip_text = true
+icon_alignment = 1
+expand_icon = true

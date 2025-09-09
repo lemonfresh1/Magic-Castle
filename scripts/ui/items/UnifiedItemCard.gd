@@ -74,7 +74,7 @@ enum SizePreset {
 	PASS_REWARD,     # 80x80 in 86x86 (Battle pass rewards)
 	INVENTORY,       # 90x126 (existing)
 	SHOP,           # 192x126 (existing)
-	SHOWCASE        # 60x80 (existing)
+	SHOWCASE        # 50x50 (existing)
 }
 
 # === NODE REFERENCES ===
@@ -365,12 +365,7 @@ func _apply_size_preset():
 			else:
 				target_size = UIStyleManager.get_item_card_style("size_portrait")
 		SizePreset.SHOWCASE:
-			target_size = UIStyleManager.get_item_card_style("size_showcase")
-			# But we need to handle landscape showcase differently
-			if layout_type == LayoutType.LANDSCAPE:
-				# Calculate proportional landscape showcase (roughly 2x width)
-				var showcase = UIStyleManager.get_item_card_style("size_showcase")
-				target_size = Vector2(showcase.x * 2, showcase.y)
+			target_size = Vector2(50, 50)  # Keep this custom for mini
 	
 	custom_minimum_size = target_size
 	size = target_size
@@ -401,7 +396,7 @@ func _apply_size_preset():
 					SizePreset.PASS_REWARD:
 						padded_target = Vector2(78, 78)
 					SizePreset.SHOWCASE:
-						padded_target = Vector2(52, 72)
+						padded_target = Vector2(50, 50)
 				
 				# Recalculate scale
 				var full_size = draw_canvas.size
@@ -820,7 +815,7 @@ func _setup_scaled_procedural(instance):
 		SizePreset.PASS_REWARD:
 			target_size = Vector2(78, 78)
 		SizePreset.SHOWCASE:
-			target_size = Vector2(52, 72)
+			target_size = Vector2(40, 40)
 	
 	# Calculate scale
 	var scale_x = target_size.x / full_size.x
@@ -922,7 +917,9 @@ func _setup_procedural_animation(draw_canvas: Control, instance):
 		tween.tween_method(
 			func(phase: float): 
 				instance.animation_phase = phase
-				draw_canvas.queue_redraw(),
+				# Check if draw_canvas still exists before calling queue_redraw
+				if is_instance_valid(draw_canvas):
+					draw_canvas.queue_redraw(),
 			0.0, 
 			1.0, 
 			duration
@@ -1528,7 +1525,7 @@ func _get_card_size() -> Vector2:
 		DisplayMode.INVENTORY:
 			return Vector2(192, 126) if is_landscape else Vector2(90, 126)
 		DisplayMode.SHOWCASE:
-			return Vector2(120, 80) if is_landscape else Vector2(60, 80)
+			return Vector2(40, 30) if is_landscape else Vector2(30, 40)
 		_:
 			return Vector2(90, 126)
 

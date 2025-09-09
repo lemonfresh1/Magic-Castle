@@ -306,7 +306,7 @@ var item_card_style = {
 	"size_reduction": 0.5,  # 50% of original export size
 	
 	# === CONTEXT-SPECIFIC SIZES ===
-	"size_showcase": Vector2(60, 80),
+	"size_showcase": Vector2(50, 50),
 	"size_profile": Vector2(80, 100),
 	"size_inventory": Vector2(120, 160),
 	"size_shop": Vector2(120, 160),
