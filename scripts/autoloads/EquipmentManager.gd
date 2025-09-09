@@ -318,6 +318,45 @@ func revoke_item(item_id: String) -> bool:
 	
 	return true
 
+# === SHOWCASE/DISPLAY FUNCTIONS ===
+
+signal showcase_items_changed()
+
+func get_showcased_items() -> Array:
+	"""Get showcased items - initially returns equipped for testing"""
+	# For now, return equipped items if showcase is empty
+	if save_data.equipped.mini_profile_card_showcased_items.is_empty():
+		# Return first 3 equipped items as default
+		var equipped = []
+		if save_data.equipped.card_back != "":
+			equipped.append(save_data.equipped.card_back)
+		if save_data.equipped.card_front != "":
+			equipped.append(save_data.equipped.card_front)
+		if save_data.equipped.board != "":
+			equipped.append(save_data.equipped.board)
+		# Pad with empty strings to ensure 3 slots
+		while equipped.size() < 3:
+			equipped.append("")
+		return equipped.slice(0, 3)
+	
+	return save_data.equipped.mini_profile_card_showcased_items.duplicate()
+
+func update_showcased_item(slot_index: int, item_id: String) -> void:
+	"""Update a specific showcase slot"""
+	# Ensure array has 3 slots
+	while save_data.equipped.mini_profile_card_showcased_items.size() < 3:
+		save_data.equipped.mini_profile_card_showcased_items.append("")
+	
+	# Update the slot
+	save_data.equipped.mini_profile_card_showcased_items[slot_index] = item_id
+	
+	save_data_to_file()
+	showcase_items_changed.emit()
+
+func clear_showcased_item(slot_index: int) -> void:
+	"""Clear a showcase slot"""
+	update_showcased_item(slot_index, "")
+
 # === QUERY FUNCTIONS ===
 
 func is_item_owned(item_id: String) -> bool:

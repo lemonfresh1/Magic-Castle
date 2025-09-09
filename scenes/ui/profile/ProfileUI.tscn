@@ -174,8 +174,6 @@ layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 3
 vertical_scroll_mode = 3
-script = ExtResource("3_qrxp4")
-metadata/_custom_type_script = "uid://bkqqop8sq8kgm"
 
 [node name="VBoxContainer" type="VBoxContainer" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer"]
 layout_mode = 2
@@ -202,7 +200,37 @@ layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 4
 
-[node name="ClearDisplayButton" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/MiniProfileSection"]
+[node name="MiniProfileSlots" type="VBoxContainer" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/MiniProfileSlots"]
+layout_mode = 2
+
+[node name="ButtonSlot1" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/MiniProfileSlots/HBoxContainer"]
+custom_minimum_size = Vector2(50, 50)
+layout_mode = 2
+toggle_mode = true
+clip_text = true
+icon_alignment = 1
+expand_icon = true
+
+[node name="ButtonSlot2" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/MiniProfileSlots/HBoxContainer"]
+custom_minimum_size = Vector2(50, 50)
+layout_mode = 2
+toggle_mode = true
+clip_text = true
+icon_alignment = 1
+expand_icon = true
+
+[node name="ButtonSlot3" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/MiniProfileSlots/HBoxContainer"]
+custom_minimum_size = Vector2(50, 50)
+layout_mode = 2
+toggle_mode = true
+clip_text = true
+icon_alignment = 1
+expand_icon = true
+
+[node name="ClearDisplayButton" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/MiniProfileSlots"]
 layout_mode = 2
 text = "Clear Display"
 script = ExtResource("5_48qfi")

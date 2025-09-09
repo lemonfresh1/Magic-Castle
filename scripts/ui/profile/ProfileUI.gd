@@ -37,7 +37,12 @@ var global_debug: bool = true
 @onready var customize_tab = $StyledPanel/MarginContainer/TabContainer/Customize
 @onready var mini_profile_section = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/MiniProfileSection
 @onready var preview_container = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/MiniProfileSection/PreviewContainer
-@onready var clear_display_btn = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/MiniProfileSection/ClearDisplayButton
+@onready var mini_profile_slots: VBoxContainer = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/MiniProfileSlots
+@onready var h_box_container: HBoxContainer = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/MiniProfileSlots/HBoxContainer
+@onready var button_slot_1: Button = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/MiniProfileSlots/HBoxContainer/ButtonSlot1
+@onready var button_slot_2: Button = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/MiniProfileSlots/HBoxContainer/ButtonSlot2
+@onready var button_slot_3: Button = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/MiniProfileSlots/HBoxContainer/ButtonSlot3
+@onready var clear_display_btn: StyledButton = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/MiniProfileSlots/ClearDisplayButton
 
 # Customize tab - Emoji section
 @onready var emoji_slot_1 = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/VBoxContainer/EmojiSection/EmojiSlotsContainer/HBoxContainer/EmojiSlot1
@@ -53,6 +58,9 @@ var card_initialized: bool = false  # Prevent duplicate initialization
 # Store references for easy iteration
 var emoji_slot_buttons: Array[Button] = []
 var current_edit_slot: int = -1  # Track which display slot is being edited
+
+var display_slot_buttons: Array[Button] = []
+var display_item_cards: Array = [] # UnifiedItemCards at 50x50
 
 # === LIFECYCLE ===
 
@@ -205,7 +213,53 @@ func _refresh_mini_profile_card():
 		if mini_profile_card.has_method("_ensure_display_items_visible"):
 			mini_profile_card._ensure_display_items_visible()
 		
+		# DEBUG: Check if display cards are clickable
+		_debug_check_display_cards_clickability()
+		
 		_debug_log("MiniProfileCard refresh complete")
+
+func _debug_check_display_cards_clickability():
+	"""Debug function to check if display cards are properly set up for clicks"""
+	if not mini_profile_card:
+		_debug_log("ERROR: No mini_profile_card to check")
+		return
+	
+	# Check if MiniProfileCard has display_cards property
+	if "display_cards" in mini_profile_card:
+		var display_cards = mini_profile_card.display_cards
+		_debug_log("Found %d display cards in MiniProfileCard" % display_cards.size())
+		
+		for i in range(display_cards.size()):
+			var card = display_cards[i]
+			if card:
+				_debug_log("  Card %d: %s" % [i, card.get_class()])
+				_debug_log("    - Visible: %s" % card.visible)
+				_debug_log("    - Mouse filter: %s" % card.mouse_filter)
+				
+				# Check if card has clicked signal
+				if card.has_signal("clicked"):
+					_debug_log("    - Has 'clicked' signal: YES")
+					var connections = card.clicked.get_connections()
+					_debug_log("    - Signal connections: %d" % connections.size())
+				else:
+					_debug_log("    - Has 'clicked' signal: NO - THIS IS THE PROBLEM!")
+				
+				# Try to make it clickable
+				card.mouse_filter = Control.MOUSE_FILTER_PASS
+				_debug_log("    - Set mouse_filter to PASS")
+			else:
+				_debug_log("  Card %d is null" % i)
+	else:
+		_debug_log("WARNING: MiniProfileCard doesn't have display_cards property")
+		
+		# Try to check display_container instead
+		if "display_container" in mini_profile_card:
+			var display_container = mini_profile_card.display_container
+			if display_container:
+				_debug_log("Found display_container with %d children" % display_container.get_child_count())
+				for i in range(display_container.get_child_count()):
+					var child = display_container.get_child(i)
+					_debug_log("  Child %d: %s (visible: %s)" % [i, child.get_class(), child.visible])
 
 func _connect_button_signals():
 	"""Connect all button signals from scene nodes"""
@@ -595,12 +649,45 @@ func _add_equipped_item_label(parent: Node, category: String, display_name: Stri
 			label.add_theme_color_override("font_color", Color(0.4, 0.4, 0.4, 1))
 			parent.add_child(label)
 
-func _on_display_item_clicked(slot_index: int):
-	"""Handle click on display slot in MiniProfileCard - FIXED to receive slot index"""
-	_debug_log("Display slot %d clicked" % slot_index)
+func _on_display_item_clicked(item_id: String):
+	"""Handle click on display slot in MiniProfileCard - receives item_id from signal"""
+	_debug_log("Display item clicked: %s" % item_id)
 	
 	if not EquipmentManager:
 		return
+	
+	# Since MiniProfileCard shows equipped items (card_back, card_front, board) in that order,
+	# we need to determine which slot was clicked based on the equipped items
+	var equipped = EquipmentManager.get_equipped_items()
+	var display_items = []
+	
+	# Build the display items array the same way MiniProfileCard does
+	if equipped.has("card_back") and equipped.card_back != "":
+		display_items.append(equipped.card_back)
+	else:
+		display_items.append("")
+		
+	if equipped.has("card_front") and equipped.card_front != "":
+		display_items.append(equipped.card_front)
+	else:
+		display_items.append("")
+		
+	if equipped.has("board") and equipped.board != "":
+		display_items.append(equipped.board)
+	else:
+		display_items.append("")
+	
+	# Find which slot index this item_id corresponds to
+	var slot_index = -1
+	for i in range(display_items.size()):
+		if display_items[i] == item_id:
+			slot_index = i
+			break
+	
+	# If we couldn't find the slot (shouldn't happen), default to slot 0
+	if slot_index == -1:
+		_debug_log("WARNING: Couldn't find slot for item_id: %s, defaulting to slot 0" % item_id)
+		slot_index = 0
 	
 	# Store which slot was clicked for the popup
 	current_edit_slot = slot_index
@@ -615,7 +702,7 @@ func _on_display_item_clicked(slot_index: int):
 		showcase_items.append("")
 	
 	var current_item = showcase_items[slot_index] if slot_index < showcase_items.size() else ""
-	_debug_log("Slot %d current item: %s - TODO: Show ItemSelectorPopup" % [slot_index, current_item])
+	_debug_log("Slot %d clicked (item: %s) - current showcase item: %s - TODO: Show ItemSelectorPopup" % [slot_index, item_id, current_item])
 	
 	# TODO: Show ItemSelectorPopup for this slot
 	# The popup should know which slot is being edited via current_edit_slot
@@ -625,9 +712,51 @@ func _on_emoji_slot_pressed(slot_index: int):
 	_debug_log("Emoji slot %d pressed - TODO: Show EmojiSelectorPopup" % slot_index)
 	# TODO: Show EmojiSelectorPopup for this slot
 
+func _debug_container_hierarchy():
+	"""Debug function to check all parent containers for click blocking"""
+	_debug_log("=== Checking container hierarchy for click blocking ===")
+	
+	# Check all the containers in the hierarchy
+	var containers_to_check = [
+		["styled_panel", styled_panel],
+		["tab_container", tab_container],
+		["customize_tab", customize_tab],
+		["mini_profile_section", mini_profile_section],
+		["preview_container", preview_container],
+		["clear_display_btn", clear_display_btn]
+	]
+	
+	for container_info in containers_to_check:
+		var name = container_info[0]
+		var node = container_info[1]
+		if node:
+			_debug_log("%s:" % name)
+			_debug_log("  - Class: %s" % node.get_class())
+			_debug_log("  - Visible: %s" % node.visible)
+			_debug_log("  - Mouse filter: %s (0=STOP, 1=PASS, 2=IGNORE)" % node.mouse_filter)
+			
+			# Check if there's any Control node on top blocking clicks
+			if node is Control:
+				var rect = node.get_global_rect()
+				_debug_log("  - Global rect: %s" % rect)
+				_debug_log("  - Z-index: %s" % node.z_index)
+		else:
+			_debug_log("%s: NULL" % name)
+	
+	# Check for any overlapping controls
+	if preview_container and mini_profile_card:
+		var preview_rect = preview_container.get_global_rect()
+		var card_rect = mini_profile_card.get_global_rect()
+		_debug_log("Preview container rect: %s" % preview_rect)
+		_debug_log("MiniProfileCard rect: %s" % card_rect)
+		
+		# Check if they actually overlap
+		if not preview_rect.intersects(card_rect):
+			_debug_log("WARNING: MiniProfileCard is outside preview_container bounds!")
+
 func _on_clear_display_pressed():
 	"""Clear all display items from mini profile"""
-	_debug_log("Clearing display items")
+	_debug_log("Clear display button pressed!") # Add this to verify clicks
 	if EquipmentManager:
 		# Clear the showcase items
 		if not EquipmentManager.save_data.has("equipped"):
