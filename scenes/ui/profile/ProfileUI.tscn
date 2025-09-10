@@ -240,6 +240,12 @@ text = "Clear Display"
 script = ExtResource("5_48qfi")
 metadata/_custom_type_script = "uid://c5xs6ntwdsk3t"
 
+[node name="CustomizeButton" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/MiniProfileSection"]
+layout_mode = 2
+text = "Customize"
+script = ExtResource("5_48qfi")
+metadata/_custom_type_script = "uid://c5xs6ntwdsk3t"
+
 [node name="VSeparator" type="VSeparator" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer"]
 custom_minimum_size = Vector2(10, 0)
 layout_mode = 2

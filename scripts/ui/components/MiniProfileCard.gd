@@ -604,78 +604,147 @@ func _update_stats_display() -> void:
 		mmr_label.visible = true
 
 func _update_display_items() -> void:
-	"""Update the 3 display item cards using UnifiedItemCard"""
+	"""Update the 3 display item cards using UnifiedItemCard for EVERYTHING"""
 	var display_items = player_data.get("display_items", ["", "", ""])
 	
-	# DEBUG: Check what we're working with
+	# DEBUG
 	print("[MiniProfileCard] _update_display_items called")
 	print("  - display_items: ", display_items)
 	print("  - display_cards array size: ", display_cards.size())
-	print("  - display_container exists: ", display_container != null)
 	
 	# If display_cards is empty, try to create them
 	if display_cards.size() == 0:
-		print("[MiniProfileCard] WARNING: display_cards is empty, trying to create them now")
+		print("[MiniProfileCard] WARNING: display_cards is empty, creating them now")
 		_create_display_cards()
-		print("  - After creation, display_cards size: ", display_cards.size())
 	
 	for i in range(min(3, display_cards.size())):
-		if i < display_items.size():
-			var item_id = display_items[i]
-			var card = display_cards[i]
+		if i >= display_items.size():
+			continue
 			
-			print("  - Slot ", i, ": item_id='", item_id, "', card exists=", card != null)
+		var item_id = display_items[i]
+		var card = display_cards[i]
+		
+		print("  - Slot ", i, ": item_id='", item_id, "', card exists=", card != null)
+		
+		if not card:
+			print("    ERROR: Card is null for slot ", i)
+			continue
+		
+		if item_id == "":
+			# Empty slot
+			card.visible = false
+			print("    -> Hidden (empty)")
+		else:
+			# Check if it's an achievement
+			var is_achievement = false
+			if AchievementManager:
+				for base_id in AchievementManager.get_all_base_achievements():
+					if item_id == base_id:
+						is_achievement = true
+						break
 			
-			if not card:
-				print("    ERROR: Card is null for slot ", i)
-				continue
+			card.visible = true
 			
-			if item_id == "":
-				card.visible = false
-				print("    -> Hidden (empty)")
-			else:
-				# Check if it's an achievement (base_id format without _tier_)
-				var is_achievement = false
-				if AchievementManager:
-					for base_id in AchievementManager.get_all_base_achievements():
-						if item_id == base_id:
-							is_achievement = true
-							break
-				
-				if is_achievement:
-					print("    -> Achievement: ", item_id)
-					# Load UnifiedAchievementCard for achievements
-					var achievement_scene = load("res://Pyramids/scenes/ui/achievements/UnifiedAchievementCard.tscn")
-					if achievement_scene:
-						# Remove existing card and replace with achievement
-						card.queue_free()
-						var achievement_card = achievement_scene.instantiate()
-						achievement_card.setup(item_id, UnifiedAchievementCard.DisplayMode.MINI)
-						achievement_card.custom_minimum_size = Vector2(50, 50)
-						achievement_card.size = Vector2(50, 50)
-						display_container.add_child(achievement_card)
-						display_cards[i] = achievement_card
+			if is_achievement:
+				print("    -> Achievement: ", item_id)
+				# Create fake UnifiedItemData for achievement
+				var fake_item = _create_achievement_item_data(item_id)
+				if fake_item:
+					card.setup_with_preset(fake_item, card.SizePreset.MINI_DISPLAY)
+					print("      -> Setup with fake item data")
 				else:
-					# Regular item handling
-					card.visible = true
-					if ItemManager:
-						var item_data = ItemManager.get_item(item_id)
-						print("    -> Item lookup for '", item_id, "': ", item_data != null)
-						if item_data:
-							print("      Item found: ", item_data.display_name)
-							if card.has_method("setup_with_preset"):
-								card.setup_with_preset(item_data, UnifiedItemCard.SizePreset.MINI_DISPLAY)
-								print("      -> setup_with_preset called")
-							else:
-								card.setup(item_data, UnifiedItemCard.DisplayMode.SHOWCASE)
-								card.size_preset = UnifiedItemCard.SizePreset.MINI_DISPLAY
-								if card.has_method("_apply_size_preset"):
-									card._apply_size_preset()
-								print("      -> setup called with SHOWCASE mode")
-						else:
-							push_warning("Item not found: " + item_id)
-							print("    WARNING: Item not found in ItemManager")
-							card.visible = false
+					card.visible = false
+					print("      -> Failed to create fake item data")
+			else:
+				# Regular item or emoji - UnifiedItemCard handles both!
+				if ItemManager:
+					var item_data = ItemManager.get_item(item_id)
+					if item_data:
+						print("    -> Item found: ", item_data.display_name, " (category: ", item_data.category, ")")
+						# Just use setup_with_preset - it handles ICON layout for emojis!
+						card.setup_with_preset(item_data, card.SizePreset.MINI_DISPLAY)
+						print("      -> Setup with MINI_DISPLAY preset")
+					else:
+						push_warning("Item not found: " + item_id)
+						card.visible = false
+						print("    WARNING: Item not found in ItemManager")
+			
+			# CRITICAL FIX: Re-apply size and position constraints after setup
+			# The setup_with_preset call changes these, so we need to restore them
+			card.custom_minimum_size = Vector2(50, 50)
+			card.size = Vector2(50, 50)
+			card.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+			card.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			
+			# Ensure the card doesn't try to expand
+			card.set_h_size_flags(Control.SIZE_SHRINK_CENTER)
+			card.set_v_size_flags(Control.SIZE_SHRINK_CENTER)
+			
+			# Reset anchors to not interfere with HBoxContainer layout
+			card.set_anchors_preset(Control.PRESET_TOP_LEFT)
+			card.position = Vector2.ZERO
+
+func _create_achievement_item_data(achievement_id: String) -> UnifiedItemData:
+	"""Create a fake UnifiedItemData for achievement display"""
+	if not AchievementManager:
+		return null
+	
+	# Get the highest unlocked tier for this achievement
+	var tier = AchievementManager.get_unlocked_tier(achievement_id)
+	if tier <= 0:
+		print("[MiniProfileCard] Achievement %s not unlocked (tier 0)" % achievement_id)
+		return null
+	
+	# Create fake item data
+	var fake_item = UnifiedItemData.new()
+	fake_item.id = achievement_id
+	fake_item.display_name = achievement_id.capitalize().replace("_", " ")
+	fake_item.category = UnifiedItemData.Category.AVATAR  # Use avatar to get portrait layout
+	fake_item.rarity = UnifiedItemData.Rarity.COMMON
+	
+	# Determine rarity from tier for border color
+	match tier:
+		1:
+			fake_item.rarity = UnifiedItemData.Rarity.COMMON
+		2:
+			fake_item.rarity = UnifiedItemData.Rarity.RARE
+		3:
+			fake_item.rarity = UnifiedItemData.Rarity.EPIC
+		4, 5:
+			fake_item.rarity = UnifiedItemData.Rarity.LEGENDARY
+	
+	# Find achievement icon - check both folders
+	var achievement_def = AchievementManager.get_achievement("%s_tier_%d" % [achievement_id, tier])
+	if achievement_def and achievement_def.has("icon"):
+		var icon_filename = achievement_def.icon
+		var icon_paths = [
+			"res://Pyramids/assets/icons/achievements/white_icons_cut/%s" % icon_filename,
+			"res://Pyramids/assets/icons/achievements/%s" % icon_filename
+		]
+		
+		for path in icon_paths:
+			if ResourceLoader.exists(path):
+				fake_item.texture_path = path
+				fake_item.icon_path = path
+				print("[MiniProfileCard] Found achievement icon at: %s" % path)
+				break
+	
+	if fake_item.texture_path == "":
+		# Try fallback naming
+		var fallback_icon = "%s_ach_t%d.png" % [achievement_id, tier]
+		var fallback_paths = [
+			"res://Pyramids/assets/icons/achievements/white_icons_cut/%s" % fallback_icon,
+			"res://Pyramids/assets/icons/achievements/%s" % fallback_icon
+		]
+		
+		for path in fallback_paths:
+			if ResourceLoader.exists(path):
+				fake_item.texture_path = path
+				fake_item.icon_path = path
+				print("[MiniProfileCard] Found achievement icon at fallback: %s" % path)
+				break
+	
+	return fake_item
 
 # Add this debug helper function to MiniProfileCard:
 func debug_check_display_cards() -> void:

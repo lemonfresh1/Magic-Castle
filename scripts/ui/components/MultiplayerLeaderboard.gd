@@ -23,8 +23,8 @@ func _configure_for_multiplayer():
 		"title": "Leaderboard - Classic",  # Will update with mode
 		"columns": [
 			{"key": "rank", "label": "#", "width": 40, "align": "center", "format": "rank"},
-			{"key": "player_name", "label": "Name", "width": 140, "align": "left", "format": "player"},
-			{"key": "score", "label": "Points", "width": 100, "align": "center", "format": "number"},
+			{"key": "player_name", "label": "Name", "width": 100, "align": "left", "format": "player"},
+			{"key": "score", "label": "Points", "width": 80, "align": "center", "format": "number"},
 			{"key": "timestamp", "label": "Date", "width": 80, "align": "right", "format": "date"}
 		],
 		"filters": [

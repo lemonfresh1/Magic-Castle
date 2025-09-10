@@ -983,22 +983,31 @@ func _setup_icon_display():
 	icon_texture.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
 	icon_texture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	
-	# Instead of position, use anchors and margins to center it
+	# Center with anchors
 	icon_texture.set_anchors_preset(Control.PRESET_CENTER)
 	
-	# Set the size
-	var icon_size = Vector2(64, 64)
+	# SIZE BASED ON PRESET - This is the key change!
+	var icon_size = Vector2(64, 64)  # Default for full size
+	
+	if size_preset == SizePreset.MINI_DISPLAY:
+		icon_size = Vector2(36, 36)  # Smaller for mini display
+	elif size_preset == SizePreset.SHOWCASE:
+		icon_size = Vector2(36, 36)  # Also smaller for showcase
+	elif size_preset == SizePreset.PASS_REWARD:
+		icon_size = Vector2(50, 50)  # Medium for pass rewards
+	
+	icon_texture.custom_minimum_size = icon_size
 	icon_texture.size = icon_size
 	
-	# Use margins to offset from center (negative half of size)
+	# Center position (offset by half the icon size)
 	icon_texture.set_offsets_preset(Control.PRESET_CENTER)
-	icon_texture.offset_left = -32  # Half of 64
-	icon_texture.offset_top = 32   # Half of 64
-	icon_texture.offset_right = 32
-	icon_texture.offset_bottom = 32
+	icon_texture.offset_left = -(icon_size.x / 2)
+	icon_texture.offset_top = -(icon_size.y / 2)
+	icon_texture.offset_right = icon_size.x / 2
+	icon_texture.offset_bottom = icon_size.y / 2
 	
 	if DEBUG:
-		print("[ICON] Using anchor centering: size=%s" % icon_texture.size)
+		print("[ICON] Display setup: preset=%s, size=%s" % [size_preset, icon_size])
 
 func _setup_empty_slot_display():
 	"""Display for empty reward slots - just a semi-transparent placeholder"""

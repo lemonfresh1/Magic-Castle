@@ -64,16 +64,21 @@ var save_data = {
 # Runtime cache
 var items_by_category: Dictionary = {}  # category -> [item_ids]
 
+func debug_print_showcase():
+	print("[EquipmentManager] Current showcase items: ", save_data.equipped.mini_profile_card_showcased_items)
 
+# Then modify _ready() to add debug calls:
 func _ready():
 	load_save_data()
+	debug_print_showcase()  # ADD THIS - see what was loaded
 	_ensure_defaults()
 	_build_cache()
 	_validate_equipped_items()
-	_validate_showcase_items()  # Add validation for showcase items
+	debug_print_showcase()  # ADD THIS - see after equipped validation
+	_validate_showcase_items()
+	debug_print_showcase()  # ADD THIS - see after showcase validation
 	
 	# Connect signals for testing showcase changes with equipment changes
-	# When equipped items change, emit showcase change too (temporary for testing)
 	equipment_changed.connect(_on_equipment_changed_test)
 	print("EquipementManager initialized")
 

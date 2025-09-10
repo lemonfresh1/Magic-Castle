@@ -25,6 +25,8 @@ var debug_enabled: bool = true
 var global_debug: bool = true
 
 # === NODE REFERENCES ===
+const DISPLAY_SELECTOR_POPUP = preload("res://Pyramids/scenes/ui/popups/DisplaySelectorPopup.tscn")
+
 # Root structure
 @onready var styled_panel: StyledPanel = $StyledPanel
 @onready var tab_container: TabContainer = $StyledPanel/MarginContainer/TabContainer
@@ -42,6 +44,7 @@ var global_debug: bool = true
 @onready var button_slot_2: Button = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/MiniProfileSection/HBoxContainer/ButtonSlot2
 @onready var button_slot_3: Button = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/MiniProfileSection/HBoxContainer/ButtonSlot3
 @onready var clear_display_btn: StyledButton = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/MiniProfileSection/ClearDisplayButton
+@onready var customize_button: StyledButton = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/MiniProfileSection/CustomizeButton
 
 # Customize tab - Emoji section
 @onready var emoji_section: VBoxContainer = $StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/EmojiSection
@@ -147,7 +150,7 @@ func _ready():
 	# Mark as initialized
 	card_initialized = true
 	
-	call_deferred("test_showcase_system")
+	#call_deferred("test_showcase_system")
 
 func _setup_showcase_slots():
 	"""Create UnifiedItemCard instances for each showcase button"""
@@ -271,7 +274,7 @@ func _update_emoji_grid_state():
 	pass
 
 func _update_showcase_slots():
-	"""Update the display of showcase slots"""
+	"""Update the display of showcase slots AND refresh MiniProfileCard"""
 	if not EquipmentManager:
 		return
 		
@@ -313,6 +316,17 @@ func _update_showcase_slots():
 				button.text = "?"
 				if card:
 					card.visible = false
+	
+	# CRITICAL FIX: Also update the MiniProfileCard preview when showcase changes!
+	if mini_profile_card and is_instance_valid(mini_profile_card):
+		var player_data = _get_current_player_data()
+		mini_profile_card.set_player_data(player_data)
+		_debug_log("Updated MiniProfileCard with new showcase items: " + str(showcased_items))
+		
+		# Force a visual refresh
+		mini_profile_card.queue_redraw()
+		if mini_profile_card.has_method("_update_display_items"):
+			mini_profile_card._update_display_items()
 
 func _on_showcase_slot_pressed(slot_index: int):
 	"""Handle showcase slot button press"""
@@ -491,6 +505,11 @@ func _connect_button_signals():
 	if clear_display_btn and is_instance_valid(clear_display_btn):
 		if not clear_display_btn.pressed.is_connected(_on_clear_display_pressed):
 			clear_display_btn.pressed.connect(_on_clear_display_pressed)
+	
+	# Custoimize button
+	if customize_button and is_instance_valid(customize_button):
+		if not customize_button.pressed.is_connected(_on_customize_pressed):
+			customize_button.pressed.connect(_on_customize_pressed)
 
 # === UPDATE FUNCTIONS ===
 
@@ -1037,6 +1056,18 @@ func _debug_container_hierarchy():
 		# Check if they actually overlap
 		if not preview_rect.intersects(card_rect):
 			_debug_log("WARNING: MiniProfileCard is outside preview_container bounds!")
+
+func _on_customize_pressed() -> void:
+	_debug_log("Customize button pressed!")
+
+	var popup := DISPLAY_SELECTOR_POPUP.instantiate()
+
+	if popup is Window:
+		get_tree().root.add_child(popup)
+		popup.popup_centered()
+	else:
+		get_tree().current_scene.add_child(popup)
+		popup.show()
 
 func _on_clear_display_pressed():
 	"""Clear all display items from mini profile"""
