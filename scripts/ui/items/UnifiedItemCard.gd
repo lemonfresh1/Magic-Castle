@@ -102,6 +102,8 @@ var is_locked: bool = false
 var is_claimable: bool = false  # For animation control
 var is_claimed: bool = false    # For dimming
 var _cached_border_width: int = -1  # -1 means not cached
+var achievement_data: Dictionary = {}  # For achievement display
+var is_achievement: bool = false
 
 # Animation properties
 var animation_enabled: bool = false  # State-based animation
@@ -1230,6 +1232,167 @@ func _update_animation_state():
 	if shadow_layer and size_preset != SizePreset.PASS_REWARD:
 		shadow_layer.visible = animation_enabled
 
+func setup_achievement(achievement_id: String, tier: int = 0):
+	"""Setup card specifically for achievement display"""
+	is_achievement = true
+	item_data = null
+	reward_data = {}
+	display_mode = DisplayMode.SELECTION
+	
+	if not is_node_ready():
+		await ready
+	
+	# Store achievement data
+	achievement_data = {
+		"id": achievement_id,
+		"tier": tier
+	}
+	
+	# Get achievement details from manager
+	if AchievementManager:
+		var tiered_id = "%s_tier_%d" % [achievement_id, tier] if tier > 0 else achievement_id
+		var achievement = AchievementManager.get_achievement(tiered_id)
+		if achievement:
+			achievement_data["name"] = achievement.get("name", achievement_id.capitalize().replace("_", " "))
+			achievement_data["icon"] = achievement.get("icon", "")
+			achievement_data["description"] = achievement.get("description", "")
+	
+	# Apply size preset
+	_apply_size_preset()
+	
+	# Setup panel with tier-based border
+	_setup_achievement_panel_style()
+	
+	# Setup achievement visual
+	_setup_achievement_display()
+	
+	# Setup overlays
+	_setup_achievement_overlays()
+	
+	# No equipped badge for achievements
+	if equipped_badge:
+		equipped_badge.visible = false
+
+# === ADD NEW PRIVATE METHODS ===
+func _setup_achievement_panel_style():
+	"""Setup panel style for achievements with tier-based borders"""
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0, 0, 0, 0)  # Transparent background
+	
+	# Tier-based border colors
+	var tier = achievement_data.get("tier", 0)
+	var border_color = Color(0.3, 0.3, 0.3, 0.5)  # Default gray
+	var border_width = 2
+	
+	match tier:
+		1:  # Bronze
+			border_color = Color("#CD7F32")  # Bronze
+			border_width = 2
+		2:  # Silver  
+			border_color = Color("#C0C0C0")  # Silver
+			border_width = 3
+		3:  # Gold
+			border_color = Color("#FFD700")  # Gold
+			border_width = 3
+		4:  # Platinum
+			border_color = Color("#E5E4E2")  # Platinum
+			border_width = 4
+		_:
+			if tier > 4:  # Higher tiers
+				border_color = Color("#B9F2FF")  # Diamond/Cyan
+				border_width = 4
+	
+	style.border_color = border_color
+	style.set_border_width_all(border_width)
+	style.set_corner_radius_all(0)
+	style.set_content_margin_all(0)
+	
+	add_theme_stylebox_override("panel", style)
+
+func _setup_achievement_display():
+	"""Setup achievement icon display with proper centering"""
+	# Hide background and procedural canvas
+	if background_texture:
+		background_texture.visible = false
+	if procedural_canvas:
+		procedural_canvas.visible = false
+	
+	# Setup icon
+	if icon_texture:
+		icon_texture.visible = true
+		
+		# Load achievement icon
+		var icon_filename = achievement_data.get("icon", "")
+		if icon_filename != "":
+			var icon_paths = [
+				"res://Pyramids/assets/icons/achievements/white_icons_cut/%s" % icon_filename,
+				"res://Pyramids/assets/icons/achievements/%s" % icon_filename
+			]
+			
+			for path in icon_paths:
+				if ResourceLoader.exists(path):
+					icon_texture.texture = load(path)
+					break
+		
+		# Configure icon display
+		icon_texture.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+		icon_texture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		
+		# Center the icon with proper sizing
+		icon_texture.set_anchors_preset(Control.PRESET_CENTER)
+		
+		# Size based on card size
+		var card_size = size
+		var icon_size = Vector2()
+		
+		# Calculate icon size to fit nicely with padding
+		if card_size.x > 100:  # Full size cards
+			icon_size = Vector2(64, 64)
+		elif card_size.x > 70:  # Medium cards
+			icon_size = Vector2(48, 48)
+		else:  # Small cards
+			icon_size = Vector2(32, 32)
+		
+		icon_texture.custom_minimum_size = icon_size
+		icon_texture.size = icon_size
+		
+		# Center position
+		icon_texture.position = (card_size - icon_size) / 2
+		
+		# Ensure no color modulation
+		icon_texture.modulate = Color.WHITE
+		icon_texture.self_modulate = Color.WHITE
+
+func _setup_achievement_overlays():
+	"""Setup overlays specific to achievements"""
+	# Show achievement name
+	if name_label:
+		var show_name = display_mode in [DisplayMode.INVENTORY, DisplayMode.SELECTION]
+		name_label.visible = show_name
+		
+		if show_name:
+			name_label.text = achievement_data.get("name", "Achievement")
+			
+			# Position at bottom
+			name_label.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+			name_label.anchor_top = 0.75
+			name_label.anchor_bottom = 0.95
+			name_label.offset_left = 4
+			name_label.offset_right = -4
+			
+			# Style
+			name_label.add_theme_color_override("font_color", Color.WHITE)
+			name_label.add_theme_color_override("font_outline_color", Color.BLACK)
+			name_label.add_theme_constant_override("outline_size", 1)
+			name_label.add_theme_font_size_override("font_size", 10)
+			name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	
+	# Hide price for achievements
+	if price_label:
+		price_label.visible = false
+
 # === ANIMATION METHODS ===
 
 func _play_animation():
@@ -1688,6 +1851,22 @@ func _on_gui_input(event: InputEvent):
 			elif item_data and not is_locked:
 				print("Emitting clicked signal for: ", item_data.display_name)
 				clicked.emit(item_data)
+
+func _on_gui_input_achievement_support(event: InputEvent):
+	"""Extended input handler that supports achievements"""
+	if event is InputEventMouseButton and event.pressed:
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			if is_achievement:
+				# For achievements, emit a special signal or handle differently
+				print("Achievement clicked: ", achievement_data.get("id", "unknown"))
+				# Create a fake UnifiedItemData for compatibility
+				var fake_item = UnifiedItemData.new()
+				fake_item.id = achievement_data.get("id", "")
+				fake_item.display_name = achievement_data.get("name", "")
+				clicked.emit(fake_item)
+			else:
+				# Original item handling
+				_on_gui_input(event)  # Call original
 
 func _on_global_item_equipped(item_id: String, category: String):
 	if item_data and item_data.id == item_id:

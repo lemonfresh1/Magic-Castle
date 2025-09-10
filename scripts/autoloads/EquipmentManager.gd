@@ -64,11 +64,25 @@ var save_data = {
 # Runtime cache
 var items_by_category: Dictionary = {}  # category -> [item_ids]
 
+
 func _ready():
 	load_save_data()
 	_ensure_defaults()
 	_build_cache()
 	_validate_equipped_items()
+	_validate_showcase_items()  # Add validation for showcase items
+	
+	# Connect signals for testing showcase changes with equipment changes
+	# When equipped items change, emit showcase change too (temporary for testing)
+	equipment_changed.connect(_on_equipment_changed_test)
+	print("EquipementManager initialized")
+
+func _on_equipment_changed_test(category: String) -> void:
+	"""Temporary: Emit showcase change when equipment changes for testing"""
+	if category in ["card_back", "card_front", "board"]:
+		# For testing: auto-update showcase when these items change
+		showcase_items_changed.emit()
+		print("[EquipmentManager] Equipment changed in %s, emitting showcase_items_changed for testing" % category)
 
 func _build_cache():
 	"""Build runtime cache of items by category"""
@@ -95,6 +109,10 @@ func _build_cache():
 func _validate_equipped_items():
 	"""Ensure all equipped items are actually owned"""
 	for category in save_data.equipped:
+		# SKIP SHOWCASE VALIDATION - it has its own validation function that handles achievements
+		if category in ["mini_profile_card_showcased_items", "mini_profile_card_showcased_stats", "mini_profile_card_showcased_achievements"]:
+			continue
+		
 		var value = save_data.equipped[category]
 		
 		match typeof(value):
@@ -103,13 +121,20 @@ func _validate_equipped_items():
 					push_warning("EquipmentManager: Unequipping unowned item %s from %s" % [value, category])
 					save_data.equipped[category] = ""
 			TYPE_ARRAY:
-				var valid_items = []
-				for item_id in value:
-					if is_item_owned(item_id):
-						valid_items.append(item_id)
-					else:
-						push_warning("EquipmentManager: Removing unowned item %s from %s" % [item_id, category])
-				save_data.equipped[category] = valid_items
+				# Only validate regular item arrays (like emoji)
+				# Skip showcase arrays as they're handled separately
+				if category == "emoji":
+					var valid_items = []
+					for item_id in value:
+						if is_item_owned(item_id):
+							valid_items.append(item_id)
+						else:
+							push_warning("EquipmentManager: Removing unowned item %s from %s" % [item_id, category])
+					save_data.equipped[category] = valid_items
+				# Any other arrays are left untouched
+			TYPE_BOOL:
+				# Booleans don't need validation
+				pass
 
 # === CORE FUNCTIONS ===
 
@@ -324,23 +349,182 @@ func revoke_item(item_id: String) -> bool:
 signal showcase_items_changed()
 
 func get_showcased_items() -> Array:
-	"""Get showcased items - initially returns equipped for testing"""
-	# For now, return equipped items if showcase is empty
-	if save_data.equipped.mini_profile_card_showcased_items.is_empty():
-		# Return first 3 equipped items as default
-		var equipped = []
-		if save_data.equipped.card_back != "":
-			equipped.append(save_data.equipped.card_back)
-		if save_data.equipped.card_front != "":
-			equipped.append(save_data.equipped.card_front)
-		if save_data.equipped.board != "":
-			equipped.append(save_data.equipped.board)
-		# Pad with empty strings to ensure 3 slots
-		while equipped.size() < 3:
-			equipped.append("")
-		return equipped.slice(0, 3)
+	"""Get showcased items for mini profile card"""
+	# Ensure the array exists and has 3 slots
+	if not save_data.equipped.has("mini_profile_card_showcased_items"):
+		save_data.equipped["mini_profile_card_showcased_items"] = ["", "", ""]
 	
-	return save_data.equipped.mini_profile_card_showcased_items.duplicate()
+	var showcase = save_data.equipped.mini_profile_card_showcased_items
+	
+	# Ensure exactly 3 slots
+	while showcase.size() < 3:
+		showcase.append("")
+	if showcase.size() > 3:
+		showcase.resize(3)
+	
+	return showcase.duplicate()
+
+func get_showcase_item(slot: int) -> String:
+	"""Get a specific showcase slot item"""
+	if slot < 0 or slot >= 3:
+		push_warning("Invalid showcase slot: " + str(slot))
+		return ""
+	
+	var showcase = get_showcased_items()
+	return showcase[slot]
+
+func set_showcase_item(slot: int, item_id: String) -> void:
+	"""Set a specific showcase slot item - NOW WITH ACHIEVEMENT SUPPORT"""
+	if slot < 0 or slot >= 3:
+		push_warning("Invalid showcase slot: " + str(slot))
+		return
+	
+	# Allow empty slots
+	if item_id == "":
+		# This is fine - clearing a slot
+		pass
+	else:
+		# Check if item is valid (owned item OR unlocked achievement)
+		var is_valid = false
+		var item_type = "unknown"
+		
+		# First check if it's a normal owned item
+		if is_item_owned(item_id):
+			is_valid = true
+			item_type = "item"
+		# Then check if it's an achievement
+		elif AchievementManager:
+			var base_achievements = AchievementManager.get_all_base_achievements()
+			if item_id in base_achievements:
+				# It's an achievement - check if unlocked
+				var highest_tier = AchievementManager.get_unlocked_tier(item_id)
+				if highest_tier > 0:
+					is_valid = true
+					item_type = "achievement"
+					print("[EquipmentManager] Recognized unlocked achievement: %s (tier %d)" % [item_id, highest_tier])
+				else:
+					push_warning("Achievement %s is not unlocked (tier 0)" % item_id)
+			else:
+				# Check if it might be a full achievement ID with tier
+				if "_tier_" in item_id:
+					# Extract base ID
+					var parts = item_id.rsplit("_tier_", false, 1)
+					if parts.size() == 2:
+						var base_id = parts[0]
+						var tier = parts[1].to_int()
+						if base_id in base_achievements:
+							var unlocked_tier = AchievementManager.get_unlocked_tier(base_id)
+							if unlocked_tier >= tier:
+								# Store as base_id for consistency
+								item_id = base_id
+								is_valid = true
+								item_type = "achievement"
+								print("[EquipmentManager] Using base achievement ID: %s" % base_id)
+		
+		# If still not valid, reject it
+		if not is_valid:
+			push_warning("Cannot showcase item: %s (not owned or unlocked)" % item_id)
+			return
+		else:
+			print("[EquipmentManager] Item %s is valid (%s)" % [item_id, item_type])
+	
+	# Ensure array exists and has 3 slots
+	if not save_data.equipped.has("mini_profile_card_showcased_items"):
+		save_data.equipped["mini_profile_card_showcased_items"] = ["", "", ""]
+	
+	while save_data.equipped.mini_profile_card_showcased_items.size() < 3:
+		save_data.equipped.mini_profile_card_showcased_items.append("")
+	
+	# Check if item is already in another slot (swap logic)
+	var old_slot = -1
+	for i in range(3):
+		if save_data.equipped.mini_profile_card_showcased_items[i] == item_id and i != slot:
+			old_slot = i
+			break
+	
+	# If item is in another slot, swap them
+	if old_slot >= 0:
+		var current_item = save_data.equipped.mini_profile_card_showcased_items[slot]
+		save_data.equipped.mini_profile_card_showcased_items[old_slot] = current_item
+		print("[EquipmentManager] Swapping slots %d and %d" % [slot, old_slot])
+	
+	# Set the new item
+	save_data.equipped.mini_profile_card_showcased_items[slot] = item_id
+	
+	save_data_to_file()
+	showcase_items_changed.emit()
+	
+	print("[EquipmentManager] Showcase updated - Slot %d: %s" % [slot, item_id])
+	print("  Current showcase: ", save_data.equipped.mini_profile_card_showcased_items)
+
+func clear_showcase_item(slot: int) -> void:
+	"""Clear a showcase slot"""
+	set_showcase_item(slot, "")
+
+func clear_all_showcase_items() -> void:
+	"""Clear all showcase slots"""
+	save_data.equipped.mini_profile_card_showcased_items = ["", "", ""]
+	save_data_to_file()
+	showcase_items_changed.emit()
+
+func swap_showcase_items(slot1: int, slot2: int) -> void:
+	"""Swap two showcase slots"""
+	if slot1 < 0 or slot1 >= 3 or slot2 < 0 or slot2 >= 3:
+		push_warning("Invalid showcase slots for swap")
+		return
+	
+	var showcase = get_showcased_items()
+	var temp = showcase[slot1]
+	showcase[slot1] = showcase[slot2]
+	showcase[slot2] = temp
+	
+	save_data.equipped.mini_profile_card_showcased_items = showcase
+	save_data_to_file()
+	showcase_items_changed.emit()
+
+# Add this helper function to validate showcase items on load
+func _validate_showcase_items() -> void:
+	"""Ensure all showcase items are owned OR are unlocked achievements"""
+	if not save_data.equipped.has("mini_profile_card_showcased_items"):
+		save_data.equipped["mini_profile_card_showcased_items"] = ["", "", ""]
+		return
+	
+	var showcase = save_data.equipped.mini_profile_card_showcased_items
+	var changed = false
+	
+	# Ensure exactly 3 slots
+	while showcase.size() < 3:
+		showcase.append("")
+	if showcase.size() > 3:
+		showcase.resize(3)
+	
+	for i in range(3):
+		if showcase[i] != "":
+			var is_valid = false
+			var item_id = showcase[i]
+			
+			# First check if it's a regular owned item
+			if is_item_owned(item_id):
+				is_valid = true
+				print("[EquipmentManager] Slot %d: '%s' is an owned item" % [i, item_id])
+			# Then check if it's an achievement
+			elif AchievementManager:
+				var base_achievements = AchievementManager.get_all_base_achievements()
+				if item_id in base_achievements:
+					var tier = AchievementManager.get_unlocked_tier(item_id)
+					if tier > 0:
+						is_valid = true
+						print("[EquipmentManager] Slot %d: '%s' is an unlocked achievement (tier %d)" % [i, item_id, tier])
+			
+			# Clear if invalid
+			if not is_valid:
+				push_warning("[EquipmentManager] Clearing invalid item in slot %d: '%s'" % [i, item_id])
+				showcase[i] = ""
+				changed = true
+	
+	if changed:
+		save_data_to_file()
+		showcase_items_changed.emit()
 
 func update_showcased_item(slot_index: int, item_id: String) -> void:
 	"""Update a specific showcase slot"""

@@ -1,0 +1,128 @@
+[gd_scene load_steps=6 format=3 uid="uid://ssl5hc0tu40k"]
+
+[ext_resource type="Script" uid="uid://d21kvkqy83ldv" path="res://Pyramids/scripts/ui/popups/DisplaySelectorPopup.gd" id="1_o3iba"]
+[ext_resource type="Script" uid="uid://dd2kyyy4exmcl" path="res://Pyramids/scripts/ui/components/StyledPanel.gd" id="2_v2i26"]
+[ext_resource type="Script" uid="uid://c5xs6ntwdsk3t" path="res://Pyramids/scripts/ui/components/StyledButton.gd" id="3_3awey"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_o3iba"]
+bg_color = Color(0.6, 0.6, 0.6, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_v2i26"]
+bg_color = Color(0.0627451, 0.72549, 0.505882, 1)
+
+[node name="DisplaySelectorPopup" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_o3iba")
+
+[node name="StyledPanel" type="PanelContainer" parent="."]
+custom_minimum_size = Vector2(700, 450)
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("2_v2i26")
+metadata/_custom_type_script = "uid://dd2kyyy4exmcl"
+
+[node name="MarginContainer" type="MarginContainer" parent="StyledPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="VBoxContainer" type="VBoxContainer" parent="StyledPanel/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="HeaderContainer" type="HBoxContainer" parent="StyledPanel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 15
+
+[node name="VBoxContainer" type="VBoxContainer" parent="StyledPanel/MarginContainer/VBoxContainer/HeaderContainer"]
+layout_mode = 2
+
+[node name="TitleLabel" type="Label" parent="StyledPanel/MarginContainer/VBoxContainer/HeaderContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.0627451, 0.72549, 0.505882, 1)
+theme_override_font_sizes/font_size = 24
+text = "Text"
+
+[node name="FilterButton" type="OptionButton" parent="StyledPanel/MarginContainer/VBoxContainer/HeaderContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 0
+
+[node name="SlotContainer" type="HBoxContainer" parent="StyledPanel/MarginContainer/VBoxContainer/HeaderContainer"]
+layout_mode = 2
+size_flags_horizontal = 6
+size_flags_vertical = 4
+
+[node name="ButtonSlot1" type="Button" parent="StyledPanel/MarginContainer/VBoxContainer/HeaderContainer/SlotContainer"]
+custom_minimum_size = Vector2(50, 50)
+layout_mode = 2
+size_flags_horizontal = 5
+size_flags_vertical = 5
+theme_override_constants/icon_max_width = 44
+theme_override_styles/hover = SubResource("StyleBoxFlat_o3iba")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_v2i26")
+theme_override_styles/normal = SubResource("StyleBoxFlat_o3iba")
+clip_text = true
+icon_alignment = 1
+expand_icon = true
+
+[node name="ButtonSlot2" type="Button" parent="StyledPanel/MarginContainer/VBoxContainer/HeaderContainer/SlotContainer"]
+custom_minimum_size = Vector2(50, 50)
+layout_mode = 2
+size_flags_horizontal = 5
+size_flags_vertical = 5
+theme_override_constants/icon_max_width = 44
+theme_override_styles/hover = SubResource("StyleBoxFlat_o3iba")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_v2i26")
+theme_override_styles/normal = SubResource("StyleBoxFlat_o3iba")
+clip_text = true
+icon_alignment = 1
+expand_icon = true
+
+[node name="ButtonSlot3" type="Button" parent="StyledPanel/MarginContainer/VBoxContainer/HeaderContainer/SlotContainer"]
+custom_minimum_size = Vector2(50, 50)
+layout_mode = 2
+size_flags_horizontal = 5
+size_flags_vertical = 5
+theme_override_constants/icon_max_width = 44
+theme_override_styles/hover = SubResource("StyleBoxFlat_o3iba")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_v2i26")
+theme_override_styles/normal = SubResource("StyleBoxFlat_o3iba")
+clip_text = true
+icon_alignment = 1
+expand_icon = true
+
+[node name="ScrollContainer" type="ScrollContainer" parent="StyledPanel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 3
+vertical_scroll_mode = 3
+
+[node name="ButtonContainer" type="HBoxContainer" parent="StyledPanel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/separation = 10
+
+[node name="ConfirmButton" type="Button" parent="StyledPanel/MarginContainer/VBoxContainer/ButtonContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+text = "Confirm"
+script = ExtResource("3_3awey")
+metadata/_custom_type_script = "uid://c5xs6ntwdsk3t"
+
+[node name="CloseButton" type="Button" parent="StyledPanel/MarginContainer/VBoxContainer/ButtonContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+text = "Close"
+script = ExtResource("3_3awey")
+button_style = "danger"
+metadata/_custom_type_script = "uid://c5xs6ntwdsk3t"

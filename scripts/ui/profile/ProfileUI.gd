@@ -146,6 +146,8 @@ func _ready():
 	
 	# Mark as initialized
 	card_initialized = true
+	
+	call_deferred("test_showcase_system")
 
 func _setup_showcase_slots():
 	"""Create UnifiedItemCard instances for each showcase button"""
@@ -1044,3 +1046,73 @@ func _on_clear_display_pressed():
 		for i in range(3):
 			EquipmentManager.update_showcased_item(i, "")
 		_debug_log("Cleared all showcase items")
+
+# test
+
+func test_showcase_system():
+	"""Test the showcase system - call this from _ready() or via button"""
+	print("\n=== TESTING SHOWCASE IN PROFILEUI ===")
+	
+	if not EquipmentManager:
+		print("ERROR: EquipmentManager not found")
+		return
+	
+	# Check current state
+	print("\n1. Current showcase items:")
+	var showcase = EquipmentManager.get_showcased_items()
+	print("   Showcase: ", showcase)
+	
+	# Check what we have equipped
+	print("\n2. Currently equipped items:")
+	var equipped = EquipmentManager.get_equipped_items()
+	print("   Card Back: ", equipped.get("card_back", "none"))
+	print("   Card Front: ", equipped.get("card_front", "none"))
+	print("   Board: ", equipped.get("board", "none"))
+	
+	# Set test showcase items (use what's equipped)
+	print("\n3. Setting showcase to equipped items...")
+	if equipped.card_back != "":
+		EquipmentManager.set_showcase_item(0, equipped.card_back)
+		print("   Set slot 0 to: ", equipped.card_back)
+	if equipped.card_front != "":
+		EquipmentManager.set_showcase_item(1, equipped.card_front)
+		print("   Set slot 1 to: ", equipped.card_front)
+	if equipped.board != "":
+		EquipmentManager.set_showcase_item(2, equipped.board)
+		print("   Set slot 2 to: ", equipped.board)
+	
+	# Verify it saved
+	print("\n4. Verifying showcase was saved:")
+	showcase = EquipmentManager.get_showcased_items()
+	print("   New showcase: ", showcase)
+	
+	# Check if MiniProfileCard shows them
+	print("\n5. Checking MiniProfileCard display:")
+	if mini_profile_card and is_instance_valid(mini_profile_card):
+		if "player_data" in mini_profile_card:
+			var card_data = mini_profile_card.player_data
+			print("   MiniProfileCard display_items: ", card_data.get("display_items", []))
+			
+			# Force refresh
+			var player_data = _get_current_player_data()
+			mini_profile_card.set_player_data(player_data)
+			print("   Refreshed MiniProfileCard")
+			
+			# Check again
+			await get_tree().process_frame
+			print("   After refresh display_items: ", mini_profile_card.player_data.get("display_items", []))
+	else:
+		print("   ERROR: MiniProfileCard not found")
+	
+	print("\n=== TEST COMPLETE ===")
+	print("Check if the 3 buttons below MiniProfileCard show the showcase items!")
+
+func test_showcase_difference():
+	# Set showcase to DIFFERENT items than equipped
+	EquipmentManager.set_showcase_item(0, "")  # Clear slot 0
+	EquipmentManager.set_showcase_item(1, "emoji_cool")  # Put an emoji in slot 1
+	# Slot 2 stays as pyramids_board
+	
+	print("Showcase is now different from equipped!")
+	print("Showcase: ", EquipmentManager.get_showcased_items())
+	print("Equipped: card_back=", EquipmentManager.get_equipped_items().card_back)

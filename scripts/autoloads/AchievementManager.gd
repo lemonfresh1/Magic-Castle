@@ -37,6 +37,7 @@ var global_debug: bool = true   # Ready for global toggle integration
 func _ready():
 	_generate_achievements()
 	load_achievements()
+	print("AchievementManager initialized")
 	
 func _debug_log(message: String) -> void:
 	if debug_enabled and global_debug:
@@ -491,3 +492,20 @@ func get_and_clear_session_achievements() -> Array:
 func clear_session_achievements():
 	"""Clear session achievements when returning to menu"""
 	session_achievements.clear()
+
+func get_achievement(achievement_id: String) -> Dictionary:
+	"""Get achievement data by ID (includes tier suffix)"""
+	return achievement_definitions.get(achievement_id, {})
+
+func is_achievement_unlocked(achievement_id: String) -> bool:
+	"""Check if a specific achievement tier is unlocked"""
+	# Parse the achievement_id to get base_id and tier
+	# Format: "base_id_tier_X"
+	var parts = achievement_id.rsplit("_tier_", false, 1)
+	if parts.size() != 2:
+		return false
+	
+	var base_id = parts[0]
+	var tier = parts[1].to_int()
+	
+	return get_unlocked_tier(base_id) >= tier

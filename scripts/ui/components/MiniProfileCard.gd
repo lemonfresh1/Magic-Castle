@@ -360,26 +360,42 @@ func set_player_data(data: Dictionary) -> void:
 			"average_rank": mode_stats.average_rank
 		}
 	
-	# Override display_items with equipped cosmetics (unchanged)
+	# NEW: Use showcased items if available, otherwise fall back to equipped
 	var equipped = data.get("equipped", {})
-	var equipped_items = []
+	var showcase_items = equipped.get("mini_profile_card_showcased_items", [])
 	
-	if equipped.has("card_back") and equipped.card_back != "":
-		equipped_items.append(equipped.card_back)
-	else:
-		equipped_items.append("")
-		
-	if equipped.has("card_front") and equipped.card_front != "":
-		equipped_items.append(equipped.card_front)  
-	else:
-		equipped_items.append("")
-		
-	if equipped.has("board") and equipped.board != "":
-		equipped_items.append(equipped.board)
-	else:
-		equipped_items.append("")
+	# Check if showcase is actually populated (not empty strings)
+	var has_showcase = false
+	for item in showcase_items:
+		if item != "":
+			has_showcase = true
+			break
 	
-	player_data["display_items"] = equipped_items
+	if has_showcase:
+		# Use the showcase items directly
+		player_data["display_items"] = showcase_items
+		print("[MiniProfileCard] Using showcase items: ", showcase_items)
+	else:
+		# Fall back to equipped items (original behavior)
+		var equipped_items = []
+		
+		if equipped.has("card_back") and equipped.card_back != "":
+			equipped_items.append(equipped.card_back)
+		else:
+			equipped_items.append("")
+			
+		if equipped.has("card_front") and equipped.card_front != "":
+			equipped_items.append(equipped.card_front)  
+		else:
+			equipped_items.append("")
+			
+		if equipped.has("board") and equipped.board != "":
+			equipped_items.append(equipped.board)
+		else:
+			equipped_items.append("")
+		
+		player_data["display_items"] = equipped_items
+		print("[MiniProfileCard] Using fallback equipped items: ", equipped_items)
 	
 	if is_empty:
 		set_empty_state()
