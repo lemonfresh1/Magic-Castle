@@ -1,6 +1,6 @@
 # MultiplayerManager.gd - Manages multiplayer state and lobby logic
 # Location: res://Pyramids/scripts/managers/MultiplayerManager.gd
-# Last Updated: Created multiplayer state management [Date]
+# Last Updated: Updated to use LobbyType enum [Date]
 #
 # Dependencies:
 #   - GameModeManager - Game mode configurations
@@ -21,6 +21,13 @@
 
 extends Node
 
+# === ENUMS ===
+enum LobbyType {
+	MATCHMAKING,  # Affects MMR
+	CUSTOM,       # No MMR
+	TOURNAMENT    # Separate tournament scoring
+}
+
 # === CONSTANTS ===
 const MAX_PLAYERS_PER_LOBBY = 8
 const MIN_PLAYERS_TO_START = 1  # For testing, normally would be 2
@@ -28,7 +35,7 @@ const MIN_PLAYERS_TO_START = 1  # For testing, normally would be 2
 # === LOBBY STATE ===
 var current_lobby_id: String = ""
 var selected_game_mode: String = "classic"  # Default mode
-var is_custom_lobby: bool = false  # false = matchmaking, true = custom/private
+var current_lobby_type: LobbyType = LobbyType.MATCHMAKING  # REPLACED is_custom_lobby
 var lobby_players: Array = []
 var local_player_data: Dictionary = {}
 var is_host: bool = false
@@ -37,7 +44,12 @@ var is_host: bool = false
 var is_searching: bool = false
 var search_start_time: float = 0.0
 
-# === SIGNALS (via SignalBus in future) ===
+# === GAME STATE ===
+var game_in_progress: bool = false
+var player_scores: Dictionary = {}  # player_id -> score
+var round_results: Array = []  # Array of round data
+
+# === SIGNALS (local, plus we use SignalBus) ===
 signal lobby_found(lobby_data: Dictionary)
 signal lobby_created(lobby_id: String)
 signal matchmaking_started()
@@ -47,7 +59,7 @@ func _ready():
 	print("[MultiplayerManager] Initialized")
 	
 	# TODO: Connect to NetworkManager when available
-	# TODO: Connect to SignalBus for global events
+	# SignalBus signals are already available globally
 
 # === PUBLIC API ===
 
@@ -76,6 +88,7 @@ func start_matchmaking() -> void:
 		return
 	
 	print("[MultiplayerManager] Starting matchmaking for mode: %s" % selected_game_mode)
+	current_lobby_type = LobbyType.MATCHMAKING  # Matchmaking affects MMR
 	is_searching = true
 	search_start_time = Time.get_ticks_msec() / 1000.0
 	matchmaking_started.emit()
@@ -97,6 +110,9 @@ func join_or_create_lobby() -> void:
 	"""Main entry point for Play button - finds or creates lobby"""
 	print("[MultiplayerManager] Join or create lobby for mode: %s" % selected_game_mode)
 	
+	# This is from Quick Play/matchmaking - affects MMR
+	current_lobby_type = LobbyType.MATCHMAKING
+	
 	# TODO: First scan for existing lobbies with same mode
 	var existing_lobby = _find_existing_lobby()
 	
@@ -107,11 +123,22 @@ func join_or_create_lobby() -> void:
 
 func create_custom_lobby(settings: Dictionary = {}) -> String:
 	"""Create a custom/private lobby with specific settings"""
-	is_custom_lobby = true
+	current_lobby_type = LobbyType.CUSTOM  # Custom lobbies don't affect MMR
 	current_lobby_id = _generate_lobby_id()
 	is_host = true
 	
 	print("[MultiplayerManager] Created custom lobby: %s" % current_lobby_id)
+	lobby_created.emit(current_lobby_id)
+	
+	return current_lobby_id
+
+func create_tournament_lobby(tournament_id: String) -> String:
+	"""Create a tournament lobby"""
+	current_lobby_type = LobbyType.TOURNAMENT  # Tournament has separate scoring
+	current_lobby_id = _generate_lobby_id()
+	is_host = true
+	
+	print("[MultiplayerManager] Created tournament lobby: %s for tournament %s" % [current_lobby_id, tournament_id])
 	lobby_created.emit(current_lobby_id)
 	
 	return current_lobby_id
@@ -129,19 +156,31 @@ func leave_current_lobby() -> void:
 	current_lobby_id = ""
 	lobby_players.clear()
 	is_host = false
-	is_custom_lobby = false
+	current_lobby_type = LobbyType.MATCHMAKING  # Reset to default
 
 func get_lobby_info() -> Dictionary:
 	"""Get current lobby information"""
 	return {
 		"lobby_id": current_lobby_id,
 		"game_mode": selected_game_mode,
-		"is_custom": is_custom_lobby,
+		"lobby_type": current_lobby_type,  # REPLACED is_custom
 		"player_count": lobby_players.size(),
 		"max_players": MAX_PLAYERS_PER_LOBBY,
 		"is_host": is_host,
 		"players": lobby_players
 	}
+
+func get_lobby_type() -> LobbyType:
+	"""Get the current lobby type"""
+	return current_lobby_type
+
+func is_custom_lobby() -> bool:
+	"""Check if current lobby is custom (for backward compatibility)"""
+	return current_lobby_type == LobbyType.CUSTOM
+
+func affects_mmr() -> bool:
+	"""Check if current lobby type affects MMR"""
+	return current_lobby_type == LobbyType.MATCHMAKING
 
 func set_local_player_data(data: Dictionary) -> void:
 	"""Set local player information"""
@@ -169,20 +208,22 @@ func get_local_player_data() -> Dictionary:
 		local_player_data["equipped"] = {
 			"card_back": EquipmentManager.get_equipped_item("card_back"),
 			"card_front": EquipmentManager.get_equipped_item("card_front"), 
-			"board": EquipmentManager.get_equipped_item("board")
+			"board": EquipmentManager.get_equipped_item("board"),
+			"mini_profile_card_showcased_items": EquipmentManager.get_showcased_items()
 		}
+		
+		print("[MultiplayerManager] Showcase items being sent: ", local_player_data["equipped"]["mini_profile_card_showcased_items"])
 	
-	# Get multiplayer stats for current mode (once StatsManager is updated)
-	# TODO: Uncomment when multiplayer stats are added to StatsManager
-	# if StatsManager:
-	#     local_player_data["stats"] = StatsManager.get_multiplayer_stats(selected_game_mode)
-	
-	# For now, use placeholder stats
-	local_player_data["stats"] = {
-		"games": 0,
-		"win_rate": 0.0,
-		"mmr": 1200
-	}
+	# Get multiplayer stats for current mode
+	if StatsManager:
+		local_player_data["stats"] = StatsManager.get_multiplayer_stats(selected_game_mode)
+	else:
+		# Fallback stats
+		local_player_data["stats"] = {
+			"games": 0,
+			"win_rate": 0.0,
+			"mmr": 1200
+		}
 	
 	return local_player_data
 
@@ -191,15 +232,26 @@ func start_game() -> void:
 	if not is_host:
 		push_error("[MultiplayerManager] Only host can start the game")
 		return
-		
-	print("[MultiplayerManager] Starting game with mode: %s" % selected_game_mode)
+	
+	game_in_progress = true
+	player_scores.clear()
+	round_results.clear()
+	
+	# Initialize scores for all players
+	for player in lobby_players:
+		player_scores[player.id] = 0
+	
+	print("[MultiplayerManager] Starting game with mode: %s, lobby type: %s" % [selected_game_mode, LobbyType.keys()[current_lobby_type]])
 	
 	# Configure GameModeManager
 	if GameModeManager:
 		GameModeManager.set_game_mode(selected_game_mode, {})
 	
-	# TODO: Notify all players
-	# TODO: Synchronize game start
+	# Set GameState to multiplayer mode
+	if GameState:
+		GameState.game_mode = "multi"
+	
+	# TODO: Notify all players via network
 	
 	# Load game scene
 	get_tree().change_scene_to_file("res://Pyramids/scenes/game/MobileGameBoard.tscn")
@@ -237,7 +289,7 @@ func _create_new_lobby() -> void:
 	"""Create a new lobby as host"""
 	current_lobby_id = _generate_lobby_id()
 	is_host = true
-	is_custom_lobby = false  # Created via matchmaking
+	# Don't change lobby type here - it's set by the calling function
 	lobby_players.clear()
 	
 	# Add self as first player
@@ -245,7 +297,7 @@ func _create_new_lobby() -> void:
 	player_data["is_host"] = true
 	lobby_players.append(player_data)
 	
-	print("[MultiplayerManager] Created new lobby: %s" % current_lobby_id)
+	print("[MultiplayerManager] Created new lobby: %s (type: %s)" % [current_lobby_id, LobbyType.keys()[current_lobby_type]])
 	lobby_created.emit(current_lobby_id)
 	
 	# Navigate to GameLobby
@@ -258,6 +310,35 @@ func _generate_lobby_id() -> String:
 	var random_suffix = randi() % 9999
 	return "lobby_%d_%04d" % [timestamp, random_suffix]
 
+# === GAME TRACKING ===
+
+func update_player_score(player_id: String, score: int) -> void:
+	"""Update a player's score"""
+	player_scores[player_id] = score
+	# TODO: Broadcast to other players
+
+func get_final_placements() -> Array:
+	"""Get final placements sorted by score"""
+	var sorted_players = []
+	for player_id in player_scores:
+		sorted_players.append({
+			"id": player_id,
+			"score": player_scores[player_id]
+		})
+	
+	# Sort by score (highest first)
+	sorted_players.sort_custom(func(a, b): return a.score > b.score)
+	
+	return sorted_players
+
+func get_player_placement(player_id: String) -> int:
+	"""Get a specific player's placement"""
+	var placements = get_final_placements()
+	for i in range(placements.size()):
+		if placements[i].id == player_id:
+			return i + 1  # 1-indexed
+	return -1  # Not found
+
 # === DEBUG/TEST ===
 
 func debug_print_state() -> void:
@@ -265,7 +346,7 @@ func debug_print_state() -> void:
 	print("=== MultiplayerManager State ===")
 	print("Selected Mode: %s" % selected_game_mode)
 	print("Current Lobby: %s" % current_lobby_id)
+	print("Lobby Type: %s" % LobbyType.keys()[current_lobby_type])
 	print("Is Host: %s" % is_host)
-	print("Is Custom: %s" % is_custom_lobby)
 	print("Player Count: %d" % lobby_players.size())
 	print("Is Searching: %s" % is_searching)

@@ -466,6 +466,16 @@ func get_color(color_name: String) -> Color:
 	_debug_log("get_color('%s') = %s" % [color_name, result])
 	return result
 
+func get_rank_color(tier: String) -> Color:
+	"""Get color for rank tiers using existing color palette"""
+	match tier.to_lower():
+		"bronze": return colors.warning_muted  # Bronzish #FFBD00
+		"silver": return colors.gray_400       # Silver gray
+		"gold": return colors.warning          # Gold #f59e0b
+		"platinum": return colors.info         # Blue #3b82f6
+		"diamond": return colors.premium       # Purple #8b5cf6
+		_: return colors.gray_500
+
 func get_spacing(key: String) -> int:
 	var result = spacing.get(key, spacing.space_4)
 	_debug_log("get_spacing('%s') = %d" % [key, result])

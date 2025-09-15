@@ -25,6 +25,9 @@ var round_scores: Array[int] = []
 var total_score: int = 0
 var round_stats: Array[Dictionary] = []  # NEW: Track each round's details
 
+# === MULTIPLAYER ===
+var multiplayer_scores: Dictionary = {}  # player_id -> total_score
+var multiplayer_round_data: Array = []   # Track each round's results
 
 # === TIMER ===
 var game_timer: Timer
@@ -225,17 +228,88 @@ func _continue_to_next_round() -> void:
 		start_round()
 
 func _end_game() -> void:
-	# CRITICAL: Calculate final total score from all rounds
-	total_score = 0
-	for score in round_scores:
-		total_score += score
+	print("=== GAME OVER ===")
+	print("Final score: %d" % total_score)
 	
-	# Track game end
+	# Get the current game mode
 	var mode = GameModeManager.get_current_mode()
-	StatsManager.end_game(mode, total_score, current_round - 1)
+	
+	# Check if multiplayer or single player
+	if game_mode == "multi":
+		# MULTIPLAYER PATH
+		print("Multiplayer game ending...")
+		
+		# Get placement and player count
+		var placement = 1
+		var player_count = 8  # Default
+		var affects_mmr = false
+		
+		if has_node("/root/MultiplayerManager"):
+			var mp_manager = get_node("/root/MultiplayerManager")
+			var lobby_info = mp_manager.get_lobby_info()
+			player_count = lobby_info.players.size()
+			if player_count == 0:
+				player_count = 1  # Fallback
+			
+			# Check if this game affects MMR
+			affects_mmr = mp_manager.affects_mmr()
+			
+			# === TESTING OVERRIDE ===
+			# If in test mode and alone, simulate a full lobby
+			if mode == "test" and player_count == 1:
+				print("[TEST MODE] Simulating 8-player lobby")
+				player_count = 8
+				# Check for forced debug placement, otherwise random
+				if has_meta("debug_forced_placement"):
+					placement = get_meta("debug_forced_placement")
+					remove_meta("debug_forced_placement")
+					print("[TEST MODE] Using forced placement: %d" % placement)
+				else:
+					placement = randi_range(1, 8)
+					print("[TEST MODE] Random placement: %d" % placement)
+				affects_mmr = true  # Force MMR changes in test
+			else:
+				# TODO: Get actual placement when you have all player scores
+				placement = randi_range(1, player_count)
+		
+		# Store metadata for PostGameSummary to read
+		set_meta("multiplayer_placement", placement)
+		set_meta("multiplayer_player_count", player_count)
+		set_meta("multiplayer_mode", mode)
+		set_meta("affects_mmr", affects_mmr)
+		
+		print("Multiplayer result: Placed %d/%d in %s mode (affects MMR: %s)" % 
+			[placement, player_count, mode, affects_mmr])
+		
+		# Track multiplayer game only if it affects MMR
+		if affects_mmr:
+			var max_combo = 0  # TODO: Get from ScoreSystem
+			var clear_time = 0.0  # TODO: Track if needed
+			
+			StatsManager.track_multiplayer_game(
+				mode,
+				placement,
+				total_score,
+				max_combo,
+				clear_time,
+				player_count
+			)
+			print("MMR updated for matchmaking game")
+		else:
+			print("Custom/Tournament game - no MMR change")
+		
+		# Still track regular game for other stats
+		StatsManager.end_game(mode, total_score, current_round - 1)
+	else:
+		# SINGLE PLAYER PATH
+		print("Single player game ending...")
+		StatsManager.end_game(mode, total_score, current_round - 1)
+	
+	# Check achievements for both modes
+	print("Checking achievements...")
 	AchievementManager.check_achievements()
 	
-	# CRITICAL: Emit game_over signal with correct total
+	# Emit game over signal
 	SignalBus.game_over.emit(total_score)
 
 # === HELPER FUNCTIONS ===
@@ -365,8 +439,88 @@ func _return_to_menu() -> void:
 	get_tree().change_scene_to_file("res://Pyramids/scenes/ui/menus/MainMenu.tscn")
 
 func _unhandled_key_input(event: InputEvent) -> void:
-	# TODO: Remove before release - Press E to instantly end round
+	if not OS.is_debug_build():
+		return
+		
 	if event is InputEventKey and event.pressed:
-		if event.keycode == KEY_E:
-			_delayed_end_round("DEBUG: Forced end")
-			get_viewport().set_input_as_handled()
+		# Press 1-8 to force placement in test mode
+		if game_mode == "multi" and GameModeManager.get_current_mode() == "test":
+			if event.keycode >= KEY_1 and event.keycode <= KEY_8:
+				var forced_placement = event.keycode - KEY_0
+				set_meta("debug_forced_placement", forced_placement)
+				print("[DEBUG] Forcing placement: %d" % forced_placement)
+
+func _handle_multiplayer_end(mode: String) -> void:
+	"""Handle multiplayer game completion"""
+	
+	# Get player count and placement from MultiplayerManager
+	var player_count = 8  # Default
+	var local_player_id = ""
+	var placement = 1  # Default to first for now
+	
+	if has_node("/root/MultiplayerManager"):
+		var mp_manager = get_node("/root/MultiplayerManager")
+		var lobby_info = mp_manager.get_lobby_info()
+		player_count = lobby_info.players.size()
+		if player_count == 0:
+			player_count = 1  # Fallback
+		local_player_id = mp_manager.local_player_data.get("id", "")
+		
+		# TODO: Get actual placement when networking is implemented
+		# For now, simulate placement based on score
+		placement = randi_range(1, player_count)  # Random for testing
+	
+	# Store metadata for PostGameSummary to use
+	set_meta("multiplayer_placement", placement)
+	set_meta("multiplayer_player_count", player_count)
+	set_meta("multiplayer_mode", mode)
+	
+	print("Multiplayer game ended:")
+	print("  Mode: %s" % mode)
+	print("  Placement: %d/%d" % [placement, player_count])
+	print("  Score: %d" % total_score)
+	
+	# Track the game in stats
+	var max_combo = 0  # TODO: Get from ScoreSystem if available
+	var clear_time = 0.0  # TODO: Track fastest clear if applicable
+	
+	StatsManager.track_multiplayer_game(
+		mode,
+		placement,
+		total_score,
+		max_combo,
+		clear_time,
+		player_count
+	)
+	
+	# Still call regular end game for achievements
+	StatsManager.end_game(mode, total_score, current_round - 1)
+	AchievementManager.check_achievements()
+
+func _calculate_placement(my_score: int, all_scores: Array) -> int:
+	"""Calculate placement based on score"""
+	var placement = 1
+	for score in all_scores:
+		if score > my_score:
+			placement += 1
+	return placement
+
+func _get_multiplayer_final_scores() -> Array:
+	"""Get all player scores - TODO: Get from network"""
+	# MOCK DATA for testing
+	return [
+		total_score,  # Our score
+		total_score + randi_range(-500, 500),
+		total_score + randi_range(-500, 500),
+		total_score + randi_range(-500, 500),
+		total_score + randi_range(-500, 500),
+		total_score + randi_range(-500, 500),
+		total_score + randi_range(-500, 500),
+		total_score + randi_range(-500, 500)
+	]
+
+func debug_simulate_multiplayer_end():
+	set_meta("multiplayer_placement", randi_range(1, 8))
+	set_meta("multiplayer_player_count", 8)
+	set_meta("multiplayer_mode", "classic")
+	set_meta("affects_mmr", true)

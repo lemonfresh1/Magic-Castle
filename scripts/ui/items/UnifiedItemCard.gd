@@ -444,24 +444,31 @@ func _setup_panel_style():
 	"""Setup panel style with rarity-colored border"""
 	var style = StyleBoxFlat.new()
 	
-	# FULLY TRANSPARENT background for small presets
+	# Transparent background for small presets
 	if size_preset in [SizePreset.MINI_DISPLAY, SizePreset.PASS_REWARD]:
-		style.bg_color = Color(0, 0, 0, 0)  # Fully transparent
-		# Also ensure the panel itself is transparent
-		self.self_modulate = Color(1, 1, 1, 1)  # Keep normal modulation
-		self.modulate = Color(1, 1, 1, 1)  # Keep normal modulation
+		style.bg_color = Color(0, 0, 0, 0)
+		self.self_modulate = Color(1, 1, 1, 1)
+		self.modulate = Color(1, 1, 1, 1)
 	else:
-		style.bg_color = Color(0, 0, 0, 0)  # Already transparent
+		style.bg_color = Color(0, 0, 0, 0)
 	
-	# Rarity border
+	# Border color
 	if item_data:
-		var rarity_color = item_data.get_rarity_color()
-		style.border_color = rarity_color
+		var border_color = Color.WHITE
+		var border_width = 2
 		
-		# Border width
-		var rarity_str = item_data.get_rarity_name().to_lower()
-		var border_width = UIStyleManager.get_item_card_style("card_border_width_epic") if rarity_str in ["epic", "legendary", "mythic"] else UIStyleManager.get_item_card_style("card_border_width_normal")
+		# CHECK FOR ACHIEVEMENT TIER FIRST
+		if item_data.has_meta("achievement_tier"):
+			var tier = item_data.get_meta("achievement_tier")
+			border_color = AchievementManager.get_tier_color(tier) if AchievementManager else Color.WHITE
+			border_width = 3 if tier >= 2 else 2
+		else:
+			# Regular item rarity colors
+			border_color = item_data.get_rarity_color()
+			var rarity_str = item_data.get_rarity_name().to_lower()
+			border_width = UIStyleManager.get_item_card_style("card_border_width_epic") if rarity_str in ["epic", "legendary", "mythic"] else UIStyleManager.get_item_card_style("card_border_width_normal")
 		
+		style.border_color = border_color
 		style.set_border_width_all(border_width)
 	else:
 		# Default border for rewards

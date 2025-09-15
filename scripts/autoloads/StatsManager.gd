@@ -399,7 +399,22 @@ func track_multiplayer_game(mode: String, placement: int, score: int, combo: int
 	
 	var stat = multiplayer_stats[mode]
 	
-	# Update basic counters
+	# Get current MMR (or default)
+	var current_mmr = stat.get("mmr", 1000)
+	if current_mmr == 0:
+		current_mmr = 1000  # Initialize if not set
+	
+	# Calculate MMR change
+	var mmr_change = RankingSystem.calculate_mmr_change(
+		current_mmr,
+		placement,
+		player_count
+	)
+	
+	# Update MMR
+	stat["mmr"] = current_mmr + mmr_change
+	
+	# Update basic counters (existing code)
 	stat.games += 1
 	stat.total_score += score
 	stat.average_score = float(stat.total_score) / float(stat.games)

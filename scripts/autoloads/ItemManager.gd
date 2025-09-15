@@ -1,15 +1,6 @@
 # ItemManager.gd - Central registry for all cosmetic items in the game
 # Location: res://Pyramids/scripts/autoloads/ItemManager.gd
-# Last Updated: Cleaned up, removed ProceduralItemRegistry dependency [Date]
-#
-# ItemManager handles:
-# - Loading all item definitions from .tres files
-# - Discovering and caching procedural items
-# - Providing query interfaces for items
-# - Managing bundles
-#
-# Flow: .tres files & procedural scripts → ItemManager → EquipmentManager (ownership) → UIs
-# Dependencies: UnifiedItemData (resource), EquipmentManager (for ownership queries)
+# Last Updated: Fixed mobile directory issues - res:// is read-only! [Date]
 
 extends Node
 
@@ -51,7 +42,7 @@ var is_loaded: bool = false
 func _ready():
 	print("ItemManager initializing...")
 	_initialize_collections()
-	_create_directory_structure()
+	# REMOVED _create_directory_structure() - res:// is read-only on mobile!
 	load_all_items()
 	print("ItemManager ready with %d items and %d bundles" % [all_items.size(), all_bundles.size()])
 
@@ -68,18 +59,7 @@ func _initialize_collections():
 	for source in UnifiedItemData.Source.values():
 		items_by_source[source] = []
 
-func _create_directory_structure():
-	"""Ensure directory structure exists"""
-	var dir = DirAccess.open("res://")
-	if not dir.dir_exists(ITEMS_PATH):
-		dir.make_dir_recursive(ITEMS_PATH)
-		for category in CATEGORIES:
-			var cat_path = ITEMS_PATH + category
-			if not dir.dir_exists(cat_path):
-				dir.make_dir(cat_path)
-	
-	if not dir.dir_exists(BUNDLES_PATH):
-		dir.make_dir_recursive(BUNDLES_PATH)
+# REMOVED _create_directory_structure() function entirely - not needed!
 
 # === LOADING ===
 
@@ -112,12 +92,14 @@ func _load_resource_items():
 	for category in CATEGORIES:
 		var path = ITEMS_PATH + category + "/"
 		
+		# Check if directory exists (don't try to create it!)
 		if not DirAccess.dir_exists_absolute(path):
-			DirAccess.make_dir_recursive_absolute(path)
+			push_warning("ItemManager: Category path does not exist: " + path)
 			continue
 		
 		var dir = DirAccess.open(path)
 		if not dir:
+			push_warning("ItemManager: Cannot open directory: " + path)
 			continue
 		
 		dir.list_dir_begin()
@@ -129,6 +111,8 @@ func _load_resource_items():
 				var item = load(resource_path) as UnifiedItemData
 				if item and item.id != "":
 					register_item(item)
+				else:
+					push_warning("ItemManager: Failed to load item: " + resource_path)
 			file_name = dir.get_next()
 
 func _discover_procedural_items():
@@ -140,6 +124,7 @@ func _discover_procedural_items():
 func _scan_procedural_directory(base_path: String, category: String):
 	"""Recursively scan for procedural item scripts"""
 	if not DirAccess.dir_exists_absolute(base_path):
+		# This is OK - not all categories have procedural items
 		return
 	
 	var dir = DirAccess.open(base_path)
@@ -160,7 +145,9 @@ func _scan_procedural_directory(base_path: String, category: String):
 			var script = load(full_path)
 			if script:
 				var instance = script.new()
-				if instance and instance.has_method("draw_card_back") or instance.has_method("draw_card_front") or instance.has_method("draw_board_background"):
+				if instance and (instance.has_method("draw_card_back") or 
+								instance.has_method("draw_card_front") or 
+								instance.has_method("draw_board_background")):
 					_register_procedural_item(instance, category, full_path)
 		
 		name = dir.get_next()
@@ -194,8 +181,14 @@ func _register_procedural_item(instance, category: String, script_path: String):
 
 func _load_bundles():
 	"""Load bundle definitions"""
+	# Check if bundles directory exists
+	if not DirAccess.dir_exists_absolute(BUNDLES_PATH):
+		push_warning("ItemManager: Bundles path does not exist: " + BUNDLES_PATH)
+		return
+	
 	var dir = DirAccess.open(BUNDLES_PATH)
 	if not dir:
+		push_warning("ItemManager: Cannot open bundles directory")
 		return
 	
 	dir.list_dir_begin()
@@ -222,7 +215,7 @@ func _ensure_defaults():
 		classic.is_purchasable = false
 		register_item(classic)
 	
-	if not all_items.has("classic_board"):
+	if not all_items.has("board_green"):  # Fixed ID
 		var green = UnifiedItemData.new()
 		green.id = "board_green"
 		green.display_name = "Classic Green"

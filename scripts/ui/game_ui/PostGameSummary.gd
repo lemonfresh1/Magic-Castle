@@ -103,6 +103,11 @@ func show_summary(final_score: int, rounds_data: Array) -> void:
 	starting_stars = StarManager.get_balance()
 	starting_mmr = 0
 	
+	# Check if this is from a custom lobby for rematch button
+	if has_node("/root/MultiplayerManager"):
+		var mp_manager = get_node("/root/MultiplayerManager")
+		is_custom_lobby = mp_manager.is_custom_lobby
+	
 	_debug_log("Starting state - XP: %d, Level: %d, Stars: %d" % [starting_xp, starting_level, starting_stars])
 	
 	# CRITICAL: Get achievements FIRST before enabling rewards
@@ -136,27 +141,13 @@ func show_summary(final_score: int, rounds_data: Array) -> void:
 	# Start animations - THIS is where we actually award everything
 	_animate_progression()
 	
+	# Save score to leaderboard
 	if StatsManager:
 		var mode_id = GameModeManager.get_current_mode()
 		if mode_id != "":
 			_debug_log("Saving score %d for mode %s" % [final_score, mode_id])
 			StatsManager.save_score(mode_id, final_score)
 			StatsManager.save_stats()
-			
-	if MultiplayerManager and MultiplayerManager.current_lobby_id != "":
-		var placement = 1
-		var mp_score = final_score
-		var mode = MultiplayerManager.get_selected_mode()
-		
-		StatsManager.track_multiplayer_game(
-			mode,
-			placement,
-			mp_score,
-			10,
-			120.5,
-			1
-		)
-		_debug_log("Tracked multiplayer game: Mode=%s, Place=%d, Score=%d" % [mode, placement, mp_score])
 
 func _calculate_progression() -> void:
 	_debug_log("Calculating progression rewards...")
@@ -204,7 +195,7 @@ func _calculate_progression() -> void:
 	levels_gained = temp_level - starting_level
 	_debug_log("Levels gained: %d (%d → %d)" % [levels_gained, starting_level, temp_level])
 	
-	# FIX: Calculate stars from levels ONLY (NO achievement stars!)
+	# Calculate stars from levels ONLY (NO achievement stars!)
 	stars_gained = 0
 	if levels_gained > 0:
 		for i in range(levels_gained):
@@ -217,8 +208,42 @@ func _calculate_progression() -> void:
 	_debug_log("Total stars from levels: %d" % stars_gained)
 	_debug_log("Achievements unlocked: %s" % str(achievements_unlocked))
 	
-	# TODO: Calculate MMR change when implemented
+	# Calculate MMR change for multiplayer
 	mmr_change = 0
+	
+	if GameState.game_mode == "multi":
+		_debug_log("Calculating multiplayer MMR change...")
+		
+		# Get metadata from GameState
+		var placement = GameState.get_meta("multiplayer_placement", 0)
+		var player_count = GameState.get_meta("multiplayer_player_count", 8)
+		var mp_mode = GameState.get_meta("multiplayer_mode", "classic")
+		var affects_mmr = GameState.get_meta("affects_mmr", false)
+		
+		if affects_mmr and placement > 0:
+			# Get current MMR from stats
+			var current_stats = StatsManager.get_multiplayer_stats(mp_mode)
+			var current_mmr = current_stats.get("mmr", 1000)
+			if current_mmr == 0:
+				current_mmr = 1000  # Initialize if not set
+			
+			# Store starting MMR for display
+			starting_mmr = current_mmr
+			
+			# Calculate MMR change using RankingSystem
+			mmr_change = RankingSystem.calculate_mmr_change(
+				current_mmr,
+				placement,
+				player_count
+			)
+			
+			_debug_log("MMR Calculation: Placement %d/%d, Current MMR: %d, Change: %+d" % 
+				[placement, player_count, current_mmr, mmr_change])
+		else:
+			if not affects_mmr:
+				_debug_log("Custom/Tournament game - MMR not affected")
+			else:
+				_debug_log("No placement data available for MMR calculation")
 
 func _check_achievements() -> void:
 	_debug_log("Checking achievements...")

@@ -204,42 +204,6 @@ layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 4
 
-[node name="HBoxContainer" type="HBoxContainer" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/MiniProfileSection"]
-layout_mode = 2
-size_flags_horizontal = 4
-theme_override_constants/separation = 25
-
-[node name="ButtonSlot1" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/MiniProfileSection/HBoxContainer"]
-custom_minimum_size = Vector2(50, 50)
-layout_mode = 2
-toggle_mode = true
-clip_text = true
-icon_alignment = 1
-expand_icon = true
-
-[node name="ButtonSlot2" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/MiniProfileSection/HBoxContainer"]
-custom_minimum_size = Vector2(50, 50)
-layout_mode = 2
-toggle_mode = true
-clip_text = true
-icon_alignment = 1
-expand_icon = true
-
-[node name="ButtonSlot3" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/MiniProfileSection/HBoxContainer"]
-custom_minimum_size = Vector2(50, 50)
-layout_mode = 2
-size_flags_horizontal = 8
-toggle_mode = true
-clip_text = true
-icon_alignment = 1
-expand_icon = true
-
-[node name="ClearDisplayButton" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/MiniProfileSection"]
-layout_mode = 2
-text = "Clear Display"
-script = ExtResource("5_48qfi")
-metadata/_custom_type_script = "uid://c5xs6ntwdsk3t"
-
 [node name="CustomizeButton" type="Button" parent="StyledPanel/MarginContainer/TabContainer/Customize/MarginContainer/ScrollContainer/HBoxContainer/MiniProfileSection"]
 layout_mode = 2
 text = "Customize"

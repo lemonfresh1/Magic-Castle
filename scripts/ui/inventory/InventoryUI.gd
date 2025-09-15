@@ -192,14 +192,20 @@ func _get_owned_items_for_category(category_id: String) -> Array:
 		"mini_profile_cards": "mini_profile_card",
 		"avatars": "avatar",
 		"frames": "frame",
-		"emojis": "emoji"
+		# Remove emojis from the map
+		# "emojis": "emoji"  # COMMENTED OUT
 	}
 	
 	var category_key = category_map.get(category_id, category_id)
 	
 	var owned_ids = []
 	if category_key == "":
-		owned_ids = EquipmentManager.save_data.owned_items
+		# For "all" tab, filter out emojis
+		for item_id in EquipmentManager.save_data.owned_items:
+			var item = ItemManager.get_item(item_id)
+			# SKIP EMOJIS
+			if item and item.get_category_name() != "emoji":
+				owned_ids.append(item_id)
 	else:
 		for item_id in EquipmentManager.save_data.owned_items:
 			var item = ItemManager.get_item(item_id)
@@ -357,7 +363,7 @@ func _populate_flow_container_by_type(container: VBoxContainer, items: Array, ta
 		items_by_type[cat_name].append(item)
 	
 	var first_category = true
-	for category in ["card_front", "card_back", "board", "mini_profile_card", "avatar", "frame", "emoji"]:
+	for category in ["card_front", "card_back", "board", "mini_profile_card", "avatar", "frame"]:
 		if not items_by_type.has(category):
 			continue
 		
@@ -407,6 +413,7 @@ func _populate_flow_container_by_type(container: VBoxContainer, items: Array, ta
 			var separator = HSeparator.new()
 			container.add_child(separator)
 		first_category = false
+
 
 func _create_inventory_card(item, tab_id: String):
 	"""Create a UnifiedItemCard for inventory display"""

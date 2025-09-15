@@ -319,6 +319,10 @@ func set_local_player(player_id: String):
 
 func add_player(player_data: Dictionary) -> bool:
 	"""Add a player to the lobby"""
+	
+	if not player_data.has("equipped") and EquipmentManager:
+		player_data["equipped"] = EquipmentManager.get_equipped_items()
+		
 	# Find first empty slot
 	for slot in player_slots:
 		if slot.has_method("is_empty") and slot.is_empty():

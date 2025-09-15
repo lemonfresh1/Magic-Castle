@@ -686,7 +686,6 @@ func _create_display_card(item, type_key: String):
 func _create_custom_achievement_card(achievement_data: Dictionary) -> Control:
 	"""Create custom achievement card with proper sizing and font"""
 	var card_container = PanelContainer.new()
-	# Match regular item card size
 	card_container.custom_minimum_size = Vector2(90, 128)
 	card_container.size = Vector2(90, 128)
 	
@@ -696,80 +695,72 @@ func _create_custom_achievement_card(achievement_data: Dictionary) -> Control:
 	card_container.set_meta("item_data", achievement_data)
 	card_container.set_meta("is_achievement", true)
 	
-	# Style based on tier with UIStyleManager colors
+	# Style based on tier
 	var tier = achievement_data.get("tier", 1)
 	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0, 0, 0, 0)  # Fully transparent like regular cards
+	style.bg_color = Color(0, 0, 0, 0)
 	
-	# Map tiers to rarity colors using UIStyleManager
-	var border_color = Color.WHITE
-	if UIStyleManager:
-		match tier:
-			1: border_color = UIStyleManager.get_rarity_color("common")      # Gray
-			2: border_color = UIStyleManager.get_rarity_color("uncommon")    # Green
-			3: border_color = UIStyleManager.get_rarity_color("rare")        # Blue
-			4: border_color = UIStyleManager.get_rarity_color("epic")        # Purple
-			5: border_color = UIStyleManager.get_rarity_color("legendary")   # Gold/Yellow
-			_: border_color = UIStyleManager.get_rarity_color("mythic")      # Red (for future tiers)
-	else:
-		# Fallback colors if UIStyleManager not available
-		match tier:
-			1: border_color = Color("#6B7280")  # Gray
-			2: border_color = Color("#10B981")  # Green
-			3: border_color = Color("#3B82F6")  # Blue
-			4: border_color = Color("#9333EA")  # Purple
-			5: border_color = Color("#F59E0B")  # Gold
-			_: border_color = Color("#EF4444")  # Red
+	# Use official achievement colors
+	var border_color = AchievementManager.get_tier_color(tier) if AchievementManager else Color.WHITE
 	
 	style.border_color = border_color
 	style.set_border_width_all(3 if tier >= 2 else 2)
-	style.set_corner_radius_all(0)  # Square corners to match items
+	style.set_corner_radius_all(0)
 	card_container.add_theme_stylebox_override("panel", style)
 	
-	# Content container
+	# Content container - MOUSE FILTER IGNORE
 	var vbox = VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 2)
+	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE  # Pass through clicks
 	card_container.add_child(vbox)
 	
-	# Icon container
+	# Icon container - MOUSE FILTER IGNORE
 	var icon_container = Control.new()
 	icon_container.custom_minimum_size = Vector2(80, 80)
+	icon_container.mouse_filter = Control.MOUSE_FILTER_IGNORE  # Pass through clicks
 	vbox.add_child(icon_container)
 	icon_container.position = Vector2(5, 6)
 	
-	# Icon
+	# Icon - MOUSE FILTER IGNORE
 	var icon = TextureRect.new()
 	icon.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon.custom_minimum_size = Vector2(60, 60)
 	icon.size = Vector2(60, 60)
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE  # Pass through clicks
 	icon_container.add_child(icon)
-	icon.position = Vector2(12, 6)  # Center in container
+	icon.position = Vector2(12, 6)
 	
-	# Load icon texture
-	var icon_path = achievement_data.get("icon_path", "")
-	if icon_path != "" and ResourceLoader.exists(icon_path):
+	# Build correct icon path
+	var icon_filename = "%s_ach_t%d.png" % [item_id, tier]
+	var icon_path = "res://Pyramids/assets/icons/achievements/white_icons_cut/%s" % icon_filename
+	
+	if ResourceLoader.exists(icon_path):
 		icon.texture = load(icon_path)
 		_debug_log("Loaded achievement icon: %s" % icon_path)
+	else:
+		_debug_log("WARNING: Achievement icon not found: %s" % icon_path)
 	
-	# Name label with padding
+	# Name label with padding - MOUSE FILTER IGNORE
 	var text_margin = MarginContainer.new()
 	text_margin.add_theme_constant_override("margin_left", 2)
 	text_margin.add_theme_constant_override("margin_right", 2)
+	text_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE  # Pass through clicks
 	vbox.add_child(text_margin)
 	
 	var name_label = Label.new()
 	name_label.text = achievement_data.get("display_name", "Achievement")
-	name_label.add_theme_font_size_override("font_size", 10)  # Readable font
+	name_label.add_theme_font_size_override("font_size", 10)
 	name_label.add_theme_color_override("font_color", Color("#111827"))
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE  # Pass through clicks
 	text_margin.add_child(name_label)
 	
-	# Make clickable
+	# Make card container clickable
 	card_container.gui_input.connect(_on_achievement_card_input.bind(card_container))
-	card_container.mouse_filter = Control.MOUSE_FILTER_PASS
+	card_container.mouse_filter = Control.MOUSE_FILTER_PASS  # Accept clicks
 	
 	_debug_log("Created custom achievement card for: %s" % item_id)
 	
@@ -819,13 +810,13 @@ func _show_selection_visual(card: Control):
 	# Highlight the card
 	card.modulate = Color(1.1, 1.1, 1.1)
 	
-	# Add border effect for achievement cards
+	# Add border effect for achievement cards - DON'T CHANGE WIDTH!
 	if card.get_meta("is_achievement", false):
 		var style = card.get_theme_stylebox("panel")
 		if style and style is StyleBoxFlat:
 			var new_style = style.duplicate()
-			new_style.border_color = Color("#10B981")
-			new_style.set_border_width_all(4)
+			new_style.border_color = Color("#10B981")  # Green for selected
+			# DON'T change border width - keep original!
 			card.add_theme_stylebox_override("panel", new_style)
 
 func _clear_selection_visual(card: Control):

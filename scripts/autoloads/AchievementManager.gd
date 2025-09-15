@@ -333,6 +333,18 @@ func get_claimed_tier(base_id: String) -> int:
 	"""Get the highest claimed tier for an achievement (0-5)"""
 	return claimed_tiers.get(base_id, 0)
 
+func get_tier_color(tier: int) -> Color:
+	"""Get the official color for a tier"""
+	if tier < 1 or tier > 5:
+		return Color.WHITE
+	return TIER_COLORS[tier - 1]  # tier is 1-indexed, array is 0-indexed
+
+func get_tier_name(tier: int) -> String:
+	"""Get the official name for a tier"""
+	if tier < 1 or tier > 5:
+		return "Unknown"
+	return TIER_NAMES[tier - 1]
+
 func is_achievement_new(achievement_id: String) -> bool:
 	"""Check if an achievement is newly unlocked"""
 	return achievement_id in new_achievements

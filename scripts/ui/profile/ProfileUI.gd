@@ -149,8 +149,6 @@ func _ready():
 	
 	# Mark as initialized
 	card_initialized = true
-	
-	#call_deferred("test_showcase_system")
 
 func _setup_showcase_slots():
 	"""Create UnifiedItemCard instances for each showcase button"""
@@ -405,8 +403,6 @@ func _create_mini_profile_card():
 	
 	# Connect signals
 	if mini_profile_card.has_signal("display_item_clicked"):
-		if not mini_profile_card.display_item_clicked.is_connected(_on_display_item_clicked):
-			mini_profile_card.display_item_clicked.connect(_on_display_item_clicked)
 			_debug_log("Connected to MiniProfileCard display_item_clicked signal")
 	
 	# Add to preview container
@@ -500,11 +496,6 @@ func _connect_button_signals():
 			if not btn.pressed.is_connected(_on_showcase_slot_pressed):
 				btn.pressed.connect(_on_showcase_slot_pressed.bind(i))
 				_debug_log("Connected showcase slot %d button" % i)
-	
-	# Clear display button
-	if clear_display_btn and is_instance_valid(clear_display_btn):
-		if not clear_display_btn.pressed.is_connected(_on_clear_display_pressed):
-			clear_display_btn.pressed.connect(_on_clear_display_pressed)
 	
 	# Custoimize button
 	if customize_button and is_instance_valid(customize_button):
@@ -990,160 +981,15 @@ func _add_equipped_item_label(parent: Node, category: String, display_name: Stri
 			label.add_theme_color_override("font_color", Color(0.4, 0.4, 0.4, 1))
 			parent.add_child(label)
 
-func _on_display_item_clicked(item_id: String):
-	"""Handle click on display slot in MiniProfileCard - receives item_id from signal"""
-	_debug_log("Display item clicked in MiniProfileCard: %s" % item_id)
-	
-	# The MiniProfileCard shows items from showcase array, not equipped items
-	# So we need to find which slot this item is in the showcase array
-	if not EquipmentManager:
-		return
-	
-	var showcase_items = EquipmentManager.get_showcased_items()
-	
-	# Find which slot index this item_id corresponds to
-	var slot_index = -1
-	for i in range(showcase_items.size()):
-		if showcase_items[i] == item_id:
-			slot_index = i
-			break
-	
-	if slot_index == -1:
-		_debug_log("WARNING: Clicked item not found in showcase: %s" % item_id)
-		return
-	
-	# Trigger the same handler as clicking the button
-	_on_showcase_slot_pressed(slot_index)
-
-func _debug_container_hierarchy():
-	"""Debug function to check all parent containers for click blocking"""
-	_debug_log("=== Checking container hierarchy for click blocking ===")
-	
-	# Check all the containers in the hierarchy
-	var containers_to_check = [
-		["styled_panel", styled_panel],
-		["tab_container", tab_container],
-		["customize_tab", customize_tab],
-		["mini_profile_section", mini_profile_section],
-		["preview_container", preview_container],
-		["clear_display_btn", clear_display_btn]
-	]
-	
-	for container_info in containers_to_check:
-		var name = container_info[0]
-		var node = container_info[1]
-		if node:
-			_debug_log("%s:" % name)
-			_debug_log("  - Class: %s" % node.get_class())
-			_debug_log("  - Visible: %s" % node.visible)
-			_debug_log("  - Mouse filter: %s (0=STOP, 1=PASS, 2=IGNORE)" % node.mouse_filter)
-			
-			# Check if there's any Control node on top blocking clicks
-			if node is Control:
-				var rect = node.get_global_rect()
-				_debug_log("  - Global rect: %s" % rect)
-				_debug_log("  - Z-index: %s" % node.z_index)
-		else:
-			_debug_log("%s: NULL" % name)
-	
-	# Check for any overlapping controls
-	if preview_container and mini_profile_card:
-		var preview_rect = preview_container.get_global_rect()
-		var card_rect = mini_profile_card.get_global_rect()
-		_debug_log("Preview container rect: %s" % preview_rect)
-		_debug_log("MiniProfileCard rect: %s" % card_rect)
-		
-		# Check if they actually overlap
-		if not preview_rect.intersects(card_rect):
-			_debug_log("WARNING: MiniProfileCard is outside preview_container bounds!")
-
 func _on_customize_pressed() -> void:
-	_debug_log("Customize button pressed!")
-
-	var popup := DISPLAY_SELECTOR_POPUP.instantiate()
-
-	if popup is Window:
+	"""Open DisplaySelectorPopup for editing mini profile showcase"""
+	_debug_log("Customize button pressed - opening DisplaySelectorPopup")
+	
+	var popup_scene = load("res://Pyramids/scenes/ui/popups/DisplaySelectorPopup.tscn")
+	if popup_scene:
+		var popup = popup_scene.instantiate()
 		get_tree().root.add_child(popup)
-		popup.popup_centered()
+		popup.setup(0)  # Start with slot 0
+		popup.show_selector()
 	else:
-		get_tree().current_scene.add_child(popup)
-		popup.show()
-
-func _on_clear_display_pressed():
-	"""Clear all display items from mini profile"""
-	_debug_log("Clear display button pressed!")
-	if EquipmentManager:
-		# Clear all showcase slots
-		for i in range(3):
-			EquipmentManager.update_showcased_item(i, "")
-		_debug_log("Cleared all showcase items")
-
-# test
-
-func test_showcase_system():
-	"""Test the showcase system - call this from _ready() or via button"""
-	print("\n=== TESTING SHOWCASE IN PROFILEUI ===")
-	
-	if not EquipmentManager:
-		print("ERROR: EquipmentManager not found")
-		return
-	
-	# Check current state
-	print("\n1. Current showcase items:")
-	var showcase = EquipmentManager.get_showcased_items()
-	print("   Showcase: ", showcase)
-	
-	# Check what we have equipped
-	print("\n2. Currently equipped items:")
-	var equipped = EquipmentManager.get_equipped_items()
-	print("   Card Back: ", equipped.get("card_back", "none"))
-	print("   Card Front: ", equipped.get("card_front", "none"))
-	print("   Board: ", equipped.get("board", "none"))
-	
-	# Set test showcase items (use what's equipped)
-	print("\n3. Setting showcase to equipped items...")
-	if equipped.card_back != "":
-		EquipmentManager.set_showcase_item(0, equipped.card_back)
-		print("   Set slot 0 to: ", equipped.card_back)
-	if equipped.card_front != "":
-		EquipmentManager.set_showcase_item(1, equipped.card_front)
-		print("   Set slot 1 to: ", equipped.card_front)
-	if equipped.board != "":
-		EquipmentManager.set_showcase_item(2, equipped.board)
-		print("   Set slot 2 to: ", equipped.board)
-	
-	# Verify it saved
-	print("\n4. Verifying showcase was saved:")
-	showcase = EquipmentManager.get_showcased_items()
-	print("   New showcase: ", showcase)
-	
-	# Check if MiniProfileCard shows them
-	print("\n5. Checking MiniProfileCard display:")
-	if mini_profile_card and is_instance_valid(mini_profile_card):
-		if "player_data" in mini_profile_card:
-			var card_data = mini_profile_card.player_data
-			print("   MiniProfileCard display_items: ", card_data.get("display_items", []))
-			
-			# Force refresh
-			var player_data = _get_current_player_data()
-			mini_profile_card.set_player_data(player_data)
-			print("   Refreshed MiniProfileCard")
-			
-			# Check again
-			await get_tree().process_frame
-			print("   After refresh display_items: ", mini_profile_card.player_data.get("display_items", []))
-	else:
-		print("   ERROR: MiniProfileCard not found")
-	
-	print("\n=== TEST COMPLETE ===")
-	print("Check if the 3 buttons below MiniProfileCard show the showcase items!")
-
-func test_showcase_difference():
-	# Set showcase to DIFFERENT items than equipped
-	EquipmentManager.set_showcase_item(0, "")  # Clear slot 0
-	EquipmentManager.set_showcase_item(1, "emoji_cool")  # Put an emoji in slot 1
-	# Slot 2 stays as pyramids_board
-	
-	print("Showcase is now different from equipped!")
-	print("Showcase: ", EquipmentManager.get_showcased_items())
-	print("Equipped: card_back=", EquipmentManager.get_equipped_items().card_back)
+		push_error("[ProfileUI] DisplaySelectorPopup scene not found")
