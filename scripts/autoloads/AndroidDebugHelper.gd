@@ -13,6 +13,16 @@ func _ready():
 	collect_system_info()
 	check_common_issues()
 	
+	# Debug specific issues
+	await get_tree().process_frame
+	debug_item_manager()
+	debug_procedural_items()
+	debug_emoji_loading()  # Add emoji debug
+	debug_game_mode_manager()
+	
+	# Hook into scene changes
+	get_tree().node_added.connect(_on_node_added)
+	
 	# Print debug info every 5 seconds if in debug mode
 	if OS.is_debug_build():
 		var timer = Timer.new()
@@ -20,6 +30,14 @@ func _ready():
 		timer.timeout.connect(print_performance_stats)
 		add_child(timer)
 		timer.start()
+
+func _on_node_added(node: Node):
+	"""Hook into specific scenes for debugging"""
+	if node.name == "SinglePlayerModeSelect":
+		print("\n=== SINGLEPLAYER MODE SELECT LOADING ===")
+		debug_scene_change("SinglePlayerModeSelect")
+		# Add specific debugging for this scene
+		call_deferred("_debug_single_player_scene", node)
 
 func collect_system_info():
 	"""Collect system information for debugging"""
@@ -159,3 +177,220 @@ func log_crash_info(error_msg: String):
 	
 	print("=== CRASH INFO SAVED ===")
 	print(crash_info)
+
+func debug_item_manager():
+	"""Debug ItemManager and inventory issues"""
+	print("\n=== ITEMMANAGER DEBUG ===")
+	
+	if not ItemManager:
+		print("❌ ItemManager is NULL!")
+		return
+	
+	print("✓ ItemManager exists")
+	print("  Total items: %d" % ItemManager.all_items.size())
+	print("  Procedural instances: %d" % ItemManager.procedural_instances.size())
+	
+	# Count by category
+	var categories = ["card_fronts", "card_backs", "boards", "frames", "avatars", "emojis"]
+	for category in categories:
+		var items = ItemManager.get_items_by_category(category)
+		print("  %s: %d items" % [category, items.size()])
+		
+		# Show first 2 items in each category
+		var count = 0
+		for item in items:
+			if count < 2:
+				print("    - %s (procedural: %s)" % [item.id, item.is_procedural])
+				count += 1
+	
+	# Check for common items
+	var test_items = ["card_classic", "board_green"]
+	for item_id in test_items:
+		var item = ItemManager.get_item(item_id)
+		if item:
+			print("  ✓ Found: %s" % item_id)
+		else:
+			print("  ❌ Missing: %s" % item_id)
+
+func debug_emoji_loading():
+	"""Debug why emoji items aren't loading"""
+	print("\n=== EMOJI LOADING DEBUG ===")
+	
+	# Check PNG directory
+	var png_path = "res://Pyramids/assets/icons/emojis/"
+	print("Checking PNG path: %s" % png_path)
+	if DirAccess.dir_exists_absolute(png_path):
+		var dir = DirAccess.open(png_path)
+		dir.list_dir_begin()
+		var file = dir.get_next()
+		var png_count = 0
+		var png_files = []
+		while file != "":
+			if file.ends_with(".png"):
+				png_files.append(file)
+				png_count += 1
+			file = dir.get_next()
+		print("  Found %d PNG files" % png_count)
+		if png_count > 0 and png_count <= 5:
+			print("  Files: %s" % str(png_files))
+		elif png_count > 5:
+			print("  First 5: %s..." % str(png_files.slice(0, 5)))
+	else:
+		print("  ❌ PNG path doesn't exist!")
+	
+	# Check TRES directory
+	var tres_path = "res://Pyramids/resources/items/emojis/"
+	print("\nChecking TRES path: %s" % tres_path)
+	if DirAccess.dir_exists_absolute(tres_path):
+		var dir = DirAccess.open(tres_path)
+		dir.list_dir_begin()
+		var file = dir.get_next()
+		var tres_count = 0
+		var loaded_count = 0
+		while file != "":
+			if file.ends_with(".tres") or file.ends_with(".res"):
+				tres_count += 1
+				var resource_path = tres_path + file
+				print("  Loading: %s" % file)
+				
+				# Try to load the resource
+				if ResourceLoader.exists(resource_path):
+					var item = load(resource_path)
+					if item:
+						loaded_count += 1
+						# Check if it's a UnifiedItemData with an id property
+						if item is UnifiedItemData and item.id != "":
+							print("    ✓ Loaded emoji: %s" % item.id)
+						else:
+							print("    ✓ Loaded but not UnifiedItemData or no ID")
+					else:
+						print("    ❌ Failed to load resource")
+				else:
+					print("    ❌ Resource doesn't exist in loader")
+			file = dir.get_next()
+		print("  Summary: %d tres files, %d loaded successfully" % [tres_count, loaded_count])
+	else:
+		print("  ❌ TRES path doesn't exist!")
+		
+	# Check if emojis are in ItemManager
+	if ItemManager:
+		var emoji_items = ItemManager.get_items_by_category("emojis")
+		print("\nItemManager has %d emoji items" % emoji_items.size())
+		if emoji_items.size() > 0:
+			for i in min(3, emoji_items.size()):
+				var item = emoji_items[i]
+				print("  - %s" % item.id)
+
+func debug_procedural_items():
+	"""Debug why procedural items might not be loading"""
+	print("\n=== PROCEDURAL ITEMS DEBUG ===")
+	
+	var paths_to_check = [
+		"res://Pyramids/scripts/items/card_fronts/procedural/",
+		"res://Pyramids/scripts/items/card_backs/procedural/",
+		"res://Pyramids/scripts/items/boards/procedural/"
+	]
+	
+	for path in paths_to_check:
+		print("\nChecking: %s" % path)
+		
+		if not DirAccess.dir_exists_absolute(path):
+			print("  ❌ Directory doesn't exist on device!")
+			continue
+		
+		var dir = DirAccess.open(path)
+		if not dir:
+			print("  ❌ Cannot open directory!")
+			continue
+		
+		print("  ✓ Directory accessible")
+		
+		# Count scripts
+		dir.list_dir_begin()
+		var script_count = 0
+		var loaded_count = 0
+		var file_name = dir.get_next()
+		
+		while file_name != "":
+			if file_name.ends_with(".gd"):
+				script_count += 1
+				var full_path = path + file_name
+				
+				# Try to load
+				if ResourceLoader.exists(full_path):
+					var script = load(full_path)
+					if script:
+						loaded_count += 1
+						print("    ✓ %s" % file_name)
+					else:
+						print("    ❌ Failed to load: %s" % file_name)
+				else:
+					print("    ❌ Not in resources: %s" % file_name)
+			
+			file_name = dir.get_next()
+		
+		print("  Scripts: %d found, %d loaded" % [script_count, loaded_count])
+	
+	# Check if ProceduralItemRegistry exists
+	if has_node("/root/ProceduralItemRegistry"):
+		print("\n✓ ProceduralItemRegistry exists as autoload")
+		var registry = get_node("/root/ProceduralItemRegistry")
+		if "procedural_items" in registry:
+			print("  Registered items: %d" % registry.procedural_items.size())
+	else:
+		print("\n❌ ProceduralItemRegistry not found in autoloads!")
+
+func debug_game_mode_manager():
+	"""Debug GameModeManager for SinglePlayerModeSelect crash"""
+	print("\n=== GAMEMODE MANAGER DEBUG ===")
+	
+	if not has_node("/root/GameModeManager"):
+		print("❌ GameModeManager not in autoloads!")
+		return
+	
+	var gmm = get_node("/root/GameModeManager")
+	print("✓ GameModeManager exists")
+	
+	if not "available_modes" in gmm:
+		print("  ❌ No 'available_modes' property!")
+		return
+	
+	var modes = gmm.available_modes
+	print("  Available modes: %d" % modes.size())
+	
+	for mode_id in modes:
+		var config = modes[mode_id]
+		print("    - %s: %s" % [mode_id, config.get("display_name", "???")])
+
+func debug_scene_change(to_scene: String):
+	"""Call this before changing scenes to debug crashes"""
+	print("\n=== SCENE CHANGE DEBUG ===")
+	print("Changing to: %s" % to_scene)
+	print("Current scene: %s" % get_tree().current_scene.name)
+	print("Memory before: %.2f MB" % (OS.get_static_memory_usage() / 1048576.0))
+	
+	# Check critical autoloads
+	var autoloads = ["GameModeManager", "ItemManager", "UIStyleManager", "StatsManager"]
+	for autoload in autoloads:
+		if has_node("/root/" + autoload):
+			print("  ✓ %s" % autoload)
+		else:
+			print("  ❌ %s missing!" % autoload)
+
+func _debug_single_player_scene(scene_node: Node):
+	"""Debug SinglePlayerModeSelect specifically"""
+	print("Debugging SinglePlayerModeSelect scene...")
+	
+	# Check for required child nodes
+	var required_nodes = ["TopSection", "BottomSection", "TopSection/BackButton", "BottomSection/CardContainer"]
+	for node_path in required_nodes:
+		if scene_node.has_node(node_path):
+			print("  ✓ Found: %s" % node_path)
+		else:
+			print("  ❌ Missing: %s" % node_path)
+	
+	# Check if HighscoresPanel scene exists
+	if ResourceLoader.exists("res://Pyramids/scenes/ui/components/HighscoresPanel.tscn"):
+		print("  ✓ HighscoresPanel.tscn exists")
+	else:
+		print("  ❌ HighscoresPanel.tscn not found!")

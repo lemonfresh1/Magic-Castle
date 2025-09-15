@@ -24,6 +24,56 @@ var highscores_panel_scene = preload("res://Pyramids/scenes/ui/components/Highsc
 var highscores_panel: Control = null
 
 func _ready():
+	# Add crash debugging
+	print("=== SINGLEPLAYER READY START ===")
+	
+	# Check if HighscoresPanel can be loaded
+	if not ResourceLoader.exists("res://Pyramids/scenes/ui/components/HighscoresPanel.tscn"):
+		push_error("HighscoresPanel.tscn doesn't exist!")
+		return
+	
+	print("1. Setup background...")
+	_setup_background()
+	
+	print("2. Setup UI...")
+	_setup_ui()
+	
+	print("3. Connect signals...")
+	_connect_signals()
+	
+	print("4. Apply styles...")  
+	_apply_styles()
+	
+	print("5. Load modes...")
+	_load_modes_from_manager()
+	print("   Loaded %d modes" % single_player_modes.size())
+	
+	print("6. Create carousel...")
+	_create_carousel_cards()
+	print("   Created %d cards" % cards.size())
+	
+	print("7. Initial carousel update...")
+	await get_tree().process_frame
+
+	print("8. Updating positions...")
+	if cards.is_empty():
+		push_error("No cards to position!")
+		return
+	_update_carousel_positions()
+
+	print("9. Update visibility...")
+	if cards.size() > 0:
+		if not is_instance_valid(cards[0]):
+			push_error("Card 0 is invalid!")
+			return
+		_update_card_visibility(cards[0], true)
+
+	print("10. Select mode...")
+	_select_mode(0)
+	print("=== READY COMPLETE ===")
+	
+	##### DELETE ABOVE LATER ###
+	
 	# Add gradient background first
 	_setup_background()
 	

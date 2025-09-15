@@ -106,7 +106,7 @@ func show_summary(final_score: int, rounds_data: Array) -> void:
 	# Check if this is from a custom lobby for rematch button
 	if has_node("/root/MultiplayerManager"):
 		var mp_manager = get_node("/root/MultiplayerManager")
-		is_custom_lobby = mp_manager.is_custom_lobby
+		is_custom_lobby = mp_manager.is_custom_lobby()
 	
 	_debug_log("Starting state - XP: %d, Level: %d, Stars: %d" % [starting_xp, starting_level, starting_stars])
 	

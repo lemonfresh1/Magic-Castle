@@ -92,14 +92,19 @@ func _load_resource_items():
 	for category in CATEGORIES:
 		var path = ITEMS_PATH + category + "/"
 		
-		# Check if directory exists (don't try to create it!)
+		# Special debug for emojis
+		if category == "emojis":
+			print("[EMOJI LOAD] Checking path: %s" % path)
+		
 		if not DirAccess.dir_exists_absolute(path):
-			push_warning("ItemManager: Category path does not exist: " + path)
+			if category == "emojis":
+				print("[EMOJI LOAD] Directory doesn't exist!")
 			continue
 		
 		var dir = DirAccess.open(path)
 		if not dir:
-			push_warning("ItemManager: Cannot open directory: " + path)
+			if category == "emojis":
+				print("[EMOJI LOAD] Cannot open directory!")
 			continue
 		
 		dir.list_dir_begin()
@@ -108,11 +113,19 @@ func _load_resource_items():
 		while file_name != "":
 			if file_name.ends_with(".tres") or file_name.ends_with(".res"):
 				var resource_path = path + file_name
+				
+				# Debug for emojis
+				if category == "emojis":
+					print("[EMOJI LOAD] Found file: %s" % file_name)
+				
 				var item = load(resource_path) as UnifiedItemData
 				if item and item.id != "":
 					register_item(item)
+					if category == "emojis":
+						print("[EMOJI LOAD] Registered: %s" % item.id)
 				else:
-					push_warning("ItemManager: Failed to load item: " + resource_path)
+					if category == "emojis":
+						print("[EMOJI LOAD] Failed to load or no ID: %s" % file_name)
 			file_name = dir.get_next()
 
 func _discover_procedural_items():
@@ -124,7 +137,6 @@ func _discover_procedural_items():
 func _scan_procedural_directory(base_path: String, category: String):
 	"""Recursively scan for procedural item scripts"""
 	if not DirAccess.dir_exists_absolute(base_path):
-		# This is OK - not all categories have procedural items
 		return
 	
 	var dir = DirAccess.open(base_path)
@@ -138,10 +150,10 @@ func _scan_procedural_directory(base_path: String, category: String):
 		var full_path = base_path + "/" + name
 		
 		if dir.current_is_dir() and name != "." and name != "..":
-			# Recurse into subdirectories
+			# Recurse into subdirectories (common, rare, epic, etc.)
 			_scan_procedural_directory(full_path, category)
-		elif name.ends_with(".gd"):
-			# Load the script
+		elif name.ends_with(".gd") or name.ends_with(".gdc"):
+			# Handle both source (.gd) and compiled (.gdc) scripts
 			var script = load(full_path)
 			if script:
 				var instance = script.new()

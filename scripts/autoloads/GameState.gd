@@ -443,6 +443,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		return
 		
 	if event is InputEventKey and event.pressed:
+		if event.keycode == KEY_E:		if event.keycode == KEY_E:
+			_delayed_end_round("DEBUG: Forced end")
+			get_viewport().set_input_as_handled()
 		# Press 1-8 to force placement in test mode
 		if game_mode == "multi" and GameModeManager.get_current_mode() == "test":
 			if event.keycode >= KEY_1 and event.keycode <= KEY_8:
