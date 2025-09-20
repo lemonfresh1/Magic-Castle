@@ -21,8 +21,8 @@ extends Control
 signal profile_closed
 
 # === DEBUG FLAGS ===
-var debug_enabled: bool = true
-var global_debug: bool = true
+var debug_enabled: bool = false
+var global_debug: bool = false
 
 # === NODE REFERENCES ===
 const DISPLAY_SELECTOR_POPUP = preload("res://Pyramids/scenes/ui/popups/DisplaySelectorPopup.tscn")

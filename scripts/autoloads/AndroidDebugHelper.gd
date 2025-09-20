@@ -15,9 +15,9 @@ func _ready():
 	
 	# Debug specific issues
 	await get_tree().process_frame
-	debug_item_manager()
-	debug_procedural_items()
-	debug_emoji_loading()  # Add emoji debug
+	#debug_item_manager()
+	#debug_procedural_items()
+	#debug_emoji_loading()  # Add emoji debug
 	debug_game_mode_manager()
 	
 	# Hook into scene changes
@@ -213,73 +213,39 @@ func debug_item_manager():
 			print("  ❌ Missing: %s" % item_id)
 
 func debug_emoji_loading():
-	"""Debug why emoji items aren't loading"""
 	print("\n=== EMOJI LOADING DEBUG ===")
 	
-	# Check PNG directory
+	# Check PNG directory - show ALL files
 	var png_path = "res://Pyramids/assets/icons/emojis/"
 	print("Checking PNG path: %s" % png_path)
 	if DirAccess.dir_exists_absolute(png_path):
 		var dir = DirAccess.open(png_path)
 		dir.list_dir_begin()
 		var file = dir.get_next()
-		var png_count = 0
-		var png_files = []
+		var all_files = []
 		while file != "":
-			if file.ends_with(".png"):
-				png_files.append(file)
-				png_count += 1
+			all_files.append(file)
+			print("  Found file: %s" % file)  # Show EVERY file
 			file = dir.get_next()
-		print("  Found %d PNG files" % png_count)
-		if png_count > 0 and png_count <= 5:
-			print("  Files: %s" % str(png_files))
-		elif png_count > 5:
-			print("  First 5: %s..." % str(png_files.slice(0, 5)))
-	else:
-		print("  ❌ PNG path doesn't exist!")
+		print("  Total files in directory: %d" % all_files.size())
+		if all_files.size() == 0:
+			print("  ❌ Directory exists but is EMPTY!")
 	
-	# Check TRES directory
+	# Check TRES directory - show ALL files
 	var tres_path = "res://Pyramids/resources/items/emojis/"
 	print("\nChecking TRES path: %s" % tres_path)
 	if DirAccess.dir_exists_absolute(tres_path):
 		var dir = DirAccess.open(tres_path)
 		dir.list_dir_begin()
 		var file = dir.get_next()
-		var tres_count = 0
-		var loaded_count = 0
+		var all_files = []
 		while file != "":
-			if file.ends_with(".tres") or file.ends_with(".res"):
-				tres_count += 1
-				var resource_path = tres_path + file
-				print("  Loading: %s" % file)
-				
-				# Try to load the resource
-				if ResourceLoader.exists(resource_path):
-					var item = load(resource_path)
-					if item:
-						loaded_count += 1
-						# Check if it's a UnifiedItemData with an id property
-						if item is UnifiedItemData and item.id != "":
-							print("    ✓ Loaded emoji: %s" % item.id)
-						else:
-							print("    ✓ Loaded but not UnifiedItemData or no ID")
-					else:
-						print("    ❌ Failed to load resource")
-				else:
-					print("    ❌ Resource doesn't exist in loader")
+			all_files.append(file)
+			print("  Found file: %s" % file)  # Show EVERY file
 			file = dir.get_next()
-		print("  Summary: %d tres files, %d loaded successfully" % [tres_count, loaded_count])
-	else:
-		print("  ❌ TRES path doesn't exist!")
-		
-	# Check if emojis are in ItemManager
-	if ItemManager:
-		var emoji_items = ItemManager.get_items_by_category("emojis")
-		print("\nItemManager has %d emoji items" % emoji_items.size())
-		if emoji_items.size() > 0:
-			for i in min(3, emoji_items.size()):
-				var item = emoji_items[i]
-				print("  - %s" % item.id)
+		print("  Total files in directory: %d" % all_files.size())
+		if all_files.size() == 0:
+			print("  ❌ Directory exists but is EMPTY!")
 
 func debug_procedural_items():
 	"""Debug why procedural items might not be loading"""
@@ -394,3 +360,12 @@ func _debug_single_player_scene(scene_node: Node):
 		print("  ✓ HighscoresPanel.tscn exists")
 	else:
 		print("  ❌ HighscoresPanel.tscn not found!")
+	
+	# Monitor finalize function
+	if scene_node.has_method("_finalize_carousel_setup"):
+		print("  ✓ Has _finalize_carousel_setup method")
+		
+		# Try to detect when it's called
+		await get_tree().process_frame
+		await get_tree().process_frame  # Give it 2 frames
+		print("  Carousel should be finalized by now")

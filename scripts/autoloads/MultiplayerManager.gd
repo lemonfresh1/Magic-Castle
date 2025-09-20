@@ -21,6 +21,10 @@
 
 extends Node
 
+# === DEBUG FLAGS ===
+var debug_enabled: bool = false
+var global_debug: bool = false
+
 # === ENUMS ===
 enum LobbyType {
 	MATCHMAKING,  # Affects MMR
@@ -55,8 +59,13 @@ signal lobby_created(lobby_id: String)
 signal matchmaking_started()
 signal matchmaking_stopped()
 
+# === DEBUG FUNCTION ===
+func debug_log(message: String) -> void:
+	if debug_enabled and global_debug:
+		print("[MultiplayerManager] %s" % message)
+
 func _ready():
-	print("[MultiplayerManager] Initialized")
+	debug_log("Initialized")
 	
 	# TODO: Connect to NetworkManager when available
 	# SignalBus signals are already available globally
@@ -67,7 +76,7 @@ func select_game_mode(mode_id: String) -> void:
 	"""Set the selected game mode for multiplayer"""
 	if GameModeManager and GameModeManager.available_modes.has(mode_id):
 		selected_game_mode = mode_id
-		print("[MultiplayerManager] Game mode selected: %s" % mode_id)
+		debug_log("Game mode selected: %s" % mode_id)
 	else:
 		push_error("[MultiplayerManager] Invalid game mode: %s" % mode_id)
 
@@ -84,10 +93,10 @@ func get_selected_mode_config() -> Dictionary:
 func start_matchmaking() -> void:
 	"""Start searching for a lobby or create one"""
 	if is_searching:
-		print("[MultiplayerManager] Already searching for lobby")
+		debug_log("Already searching for lobby")
 		return
 	
-	print("[MultiplayerManager] Starting matchmaking for mode: %s" % selected_game_mode)
+	debug_log("Starting matchmaking for mode: %s" % selected_game_mode)
 	current_lobby_type = LobbyType.MATCHMAKING  # Matchmaking affects MMR
 	is_searching = true
 	search_start_time = Time.get_ticks_msec() / 1000.0
@@ -103,12 +112,12 @@ func stop_matchmaking() -> void:
 		return
 		
 	is_searching = false
-	print("[MultiplayerManager] Matchmaking stopped")
+	debug_log("Matchmaking stopped")
 	matchmaking_stopped.emit()
 
 func join_or_create_lobby() -> void:
 	"""Main entry point for Play button - finds or creates lobby"""
-	print("[MultiplayerManager] Join or create lobby for mode: %s" % selected_game_mode)
+	debug_log("Join or create lobby for mode: %s" % selected_game_mode)
 	
 	# This is from Quick Play/matchmaking - affects MMR
 	current_lobby_type = LobbyType.MATCHMAKING
@@ -127,7 +136,7 @@ func create_custom_lobby(settings: Dictionary = {}) -> String:
 	current_lobby_id = _generate_lobby_id()
 	is_host = true
 	
-	print("[MultiplayerManager] Created custom lobby: %s" % current_lobby_id)
+	debug_log("Created custom lobby: %s" % current_lobby_id)
 	lobby_created.emit(current_lobby_id)
 	
 	return current_lobby_id
@@ -138,7 +147,7 @@ func create_tournament_lobby(tournament_id: String) -> String:
 	current_lobby_id = _generate_lobby_id()
 	is_host = true
 	
-	print("[MultiplayerManager] Created tournament lobby: %s for tournament %s" % [current_lobby_id, tournament_id])
+	debug_log("Created tournament lobby: %s for tournament %s" % [current_lobby_id, tournament_id])
 	lobby_created.emit(current_lobby_id)
 	
 	return current_lobby_id
@@ -148,7 +157,7 @@ func leave_current_lobby() -> void:
 	if current_lobby_id == "":
 		return
 		
-	print("[MultiplayerManager] Leaving lobby: %s" % current_lobby_id)
+	debug_log("Leaving lobby: %s" % current_lobby_id)
 	
 	# TODO: Notify server/other players
 	
@@ -212,7 +221,7 @@ func get_local_player_data() -> Dictionary:
 			"mini_profile_card_showcased_items": EquipmentManager.get_showcased_items()
 		}
 		
-		print("[MultiplayerManager] Showcase items being sent: ", local_player_data["equipped"]["mini_profile_card_showcased_items"])
+		debug_log("Showcase items being sent: %s" % str(local_player_data["equipped"]["mini_profile_card_showcased_items"]))
 	
 	# Get multiplayer stats for current mode
 	if StatsManager:
@@ -241,7 +250,7 @@ func start_game() -> void:
 	for player in lobby_players:
 		player_scores[player.id] = 0
 	
-	print("[MultiplayerManager] Starting game with mode: %s, lobby type: %s" % [selected_game_mode, LobbyType.keys()[current_lobby_type]])
+	debug_log("Starting game with mode: %s, lobby type: %s" % [selected_game_mode, LobbyType.keys()[current_lobby_type]])
 	
 	# Configure GameModeManager
 	if GameModeManager:
@@ -275,7 +284,7 @@ func _join_existing_lobby(lobby_data: Dictionary) -> void:
 	current_lobby_id = lobby_data.get("id", "")
 	is_host = false
 	
-	print("[MultiplayerManager] Joining lobby: %s" % current_lobby_id)
+	debug_log("Joining lobby: %s" % current_lobby_id)
 	
 	# TODO: Connect to lobby host
 	# TODO: Sync player data
@@ -297,7 +306,7 @@ func _create_new_lobby() -> void:
 	player_data["is_host"] = true
 	lobby_players.append(player_data)
 	
-	print("[MultiplayerManager] Created new lobby: %s (type: %s)" % [current_lobby_id, LobbyType.keys()[current_lobby_type]])
+	debug_log("Created new lobby: %s (type: %s)" % [current_lobby_id, LobbyType.keys()[current_lobby_type]])
 	lobby_created.emit(current_lobby_id)
 	
 	# Navigate to GameLobby
@@ -343,10 +352,10 @@ func get_player_placement(player_id: String) -> int:
 
 func debug_print_state() -> void:
 	"""Print current manager state for debugging"""
-	print("=== MultiplayerManager State ===")
-	print("Selected Mode: %s" % selected_game_mode)
-	print("Current Lobby: %s" % current_lobby_id)
-	print("Lobby Type: %s" % LobbyType.keys()[current_lobby_type])
-	print("Is Host: %s" % is_host)
-	print("Player Count: %d" % lobby_players.size())
-	print("Is Searching: %s" % is_searching)
+	debug_log("=== MultiplayerManager State ===")
+	debug_log("Selected Mode: %s" % selected_game_mode)
+	debug_log("Current Lobby: %s" % current_lobby_id)
+	debug_log("Lobby Type: %s" % LobbyType.keys()[current_lobby_type])
+	debug_log("Is Host: %s" % str(is_host))
+	debug_log("Player Count: %d" % lobby_players.size())
+	debug_log("Is Searching: %s" % str(is_searching))

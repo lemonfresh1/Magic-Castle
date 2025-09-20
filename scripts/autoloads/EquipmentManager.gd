@@ -14,6 +14,10 @@
 
 extends Node
 
+# === DEBUG FLAGS ===
+var debug_enabled: bool = false
+var global_debug: bool = false
+
 # Signals for equipment changes
 signal item_equipped(item_id: String, category: String)
 signal item_unequipped(item_id: String, category: String)
@@ -64,8 +68,13 @@ var save_data = {
 # Runtime cache
 var items_by_category: Dictionary = {}  # category -> [item_ids]
 
+# === DEBUG FUNCTION ===
+func debug_log(message: String) -> void:
+	if debug_enabled and global_debug:
+		print("[EquipmentManager] %s" % message)
+
 func debug_print_showcase():
-	print("[EquipmentManager] Current showcase items: ", save_data.equipped.mini_profile_card_showcased_items)
+	debug_log("Current showcase items: %s" % str(save_data.equipped.mini_profile_card_showcased_items))
 
 # Then modify _ready() to add debug calls:
 func _ready():
@@ -74,20 +83,20 @@ func _ready():
 	_ensure_defaults()
 	_build_cache()
 	_validate_equipped_items()
-	debug_print_showcase()  # ADD THIS - see after equipped validation
+	#debug_print_showcase()  # ADD THIS - see after equipped validation
 	_validate_showcase_items()
 	debug_print_showcase()  # ADD THIS - see after showcase validation
 	
 	# Connect signals for testing showcase changes with equipment changes
 	equipment_changed.connect(_on_equipment_changed_test)
-	print("EquipementManager initialized")
+	debug_log("EquipmentManager initialized")
 
 func _on_equipment_changed_test(category: String) -> void:
 	"""Temporary: Emit showcase change when equipment changes for testing"""
 	if category in ["card_back", "card_front", "board"]:
 		# For testing: auto-update showcase when these items change
 		showcase_items_changed.emit()
-		print("[EquipmentManager] Equipment changed in %s, emitting showcase_items_changed for testing" % category)
+		debug_log("Equipment changed in %s, emitting showcase_items_changed for testing" % category)
 
 func _build_cache():
 	"""Build runtime cache of items by category"""
@@ -406,7 +415,7 @@ func set_showcase_item(slot: int, item_id: String) -> void:
 				if highest_tier > 0:
 					is_valid = true
 					item_type = "achievement"
-					print("[EquipmentManager] Recognized unlocked achievement: %s (tier %d)" % [item_id, highest_tier])
+					debug_log("Recognized unlocked achievement: %s (tier %d)" % [item_id, highest_tier])
 				else:
 					push_warning("Achievement %s is not unlocked (tier 0)" % item_id)
 			else:
@@ -424,14 +433,14 @@ func set_showcase_item(slot: int, item_id: String) -> void:
 								item_id = base_id
 								is_valid = true
 								item_type = "achievement"
-								print("[EquipmentManager] Using base achievement ID: %s" % base_id)
+								debug_log("Using base achievement ID: %s" % base_id)
 		
 		# If still not valid, reject it
 		if not is_valid:
 			push_warning("Cannot showcase item: %s (not owned or unlocked)" % item_id)
 			return
 		else:
-			print("[EquipmentManager] Item %s is valid (%s)" % [item_id, item_type])
+			debug_log("Item %s is valid (%s)" % [item_id, item_type])
 	
 	# Ensure array exists and has 3 slots
 	if not save_data.equipped.has("mini_profile_card_showcased_items"):
@@ -451,7 +460,7 @@ func set_showcase_item(slot: int, item_id: String) -> void:
 	if old_slot >= 0:
 		var current_item = save_data.equipped.mini_profile_card_showcased_items[slot]
 		save_data.equipped.mini_profile_card_showcased_items[old_slot] = current_item
-		print("[EquipmentManager] Swapping slots %d and %d" % [slot, old_slot])
+		debug_log("Swapping slots %d and %d" % [slot, old_slot])
 	
 	# Set the new item
 	save_data.equipped.mini_profile_card_showcased_items[slot] = item_id
@@ -459,8 +468,8 @@ func set_showcase_item(slot: int, item_id: String) -> void:
 	save_data_to_file()
 	showcase_items_changed.emit()
 	
-	print("[EquipmentManager] Showcase updated - Slot %d: %s" % [slot, item_id])
-	print("  Current showcase: ", save_data.equipped.mini_profile_card_showcased_items)
+	debug_log("Showcase updated - Slot %d: %s" % [slot, item_id])
+	debug_log("  Current showcase: %s" % str(save_data.equipped.mini_profile_card_showcased_items))
 
 func clear_showcase_item(slot: int) -> void:
 	"""Clear a showcase slot"""
@@ -511,7 +520,7 @@ func _validate_showcase_items() -> void:
 			# First check if it's a regular owned item
 			if is_item_owned(item_id):
 				is_valid = true
-				print("[EquipmentManager] Slot %d: '%s' is an owned item" % [i, item_id])
+				debug_log("Slot %d: '%s' is an owned item" % [i, item_id])
 			# Then check if it's an achievement
 			elif AchievementManager:
 				var base_achievements = AchievementManager.get_all_base_achievements()
@@ -519,7 +528,7 @@ func _validate_showcase_items() -> void:
 					var tier = AchievementManager.get_unlocked_tier(item_id)
 					if tier > 0:
 						is_valid = true
-						print("[EquipmentManager] Slot %d: '%s' is an unlocked achievement (tier %d)" % [i, item_id, tier])
+						debug_log("Slot %d: '%s' is an unlocked achievement (tier %d)" % [i, item_id, tier])
 			
 			# Clear if invalid
 			if not is_valid:
@@ -795,7 +804,7 @@ func load_save_data() -> void:
 
 func _migrate_save_data(old_data: Dictionary) -> void:
 	"""Handle save data migration from older versions"""
-	print("EquipmentManager: Migrating save from version %d to %d" % [old_data.get("version", 0), SAVE_VERSION])
+	debug_log("Migrating save from version %d to %d" % [old_data.get("version", 0), SAVE_VERSION])
 	
 	# Start with fresh save structure
 	var new_save = {
@@ -936,35 +945,35 @@ func _get_category_key(category) -> String:
 
 func debug_status() -> void:
 	"""Print comprehensive equipment status"""
-	print("\n=== EQUIPMENT MANAGER STATUS ===")
-	print("Owned items: %d" % save_data.owned_items.size())
-	print("\nEquipped items:")
+	debug_log("\n=== EQUIPMENT MANAGER STATUS ===")
+	debug_log("Owned items: %d" % save_data.owned_items.size())
+	debug_log("\nEquipped items:")
 	for category in save_data.equipped:
 		var value = save_data.equipped[category]
 		
 		match typeof(value):
 			TYPE_STRING:
 				if value != "":
-					print("  %s: %s" % [category, value])
+					debug_log("  %s: %s" % [category, value])
 			TYPE_ARRAY:
 				if value.size() > 0:
-					print("  %s: %s" % [category, value])
+					debug_log("  %s: %s" % [category, str(value)])
 			TYPE_BOOL:
 				if value:
-					print("  %s: %s" % [category, value])
+					debug_log("  %s: %s" % [category, str(value)])
 	
-	print("\nStatistics:")
-	print("  Total owned: %d" % save_data.stats.total_items_owned)
-	print("  By category: %s" % save_data.stats.items_by_category)
-	print("  By rarity: %s" % save_data.stats.items_by_rarity)
+	debug_log("\nStatistics:")
+	debug_log("  Total owned: %d" % save_data.stats.total_items_owned)
+	debug_log("  By category: %s" % str(save_data.stats.items_by_category))
+	debug_log("  By rarity: %s" % str(save_data.stats.items_by_rarity))
 	
 	if save_data.favorites.size() > 0:
-		print("\nFavorites:")
+		debug_log("\nFavorites:")
 		for category in save_data.favorites:
 			if save_data.favorites[category].size() > 0:
-				print("  %s: %s" % [category, save_data.favorites[category]])
+				debug_log("  %s: %s" % [category, str(save_data.favorites[category])])
 	
-	print("================================\n")
+	debug_log("================================\n")
 
 func debug_grant_all_items() -> void:
 	"""Grant all items for testing (debug only)"""
@@ -978,7 +987,7 @@ func debug_grant_all_items() -> void:
 			if grant_item(item_id, "debug"):
 				granted += 1
 	
-	print("EquipmentManager: Granted %d items for debug" % granted)
+	debug_log("Granted %d items for debug" % granted)
 
 func debug_grant_random_items(count: int = 5) -> void:
 	"""Grant random items for testing"""
@@ -998,4 +1007,4 @@ func debug_grant_random_items(count: int = 5) -> void:
 		if grant_item(available[i], "debug"):
 			granted += 1
 	
-	print("EquipmentManager: Granted %d random items for debug" % granted)
+	debug_log("Granted %d random items for debug" % granted)

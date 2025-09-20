@@ -1,6 +1,6 @@
-# SinglePlayerModeSelect.gd - Full carousel version with proper margins
+# SinglePlayerModeSelect.gd - Full carousel version with Android fixes
 # Location: res://Pyramids/scripts/ui/menus/SinglePlayerModeSelect.gd
-# Last Updated: Complete update with margins and score saving [Date]
+# Last Updated: Android crash fixes applied
 
 extends Control
 
@@ -52,49 +52,81 @@ func _ready():
 	_create_carousel_cards()
 	print("   Created %d cards" % cards.size())
 	
-	print("7. Initial carousel update...")
-	await get_tree().process_frame
+	print("7. Platform-specific carousel finalization...")
+	
+	# Check platform and use appropriate method
+	if OS.get_name() == "Android":
+		print("   Android detected - using deferred call")
+		call_deferred("_finalize_carousel_setup")
+	else:
+		print("   Desktop detected - using await")
+		await get_tree().process_frame
+		_finalize_carousel_setup()
 
-	print("8. Updating positions...")
+func _finalize_carousel_setup():
+	"""Complete carousel setup after deferred call or await"""
+	print("=== FINALIZE CAROUSEL SETUP ===")
+	
+	# Check cards array is valid
 	if cards.is_empty():
-		push_error("No cards to position!")
+		push_error("No cards in finalize - array is empty!")
 		return
-	_update_carousel_positions()
-
-	print("9. Update visibility...")
-	if cards.size() > 0:
-		if not is_instance_valid(cards[0]):
-			push_error("Card 0 is invalid!")
+	
+	print("  Cards array size: %d" % cards.size())
+	
+	# Validate all cards before positioning
+	for i in range(cards.size()):
+		if not is_instance_valid(cards[i]):
+			push_error("  Card %d is invalid in finalize!" % i)
 			return
+		else:
+			print("  Card %d is valid" % i)
+	
+	print("  Updating carousel positions...")
+	_update_carousel_positions()
+	
+	print("  Updating card visibility...")
+	if cards.size() > 0 and is_instance_valid(cards[0]):
 		_update_card_visibility(cards[0], true)
-
-	print("10. Select mode...")
+	else:
+		push_error("  Cannot update visibility - no valid cards!")
+		return
+	
+	print("  Selecting initial mode...")
 	_select_mode(0)
-	print("=== READY COMPLETE ===")
 	
-	##### DELETE ABOVE LATER ###
-	
-	# Add gradient background first
-	_setup_background()
-	
-	# Rest of ready code
-	_setup_ui()
-	_connect_signals()
-	_apply_styles()
-	_load_modes_from_manager()
-	_create_carousel_cards()
-	
-	# Connect to tree_entered to reload scores when returning to menu
+	# Connect signals and load scores AFTER carousel is set up
+	print("  Connecting tree_entered signal...")
 	if not tree_entered.is_connected(_on_tree_entered):
 		tree_entered.connect(_on_tree_entered)
+		print("    Signal connected successfully")
+	else:
+		print("    Signal already connected")
 	
-	# Load scores
+	print("  Loading all mode scores...")
 	_load_all_mode_scores()
 	
-	await get_tree().process_frame
-	_update_carousel_positions()
-	_update_card_visibility(cards[0], true) if cards.size() > 0 else null
-	_select_mode(0)
+	print("=== CAROUSEL SETUP COMPLETE ===")
+	
+	# Add a deferred check to see if we're still alive after setup
+	print("  Scheduling post-setup check...")
+	call_deferred("_post_setup_check")
+
+func _post_setup_check():
+	"""Called after carousel setup to verify everything is working"""
+	print("=== POST SETUP CHECK ===")
+	print("  Scene still alive!")
+	print("  Cards: %d" % cards.size())
+	print("  Current mode: %d" % current_mode_index)
+	print("  Single player modes: %d" % single_player_modes.size())
+	
+	if highscores_panel:
+		print("  Highscores panel exists")
+	else:
+		print("  No highscores panel (skipped on Android)")
+	
+	print("  Memory: %.2f MB" % (OS.get_static_memory_usage() / 1048576.0))
+	print("=== POST SETUP CHECK COMPLETE ===")
 
 func _on_tree_entered():
 	"""Called every time we enter the scene tree (including returns from game)"""
@@ -148,6 +180,11 @@ func _notification(what):
 func _load_all_mode_scores():
 	"""Load best scores for all modes from StatsManager"""
 	print("Loading scores from StatsManager...")
+	
+	if cards.is_empty():
+		push_error("  [_load_all_mode_scores] Cards array is empty, cannot update labels!")
+		return
+		
 	for mode in single_player_modes:
 		if StatsManager:
 			var old_score = mode.best_score
@@ -211,14 +248,35 @@ func _apply_styles():
 
 func _setup_highscores_panel():
 	"""Create and configure the highscores panel"""
+	print("  [_setup_highscores_panel] Starting...")
+	
+	# ANDROID DEBUG: Skip highscores panel on Android for now
+	if OS.get_name() == "Android":
+		print("  [_setup_highscores_panel] SKIPPING on Android to isolate crash")
+		return
+	
 	# Remove old panel if it exists
 	if highscores_panel:
+		print("  [_setup_highscores_panel] Removing old panel")
 		highscores_panel.queue_free()
 	
+	print("  [_setup_highscores_panel] Checking scene...")
 	# Create new panel from scene
-	highscores_panel = highscores_panel_scene.instantiate()
-	$TopSection.add_child(highscores_panel)
+	if not highscores_panel_scene:
+		push_error("  [_setup_highscores_panel] highscores_panel_scene is null!")
+		return
 	
+	print("  [_setup_highscores_panel] Instantiating panel...")
+	highscores_panel = highscores_panel_scene.instantiate()
+	if not highscores_panel:
+		push_error("  [_setup_highscores_panel] Failed to instantiate highscores panel!")
+		return
+	
+	print("  [_setup_highscores_panel] Adding to TopSection...")
+	$TopSection.add_child(highscores_panel)
+	print("  [_setup_highscores_panel] Panel added to TopSection")
+	
+	print("  [_setup_highscores_panel] Setting anchors...")
 	# Position it
 	highscores_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	highscores_panel.anchor_left = 0.45
@@ -226,6 +284,7 @@ func _setup_highscores_panel():
 	highscores_panel.anchor_top = 0.55
 	highscores_panel.anchor_bottom = 0.82
 	
+	print("  [_setup_highscores_panel] Configuring panel...")
 	# Configure it
 	highscores_panel.setup({
 		"columns": [
@@ -247,12 +306,16 @@ func _setup_highscores_panel():
 		"data_provider": _fetch_mode_scores
 	})
 	
+	print("  [_setup_highscores_panel] Connecting signals...")
 	# Connect signals
 	highscores_panel.action_triggered.connect(_on_highscore_action)
 	
+	print("  [_setup_highscores_panel] Loading initial scores...")
 	# Load initial scores if we have modes
 	if single_player_modes.size() > 0:
 		highscores_panel.load_scores({"mode_id": single_player_modes[0].id})
+	
+	print("  [_setup_highscores_panel] Complete!")
 
 func _connect_signals():
 	if back_button:
@@ -340,6 +403,8 @@ func _get_special_rules(mode_config: Dictionary) -> Array:
 
 func _create_carousel_cards():
 	"""Create cards and position them in carousel"""
+	print("  [_create_carousel_cards] Starting...")
+	
 	# Clear existing cards
 	for card in cards:
 		card.queue_free()
@@ -351,8 +416,7 @@ func _create_carousel_cards():
 		card_container.add_child(card)
 		cards.append(card)
 	
-	# Initial positioning
-	_update_carousel_positions()
+	print("  [_create_carousel_cards] Created %d cards" % cards.size())
 
 func _create_carousel_card(mode_data: Dictionary, index: int) -> PanelContainer:
 	"""Create a card for the carousel"""
@@ -561,11 +625,29 @@ func _style_carousel_card(card: PanelContainer, mode_data: Dictionary, is_select
 
 func _update_carousel_positions():
 	"""Apply calculated positions immediately (for initial setup only)"""
+	print("  [_update_carousel_positions] Starting with %d cards" % cards.size())
+	
+	if cards.is_empty():
+		push_error("  [_update_carousel_positions] No cards to position!")
+		return
+	
 	var states = _calculate_carousel_positions()
 	
+	if states.is_empty():
+		push_error("  [_update_carousel_positions] No states calculated!")
+		return
+	
 	for i in range(cards.size()):
+		if i >= states.size():
+			push_error("  [_update_carousel_positions] State missing for card %d" % i)
+			continue
+			
 		var card = cards[i]
 		var state = states[i]
+		
+		if not is_instance_valid(card):
+			push_error("  [_update_carousel_positions] Card %d is invalid!" % i)
+			continue
 		
 		if state.has("visible") and not state.visible:
 			card.visible = false
@@ -579,6 +661,8 @@ func _update_carousel_positions():
 		
 		# Update visibility
 		_update_card_visibility(card, i == current_mode_index)
+	
+	print("  [_update_carousel_positions] Complete")
 
 func _update_card_visibility(card: PanelContainer, is_selected: bool):
 	"""Update which elements of the card are visible"""
@@ -610,53 +694,124 @@ func _update_card_visibility(card: PanelContainer, is_selected: bool):
 
 func _select_mode(index: int):
 	"""Select a mode and update UI"""
+	print("  [_select_mode] Selecting mode %d" % index)
+	
 	if index < 0 or index >= single_player_modes.size():
+		push_error("  [_select_mode] Invalid index: %d (modes: %d)" % [index, single_player_modes.size()])
+		return
+	
+	if cards.is_empty():
+		push_error("  [_select_mode] Cards array is empty!")
 		return
 	
 	var old_mode_index = current_mode_index
 	current_mode_index = index
 	
-	# Store current positions and scales BEFORE any changes
-	var card_states = []
-	for i in range(cards.size()):
-		var card = cards[i]
-		card_states.append({
-			"position": card.position,
-			"scale": card.scale,
-			"z_index": card.z_index,
-			"modulate_a": card.modulate.a
-		})
-	
-	# Calculate new positions WITHOUT applying them yet
+	print("  [_select_mode] Calculating new positions...")
+	# Calculate new positions
 	var new_states = _calculate_carousel_positions()
 	
-	# Animate the transition
-	var tween = create_tween()
-	tween.set_parallel(true)
-	tween.set_ease(Tween.EASE_OUT)
-	tween.set_trans(Tween.TRANS_CUBIC)
+	if new_states.is_empty():
+		push_error("  [_select_mode] No new states calculated!")
+		return
 	
-	# Animate each card
-	for i in range(cards.size()):
-		var card = cards[i]
-		var new_state = new_states[i]
-		
-		# Animate properties
-		tween.tween_property(card, "position", new_state.position, 0.3)
-		tween.tween_property(card, "scale", new_state.scale, 0.3)
-		tween.tween_property(card, "z_index", new_state.z_index, 0.3)
-		tween.tween_property(card, "modulate:a", new_state.modulate_a, 0.3)
-		
-		# Update card style
-		_style_carousel_card(card, single_player_modes[i], i == current_mode_index)
-		
-		# Update visibility AFTER animation
-		tween.tween_callback(_update_card_visibility.bind(card, i == current_mode_index))
+	# ANDROID FIX: Skip animation on first selection or on Android
+	var is_initial_setup = old_mode_index == index and index == 0
+	var skip_animation = is_initial_setup or OS.get_name() == "Android"
 	
-	# Load highscores after animation
-	await tween.finished
-	if highscores_panel:
-		highscores_panel.load_scores({"mode_id": single_player_modes[index].id})
+	if skip_animation:
+		print("  [_select_mode] Skipping animation (Android or initial setup)")
+		# Apply positions immediately without animation
+		for i in range(cards.size()):
+			if i >= new_states.size():
+				continue
+				
+			var card = cards[i]
+			if not is_instance_valid(card):
+				continue
+				
+			var new_state = new_states[i]
+			
+			# Apply properties directly
+			card.position = new_state.position
+			card.scale = new_state.scale
+			card.z_index = new_state.z_index
+			card.modulate.a = new_state.modulate_a
+			
+			# Update card style
+			_style_carousel_card(card, single_player_modes[i], i == current_mode_index)
+			
+			# Update visibility
+			_update_card_visibility(card, i == current_mode_index)
+		
+		print("  [_select_mode] Cards positioned")
+		
+		# Load highscores immediately - BUT SKIP ON ANDROID FOR NOW
+		if highscores_panel:
+			print("  [_select_mode] Loading highscores for mode: %s" % single_player_modes[index].id)
+			# ANDROID DEBUG: Skip loading scores to see if this causes crash
+			if OS.get_name() != "Android":
+				highscores_panel.load_scores({"mode_id": single_player_modes[index].id})
+				print("    Scores loaded")
+			else:
+				print("    SKIPPING score load on Android")
+		else:
+			print("  [_select_mode] No highscores panel to update")
+	else:
+		# Desktop: Use animation as before
+		print("  [_select_mode] Using animation (Desktop)")
+		
+		# Store current positions
+		var card_states = []
+		for i in range(cards.size()):
+			var card = cards[i]
+			if not is_instance_valid(card):
+				push_error("  [_select_mode] Card %d is invalid during state capture!" % i)
+				return
+			card_states.append({
+				"position": card.position,
+				"scale": card.scale,
+				"z_index": card.z_index,
+				"modulate_a": card.modulate.a
+			})
+		
+		# Animate the transition
+		var tween = create_tween()
+		tween.set_parallel(true)
+		tween.set_ease(Tween.EASE_OUT)
+		tween.set_trans(Tween.TRANS_CUBIC)
+		
+		# Animate each card
+		for i in range(cards.size()):
+			if i >= new_states.size():
+				push_error("  [_select_mode] Missing new state for card %d" % i)
+				continue
+				
+			var card = cards[i]
+			if not is_instance_valid(card):
+				push_error("  [_select_mode] Card %d is invalid during animation!" % i)
+				continue
+				
+			var new_state = new_states[i]
+			
+			# Animate properties
+			tween.tween_property(card, "position", new_state.position, 0.3)
+			tween.tween_property(card, "scale", new_state.scale, 0.3)
+			tween.tween_property(card, "z_index", new_state.z_index, 0.3)
+			tween.tween_property(card, "modulate:a", new_state.modulate_a, 0.3)
+			
+			# Update card style
+			_style_carousel_card(card, single_player_modes[i], i == current_mode_index)
+			
+			# Update visibility AFTER animation
+			tween.tween_callback(_update_card_visibility.bind(card, i == current_mode_index))
+		
+		# Load highscores after animation
+		await tween.finished
+		if highscores_panel:
+			highscores_panel.load_scores({"mode_id": single_player_modes[index].id})
+	
+	print("  [_select_mode] Complete")
 
 func _calculate_carousel_positions() -> Array:
 	"""Calculate positions without applying them"""
@@ -826,18 +981,12 @@ func _start_game_mode(index: int):
 	
 	print("Starting game mode: ", mode.id)
 	
-	# Remove this line - GameModeManager already tracks it!
-	# GameState.current_game_mode = mode.id  <-- DELETE THIS LINE
-	
 	# Configure GameModeManager (this already stores the current mode)
 	GameModeManager.set_game_mode(mode.id, {
 		"time_limit": mode.time_limit,
 		"special_rules": mode.special_rules,
 		"difficulty": mode.difficulty
 	})
-	
-	# DON'T connect signal here - we'll be destroyed when scene changes!
-	# Instead, let PostGameSummary handle the score saving
 	
 	# Change to game board
 	get_tree().change_scene_to_file("res://Pyramids/scenes/game/MobileGameBoard.tscn")

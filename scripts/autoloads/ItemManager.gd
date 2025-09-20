@@ -4,6 +4,10 @@
 
 extends Node
 
+# === DEBUG FLAGS ===
+var debug_enabled: bool = false
+var global_debug: bool = false
+
 # === SIGNALS ===
 signal items_loaded(count: int)
 signal item_registered(item_id: String)
@@ -37,14 +41,19 @@ var procedural_instances: Dictionary = {}  # item_id -> instance
 
 var is_loaded: bool = false
 
+# === DEBUG FUNCTION ===
+func debug_log(message: String) -> void:
+	if debug_enabled and global_debug:
+		print("[ItemManager] %s" % message)
+
 # === LIFECYCLE ===
 
 func _ready():
-	print("ItemManager initializing...")
+	debug_log("ItemManager initializing...")
 	_initialize_collections()
 	# REMOVED _create_directory_structure() - res:// is read-only on mobile!
 	load_all_items()
-	print("ItemManager ready with %d items and %d bundles" % [all_items.size(), all_bundles.size()])
+	debug_log("ItemManager ready with %d items and %d bundles" % [all_items.size(), all_bundles.size()])
 
 # === INITIALIZATION ===
 
@@ -81,7 +90,7 @@ func load_all_items():
 	_ensure_defaults()
 	
 	var load_time = Time.get_ticks_msec() - start_time
-	print("ItemManager: Loaded %d items in %d ms" % [all_items.size(), load_time])
+	debug_log("Loaded %d items in %d ms" % [all_items.size(), load_time])
 	
 	is_loaded = true
 	database_ready.emit()
@@ -92,40 +101,38 @@ func _load_resource_items():
 	for category in CATEGORIES:
 		var path = ITEMS_PATH + category + "/"
 		
-		# Special debug for emojis
 		if category == "emojis":
-			print("[EMOJI LOAD] Checking path: %s" % path)
+			debug_log("[EMOJI LOAD] Checking path: %s" % path)
 		
 		if not DirAccess.dir_exists_absolute(path):
-			if category == "emojis":
-				print("[EMOJI LOAD] Directory doesn't exist!")
 			continue
 		
 		var dir = DirAccess.open(path)
 		if not dir:
-			if category == "emojis":
-				print("[EMOJI LOAD] Cannot open directory!")
 			continue
 		
 		dir.list_dir_begin()
 		var file_name = dir.get_next()
 		
 		while file_name != "":
-			if file_name.ends_with(".tres") or file_name.ends_with(".res"):
+			# Handle both .tres files AND .tres.remap files
+			if file_name.ends_with(".tres"):
 				var resource_path = path + file_name
-				
-				# Debug for emojis
+				var item = load(resource_path) as UnifiedItemData
+				if item and item.id != "":
+					register_item(item)
+			elif file_name.ends_with(".tres.remap"):
+				# Try loading without the .remap extension
+				var actual_name = file_name.replace(".remap", "")
+				var resource_path = path + actual_name
 				if category == "emojis":
-					print("[EMOJI LOAD] Found file: %s" % file_name)
-				
+					debug_log("[EMOJI LOAD] Trying remapped: %s" % resource_path)
 				var item = load(resource_path) as UnifiedItemData
 				if item and item.id != "":
 					register_item(item)
 					if category == "emojis":
-						print("[EMOJI LOAD] Registered: %s" % item.id)
-				else:
-					if category == "emojis":
-						print("[EMOJI LOAD] Failed to load or no ID: %s" % file_name)
+						debug_log("[EMOJI LOAD] Loaded: %s" % item.id)
+			
 			file_name = dir.get_next()
 
 func _discover_procedural_items():

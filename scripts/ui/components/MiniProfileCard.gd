@@ -30,6 +30,10 @@
 
 extends PanelContainer
 
+# === DEBUG FLAGS ===
+var debug_enabled: bool = false
+var global_debug: bool = false
+
 # === SIGNALS ===
 signal player_clicked(player_id: String)
 signal kick_requested(player_id: String)
@@ -98,6 +102,11 @@ var plus_label: Label = null
 var applied_theme: ProceduralMiniProfileCard = null
 var host_indicator = null
 var active_emoji = null 
+
+# === DEBUG FUNCTION ===
+func debug_log(message: String) -> void:
+	if debug_enabled and global_debug:
+		print("[ProfileUI] %s" % message)
 
 # === LIFECYCLE ===
 
@@ -374,7 +383,7 @@ func set_player_data(data: Dictionary) -> void:
 	if has_showcase:
 		# Use the showcase items directly
 		player_data["display_items"] = showcase_items
-		print("[MiniProfileCard] Using showcase items: ", showcase_items)
+		debug_log("[MiniProfileCard] Using showcase items: %s" % str(showcase_items))
 	else:
 		# Fall back to equipped items (original behavior)
 		var equipped_items = []
@@ -395,7 +404,7 @@ func set_player_data(data: Dictionary) -> void:
 			equipped_items.append("")
 		
 		player_data["display_items"] = equipped_items
-		print("[MiniProfileCard] Using fallback equipped items: ", equipped_items)
+		debug_log("[MiniProfileCard] Using fallback equipped items: %s" % str(equipped_items))
 	
 	if is_empty:
 		set_empty_state()
@@ -437,7 +446,7 @@ func set_empty_state() -> void:
 		ready_sign.visible = false
 	# DEBUG: Print size
 	await get_tree().process_frame
-	print("[EMPTY] MiniProfileCard %d size: %s | Min size: %s" % [slot_index, size, custom_minimum_size])
+	debug_log("[EMPTY] MiniProfileCard %d size: %s | Min size: %s" % [slot_index, size, custom_minimum_size])
 
 func set_occupied_state() -> void:
 	"""Configure for occupied player slot"""
@@ -490,7 +499,7 @@ func set_occupied_state() -> void:
 	_update_overlay_controls()
 	# DEBUG: Print size  
 	await get_tree().process_frame
-	print("[OCCUPIED] MiniProfileCard %d size: %s | Min size: %s" % [slot_index, size, custom_minimum_size])
+	debug_log("[OCCUPIED] MiniProfileCard %d size: %s | Min size: %s" % [slot_index, size, custom_minimum_size])
 
 func _setup_empty_card_style() -> void:
 	"""Style for empty slots"""
@@ -607,15 +616,15 @@ func _update_display_items() -> void:
 	"""Update the 3 display item cards without recreating them"""
 	var display_items = player_data.get("display_items", ["", "", ""])
 	
-	print("[MiniProfileCard] _update_display_items called")
-	print("  - display_items: ", display_items)
+	debug_log("[MiniProfileCard] _update_display_items called")
+	debug_log("  - display_items: %s" % str(display_items))
 	
 	# DEBUG: Check container state
 	if display_container:
-		print("  - display_container class: ", display_container.get_class())
-		print("  - display_container child count: ", display_container.get_child_count())
-		print("  - display_container alignment: ", display_container.alignment)
-		print("  - display_container separation: ", display_container.get_theme_constant("separation"))
+		debug_log("  - display_container class: %s" % display_container.get_class())
+		debug_log("  - display_container child count: %d" % display_container.get_child_count())
+		debug_log("  - display_container alignment: %s" % str(display_container.alignment))
+		debug_log("  - display_container separation: %d" % display_container.get_theme_constant("separation"))
 	
 	# Make sure we have cards
 	if display_cards.size() == 0:
@@ -623,17 +632,17 @@ func _update_display_items() -> void:
 		await get_tree().process_frame
 	
 	# DEBUG: Check all cards before ANY updates
-	print("[DEBUG] === BEFORE ANY UPDATES ===")
+	debug_log("[DEBUG] === BEFORE ANY UPDATES ===")
 	for i in range(display_cards.size()):
 		var card = display_cards[i]
 		if card and is_instance_valid(card):
-			print("  Card %d:" % i)
-			print("    Parent: ", card.get_parent().name if card.get_parent() else "NO PARENT")
-			print("    Parent class: ", card.get_parent().get_class() if card.get_parent() else "N/A")
-			print("    Position: ", card.position)
-			print("    Global Position: ", card.global_position)
-			print("    Size: ", card.size)
-			print("    Min size: ", card.custom_minimum_size)
+			debug_log("  Card %d:" % i)
+			debug_log("    Parent: %s" % (card.get_parent().name if card.get_parent() else "NO PARENT"))
+			debug_log("    Parent class: %s" % (card.get_parent().get_class() if card.get_parent() else "N/A"))
+			debug_log("    Position: %s" % str(card.position))
+			debug_log("    Global Position: %s" % str(card.global_position))
+			debug_log("    Size: %s" % str(card.size))
+			debug_log("    Min size: %s" % str(card.custom_minimum_size))
 	
 	# Update existing cards
 	for i in range(min(3, display_cards.size())):
@@ -642,14 +651,14 @@ func _update_display_items() -> void:
 			continue
 		
 		# DEBUG: State BEFORE setup_with_preset
-		print("[DEBUG] Card %d BEFORE setup_with_preset:" % i)
-		print("  Parent: ", card.get_parent().name if card.get_parent() else "NO PARENT")
-		print("  Position: ", card.position)
-		print("  Anchors: L=%.2f T=%.2f R=%.2f B=%.2f" % [card.anchor_left, card.anchor_top, card.anchor_right, card.anchor_bottom])
-		print("  Size flags H: ", card.size_flags_horizontal)
-		print("  Size flags V: ", card.size_flags_vertical)
-		print("  Size: ", card.size)
-		print("  Min size: ", card.custom_minimum_size)
+		debug_log("[DEBUG] Card %d BEFORE setup_with_preset:" % i)
+		debug_log("  Parent: %s" % (card.get_parent().name if card.get_parent() else "NO PARENT"))
+		debug_log("  Position: %s" % str(card.position))
+		debug_log("  Anchors: L=%.2f T=%.2f R=%.2f B=%.2f" % [card.anchor_left, card.anchor_top, card.anchor_right, card.anchor_bottom])
+		debug_log("  Size flags H: %s" % str(card.size_flags_horizontal))
+		debug_log("  Size flags V: %s" % str(card.size_flags_vertical))
+		debug_log("  Size: %s" % str(card.size))
+		debug_log("  Min size: %s" % str(card.custom_minimum_size))
 		
 		if i >= display_items.size() or display_items[i] == "":
 			card.visible = false
@@ -677,30 +686,30 @@ func _update_display_items() -> void:
 				card.setup_with_preset(item_data, card.SizePreset.MINI_DISPLAY)
 		
 		# DEBUG: State AFTER setup_with_preset
-		print("[DEBUG] Card %d AFTER setup_with_preset:" % i)
-		print("  Parent: ", card.get_parent().name if card.get_parent() else "NO PARENT")
-		print("  Position: ", card.position)
-		print("  Anchors: L=%.2f T=%.2f R=%.2f B=%.2f" % [card.anchor_left, card.anchor_top, card.anchor_right, card.anchor_bottom])
-		print("  Size flags H: ", card.size_flags_horizontal)
-		print("  Size flags V: ", card.size_flags_vertical)
-		print("  Size: ", card.size)
-		print("  Min size: ", card.custom_minimum_size)
+		debug_log("[DEBUG] Card %d AFTER setup_with_preset:" % i)
+		debug_log("  Parent: %s" % (card.get_parent().name if card.get_parent() else "NO PARENT"))
+		debug_log("  Position: %s" % str(card.position))
+		debug_log("  Anchors: L=%.2f T=%.2f R=%.2f B=%.2f" % [card.anchor_left, card.anchor_top, card.anchor_right, card.anchor_bottom])
+		debug_log("  Size flags H: %s" % str(card.size_flags_horizontal))
+		debug_log("  Size flags V: %s" % str(card.size_flags_vertical))
+		debug_log("  Size: %s" % str(card.size))
+		debug_log("  Min size: %s" % str(card.custom_minimum_size))
 	
 	# DEBUG: Check all cards AFTER updates
-	print("[DEBUG] === AFTER ALL UPDATES ===")
+	debug_log("[DEBUG] === AFTER ALL UPDATES ===")
 	for i in range(display_cards.size()):
 		var card = display_cards[i]
 		if card and is_instance_valid(card):
-			print("  Card %d final state:" % i)
-			print("    Parent: ", card.get_parent().name if card.get_parent() else "NO PARENT")
-			print("    Position: ", card.position)
-			print("    Global Position: ", card.global_position)
-			print("    Visible: ", card.visible)
+			debug_log("  Card %d final state:" % i)
+			debug_log("    Parent: %s" % (card.get_parent().name if card.get_parent() else "NO PARENT"))
+			debug_log("    Position: %s" % str(card.position))
+			debug_log("    Global Position: %s" % str(card.global_position))
+			debug_log("    Visible: %s" % str(card.visible))
 	
 	# DEBUG: Force container to re-layout
 	if display_container:
 		display_container.queue_sort()
-		print("[DEBUG] Called queue_sort on display_container")
+		debug_log("[DEBUG] Called queue_sort on display_container")
 
 func _create_achievement_item_data(achievement_id: String) -> UnifiedItemData:
 	"""Create a fake UnifiedItemData for achievement display"""
@@ -731,7 +740,7 @@ func _create_achievement_item_data(achievement_id: String) -> UnifiedItemData:
 	if ResourceLoader.exists(icon_path):
 		fake_item.texture_path = icon_path
 		fake_item.icon_path = icon_path
-		print("[MiniProfileCard] Found achievement icon at: %s" % icon_path)
+		debug_log("[MiniProfileCard] Found achievement icon at: %s" % icon_path)
 	else:
 		push_warning("[MiniProfileCard] Achievement icon not found: %s" % icon_path)
 	
@@ -739,15 +748,15 @@ func _create_achievement_item_data(achievement_id: String) -> UnifiedItemData:
 
 func debug_check_display_cards() -> void:
 	"""Debug function to check display cards state"""
-	print("[MiniProfileCard] Debug check:")
-	print("  - display_container: ", display_container)
-	print("  - display_cards size: ", display_cards.size())
-	print("  - display_container children: ", display_container.get_child_count() if display_container else 0)
+	debug_log("[MiniProfileCard] Debug check:")
+	debug_log("  - display_container: %s" % str(display_container))
+	debug_log("  - display_cards size: %d" % display_cards.size())
+	debug_log("  - display_container children: %d" % (display_container.get_child_count() if display_container else 0))
 	
 	if display_container:
 		for i in range(display_container.get_child_count()):
 			var child = display_container.get_child(i)
-			print("    Child ", i, ": ", child.name, " (", child.get_class(), ")")
+			debug_log("    Child %d: %s (%s)" % [i, child.name, child.get_class()])
 
 func _update_overlay_controls() -> void:
 	"""Update ready sign and kick button visibility"""
@@ -950,41 +959,41 @@ func debug_populate_with_mock_data() -> void:
 		"is_host": false,
 		"is_empty": false
 	}
-	print("Setting mock player data...")
+	debug_log("Setting mock player data...")
 	set_player_data(mock_data)
 
 func _test_card_states() -> void:
 	"""Run through different card states for testing"""
-	print("=== Testing MiniProfileCard States ===")
+	debug_log("=== Testing MiniProfileCard States ===")
 	
-	print("Test 1: Empty card")
+	debug_log("Test 1: Empty card")
 	set_empty_state()
 	await get_tree().create_timer(2.0).timeout
 	
-	print("Test 2: Regular player")
+	debug_log("Test 2: Regular player")
 	debug_populate_with_mock_data()
 	await get_tree().create_timer(2.0).timeout
 	
-	print("Test 3: Ready state")
+	debug_log("Test 3: Ready state")
 	set_ready(true)
 	await get_tree().create_timer(2.0).timeout
 	
-	print("=== Test Complete ===")
+	debug_log("=== Test Complete ===")
 
 func debug_check_nodes() -> void:
 	"""Debug function to verify all nodes are found"""
-	print("=== NODE CHECK ===")
-	print("stats_panel exists: ", stats_panel != null)
-	print("stats_vbox exists: ", stats_vbox != null)
-	print("mmr_label exists: ", mmr_label != null)
-	print("win_rate_label exists: ", win_rate_label != null)
-	print("games_label exists: ", games_label != null)
+	debug_log("=== NODE CHECK ===")
+	debug_log("stats_panel exists: %s" % str(stats_panel != null))
+	debug_log("stats_vbox exists: %s" % str(stats_vbox != null))
+	debug_log("mmr_label exists: %s" % str(mmr_label != null))
+	debug_log("win_rate_label exists: %s" % str(win_rate_label != null))
+	debug_log("games_label exists: %s" % str(games_label != null))
 	
 	if stats_panel:
-		print("stats_panel path: ", stats_panel.get_path())
-		print("stats_panel visible: ", stats_panel.visible)
+		debug_log("stats_panel path: %s" % str(stats_panel.get_path()))
+		debug_log("stats_panel visible: %s" % str(stats_panel.visible))
 	
 	if stats_vbox:
-		print("stats_vbox children count: ", stats_vbox.get_child_count())
+		debug_log("stats_vbox children count: %d" % stats_vbox.get_child_count())
 		for child in stats_vbox.get_children():
-			print("  - Child: ", child.name, " type: ", child.get_class())
+			debug_log("  - Child: %s type: %s" % [child.name, child.get_class()])

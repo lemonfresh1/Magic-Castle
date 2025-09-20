@@ -17,15 +17,24 @@
 
 extends Node
 
+# === DEBUG FLAGS ===
+var debug_enabled: bool = false
+var global_debug: bool = false
+
 # Signals
 signal item_purchased(item_id: String, price: int)
 signal insufficient_funds(needed: int, current: int)
 signal purchase_failed(item_id: String, reason: String)
 signal shop_refreshed()
 
+# === DEBUG FUNCTION ===
+func debug_log(message: String) -> void:
+	if debug_enabled and global_debug:
+		print("[ShopManager] %s" % message)
+
 func _ready():
-	print("ShopManager initializing...")
-	print("ShopManager ready")
+	debug_log("ShopManager initializing...")
+	debug_log("ShopManager ready")
 
 # === PUBLIC API ===
 
@@ -43,7 +52,7 @@ func get_all_shop_items() -> Array:
 		if item and item is UnifiedItemData and _is_purchasable(item):
 			result.append(_create_display_dict(item))
 	
-	print("ShopManager: Found %d purchasable items (excluding owned)" % result.size())
+	debug_log("Found %d purchasable items (excluding owned)" % result.size())
 	return result
 
 func get_items_by_category(category: String) -> Array:
@@ -62,7 +71,7 @@ func get_items_by_category(category: String) -> Array:
 		if item and item is UnifiedItemData and _is_purchasable(item):
 			result.append(_create_display_dict(item))
 	
-	print("ShopManager: Found %d purchasable items in category %s" % [result.size(), category])
+	debug_log("Found %d purchasable items in category %s" % [result.size(), category])
 	return result
 
 func get_featured_items() -> Array:
@@ -82,7 +91,7 @@ func get_featured_items() -> Array:
 
 func purchase_item(item_id: String) -> bool:
 	"""Process a purchase"""
-	print("ShopManager: Processing purchase for %s" % item_id)
+	debug_log("Processing purchase for %s" % item_id)
 	
 	# Validate managers
 	if not ItemManager or not EquipmentManager or not StarManager:
@@ -113,7 +122,7 @@ func purchase_item(item_id: String) -> bool:
 	var price = get_item_price(item_id)
 	var current_balance = StarManager.get_balance()
 	
-	print("  Price: %d, Balance: %d" % [price, current_balance])
+	debug_log("  Price: %d, Balance: %d" % [price, current_balance])
 	
 	# Check funds
 	if current_balance < price:
@@ -135,7 +144,7 @@ func purchase_item(item_id: String) -> bool:
 	
 	# Success!
 	item_purchased.emit(item_id, price)
-	print("ShopManager: Purchase successful - %s for %d stars" % [item_id, price])
+	debug_log("Purchase successful - %s for %d stars" % [item_id, price])
 	return true
 
 func get_item_price(item_id: String) -> int:
@@ -239,25 +248,25 @@ func debug_add_stars(amount: int):
 	"""Add stars for testing"""
 	if StarManager:
 		StarManager.add_stars(amount, "debug")
-		print("ShopManager: Added %d stars (balance: %d)" % [amount, StarManager.get_balance()])
+		debug_log("Added %d stars (balance: %d)" % [amount, StarManager.get_balance()])
 
 func debug_clear_ownership():
 	"""Clear all ownership for testing"""
 	if EquipmentManager:
 		EquipmentManager.reset_all_equipment()
-		print("ShopManager: Cleared all ownership")
+		debug_log("Cleared all ownership")
 
 func debug_grant_item(item_id: String):
 	"""Grant an item for testing"""
 	if EquipmentManager:
 		EquipmentManager.grant_item(item_id, "debug")
-		print("ShopManager: Granted item %s" % item_id)
+		debug_log("Granted item %s" % item_id)
 
 func debug_status():
 	"""Print shop status"""
-	print("\n=== SHOP MANAGER STATUS ===")
+	debug_log("\n=== SHOP MANAGER STATUS ===")
 	var all_items = get_all_shop_items()
-	print("Total purchasable items: %d" % all_items.size())
+	debug_log("Total purchasable items: %d" % all_items.size())
 	
 	# Count by category
 	var category_counts = {}
@@ -267,12 +276,12 @@ func debug_status():
 			category_counts[category] = 0
 		category_counts[category] += 1
 	
-	print("By category:")
+	debug_log("By category:")
 	for category in category_counts:
-		print("  %s: %d items" % [category, category_counts[category]])
+		debug_log("  %s: %d items" % [category, category_counts[category]])
 	
-	print("Star balance: %d" % (StarManager.get_balance() if StarManager else 0))
-	print("===========================\n")
+	debug_log("Star balance: %d" % (StarManager.get_balance() if StarManager else 0))
+	debug_log("===========================\n")
 
 func _convert_shop_category_to_item_manager(category: String) -> String:
 	"""Convert shop UI category names to ItemManager category names"""
