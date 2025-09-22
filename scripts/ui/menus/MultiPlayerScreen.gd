@@ -101,6 +101,7 @@ func _ready():
 	_setup_game_settings_component()
 	_load_player_stats()
 	
+	
 	# Setup debug panel
 	_setup_debug_panel()
 	
@@ -375,6 +376,14 @@ func _on_solo_pressed():
 	_load_player_stats()
 	_refresh_leaderboard_for_current_mode()
 	_update_multiplayer_buttons_visibility()
+	
+	# Force update GameSettingsPanel with current mode
+	if game_settings_component and game_settings_component.has_method("update_mode"):
+		debug_log("  Force updating GameSettingsPanel with mode: %s" % current_mode_id)
+		game_settings_component.update_mode(current_mode_id)
+		
+	_sync_mode_selector()
+
 
 func _on_multiplayer_pressed():
 	"""Handle multiplayer button press"""
@@ -392,6 +401,25 @@ func _on_multiplayer_pressed():
 	_load_player_stats()
 	_refresh_leaderboard_for_current_mode()
 	_update_multiplayer_buttons_visibility()
+	
+	# Force update GameSettingsPanel with current mode
+	if game_settings_component and game_settings_component.has_method("update_mode"):
+		debug_log("  Force updating GameSettingsPanel with mode: %s" % current_mode_id)
+		game_settings_component.update_mode(current_mode_id)
+	
+	# Update MultiplayerManager only when switching TO multiplayer
+	if has_node("/root/MultiplayerManager"):
+		var mp_manager = get_node("/root/MultiplayerManager")
+		mp_manager.select_game_mode(current_mode_id)
+		debug_log("  Updated MultiplayerManager with mode: %s" % current_mode_id)
+
+	_sync_mode_selector()
+
+func _sync_mode_selector():
+	"""Ensure the mode selector shows the correct mode"""
+	if mode_selector and mode_selector.has_method("set_mode_by_id"):
+		mode_selector.set_mode_by_id(current_mode_id)
+		debug_log("  Synced mode selector to: %s" % current_mode_id)
 
 func _update_solo_multiplayer_selection():
 	"""Update visual state of solo/multiplayer buttons"""
@@ -454,23 +482,17 @@ func _load_solo_stats():
 	debug_log("Loading solo stats for mode: %s" % current_mode_id)
 	
 	if StatsManager:
-		var mode_stats = StatsManager.get_mode_stats(current_mode_id)
-		debug_log("  Mode stats: %s" % str(mode_stats))
+		# Use the NEW typed function with "solo" game type
+		var mode_stats = StatsManager.get_mode_stats_typed(current_mode_id, "solo")
+		debug_log("  Mode stats (solo): %s" % str(mode_stats))
 		
-		var highscore_data = StatsManager.get_highscore()
-		debug_log("  Overall highscore data: %s" % str(highscore_data))
-		
-		# Get mode-specific highscore
-		var mode_highscore = StatsManager.get_mode_highscore(current_mode_id)
-		debug_log("  Mode-specific highscore: %d" % mode_highscore)
-		
-		# Check if old method would work
-		if highscore_data.get("mode", "") == current_mode_id:
-			debug_log("  Old method would give: %d" % highscore_data.get("score", 0))
+		# Get mode-specific highscore for SOLO
+		var mode_highscore = StatsManager.get_mode_highscore_typed(current_mode_id, "solo")
+		debug_log("  Solo highscore: %d" % mode_highscore)
 		
 		player_stats = {
 			"games_played": mode_stats.get("games_played", 0),
-			"highscore": mode_highscore,  # Use the new method
+			"highscore": mode_highscore,
 			"perfect_rounds": mode_stats.get("perfect_rounds", 0),
 			"mode": "solo"
 		}
@@ -494,15 +516,23 @@ func _load_multiplayer_stats():
 	debug_log("Loading multiplayer stats for mode: %s" % current_mode_id)
 	
 	if StatsManager:
-		# Get stats for CURRENT MODE ONLY (not all modes)
-		var mode_stats = StatsManager.get_multiplayer_stats(current_mode_id)
-		debug_log("  Multiplayer stats for %s: %s" % [current_mode_id, str(mode_stats)])
+		# Get multiplayer-specific stats (these are already separate)
+		var mp_stats = StatsManager.get_multiplayer_stats(current_mode_id)
+		debug_log("  Multiplayer stats for %s: %s" % [current_mode_id, str(mp_stats)])
 		
-		# Extract data from this mode's stats
-		var games = mode_stats.get("games", 0)
-		var first_place = mode_stats.get("first_place", 0)
-		var average_rank = mode_stats.get("average_rank", 0.0)
-		var mmr = mode_stats.get("mmr", 1000)
+		# Also get the multi mode stats for additional data
+		var mode_stats = StatsManager.get_mode_stats_typed(current_mode_id, "multi")
+		debug_log("  Mode stats (multi): %s" % str(mode_stats))
+		
+		# Get multiplayer highscore
+		var multi_highscore = StatsManager.get_mode_highscore_typed(current_mode_id, "multi")
+		debug_log("  Multi highscore: %d" % multi_highscore)
+		
+		# Extract data from multiplayer stats
+		var games = mp_stats.get("games", 0)
+		var first_place = mp_stats.get("first_place", 0)
+		var average_rank = mp_stats.get("average_rank", 0.0)
+		var mmr = mp_stats.get("mmr", 1000)
 		
 		# Calculate win rate for this mode
 		var winrate = 0
@@ -530,6 +560,7 @@ func _load_multiplayer_stats():
 			"winrate": winrate,
 			"rank": rank,
 			"games": games,
+			"highscore": multi_highscore,  # Add multi highscore
 			"mode": "multiplayer"
 		}
 		
@@ -538,6 +569,7 @@ func _load_multiplayer_stats():
 		# Log to debug panel
 		_add_debug_message("Multiplayer %s:" % current_mode_id)
 		_add_debug_message("  Games: %d" % games)
+		_add_debug_message("  Highscore: %d" % multi_highscore)
 		_add_debug_message("  1st Place: %d" % first_place)
 		_add_debug_message("  Avg Rank: %.2f" % average_rank)
 		_add_debug_message("  MMR: %d" % mmr)
@@ -549,6 +581,7 @@ func _load_multiplayer_stats():
 			"winrate": 0,
 			"rank": "Unranked",
 			"games": 0,
+			"highscore": 0,
 			"mode": "multiplayer"
 		}
 		debug_log("  No StatsManager found")

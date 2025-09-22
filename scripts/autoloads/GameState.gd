@@ -69,7 +69,8 @@ func start_new_game(mode: String = "single") -> void:
 	board_cleared = false
 	
 	var game_mode_name = GameModeManager.get_current_mode()
-	StatsManager.start_game(game_mode_name)
+	var game_type = "multi" if is_multiplayer else "solo"
+	StatsManager.start_game(game_mode_name, game_type)  # Pass game_type!
 	XPManager.rewards_enabled = false
 	StarManager.rewards_enabled = false  # Add similar flag to StarManager
 	
@@ -179,20 +180,25 @@ func end_round() -> void:
 	
 	SignalBus.round_completed.emit(scores.round_total)
 	
+	# Get mode and game_type for tracking
 	var mode = GameModeManager.get_current_mode()
+	var game_type = "multi" if is_multiplayer else "solo"
 	var reason = get_meta("round_end_reason", "Unknown")
+	
+	# Pass game_type to track_round_end
 	StatsManager.track_round_end(
 		current_round,
 		board_cleared,
 		scores.round_total,
 		time_remaining,
 		reason,
-		mode
+		mode,
+		game_type
 	)
 	
-	# Track peak clears
+	# Track peak clears with game_type
 	if ScoreSystem.peaks_cleared_indices.size() > 0:
-		StatsManager.track_peak_clears(ScoreSystem.peaks_cleared_indices.size(), mode)
+		StatsManager.track_peak_clears(ScoreSystem.peaks_cleared_indices.size(), mode, game_type)  # ADD game_type!
 	
 	# Show score screen
 	_show_score_screen(scores)
@@ -233,6 +239,9 @@ func _end_game() -> void:
 	
 	# Get the current game mode
 	var mode = GameModeManager.get_current_mode()
+	
+	# Determine game type
+	var game_type = "multi" if game_mode == "multi" else "solo"
 	
 	# Check if multiplayer or single player
 	if game_mode == "multi":
@@ -298,12 +307,12 @@ func _end_game() -> void:
 		else:
 			print("Custom/Tournament game - no MMR change")
 		
-		# Still track regular game for other stats
-		StatsManager.end_game(mode, total_score, current_round - 1)
+		# Still track regular game for other stats - PASS game_type!
+		StatsManager.end_game(mode, total_score, current_round - 1, game_type)
 	else:
 		# SINGLE PLAYER PATH
 		print("Single player game ending...")
-		StatsManager.end_game(mode, total_score, current_round - 1)
+		StatsManager.end_game(mode, total_score, current_round - 1, game_type)  # PASS game_type!
 	
 	# Check achievements for both modes
 	print("Checking achievements...")

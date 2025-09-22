@@ -254,8 +254,8 @@ func _migrate_stats_if_needed() -> void:
 			total["total_peaks_cleared"] = total_peaks
 
 # === GAME TRACKING ===
-func start_game(mode: String) -> void:
-	print("StatsManager: Starting game in %s mode" % mode)
+func start_game(mode: String, game_type: String = "solo") -> void:
+	print("StatsManager: Starting game in %s mode (%s)" % [mode, game_type])
 	current_game_stats = {
 		"cards_clicked": 0,
 		"cards_drawn": 0,
@@ -267,28 +267,34 @@ func start_game(mode: String) -> void:
 		"suit_bonuses": 0
 	}
 	
-	# Ensure mode exists
-	if not stats.mode_stats.has(mode):
-		print("Warning: Mode '%s' not in stats, creating it" % mode)
-		stats.mode_stats[mode] = _create_mode_stats()
+	# Create composite key
+	var stats_key = "%s_%s" % [mode, game_type]
 	
-	if stats.mode_stats.has(mode):
-		stats.mode_stats[mode].games_played += 1
+	# Ensure mode exists in mode_stats with composite key
+	if not stats.mode_stats.has(stats_key):
+		print("Creating stats entry for: %s" % stats_key)
+		stats.mode_stats[stats_key] = _create_mode_stats()
+	
+	if stats.mode_stats.has(stats_key):
+		stats.mode_stats[stats_key].games_played += 1
 	stats.total_stats.games_played += 1
 	
 	save_stats()
 
-func end_game(mode: String, final_score: int, rounds_completed: int) -> void:
-	print("StatsManager: Game ended - Mode: %s, Score: %d, Rounds: %d" % [mode, final_score, rounds_completed])
+func end_game(mode: String, final_score: int, rounds_completed: int, game_type: String = "solo") -> void:
+	print("StatsManager: Game ended - Mode: %s (%s), Score: %d, Rounds: %d" % [mode, game_type, final_score, rounds_completed])
 	
-	# Ensure mode exists
-	if not stats.mode_stats.has(mode):
-		print("Warning: Mode '%s' not in stats, creating it" % mode)
-		stats.mode_stats[mode] = _create_mode_stats()
+	# Create composite key
+	var stats_key = "%s_%s" % [mode, game_type]
+	
+	# Ensure mode exists with composite key
+	if not stats.mode_stats.has(stats_key):
+		print("Warning: Mode '%s' not in stats, creating it" % stats_key)
+		stats.mode_stats[stats_key] = _create_mode_stats()
 	
 	# Update mode and total stats with accumulated values
-	if stats.mode_stats.has(mode):
-		var mode_stat = stats.mode_stats[mode]
+	if stats.mode_stats.has(stats_key):
+		var mode_stat = stats.mode_stats[stats_key]
 		mode_stat.cards_clicked += current_game_stats.cards_clicked
 		mode_stat.cards_drawn += current_game_stats.cards_drawn
 		mode_stat.invalid_clicks += current_game_stats.invalid_clicks
@@ -303,51 +309,66 @@ func end_game(mode: String, final_score: int, rounds_completed: int) -> void:
 	stats.total_stats.invalid_clicks += current_game_stats.invalid_clicks
 	stats.total_stats.total_score += final_score
 	
-	# Check for new highscore (OVERALL)
-	if final_score > stats.highscore.score:
-		stats.highscore = {
+	# Check for new highscore (SEPARATED by game_type)
+	var highscore_key = "highscore_%s" % game_type
+	if not stats.has(highscore_key):
+		stats[highscore_key] = {"score": 0, "seed": 0, "date": "", "mode": "", "game_type": game_type}
+	
+	if final_score > stats[highscore_key].score:
+		stats[highscore_key] = {
 			"score": final_score,
 			"seed": GameState.deck_seed,
 			"date": _get_current_date(),
-			"mode": mode
+			"mode": mode,
+			"game_type": game_type
 		}
 	
-	# Check for longest combo (OVERALL)
-	if current_game_stats.highest_combo > stats.longest_combo.combo:
-		stats.longest_combo = {
+	# Check for longest combo (SEPARATED by game_type)
+	var combo_key = "longest_combo_%s" % game_type
+	if not stats.has(combo_key):
+		stats[combo_key] = {"combo": 0, "seed": 0, "date": "", "mode": "", "game_type": game_type}
+	
+	if current_game_stats.highest_combo > stats[combo_key].combo:
+		stats[combo_key] = {
 			"combo": current_game_stats.highest_combo,
 			"seed": GameState.deck_seed,
 			"date": _get_current_date(),
-			"mode": mode
+			"mode": mode,
+			"game_type": game_type
 		}
 	
-	# Also save mode-specific highscore for leaderboard
-	save_score(mode, final_score, SettingsSystem.player_name if SettingsSystem else "Player")
+	# Save mode-specific highscore with composite key for leaderboard
+	var leaderboard_key = "%s_%s" % [mode, game_type]
+	save_score(leaderboard_key, final_score, SettingsSystem.player_name if SettingsSystem else "Player")
 	
 	save_stats()
 
-func track_suit_bonus(mode: String) -> void:
+func track_suit_bonus(mode: String, game_type: String = "solo") -> void:
 	current_game_stats.suit_bonuses += 1
-	if stats.mode_stats.has(mode):
-		stats.mode_stats[mode].suit_bonuses += 1
+	var stats_key = "%s_%s" % [mode, game_type]
+	if stats.mode_stats.has(stats_key):
+		stats.mode_stats[stats_key].suit_bonuses += 1
 	stats.total_stats.suit_bonuses += 1
 
-func track_peak_clears(peaks_cleared: int, mode: String) -> void:
-	if stats.mode_stats.has(mode) and peaks_cleared > 0:
-		stats.mode_stats[mode].peak_clears[str(peaks_cleared)] += 1
-		stats.mode_stats[mode].total_peaks_cleared += peaks_cleared
+func track_peak_clears(peaks_cleared: int, mode: String, game_type: String = "solo") -> void:
+	var stats_key = "%s_%s" % [mode, game_type]
+	if stats.mode_stats.has(stats_key) and peaks_cleared > 0:
+		stats.mode_stats[stats_key].peak_clears[str(peaks_cleared)] += 1
+		stats.mode_stats[stats_key].total_peaks_cleared += peaks_cleared
 		stats.total_stats.peak_clears[str(peaks_cleared)] += 1
 		stats.total_stats.total_peaks_cleared += peaks_cleared
 
-func track_round_end(round: int, cleared: bool, score: int, time_left: float, reason: String, mode: String) -> void:
+func track_round_end(round: int, cleared: bool, score: int, time_left: float, reason: String, mode: String, game_type: String = "solo") -> void:
+	var stats_key = "%s_%s" % [mode, game_type]
+	
 	# Ensure mode exists
-	if not stats.mode_stats.has(mode):
-		print("Warning: Mode '%s' not in stats, creating it" % mode)
-		stats.mode_stats[mode] = _create_mode_stats()
+	if not stats.mode_stats.has(stats_key):
+		print("Warning: Mode '%s' not in stats, creating it" % stats_key)
+		stats.mode_stats[stats_key] = _create_mode_stats()
 	
 	# Update round stats
-	if stats.mode_stats.has(mode):
-		var mode_stat = stats.mode_stats[mode]
+	if stats.mode_stats.has(stats_key):
+		var mode_stat = stats.mode_stats[stats_key]
 		mode_stat.total_rounds += 1
 		
 		if cleared:
@@ -392,7 +413,8 @@ func track_round_end(round: int, cleared: bool, score: int, time_left: float, re
 			"score": score,
 			"seed": GameState.deck_seed,
 			"date": _get_current_date(),
-			"mode": mode
+			"mode": mode,
+			"game_type": game_type  # Add game_type
 		}
 	
 	# Reset round-specific tracking
@@ -808,3 +830,57 @@ func get_current_login_streak() -> int:
 	# Otherwise streak is broken
 	else:
 		return 0
+
+func get_mode_stats_typed(mode: String, game_type: String = "solo") -> Dictionary:
+	"""Get stats for a specific mode and game type combination"""
+	var stats_key = "%s_%s" % [mode, game_type]
+	if stats.mode_stats.has(stats_key):
+		return stats.mode_stats[stats_key]
+	# Create if doesn't exist
+	print("Warning: Mode '%s' not found in stats, creating it" % stats_key)
+	stats.mode_stats[stats_key] = _create_mode_stats()
+	return stats.mode_stats[stats_key]
+
+func get_mode_highscore_typed(mode: String, game_type: String = "solo") -> int:
+	"""Get highscore for a specific mode and game type"""
+	var leaderboard_key = "%s_%s" % [mode, game_type]
+	return player_best_scores.get(leaderboard_key, 0)
+	
+func get_highscore_typed(game_type: String = "solo") -> Dictionary:
+	"""Get overall highscore for a specific game type"""
+	var key = "highscore_%s" % game_type
+	if stats.has(key):
+		return stats[key]
+	return {"score": 0, "seed": 0, "date": "", "mode": "", "game_type": game_type}
+
+func get_longest_combo_typed(game_type: String = "solo") -> Dictionary:
+	"""Get longest combo for a specific game type"""
+	var key = "longest_combo_%s" % game_type
+	if stats.has(key):
+		return stats[key]
+	return {"combo": 0, "seed": 0, "date": "", "mode": "", "game_type": game_type}
+
+func get_average_score_typed(mode: String, game_type: String = "solo") -> float:
+	"""Get average score for a specific mode and game type"""
+	var stats_key = "%s_%s" % [mode, game_type]
+	var stat_dict = get_mode_stats_typed(mode, game_type)
+	if stat_dict.games_played > 0:
+		return float(stat_dict.total_score) / float(stat_dict.games_played)
+	return 0.0
+
+func get_clear_rate_typed(mode: String, game_type: String = "solo") -> float:
+	"""Get clear rate for a specific mode and game type"""
+	var stats_key = "%s_%s" % [mode, game_type]
+	var stat_dict = get_mode_stats_typed(mode, game_type)
+	if stat_dict.total_rounds > 0:
+		var successful = stat_dict.total_rounds - stat_dict.time_ran_out
+		return float(successful) / float(stat_dict.total_rounds) * 100.0
+	return 0.0
+
+func get_perfect_round_rate_typed(mode: String, game_type: String = "solo") -> float:
+	"""Get perfect round rate for a specific mode and game type"""
+	var stats_key = "%s_%s" % [mode, game_type]
+	var stat_dict = get_mode_stats_typed(mode, game_type)
+	if stat_dict.total_rounds > 0:
+		return float(stat_dict.perfect_rounds) / float(stat_dict.total_rounds) * 100.0
+	return 0.0

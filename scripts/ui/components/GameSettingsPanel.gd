@@ -44,6 +44,13 @@ func update_mode(mode_id: String) -> void:
 		return
 	
 	current_mode_id = mode_id
+	
+	# Update the mode label text if it exists
+	if mode_label:
+		var mode_name = _get_mode_display_name()
+		mode_label.text = "Mode: %s" % mode_name
+	
+	# Rebuild the settings rows
 	_rebuild_settings()
 
 func set_editable(editable: bool) -> void:

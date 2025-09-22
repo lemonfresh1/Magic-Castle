@@ -140,14 +140,6 @@ func show_summary(final_score: int, rounds_data: Array) -> void:
 	_debug_log("Starting progression animation...")
 	# Start animations - THIS is where we actually award everything
 	_animate_progression()
-	
-	# Save score to leaderboard
-	if StatsManager:
-		var mode_id = GameModeManager.get_current_mode()
-		if mode_id != "":
-			_debug_log("Saving score %d for mode %s" % [final_score, mode_id])
-			StatsManager.save_score(mode_id, final_score)
-			StatsManager.save_stats()
 
 func _calculate_progression() -> void:
 	_debug_log("Calculating progression rewards...")
