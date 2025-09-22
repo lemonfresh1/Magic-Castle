@@ -1,4 +1,3 @@
-# MultiplayerScreen.gd - Works with existing scene structure
 # Location: res://Pyramids/scenes/ui/menus/MultiplayerScreen.gd
 # Last Updated: Updated for StyledButton and renamed nodes [Date]
 
@@ -7,6 +6,7 @@ extends Control
 # === DEBUG CONFIGURATION ===
 var debug_enabled: bool = true  # Set to true for debugging
 var global_debug: bool = true
+var is_mobile_platform: bool = false  # Track if on mobile
 
 # Scene references
 var highscores_panel_scene = preload("res://Pyramids/scenes/ui/components/HighscoresPanel.tscn")
@@ -35,6 +35,7 @@ var game_settings_panel_script = preload("res://Pyramids/scripts/ui/components/G
 @onready var h_box_container: HBoxContainer = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/HBoxContainer
 @onready var solo_button: StyledButton = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/HBoxContainer/SoloButton
 @onready var multiplayer_button: StyledButton = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/HBoxContainer/MultiplayerButton
+@onready var debug_button: CheckButton = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/HBoxContainer/DebugButton
 @onready var mode_selector: Button = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/ModeSelector
 @onready var unranked_button: Button = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/UnrankedButton
 
@@ -87,6 +88,17 @@ func debug_log(message: String) -> void:
 
 func _ready():
 	debug_log("=== READY START ===")
+	
+	# Check if we're on mobile platform
+	var os_name = OS.get_name()
+	is_mobile_platform = (os_name == "Android" or os_name == "iOS")
+	
+	# Disable debug features on mobile
+	if is_mobile_platform:
+		debug_enabled = false
+		global_debug = false
+	
+	debug_log("Platform: %s, Mobile: %s" % [os_name, is_mobile_platform])
 	
 	# Load persistent mode selection FIRST
 	if SettingsSystem:
@@ -148,6 +160,12 @@ func _ready():
 
 func _setup_debug_panel():
 	"""Setup the debug panel with initial information"""
+	# Skip debug panel setup entirely on mobile
+	if is_mobile_platform:
+		if debug_panel:
+			debug_panel.visible = false
+		return
+	
 	if not debug_panel:
 		debug_log("Debug panel not found in scene")
 		return
@@ -276,6 +294,15 @@ func _setup_solo_multiplayer_buttons():
 	# Connect button signals
 	solo_button.pressed.connect(_on_solo_pressed)
 	multiplayer_button.pressed.connect(_on_multiplayer_pressed)
+	
+	# Connect debug button if it exists and not on mobile
+	if debug_button:
+		if is_mobile_platform:
+			debug_button.visible = false  # Hide debug button on mobile
+		else:
+			debug_button.text = "Debug"
+			debug_button.button_pressed = debug_enabled and global_debug  # Set initial state
+			debug_button.toggled.connect(_on_debug_toggled)
 
 func _setup_leaderboard():
 	"""Add multiplayer leaderboard to left section"""
@@ -424,6 +451,20 @@ func _on_multiplayer_pressed():
 		debug_log("  Updated MultiplayerManager with mode: %s" % current_mode_id)
 
 	_sync_mode_selector()
+
+func _on_debug_toggled(button_pressed: bool):
+	"""Toggle debug panel visibility"""
+	if debug_panel:
+		debug_panel.visible = button_pressed
+		
+		# Update the debug flags
+		debug_enabled = button_pressed
+		global_debug = button_pressed
+		
+		if button_pressed:
+			_add_debug_message("Debug panel enabled")
+		
+		debug_log("Debug panel toggled: %s" % button_pressed)
 
 func _sync_mode_selector():
 	"""Ensure the mode selector shows the correct mode"""

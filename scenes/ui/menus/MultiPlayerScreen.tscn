@@ -136,6 +136,12 @@ metadata/_custom_type_script = "uid://c5xs6ntwdsk3t"
 
 [node name="DebugButton" type="CheckButton" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/HBoxContainer"]
 layout_mode = 2
+focus_mode = 0
+theme_override_colors/font_hover_pressed_color = Color(0, 0, 0, 1)
+theme_override_colors/font_hover_color = Color(0, 0, 0, 1)
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_focus_color = Color(0, 0, 0, 1)
+theme_override_colors/font_pressed_color = Color(0, 0, 0, 1)
 text = "Debug"
 
 [node name="ModeSelector" type="Button" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox"]
