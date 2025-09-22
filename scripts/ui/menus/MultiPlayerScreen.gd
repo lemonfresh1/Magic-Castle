@@ -56,6 +56,13 @@ var game_settings_component: Control
 var multiplayer_leaderboard_script = preload("res://Pyramids/scripts/ui/components/MultiplayerLeaderboard.gd")
 var swipe_mode_button_scene = preload("res://Pyramids/scenes/ui/components/SwipeModeButton.tscn")
 
+# Debug panel reference - FIXED NAME
+@onready var debug_panel: ScrollContainer = $MainContainer/ContentHBox/LeftSection/DebugPanel
+
+# Debug text display
+var debug_messages: Array[String] = []
+var max_debug_messages: int = 50
+
 # === ICON PATHS ===
 const ICON_PATH_BASE = "res://Pyramids/assets/icons/menu/"
 
@@ -94,6 +101,9 @@ func _ready():
 	_setup_game_settings_component()
 	_load_player_stats()
 	
+	# Setup debug panel
+	_setup_debug_panel()
+	
 	# Update UI based on loaded selection
 	_update_solo_multiplayer_selection()
 	_update_multiplayer_buttons_visibility()  # Update visibility on load
@@ -114,6 +124,74 @@ func _ready():
 	
 	if leaderboard_panel:
 		leaderboard_panel.load_scores({})
+	
+	debug_log("=== READY COMPLETE ===")
+
+func _setup_debug_panel():
+	"""Setup the debug panel with initial information"""
+	if not debug_panel:
+		debug_log("Debug panel not found in scene")
+		return
+	
+	debug_log("Setting up debug panel (ScrollContainer)")
+	
+	# Make sure it's visible and sized correctly
+	debug_panel.visible = debug_enabled and global_debug
+	debug_panel.z_index = 100  # On top
+	debug_panel.custom_minimum_size = Vector2(400, 200)
+	debug_panel.size = Vector2(400, 200)
+	
+	# Add a background panel first
+	var bg = Panel.new()
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	bg.modulate = Color(0.15, 0.15, 0.15, 0.95)
+	debug_panel.add_child(bg)
+	
+	# Simple approach - just add a TextEdit
+	var debug_text = TextEdit.new()
+	debug_text.custom_minimum_size = Vector2(400, 200)
+	debug_text.size = Vector2(400, 200)
+	debug_text.editable = false
+	debug_text.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+	debug_text.add_theme_font_size_override("font_size", 11)
+	debug_text.add_theme_color_override("font_color", Color.WHITE)
+	debug_text.add_theme_color_override("background_color", Color.TRANSPARENT)
+	
+	debug_panel.add_child(debug_text)
+	
+	# Store reference
+	debug_panel.set_meta("debug_text", debug_text)
+	
+	debug_log("Debug panel setup complete")
+	
+	# Initial messages
+	_add_debug_message("=== MultiplayerScreen Debug ===")
+	_add_debug_message("Mode: %s" % current_mode_id)
+	_add_debug_message("Type: %s" % ("Solo" if is_solo_mode else "Multiplayer"))
+	_add_debug_message("Stats: %d games" % player_stats.get("games", 0))
+
+func _add_debug_message(msg: String):
+	"""Add a message to the debug panel"""
+	if not debug_panel:
+		return
+	
+	var debug_text = debug_panel.get_meta("debug_text", null)
+	if not debug_text:
+		return
+	
+	var time = Time.get_time_dict_from_system()
+	var timestamp = "[%02d:%02d:%02d]" % [time.hour, time.minute, time.second]
+	
+	debug_text.text += "%s %s\n" % [timestamp, msg]
+	
+	# Keep only last 50 lines
+	var lines = debug_text.text.split("\n")
+	if lines.size() > 50:
+		lines = lines.slice(-50)
+		debug_text.text = "\n".join(lines)
+	
+	# Scroll to bottom
+	debug_text.scroll_vertical = debug_text.get_line_count()
 
 func _setup_styles():
 	"""Apply styles to existing nodes"""
@@ -129,7 +207,7 @@ func _setup_styles():
 	# Set separation for HBox
 	content_hbox.add_theme_constant_override("separation", 20)
 	
-	# Set section ratios (45/55) - more space for right section
+	# Set section ratios (0.6:1) - correct ratio
 	left_section.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	left_section.size_flags_stretch_ratio = 0.6
 	right_section.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -286,6 +364,9 @@ func _on_solo_pressed():
 	is_solo_mode = true
 	_update_solo_multiplayer_selection()
 	
+	debug_log("Switched to SOLO mode")
+	_add_debug_message("Switched to SOLO mode")
+	
 	# Save preference using existing method
 	if SettingsSystem:
 		SettingsSystem.set_preferred_play_mode("Solo")
@@ -299,6 +380,9 @@ func _on_multiplayer_pressed():
 	"""Handle multiplayer button press"""
 	is_solo_mode = false
 	_update_solo_multiplayer_selection()
+	
+	debug_log("Switched to MULTIPLAYER mode")
+	_add_debug_message("Switched to MULTIPLAYER mode")
 	
 	# Save preference using existing method
 	if SettingsSystem:
@@ -320,7 +404,7 @@ func _update_solo_multiplayer_selection():
 
 func _update_multiplayer_buttons_visibility():
 	"""Show/hide multiplayer-only buttons based on mode - keeps layout stable"""
-	
+
 # Helper function to make container invisible but keep in layout
 func _set_container_visibility(container: Control, visible: bool):
 	if visible:
@@ -391,6 +475,12 @@ func _load_solo_stats():
 			"mode": "solo"
 		}
 		debug_log("  Final solo stats: %s" % str(player_stats))
+		
+		# Log to debug panel
+		_add_debug_message("Solo stats for %s:" % current_mode_id)
+		_add_debug_message("  Games: %d" % player_stats.games_played)
+		_add_debug_message("  Highscore: %d" % player_stats.highscore)
+		_add_debug_message("  Perfect: %d" % player_stats.perfect_rounds)
 	else:
 		player_stats = {
 			"games_played": 0,
@@ -400,71 +490,68 @@ func _load_solo_stats():
 		}
 
 func _load_multiplayer_stats():
-	"""Load multiplayer statistics"""
-	debug_log("Loading multiplayer stats for ALL modes (combined)")
+	"""Load multiplayer statistics for current mode only"""
+	debug_log("Loading multiplayer stats for mode: %s" % current_mode_id)
 	
-	var total_first_place = 0
-	var total_games = 0
-	var total_average_rank = 0.0
-	var modes_with_games = 0
-	
-	# Calculate combined stats across all multiplayer modes
 	if StatsManager:
-		for mode in ["classic", "timed_rush", "test"]:
-			var mode_stats = StatsManager.get_multiplayer_stats(mode)
-			debug_log("  Mode %s multiplayer stats: %s" % [mode, str(mode_stats)])
-			
-			if mode_stats.games > 0:
-				total_first_place += mode_stats.first_place
-				total_games += mode_stats.games
-				total_average_rank += mode_stats.average_rank
-				modes_with_games += 1
-				debug_log("    Added %d games, %d first place, avg rank %.2f" % 
-					[mode_stats.games, mode_stats.first_place, mode_stats.average_rank])
-	
-	# Calculate overall average rank
-	if modes_with_games > 0:
-		total_average_rank = total_average_rank / float(modes_with_games)
-		debug_log("  Calculated avg rank: %.2f (from %d modes with games)" % [total_average_rank, modes_with_games])
+		# Get stats for CURRENT MODE ONLY (not all modes)
+		var mode_stats = StatsManager.get_multiplayer_stats(current_mode_id)
+		debug_log("  Multiplayer stats for %s: %s" % [current_mode_id, str(mode_stats)])
+		
+		# Extract data from this mode's stats
+		var games = mode_stats.get("games", 0)
+		var first_place = mode_stats.get("first_place", 0)
+		var average_rank = mode_stats.get("average_rank", 0.0)
+		var mmr = mode_stats.get("mmr", 1000)
+		
+		# Calculate win rate for this mode
+		var winrate = 0
+		if games > 0:
+			winrate = int(float(first_place) / float(games) * 100.0)
+		
+		# Determine rank based on MMR
+		var rank = "Unranked"
+		if games >= 5:
+			if mmr >= 2000:
+				rank = "Diamond"
+			elif mmr >= 1750:
+				rank = "Platinum"
+			elif mmr >= 1500:
+				rank = "Gold"
+			elif mmr >= 1250:
+				rank = "Silver"
+			else:
+				rank = "Bronze"
+		
+		player_stats = {
+			"mmr": mmr,
+			"first_place": first_place,
+			"average_rank": average_rank,
+			"winrate": winrate,
+			"rank": rank,
+			"games": games,
+			"mode": "multiplayer"
+		}
+		
+		debug_log("  Final multiplayer stats: %s" % str(player_stats))
+		
+		# Log to debug panel
+		_add_debug_message("Multiplayer %s:" % current_mode_id)
+		_add_debug_message("  Games: %d" % games)
+		_add_debug_message("  1st Place: %d" % first_place)
+		_add_debug_message("  Avg Rank: %.2f" % average_rank)
+		_add_debug_message("  MMR: %d" % mmr)
 	else:
-		debug_log("  No modes with games, avg rank stays 0.0")
-	
-	# Calculate win rate
-	var winrate = 0
-	if total_games > 0:
-		winrate = int(float(total_first_place) / float(total_games) * 100.0)
-	
-	# Simple MMR calculation based on performance
-	var mmr = 1000
-	if total_games > 0:
-		mmr = 1000 + (total_first_place * 50) - int((total_average_rank - 1) * 25)
-		mmr = max(100, mmr)
-	
-	# Determine rank based on MMR
-	var rank = "Unranked"
-	if total_games >= 5:
-		if mmr >= 2000:
-			rank = "Diamond"
-		elif mmr >= 1750:
-			rank = "Platinum"
-		elif mmr >= 1500:
-			rank = "Gold"
-		elif mmr >= 1250:
-			rank = "Silver"
-		else:
-			rank = "Bronze"
-	
-	player_stats = {
-		"mmr": mmr,
-		"first_place": total_first_place,
-		"average_rank": total_average_rank,
-		"winrate": winrate,
-		"rank": rank,
-		"games": total_games,
-		"mode": "multiplayer"
-	}
-	
-	debug_log("  Final multiplayer stats: %s" % str(player_stats))
+		player_stats = {
+			"mmr": 1000,
+			"first_place": 0,
+			"average_rank": 0.0,
+			"winrate": 0,
+			"rank": "Unranked",
+			"games": 0,
+			"mode": "multiplayer"
+		}
+		debug_log("  No StatsManager found")
 
 func _update_stats_display():
 	"""Update the player stats grid based on mode"""
@@ -599,6 +686,9 @@ func _on_mode_id_changed(mode_id: String):
 	"""Handle mode ID change (for game logic)"""
 	debug_log("Mode changed to: %s" % mode_id)
 	current_mode_id = mode_id
+	
+	# Log to debug panel
+	_add_debug_message("Mode changed to: %s" % mode_id)
 	
 	# Update GameSettingsPanel
 	if game_settings_component and game_settings_component.has_method("update_mode"):

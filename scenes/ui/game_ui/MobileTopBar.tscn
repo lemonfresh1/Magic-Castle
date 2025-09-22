@@ -231,6 +231,9 @@ grow_vertical = 2
 theme_override_font_sizes/font_size = 24
 text = "15"
 
+[node name="DebugLabel" type="Label" parent="HBoxContainer/RightSection"]
+layout_mode = 2
+
 [node name="PauseButton" type="Button" parent="HBoxContainer/RightSection"]
 custom_minimum_size = Vector2(100, 30)
 layout_mode = 2

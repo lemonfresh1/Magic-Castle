@@ -1,8 +1,14 @@
 # MobileTopBar.gd - Mobile-optimized top bar with UIStyleManager integration
 # Path: res://Pyramids/scripts/game/MobileTopBar.gd
-# Last Updated: Panel moved to CenterSection only
+# Last Updated: Added debug mode display [Date]
 
 extends Control
+
+# === DEBUG CONFIGURATION ===
+var debug_enabled: bool = true
+var global_debug: bool = true
+@onready var debug_label: Label = $HBoxContainer/RightSection/DebugLabel
+
 
 # === SCENE REFERENCES (Updated for new structure) ===
 # Top level container
@@ -46,7 +52,13 @@ var slot_cards: Array[Control] = []
 var card_scene = preload("res://Pyramids/scenes/game/Card.tscn")
 var card_back_texture = preload("res://Pyramids/assets/cards/card_back.png")
 
+func debug_log(message: String) -> void:
+	if debug_enabled and global_debug:
+		print("[MobileTopBar] %s" % message)
+
 func _ready() -> void:
+	debug_log("=== MobileTopBar READY ===")
+	
 	# Set up proportional sizing
 	_setup_proportional_layout()
 	
@@ -82,9 +94,62 @@ func _ready() -> void:
 	if slot_3_countdown:
 		slot_3_countdown.text = str(GameModeManager.get_slot_unlock_requirement(3))
 	
+	# Setup debug label
+	_setup_debug_label()
+	
 	# Enable processing
 	set_process(true)
 	process_mode = Node.PROCESS_MODE_ALWAYS
+
+func _setup_debug_label():
+	"""Configure the debug label to show game mode and type"""
+	if not debug_label:
+		debug_log("Debug label not found in scene")
+		return
+	
+	# Only show if debug is enabled
+	debug_label.visible = debug_enabled and global_debug
+	
+	if debug_label.visible:
+		# Style the debug label
+		debug_label.add_theme_font_size_override("font_size", 14)
+		debug_label.add_theme_color_override("font_color", Color.YELLOW)
+		debug_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 1))
+		debug_label.add_theme_constant_override("shadow_offset_x", 1)
+		debug_label.add_theme_constant_override("shadow_offset_y", 1)
+		
+		# Update the text
+		_update_debug_label()
+	
+	debug_log("Debug label setup complete (visible: %s)" % debug_label.visible)
+
+func _update_debug_label():
+	"""Update debug label with current mode and game type"""
+	if not debug_label or not debug_label.visible:
+		return
+	
+	# Get current game mode
+	var mode = "Unknown"
+	if GameModeManager:
+		mode = GameModeManager.get_mode_display_name()
+		debug_log("Current mode from GameModeManager: %s (id: %s)" % [mode, GameModeManager.get_current_mode()])
+	
+	# Get game type (single/multi)
+	var game_type = "Unknown"
+	if GameState:
+		game_type = "Multiplayer" if GameState.game_mode == "multi" else "Solo"
+		debug_log("Game type from GameState: %s (game_mode: %s)" % [game_type, GameState.game_mode])
+	
+	# Update label
+	debug_label.text = "%s - %s" % [mode, game_type]
+	debug_log("Debug label updated: %s" % debug_label.text)
+
+func toggle_debug_visibility(show: bool = !debug_label.visible):
+	"""Toggle or set debug label visibility"""
+	if debug_label:
+		debug_label.visible = show and debug_enabled and global_debug
+		if debug_label.visible:
+			_update_debug_label()
 
 func _setup_proportional_layout() -> void:
 	# Make the top bar fill entire width
@@ -288,6 +353,11 @@ func _on_pause_pressed() -> void:
 	get_tree().paused = is_paused
 
 func _on_round_started(_round: int) -> void:
+	debug_log("Round %d started" % _round)
+	
+	# Update debug label when round starts
+	_update_debug_label()
+	
 	# Hide timer in chill mode
 	var show_timer = GameModeManager.should_show_timer()
 	timer_bar.visible = show_timer

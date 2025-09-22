@@ -40,17 +40,22 @@ func _ready() -> void:
 	_start_with_selected_mode()
 
 func _start_with_selected_mode():
-	"""Start game with the mode selected in SinglePlayerModeSelect"""
-	# Get the current mode from GameModeManager
 	var mode = GameModeManager.get_current_mode()
 	
 	if not mode or mode == "":
-		# Fallback if no mode selected
 		print("Warning: No mode selected, defaulting to classic")
 		GameModeManager.set_game_mode("classic", {})
 	
 	print("Starting game with mode: %s" % mode)
-	GameState.start_new_game("single")
+	
+	# Check if this is multiplayer or solo
+	var game_type = "single"
+	if GameState and GameState.game_mode == "multi":
+		game_type = "multi"
+	elif MultiplayerManager and MultiplayerManager.game_in_progress:
+		game_type = "multi"
+	
+	GameState.start_new_game(game_type)  # Pass correct type
 
 func _process(_delta: float) -> void:
 	# Let DrawZoneManager handle availability updates
