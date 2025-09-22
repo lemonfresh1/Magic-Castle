@@ -66,6 +66,8 @@ func _ready() -> void:
 	print("StatsManager initializing...")
 	load_stats()
 	_fix_mode_names()  # Run migration on startup
+	SignalBus.card_invalid_selected.connect(_on_card_invalid_selected)
+
 	print("StatsManager ready")
 
 func _create_mode_stats() -> Dictionary:
@@ -884,3 +886,6 @@ func get_perfect_round_rate_typed(mode: String, game_type: String = "solo") -> f
 	if stat_dict.total_rounds > 0:
 		return float(stat_dict.perfect_rounds) / float(stat_dict.total_rounds) * 100.0
 	return 0.0
+
+func _on_card_invalid_selected(card: Control) -> void:
+	track_invalid_click()

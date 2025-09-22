@@ -1,7 +1,9 @@
-[gd_scene load_steps=3 format=3 uid="uid://un7equhhsln0"]
+[gd_scene load_steps=5 format=3 uid="uid://un7equhhsln0"]
 
 [ext_resource type="Script" uid="uid://d2ka3nv1gby3d" path="res://Pyramids/scripts/ui/menus/MultiPlayerScreen.gd" id="1_qvf2i"]
 [ext_resource type="Script" uid="uid://c5xs6ntwdsk3t" path="res://Pyramids/scripts/ui/components/StyledButton.gd" id="2_km7gp"]
+[ext_resource type="Texture2D" uid="uid://dr4tfvbyqs71f" path="res://Pyramids/assets/ui/mp_lobby.png" id="3_qqr3q"]
+[ext_resource type="Texture2D" uid="uid://cj3mby31clkug" path="res://Pyramids/assets/ui/mp_battle.png" id="4_nkbdo"]
 
 [node name="MultiPlayerScreen" type="Control"]
 layout_mode = 3
@@ -132,6 +134,10 @@ script = ExtResource("2_km7gp")
 button_style = "danger"
 metadata/_custom_type_script = "uid://c5xs6ntwdsk3t"
 
+[node name="DebugButton" type="CheckButton" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/HBoxContainer"]
+layout_mode = 2
+text = "Debug"
+
 [node name="ModeSelector" type="Button" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox"]
 layout_mode = 2
 text = "Mode"
@@ -140,35 +146,81 @@ text = "Mode"
 layout_mode = 2
 text = "Unranked"
 
+[node name="HSeparator" type="HSeparator" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox"]
+modulate = Color(1, 1, 1, 0)
+custom_minimum_size = Vector2(0, 37)
+layout_mode = 2
+
 [node name="LobbyHBox" type="HBoxContainer" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox"]
 layout_mode = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 10
+
+[node name="LobbyRect" type="TextureRect" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/LobbyHBox"]
+layout_mode = 2
+texture = ExtResource("3_qqr3q")
+expand_mode = 3
+
+[node name="VSeparator" type="VSeparator" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/LobbyHBox"]
+modulate = Color(1, 1, 1, 0)
+custom_minimum_size = Vector2(9, 0)
+layout_mode = 2
 
 [node name="CreateLobby" type="Button" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/LobbyHBox"]
 layout_mode = 2
-text = "Create Lobby"
+size_flags_horizontal = 10
+text = "Create"
+script = ExtResource("2_km7gp")
+button_style = "lobby"
+metadata/_custom_type_script = "uid://c5xs6ntwdsk3t"
 
 [node name="JoinLobby" type="Button" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/LobbyHBox"]
 layout_mode = 2
-text = "Join Lobby"
+size_flags_horizontal = 10
+text = "Join"
+script = ExtResource("2_km7gp")
+button_style = "lobby_filled"
+metadata/_custom_type_script = "uid://c5xs6ntwdsk3t"
 
-[node name="BattlegroundHBox" type="HBoxContainer" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox"]
+[node name="BattleHBox" type="HBoxContainer" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="BattleRect" type="TextureRect" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/BattleHBox"]
+layout_mode = 2
+texture = ExtResource("4_nkbdo")
+expand_mode = 3
+
+[node name="VSeparator2" type="VSeparator" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/BattleHBox"]
+modulate = Color(1, 1, 1, 0)
 layout_mode = 2
 
-[node name="CreateBattleground" type="Button" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/BattlegroundHBox"]
+[node name="CreateBattle" type="Button" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/BattleHBox"]
 layout_mode = 2
-text = "Create Battleground"
+size_flags_horizontal = 10
+text = "Create"
+script = ExtResource("2_km7gp")
+button_style = "battle"
+metadata/_custom_type_script = "uid://c5xs6ntwdsk3t"
 
-[node name="JoinBattleground" type="Button" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/BattlegroundHBox"]
+[node name="JoinBattle" type="Button" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/BattleHBox"]
 layout_mode = 2
-text = "Join Battleground"
+size_flags_horizontal = 10
+text = "Join"
+script = ExtResource("2_km7gp")
+button_style = "battle_filled"
+metadata/_custom_type_script = "uid://c5xs6ntwdsk3t"
 
 [node name="JoinTournament" type="Button" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox"]
 layout_mode = 2
 text = "Tournament"
+script = ExtResource("2_km7gp")
+metadata/_custom_type_script = "uid://c5xs6ntwdsk3t"
 
 [node name="BackButton" type="Button" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer"]
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 8
 text = "Menu"
+script = ExtResource("2_km7gp")
+button_style = "danger"
+metadata/_custom_type_script = "uid://c5xs6ntwdsk3t"

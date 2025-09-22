@@ -113,6 +113,7 @@ tab_focus_mode = 0
 
 [node name="Test" type="PanelContainer" parent="MarginContainer/TabContainer"]
 self_modulate = Color(1, 1, 1, 0)
+custom_minimum_size = Vector2(698, 348)
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_xnrfp")
 metadata/_tab_index = 0
@@ -136,6 +137,7 @@ vertical_scroll_mode = 3
 [node name="Rush" type="PanelContainer" parent="MarginContainer/TabContainer"]
 visible = false
 self_modulate = Color(1, 1, 1, 0)
+custom_minimum_size = Vector2(698, 348)
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_xnrfp")
 metadata/_tab_index = 1
@@ -159,6 +161,7 @@ vertical_scroll_mode = 3
 [node name="Classic" type="PanelContainer" parent="MarginContainer/TabContainer"]
 visible = false
 self_modulate = Color(1, 1, 1, 0)
+custom_minimum_size = Vector2(698, 348)
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_xnrfp")
 metadata/_tab_index = 2

@@ -2,6 +2,9 @@
 # Path: res://Pyramids/scripts/autoloads/ScoreSystem.gd
 extends Node
 
+# === DEBUG FLAGS ===
+var debug_enabled: bool = false  # Set to true to debug scoring
+var global_debug: bool = true    # Will be controlled by global debug system
 
 # Scoring state
 var combo_timer: Timer
@@ -26,7 +29,6 @@ var clear_bonus: int = 0
 var round_total: int = 0
 var COMBO_BASE_TIME: float = 15.0
 
-
 # Score constants
 const TIME_BONUS_BASE: int = 10
 const TIME_BONUS_PER_ROUND: int = 1
@@ -37,6 +39,10 @@ const FIBONACCI_SEQUENCE: Array[int] = [10, 11, 12, 13, 15, 18, 23, 31, 44, 65, 
 
 # Pending score calculation to avoid race conditions
 var pending_round_end: bool = false
+
+func debug_log(message: String) -> void:
+	if debug_enabled and global_debug:
+		print("[ScoreSystem] %s" % message)
 
 func _ready() -> void:	
 	# Create combo timer
@@ -57,9 +63,11 @@ func calculate_card_score(card: Control) -> int:
 	# Check for suit bonus
 	if last_selected_card and card.card_data.suit == last_selected_card.suit:
 		total_points += 25
-		# Track suit bonus
+		# Track suit bonus with correct game_type
 		var mode = GameModeManager.get_current_mode()
-		StatsManager.track_suit_bonus(mode)
+		var game_type = "multi" if GameState.is_multiplayer else "solo"
+		StatsManager.track_suit_bonus(mode, game_type)  # FIXED!
+		debug_log("Suit bonus! +25 points (mode: %s_%s)" % [mode, game_type])
 	
 	# Update last selected card
 	last_selected_card = card.card_data
@@ -89,13 +97,13 @@ func calculate_round_scores(board_cleared: bool) -> Dictionary:
 	# Round total (NOT including base_score again!)
 	round_total = base_score + cards_bonus + time_bonus + clear_bonus
 	
-	print("=== ROUND SCORE BREAKDOWN ===")
-	print("Base Score: %d" % base_score)
-	print("Cards Bonus: %d" % cards_bonus)
-	print("Time Bonus: %d" % time_bonus)
-	print("Clear Bonus: %d" % clear_bonus)
-	print("Round Total: %d" % round_total)
-	print("==============================")
+	debug_log("=== ROUND SCORE BREAKDOWN ===")
+	debug_log("Base Score: %d" % base_score)
+	debug_log("Cards Bonus: %d" % cards_bonus)
+	debug_log("Time Bonus: %d" % time_bonus)
+	debug_log("Clear Bonus: %d" % clear_bonus)
+	debug_log("Round Total: %d" % round_total)
+	debug_log("==============================")
 	
 	return {
 		"base": base_score,
@@ -173,6 +181,7 @@ func _on_card_selected(card: Control) -> void:
 		# If all 3 peaks cleared, mark board as cleared
 		if peaks_count == 3:
 			GameState.board_cleared = true
+			debug_log("All 3 peaks cleared! Board cleared.")
 	
 	# Calculate score AFTER peak tracking
 	var points = calculate_card_score(card)
@@ -188,8 +197,7 @@ func _on_combo_updated(combo: int) -> void:
 		
 		# Track combo milestones for missions
 		if combo >= 10:
-			# This will trigger the combo_10 mission update
-			print("Combo 10+ achieved!")
+			debug_log("Combo 10+ achieved!")
 	else:
 		current_multiplier = 1.0
 		combo_timer.stop()
@@ -201,6 +209,7 @@ func _on_combo_timeout() -> void:
 	SignalBus.combo_updated.emit(0)
 
 func _on_round_started(round_number: int) -> void:
+	debug_log("Round %d started - resetting scoring state" % round_number)
 	
 	# RESET EVERYTHING
 	current_multiplier = 1.0

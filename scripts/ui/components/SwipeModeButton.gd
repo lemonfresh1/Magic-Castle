@@ -1,6 +1,6 @@
 # SwipeModeButton.gd - Swipeable mode selector for multiplayer
 # Location: res://Pyramids/scripts/ui/components/SwipeModeButton.gd
-# Last Updated: Changed modes to Classic, Rush, Test [Date]
+# Last Updated: Changed to transparent design with subtle accents [Date]
 
 extends Button
 
@@ -57,20 +57,26 @@ func _create_button_structure():
 	flat = true  # Make button flat so panel shows through
 	custom_minimum_size = Vector2(200, 60)  # Match other button heights
 	
-	# Main panel
+	# Main panel - now transparent with border
 	main_panel = PanelContainer.new()
 	main_panel.name = "MainPanel"
 	main_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	main_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(main_panel)
 	
-	# Apply panel style - use mode color for initial mode
+	# Apply panel style - transparent with subtle border
 	var panel_style = StyleBoxFlat.new()
-	var initial_color = UIStyleManager.get_mode_color(mode_ids[0], "primary") if UIStyleManager else Color(0.4, 0.7, 0.9)
-	panel_style.bg_color = initial_color
-	panel_style.border_color = initial_color.darkened(0.2)
-	panel_style.set_border_width_all(UIStyleManager.borders.width_thin if UIStyleManager else 2)
-	panel_style.set_corner_radius_all(12)  # Match the rounded buttons below
+	panel_style.bg_color = Color.TRANSPARENT  # Fully transparent background
+	
+	# Get initial mode color for border
+	var theme_constants = ThemeConstants
+	var initial_color = Color("#6b7280")  # Default to gray if no theme constants
+	if theme_constants and theme_constants.mode_colors.has(mode_ids[0]):
+		initial_color = theme_constants.mode_colors[mode_ids[0]].primary
+	
+	panel_style.border_color = initial_color
+	panel_style.set_border_width_all(2)  # 2px border
+	panel_style.set_corner_radius_all(12)  # Rounded corners
 	main_panel.add_theme_stylebox_override("panel", panel_style)
 	
 	# Margin container
@@ -82,11 +88,14 @@ func _create_button_structure():
 	margin_container.add_theme_constant_override("margin_bottom", 10)
 	main_panel.add_child(margin_container)
 	
-	# Label
+	# Label - now using gray_900
 	label = Label.new()
 	label.name = "Label"
-	label.text = "Mode: " + modes[0]
-	label.add_theme_color_override("font_color", Color.WHITE)  # White text on colored background
+	label.text = modes[0]  # Removed "Mode: " prefix for cleaner look
+	if theme_constants:
+		label.add_theme_color_override("font_color", theme_constants.colors.gray_900)
+	else:
+		label.add_theme_color_override("font_color", Color("#111827"))  # Fallback gray_900
 	label.add_theme_font_size_override("font_size", 18)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -102,12 +111,20 @@ func _add_mode_dots():
 	dots_container.alignment = BoxContainer.ALIGNMENT_CENTER  # Auto-center!
 	add_child(dots_container)
 	
+	var theme_constants = ThemeConstants
+	
 	# Create dots
 	for i in modes.size():
 		var dot = Label.new()
 		dot.text = "•"
 		dot.add_theme_font_size_override("font_size", 16)
-		dot.add_theme_color_override("font_color", UIStyleManager.colors.gray_600 if UIStyleManager else Color.WHITE)
+		
+		# Use gray_600 for dots
+		if theme_constants:
+			dot.add_theme_color_override("font_color", theme_constants.colors.gray_600)
+		else:
+			dot.add_theme_color_override("font_color", Color("#4b5563"))
+		
 		dot.modulate.a = 0.4 if i != current_mode_index else 1.0
 		dots_container.add_child(dot)
 	
@@ -115,7 +132,7 @@ func _add_mode_dots():
 	dots_container.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	dots_container.anchor_left = 0.5
 	dots_container.anchor_right = 0.5
-	dots_container.position.y = 37  # Negative to go up from bottom anchor
+	dots_container.position.y = 37  # From bottom
 	dots_container.position.x = -10  # No X offset needed - anchors handle it
 	dots_container.z_index = 10
 	
@@ -163,7 +180,7 @@ func _handle_swipe(delta: float):
 			preview_index = (current_mode_index - 1 + modes.size()) % modes.size()
 		
 		if label:
-			label.text = "Mode: " + modes[preview_index]
+			label.text = modes[preview_index]
 			label.modulate.a = 0.5 + abs(swipe_progress) * 0.5
 
 func _snap_to_mode():
@@ -188,20 +205,19 @@ func _cycle_mode():
 	_update_mode_display()
 
 func _animate_mode_change(direction: int):
-	"""Animate mode transition with color change"""
+	"""Animate mode transition with border color change"""
 	var tween = create_tween()
 	tween.set_parallel(true)
 	
 	if main_panel:
-		# Flash white then update color
-		tween.tween_property(main_panel, "modulate", Color.WHITE * 1.5, 0.1)
-		tween.chain().tween_property(main_panel, "modulate", Color.WHITE, 0.2)
-		tween.tween_property(main_panel, "scale", Vector2.ONE, 0.3)
+		# Quick scale pulse
+		tween.tween_property(main_panel, "scale", Vector2(1.05, 1.05), 0.1)
+		tween.chain().tween_property(main_panel, "scale", Vector2.ONE, 0.2)
 	
-	# Update display after flash
-	tween.tween_callback(_update_mode_display)
+	# Update display immediately for snappy feel
+	_update_mode_display()
 	
-	tween.tween_property(self, "scale", Vector2(1.05, 1.05), 0.1)
+	tween.tween_property(self, "scale", Vector2(1.02, 1.02), 0.1)
 	tween.chain().tween_property(self, "scale", Vector2.ONE, 0.2)\
 		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BOUNCE)
 	
@@ -220,27 +236,40 @@ func _animate_snap_back():
 	
 	if main_panel:
 		tween.tween_property(main_panel, "scale", Vector2.ONE, 0.2)
-		tween.tween_property(main_panel, "modulate", Color.WHITE, 0.2)
 	
 	if label:
 		tween.tween_property(label, "modulate:a", 1.0, 0.2)
 
 func _update_mode_display():
-	"""Update the display for current mode with color change"""
+	"""Update the display for current mode with border color change"""
 	if label:
-		label.text = "Mode: " + modes[current_mode_index]
+		label.text = modes[current_mode_index]
 		label.modulate.a = 1.0
 	
-	# Update button color based on mode
-	if main_panel and UIStyleManager:
+	var theme_constants = ThemeConstants
+	
+	# Update border color based on mode
+	if main_panel and theme_constants:
 		var panel_style = main_panel.get_theme_stylebox("panel")
 		if panel_style and panel_style is StyleBoxFlat:
 			var style = panel_style.duplicate() as StyleBoxFlat
 			
 			# Get color for current mode using the ID
 			var mode_id = mode_ids[current_mode_index]
-			style.bg_color = UIStyleManager.get_mode_color(mode_id, "primary")
-			style.border_color = UIStyleManager.get_mode_color(mode_id, "dark")
+			var mode_color = theme_constants.colors.gray_500  # Default gray
+			
+			# Use specific colors for each mode
+			match mode_id:
+				"classic":
+					mode_color = theme_constants.colors.gray_500  # Neutral gray
+				"timed_rush":
+					mode_color = theme_constants.colors.play_multiplayer  # Red
+				"test":
+					mode_color = theme_constants.colors.primary  # Green
+			
+			# Keep transparent background, just update border
+			style.bg_color = Color.TRANSPARENT
+			style.border_color = mode_color
 			
 			main_panel.add_theme_stylebox_override("panel", style)
 	

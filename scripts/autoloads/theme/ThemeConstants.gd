@@ -358,28 +358,22 @@ var item_card_style = {
 
 var mode_colors = {
 	"test": {
-		"primary": Color(0.3, 0.8, 0.3),  # Green
-		"dark": Color(0.2, 0.6, 0.2)
+		"primary": Color("#10b981")  # Your existing primary green
 	},
 	"classic": {
-		"primary": Color(0.2, 0.5, 0.8),  # Blue
-		"dark": Color(0.15, 0.4, 0.65)
+		"primary": Color("#6b7280")  # gray_500 - neutral/classic
 	},
 	"timed_rush": {
-		"primary": Color(0.9, 0.3, 0.3),  # Red
-		"dark": Color(0.7, 0.2, 0.2)
+		"primary": Color("#E53935")  # Your play_multiplayer red
 	},
 	"zen": {
-		"primary": Color(0.5, 0.7, 0.9),  # Light blue
-		"dark": Color(0.4, 0.6, 0.8)
+		"primary": Color("#3b82f6")  # Your info blue
 	},
 	"daily_challenge": {
-		"primary": Color(0.9, 0.7, 0.2),  # Gold/Yellow
-		"dark": Color(0.7, 0.5, 0.1)
+		"primary": Color("#FFB300")  # Your play_tournament gold
 	},
 	"puzzle_master": {
-		"primary": Color(0.7, 0.4, 0.9),  # Purple
-		"dark": Color(0.6, 0.3, 0.8)
+		"primary": Color("#8b5cf6")  # Your premium purple
 	}
 }
 

@@ -1,6 +1,6 @@
 # MultiplayerScreen.gd - Works with existing scene structure
 # Location: res://Pyramids/scenes/ui/menus/MultiplayerScreen.gd
-# Last Updated: Added debugging for stats issues [Date]
+# Last Updated: Updated for StyledButton and renamed nodes [Date]
 
 extends Control
 
@@ -37,14 +37,18 @@ var game_settings_panel_script = preload("res://Pyramids/scripts/ui/components/G
 @onready var multiplayer_button: StyledButton = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/HBoxContainer/MultiplayerButton
 @onready var mode_selector: Button = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/ModeSelector
 @onready var unranked_button: Button = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/UnrankedButton
+
+# Updated Lobby and Battle buttons with StyledButton and new names
 @onready var lobby_h_box: HBoxContainer = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/LobbyHBox
-@onready var create_lobby: Button = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/LobbyHBox/CreateLobby
-@onready var join_lobby: Button = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/LobbyHBox/JoinLobby
-@onready var battleground_h_box: HBoxContainer = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/BattlegroundHBox
-@onready var create_battleground: Button = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/BattlegroundHBox/CreateBattleground
-@onready var join_battleground: Button = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/BattlegroundHBox/JoinBattleground
-@onready var join_tournament: Button = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/JoinTournament
-@onready var back_button: Button = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/BackButton
+@onready var lobby_rect: TextureRect = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/LobbyHBox/LobbyRect
+@onready var create_lobby: StyledButton = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/LobbyHBox/CreateLobby
+@onready var join_lobby: StyledButton = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/LobbyHBox/JoinLobby
+@onready var battle_h_box: HBoxContainer = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/BattleHBox
+@onready var battle_rect: TextureRect = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/BattleHBox/BattleRect
+@onready var create_battle: StyledButton = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/BattleHBox/CreateBattle
+@onready var join_battle: StyledButton = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/BattleHBox/JoinBattle
+@onready var join_tournament: StyledButton = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/JoinTournament
+@onready var back_button: StyledButton = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/BackButton
 
 # Old ranked button reference (to hide it)
 @onready var ranked_button: Button = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/RankedButton
@@ -84,14 +88,24 @@ func debug_log(message: String) -> void:
 func _ready():
 	debug_log("=== READY START ===")
 	
-	# Load persistent selection first
+	# Load persistent mode selection FIRST
 	if SettingsSystem:
+		# Load both play mode (solo/multi) and game mode
 		var preferred_mode = SettingsSystem.get_preferred_play_mode()
 		is_solo_mode = (preferred_mode == "Solo")
-		debug_log("Loaded preferred mode: %s (is_solo: %s)" % [preferred_mode, is_solo_mode])
+		debug_log("Loaded preferred play mode: %s (is_solo: %s)" % [preferred_mode, is_solo_mode])
+		
+		# Load the game mode (classic/rush/test)
+		current_mode_id = SettingsSystem.get_game_mode()
+		if current_mode_id == "" or current_mode_id == "tri_peaks":
+			current_mode_id = "classic"  # Default/migrate old value
+		current_mode = _get_mode_display_name_from_id(current_mode_id)
+		debug_log("Loaded preferred game mode: %s (%s)" % [current_mode, current_mode_id])
 	else:
 		is_solo_mode = false
-		debug_log("No SettingsSystem, defaulting to multiplayer")
+		current_mode = "Classic"
+		current_mode_id = "classic"
+		debug_log("No SettingsSystem, defaulting to multiplayer classic")
 	
 	_setup_styles()
 	_setup_solo_multiplayer_buttons()
@@ -101,13 +115,17 @@ func _ready():
 	_setup_game_settings_component()
 	_load_player_stats()
 	
-	
 	# Setup debug panel
 	_setup_debug_panel()
 	
+	# Sync the mode selector to loaded mode AFTER setup
+	if mode_selector and mode_selector.has_method("set_mode_by_id"):
+		mode_selector.set_mode_by_id(current_mode_id)
+		debug_log("Synced mode selector to: %s" % current_mode_id)
+	
 	# Update UI based on loaded selection
 	_update_solo_multiplayer_selection()
-	_update_multiplayer_buttons_visibility()  # Update visibility on load
+	_update_multiplayer_buttons_visibility()
 	_refresh_leaderboard_for_current_mode()
 	
 	# Initialize MultiplayerManager if available and in multiplayer mode
@@ -241,7 +259,7 @@ func _setup_styles():
 	
 	# Set spacing for HBoxContainers
 	lobby_h_box.add_theme_constant_override("separation", 10)
-	battleground_h_box.add_theme_constant_override("separation", 10)
+	battle_h_box.add_theme_constant_override("separation", 10)
 	
 	# Set spacing for RightSectionMain HBox
 	var right_section_main = $MainContainer/ContentHBox/RightSection/RightSectionMain
@@ -270,30 +288,22 @@ func _setup_leaderboard():
 
 func _setup_buttons():
 	"""Configure existing buttons"""
-	# Lobby buttons - keep text from scene
+	# Lobby buttons - StyledButtons now, no need for UIStyleManager
 	create_lobby.pressed.connect(func(): _on_lobby_action("create_lobby"))
-	UIStyleManager.apply_button_style(create_lobby, "secondary", "small")
-	
 	join_lobby.pressed.connect(func(): _on_lobby_action("join_lobby"))
-	UIStyleManager.apply_button_style(join_lobby, "secondary", "small")
 	
-	# Battleground buttons - keep text from scene
-	create_battleground.pressed.connect(func(): _on_lobby_action("create_battleground"))
-	UIStyleManager.apply_button_style(create_battleground, "secondary", "small")
+	# Battle buttons - renamed from battleground
+	create_battle.pressed.connect(func(): _on_lobby_action("create_battle"))
+	join_battle.pressed.connect(func(): _on_lobby_action("join_battle"))
 	
-	join_battleground.pressed.connect(func(): _on_lobby_action("join_battleground"))
-	UIStyleManager.apply_button_style(join_battleground, "secondary", "small")
-	
-	# Tournament button
+	# Tournament button - now StyledButton
 	join_tournament.focus_mode = Control.FOCUS_NONE
 	join_tournament.pressed.connect(func(): _on_lobby_action("join_tournament"))
-	UIStyleManager.apply_button_style(join_tournament, "secondary", "medium")
 	
-	# Back button
+	# Back button - StyledButton now, no need for UIStyleManager
 	back_button.text = "Menu"
 	back_button.custom_minimum_size = Vector2(0, 50)
 	back_button.pressed.connect(_on_back_pressed)
-	UIStyleManager.apply_button_style(back_button, "primary", "medium")
 	
 	# Configure existing ModeSelector if it's a Button (not SwipeModeButton yet)
 	if mode_selector and not mode_selector.has_signal("mode_changed"):
@@ -322,7 +332,7 @@ func _setup_buttons():
 		ranked_button.visible = false
 	
 	# Configure Play button (unranked_button)
-	unranked_button.text = "▶️ Play"
+	unranked_button.text = "Play"
 	unranked_button.focus_mode = Control.FOCUS_NONE
 	unranked_button.custom_minimum_size = Vector2(0, 80)
 	unranked_button.pressed.connect(func(): _on_queue_selected("play"))
@@ -431,34 +441,12 @@ func _update_solo_multiplayer_selection():
 		multiplayer_button.modulate.a = 1.0
 
 func _update_multiplayer_buttons_visibility():
-	"""Show/hide multiplayer-only buttons based on mode - keeps layout stable"""
-
-# Helper function to make container invisible but keep in layout
-func _set_container_visibility(container: Control, visible: bool):
-	if visible:
-		container.modulate.a = 1.0
-		container.mouse_filter = Control.MOUSE_FILTER_STOP
-		for child in container.get_children():
-			if child is Button:
-				child.mouse_filter = Control.MOUSE_FILTER_STOP
-	else:
-		container.modulate.a = 0.0
-		container.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		for child in container.get_children():
-			if child is Button:
-				child.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	
-	# Update visibility for multiplayer-only containers
-	_set_container_visibility(lobby_h_box, not is_solo_mode)
-	_set_container_visibility(battleground_h_box, not is_solo_mode)
-	
-	# Tournament button
-	if is_solo_mode:
-		join_tournament.modulate.a = 0.0
-		join_tournament.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	else:
-		join_tournament.modulate.a = 1.0
-		join_tournament.mouse_filter = Control.MOUSE_FILTER_STOP
+	"""Show/hide multiplayer-only buttons based on mode"""
+	# In solo mode, hide all multiplayer containers
+	# In multiplayer mode, show them
+	lobby_h_box.visible = not is_solo_mode
+	battle_h_box.visible = not is_solo_mode
+	join_tournament.visible = not is_solo_mode
 
 func _refresh_leaderboard_for_current_mode():
 	"""Refresh leaderboard with current solo/multi and mode selection"""
@@ -659,11 +647,11 @@ func _on_lobby_action(action: String):
 		"join_lobby":
 			print("Join lobby - not implemented yet")
 			
-		"create_battleground":
-			print("Create battleground - not implemented yet")
+		"create_battle":  # Updated from create_battleground
+			print("Create battle - not implemented yet")
 			
-		"join_battleground":
-			print("Join battleground - not implemented yet")
+		"join_battle":  # Updated from join_battleground
+			print("Join battle - not implemented yet")
 			
 		"join_tournament":
 			print("Join tournament - not implemented yet")
@@ -720,6 +708,11 @@ func _on_mode_id_changed(mode_id: String):
 	debug_log("Mode changed to: %s" % mode_id)
 	current_mode_id = mode_id
 	
+	# SAVE the mode preference
+	if SettingsSystem:
+		SettingsSystem.set_game_mode(mode_id)
+		debug_log("  Saved preferred game mode: %s" % mode_id)
+	
 	# Log to debug panel
 	_add_debug_message("Mode changed to: %s" % mode_id)
 	
@@ -742,3 +735,11 @@ func _on_mode_id_changed(mode_id: String):
 		var mp_manager = get_node("/root/MultiplayerManager")
 		mp_manager.select_game_mode(mode_id)
 		debug_log("  Updated MultiplayerManager with mode: %s" % mode_id)
+
+func _get_mode_display_name_from_id(mode_id: String) -> String:
+	"""Convert mode ID to display name"""
+	match mode_id:
+		"classic": return "Classic"
+		"timed_rush": return "Rush"
+		"test": return "Test"
+		_: return "Classic"
