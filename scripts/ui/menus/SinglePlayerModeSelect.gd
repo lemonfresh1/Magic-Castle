@@ -1,8 +1,12 @@
 # SinglePlayerModeSelect.gd - Full carousel version with Android fixes
 # Location: res://Pyramids/scripts/ui/menus/SinglePlayerModeSelect.gd
-# Last Updated: Android crash fixes applied
+# Last Updated: Android crash fixes with proper debug system
 
 extends Control
+
+# Debug control
+var debug_enabled: bool = true  # Set to false to disable all debug output
+var global_debug: bool = true   # Can be controlled globally
 
 # Scene references
 @onready var back_button: Button = $TopSection/BackButton
@@ -23,110 +27,119 @@ var carousel_radius: float = 250.0
 var highscores_panel_scene = preload("res://Pyramids/scenes/ui/components/HighscoresPanel.tscn")
 var highscores_panel: Control = null
 
+func _debug_log(message: String, level: String = "INFO") -> void:
+	"""Centralized debug logging"""
+	if debug_enabled or global_debug:
+		var prefix = "[SinglePlayerMode]"
+		match level:
+			"ERROR": push_error("%s %s" % [prefix, message])
+			"WARN": push_warning("%s %s" % [prefix, message])
+			_: print("%s %s" % [prefix, message])
+
 func _ready():
-	# Add crash debugging
-	print("=== SINGLEPLAYER READY START ===")
+	_debug_log("=== READY START ===")
 	
 	# Check if HighscoresPanel can be loaded
 	if not ResourceLoader.exists("res://Pyramids/scenes/ui/components/HighscoresPanel.tscn"):
-		push_error("HighscoresPanel.tscn doesn't exist!")
+		_debug_log("HighscoresPanel.tscn doesn't exist!", "ERROR")
 		return
 	
-	print("1. Setup background...")
+	_debug_log("1. Setup background...")
 	_setup_background()
 	
-	print("2. Setup UI...")
+	_debug_log("2. Setup UI...")
 	_setup_ui()
 	
-	print("3. Connect signals...")
+	_debug_log("3. Connect signals...")
 	_connect_signals()
 	
-	print("4. Apply styles...")  
+	_debug_log("4. Apply styles...")  
 	_apply_styles()
 	
-	print("5. Load modes...")
+	_debug_log("5. Load modes...")
 	_load_modes_from_manager()
-	print("   Loaded %d modes" % single_player_modes.size())
+	_debug_log("   Loaded %d modes" % single_player_modes.size())
 	
-	print("6. Create carousel...")
+	_debug_log("6. Create carousel...")
 	_create_carousel_cards()
-	print("   Created %d cards" % cards.size())
+	_debug_log("   Created %d cards" % cards.size())
 	
-	print("7. Platform-specific carousel finalization...")
+	_debug_log("7. Platform-specific carousel finalization...")
 	
 	# Check platform and use appropriate method
 	if OS.get_name() == "Android":
-		print("   Android detected - using deferred call")
+		_debug_log("   Android detected - using deferred call")
 		call_deferred("_finalize_carousel_setup")
 	else:
-		print("   Desktop detected - using await")
+		_debug_log("   Desktop detected - using await")
 		await get_tree().process_frame
 		_finalize_carousel_setup()
 
+
 func _finalize_carousel_setup():
 	"""Complete carousel setup after deferred call or await"""
-	print("=== FINALIZE CAROUSEL SETUP ===")
+	_debug_log("=== FINALIZE CAROUSEL SETUP ===")
 	
 	# Check cards array is valid
 	if cards.is_empty():
-		push_error("No cards in finalize - array is empty!")
+		_debug_log("No cards in finalize - array is empty!", "ERROR")
 		return
 	
-	print("  Cards array size: %d" % cards.size())
+	_debug_log("  Cards array size: %d" % cards.size())
 	
 	# Validate all cards before positioning
 	for i in range(cards.size()):
 		if not is_instance_valid(cards[i]):
-			push_error("  Card %d is invalid in finalize!" % i)
+			_debug_log("  Card %d is invalid in finalize!" % i, "ERROR")
 			return
 		else:
-			print("  Card %d is valid" % i)
+			_debug_log("  Card %d is valid" % i)
 	
-	print("  Updating carousel positions...")
+	_debug_log("  Updating carousel positions...")
 	_update_carousel_positions()
 	
-	print("  Updating card visibility...")
+	_debug_log("  Updating card visibility...")
 	if cards.size() > 0 and is_instance_valid(cards[0]):
 		_update_card_visibility(cards[0], true)
 	else:
-		push_error("  Cannot update visibility - no valid cards!")
+		_debug_log("  Cannot update visibility - no valid cards!", "ERROR")
 		return
 	
-	print("  Selecting initial mode...")
+	_debug_log("  Selecting initial mode...")
 	_select_mode(0)
 	
 	# Connect signals and load scores AFTER carousel is set up
-	print("  Connecting tree_entered signal...")
+	_debug_log("  Connecting tree_entered signal...")
 	if not tree_entered.is_connected(_on_tree_entered):
 		tree_entered.connect(_on_tree_entered)
-		print("    Signal connected successfully")
+		_debug_log("    Signal connected successfully")
 	else:
-		print("    Signal already connected")
+		_debug_log("    Signal already connected")
 	
-	print("  Loading all mode scores...")
+	_debug_log("  Loading all mode scores...")
 	_load_all_mode_scores()
 	
-	print("=== CAROUSEL SETUP COMPLETE ===")
+	_debug_log("=== CAROUSEL SETUP COMPLETE ===")
 	
 	# Add a deferred check to see if we're still alive after setup
-	print("  Scheduling post-setup check...")
+	_debug_log("  Scheduling post-setup check...")
 	call_deferred("_post_setup_check")
 
 func _post_setup_check():
 	"""Called after carousel setup to verify everything is working"""
-	print("=== POST SETUP CHECK ===")
-	print("  Scene still alive!")
-	print("  Cards: %d" % cards.size())
-	print("  Current mode: %d" % current_mode_index)
-	print("  Single player modes: %d" % single_player_modes.size())
+	_debug_log("=== POST SETUP CHECK ===")
+	_debug_log("  Scene still alive!")
+	_debug_log("  Cards: %d" % cards.size())
+	_debug_log("  Current mode: %d" % current_mode_index)
+	_debug_log("  Single player modes: %d" % single_player_modes.size())
 	
 	if highscores_panel:
-		print("  Highscores panel exists")
+		_debug_log("  Highscores panel exists")
 	else:
-		print("  No highscores panel (skipped on Android)")
+		_debug_log("  No highscores panel (skipped on Android)")
 	
-	print("  Memory: %.2f MB" % (OS.get_static_memory_usage() / 1048576.0))
-	print("=== POST SETUP CHECK COMPLETE ===")
+	_debug_log("  Memory: %.2f MB" % (OS.get_static_memory_usage() / 1048576.0))
+	_debug_log("=== POST SETUP CHECK COMPLETE ===")
 
 func _on_tree_entered():
 	"""Called every time we enter the scene tree (including returns from game)"""
@@ -248,33 +261,33 @@ func _apply_styles():
 
 func _setup_highscores_panel():
 	"""Create and configure the highscores panel"""
-	print("  [_setup_highscores_panel] Starting...")
+	_debug_log("  [_setup_highscores_panel] Starting...")
 	
 	# ANDROID DEBUG: Skip highscores panel on Android for now
 	if OS.get_name() == "Android":
-		print("  [_setup_highscores_panel] SKIPPING on Android to isolate crash")
+		_debug_log("  [_setup_highscores_panel] SKIPPING on Android to isolate crash", "WARN")
 		return
 	
 	# Remove old panel if it exists
 	if highscores_panel:
-		print("  [_setup_highscores_panel] Removing old panel")
+		_debug_log("  [_setup_highscores_panel] Removing old panel")
 		highscores_panel.queue_free()
 	
-	print("  [_setup_highscores_panel] Checking scene...")
+	_debug_log("  [_setup_highscores_panel] Checking scene...")
 	# Create new panel from scene
 	if not highscores_panel_scene:
-		push_error("  [_setup_highscores_panel] highscores_panel_scene is null!")
+		_debug_log("  [_setup_highscores_panel] highscores_panel_scene is null!", "ERROR")
 		return
 	
-	print("  [_setup_highscores_panel] Instantiating panel...")
+	_debug_log("  [_setup_highscores_panel] Instantiating panel...")
 	highscores_panel = highscores_panel_scene.instantiate()
 	if not highscores_panel:
-		push_error("  [_setup_highscores_panel] Failed to instantiate highscores panel!")
+		_debug_log("  [_setup_highscores_panel] Failed to instantiate highscores panel!", "ERROR")
 		return
 	
-	print("  [_setup_highscores_panel] Adding to TopSection...")
+	_debug_log("  [_setup_highscores_panel] Adding to TopSection...")
 	$TopSection.add_child(highscores_panel)
-	print("  [_setup_highscores_panel] Panel added to TopSection")
+	_debug_log("  [_setup_highscores_panel] Panel added to TopSection")
 	
 	print("  [_setup_highscores_panel] Setting anchors...")
 	# Position it
@@ -610,43 +623,53 @@ func _format_combo_info(config: Dictionary) -> String:
 
 func _style_carousel_card(card: PanelContainer, mode_data: Dictionary, is_selected: bool):
 	"""Apply styling to carousel card using UIStyleManager mode colors"""
+	print("      [_style_carousel_card] Starting for mode: %s, selected: %s" % [mode_data.get("id", "?"), is_selected])
+	
+	# ANDROID FIX: Try to skip styling on Android to see if this causes crash
+	if OS.get_name() == "Android":
+		print("      [_style_carousel_card] SKIPPING styling on Android")
+		return
+	
 	var style = StyleBoxFlat.new()
 	
 	# Get mode-specific color from UIStyleManager
 	var mode_id = mode_data.get("id", "classic")
+	print("      [_style_carousel_card] Getting colors for mode: %s" % mode_id)
 	style.bg_color = UIStyleManager.get_mode_color(mode_id, "primary")
 	style.border_color = UIStyleManager.get_mode_color(mode_id, "dark")
 	
 	style.set_border_width_all(3 if is_selected else 2)
 	style.set_corner_radius_all(16)
 	
+	print("      [_style_carousel_card] Applying style override...")
 	card.remove_theme_stylebox_override("panel")
 	card.add_theme_stylebox_override("panel", style)
+	print("      [_style_carousel_card] Complete")
 
 func _update_carousel_positions():
 	"""Apply calculated positions immediately (for initial setup only)"""
-	print("  [_update_carousel_positions] Starting with %d cards" % cards.size())
+	_debug_log("  [_update_carousel_positions] Starting with %d cards" % cards.size())
 	
 	if cards.is_empty():
-		push_error("  [_update_carousel_positions] No cards to position!")
+		_debug_log("  [_update_carousel_positions] No cards to position!", "ERROR")
 		return
 	
 	var states = _calculate_carousel_positions()
 	
 	if states.is_empty():
-		push_error("  [_update_carousel_positions] No states calculated!")
+		_debug_log("  [_update_carousel_positions] No states calculated!", "ERROR")
 		return
 	
 	for i in range(cards.size()):
 		if i >= states.size():
-			push_error("  [_update_carousel_positions] State missing for card %d" % i)
+			_debug_log("  [_update_carousel_positions] State missing for card %d" % i, "ERROR")
 			continue
 			
 		var card = cards[i]
 		var state = states[i]
 		
 		if not is_instance_valid(card):
-			push_error("  [_update_carousel_positions] Card %d is invalid!" % i)
+			_debug_log("  [_update_carousel_positions] Card %d is invalid!" % i, "ERROR")
 			continue
 		
 		if state.has("visible") and not state.visible:
@@ -662,57 +685,66 @@ func _update_carousel_positions():
 		# Update visibility
 		_update_card_visibility(card, i == current_mode_index)
 	
-	print("  [_update_carousel_positions] Complete")
+	_debug_log("  [_update_carousel_positions] Complete")
 
 func _update_card_visibility(card: PanelContainer, is_selected: bool):
 	"""Update which elements of the card are visible"""
+	print("      [_update_card_visibility] Starting, selected: %s" % is_selected)
+	
 	var margin_container = card.get_node_or_null("MarginContainer")
 	if not margin_container:
+		print("      [_update_card_visibility] No MarginContainer found")
 		return
 		
 	var vbox = margin_container.get_node_or_null("VBox")
 	if not vbox:
+		print("      [_update_card_visibility] No VBox found")
 		return
 	
 	# Title and info grid are always visible
 	var info_grid = vbox.get_node_or_null("InfoGrid")
+	if not info_grid:
+		print("      [_update_card_visibility] No InfoGrid found")
+		return
+	
+	print("      [_update_card_visibility] Updating info grid text sizes...")
 	
 	if is_selected:
 		# Make info text slightly larger/bolder for selected
-		if info_grid:
-			for child in info_grid.get_children():
-				if child is Label and child.get_index() % 2 == 1:  # Info labels (not icons)
-					child.add_theme_font_size_override("font_size", 16)
-					child.add_theme_color_override("font_color", UIStyleManager.colors.gray_900)
+		for child in info_grid.get_children():
+			if child is Label and child.get_index() % 2 == 1:  # Info labels (not icons)
+				child.add_theme_font_size_override("font_size", 16)
+				child.add_theme_color_override("font_color", UIStyleManager.colors.gray_900)
 	else:
 		# Info text stays but slightly dimmer for non-selected
-		if info_grid:
-			for child in info_grid.get_children():
-				if child is Label and child.get_index() % 2 == 1:  # Info labels (not icons)
-					child.add_theme_font_size_override("font_size", 15)
-					child.add_theme_color_override("font_color", UIStyleManager.colors.gray_700)
+		for child in info_grid.get_children():
+			if child is Label and child.get_index() % 2 == 1:  # Info labels (not icons)
+				child.add_theme_font_size_override("font_size", 15)
+				child.add_theme_color_override("font_color", UIStyleManager.colors.gray_700)
+	
+	print("      [_update_card_visibility] Complete")
 
 func _select_mode(index: int):
 	"""Select a mode and update UI"""
-	print("  [_select_mode] Selecting mode %d" % index)
+	_debug_log("  [_select_mode] Selecting mode %d" % index)
 	
 	if index < 0 or index >= single_player_modes.size():
-		push_error("  [_select_mode] Invalid index: %d (modes: %d)" % [index, single_player_modes.size()])
+		_debug_log("  [_select_mode] Invalid index: %d (modes: %d)" % [index, single_player_modes.size()], "ERROR")
 		return
 	
 	if cards.is_empty():
-		push_error("  [_select_mode] Cards array is empty!")
+		_debug_log("  [_select_mode] Cards array is empty!", "ERROR")
 		return
 	
 	var old_mode_index = current_mode_index
 	current_mode_index = index
 	
-	print("  [_select_mode] Calculating new positions...")
+	_debug_log("  [_select_mode] Calculating new positions...")
 	# Calculate new positions
 	var new_states = _calculate_carousel_positions()
 	
 	if new_states.is_empty():
-		push_error("  [_select_mode] No new states calculated!")
+		_debug_log("  [_select_mode] No new states calculated!", "ERROR")
 		return
 	
 	# ANDROID FIX: Skip animation on first selection or on Android
@@ -720,53 +752,66 @@ func _select_mode(index: int):
 	var skip_animation = is_initial_setup or OS.get_name() == "Android"
 	
 	if skip_animation:
-		print("  [_select_mode] Skipping animation (Android or initial setup)")
+		_debug_log("  [_select_mode] Skipping animation (Android or initial setup)")
 		# Apply positions immediately without animation
 		for i in range(cards.size()):
+			_debug_log("    Processing card %d/%d" % [i, cards.size()])
+			
 			if i >= new_states.size():
+				_debug_log("      Skipping - no state")
 				continue
 				
 			var card = cards[i]
 			if not is_instance_valid(card):
+				_debug_log("      Skipping - invalid card")
 				continue
 				
+			_debug_log("      Getting new state...")
 			var new_state = new_states[i]
 			
-			# Apply properties directly
+			_debug_log("      Applying position: %s" % str(new_state.position))
 			card.position = new_state.position
+			
+			_debug_log("      Applying scale: %s" % str(new_state.scale))
 			card.scale = new_state.scale
+			
+			_debug_log("      Applying z_index: %d" % new_state.z_index)
 			card.z_index = new_state.z_index
+			
+			_debug_log("      Applying modulate alpha: %.2f" % new_state.modulate_a)
 			card.modulate.a = new_state.modulate_a
 			
-			# Update card style
+			_debug_log("      Calling _style_carousel_card...")
 			_style_carousel_card(card, single_player_modes[i], i == current_mode_index)
 			
-			# Update visibility
+			_debug_log("      Calling _update_card_visibility...")
 			_update_card_visibility(card, i == current_mode_index)
+			
+			_debug_log("      Card %d complete" % i)
 		
-		print("  [_select_mode] Cards positioned")
+		_debug_log("  [_select_mode] Cards positioned")
 		
 		# Load highscores immediately - BUT SKIP ON ANDROID FOR NOW
 		if highscores_panel:
-			print("  [_select_mode] Loading highscores for mode: %s" % single_player_modes[index].id)
+			_debug_log("  [_select_mode] Loading highscores for mode: %s" % single_player_modes[index].id)
 			# ANDROID DEBUG: Skip loading scores to see if this causes crash
 			if OS.get_name() != "Android":
 				highscores_panel.load_scores({"mode_id": single_player_modes[index].id})
-				print("    Scores loaded")
+				_debug_log("    Scores loaded")
 			else:
-				print("    SKIPPING score load on Android")
+				_debug_log("    SKIPPING score load on Android")
 		else:
-			print("  [_select_mode] No highscores panel to update")
+			_debug_log("  [_select_mode] No highscores panel to update")
 	else:
 		# Desktop: Use animation as before
-		print("  [_select_mode] Using animation (Desktop)")
+		_debug_log("  [_select_mode] Using animation (Desktop)")
 		
 		# Store current positions
 		var card_states = []
 		for i in range(cards.size()):
 			var card = cards[i]
 			if not is_instance_valid(card):
-				push_error("  [_select_mode] Card %d is invalid during state capture!" % i)
+				_debug_log("  [_select_mode] Card %d is invalid during state capture!" % i, "ERROR")
 				return
 			card_states.append({
 				"position": card.position,
@@ -784,12 +829,12 @@ func _select_mode(index: int):
 		# Animate each card
 		for i in range(cards.size()):
 			if i >= new_states.size():
-				push_error("  [_select_mode] Missing new state for card %d" % i)
+				_debug_log("  [_select_mode] Missing new state for card %d" % i, "ERROR")
 				continue
 				
 			var card = cards[i]
 			if not is_instance_valid(card):
-				push_error("  [_select_mode] Card %d is invalid during animation!" % i)
+				_debug_log("  [_select_mode] Card %d is invalid during animation!" % i, "ERROR")
 				continue
 				
 			var new_state = new_states[i]
@@ -811,7 +856,7 @@ func _select_mode(index: int):
 		if highscores_panel:
 			highscores_panel.load_scores({"mode_id": single_player_modes[index].id})
 	
-	print("  [_select_mode] Complete")
+	_debug_log("  [_select_mode] Complete")
 
 func _calculate_carousel_positions() -> Array:
 	"""Calculate positions without applying them"""

@@ -223,21 +223,16 @@ func _create_buttons() -> void:
 		
 		# Apply style and setup based on button type
 		if config.name == "Play":
-			# Attach SwipePlayButton script to the existing button
-			var swipe_script = preload("res://Pyramids/scripts/ui/components/SwipePlayButton.gd")
-			button_instance.set_script(swipe_script)
-			
-			# MANUALLY CALL _ready() since the node is already in the tree
-			button_instance._ready()
-			
+			# SIMPLE PLAY BUTTON - NO SWIPE SCRIPT
 			UIStyleManager.apply_menu_button_style(button_instance, "play")
 			play_button = button_instance
 			
-			# Connect swipe button signals
-			if button_instance.has_signal("play_pressed"):
-				button_instance.play_pressed.connect(_on_swipe_play_pressed)
-			if button_instance.has_signal("mode_changed"):
-				button_instance.mode_changed.connect(_on_play_mode_changed)
+			# Direct connection to go to MultiPlayerScreen
+			button_instance.pressed.connect(_on_simple_play_pressed)
+			
+			# Add play icon if you want (optional)
+			if icon:
+				icon.modulate = Color.WHITE
 		else:
 			UIStyleManager.apply_menu_button_style(button_instance, "default")
 			
@@ -259,23 +254,9 @@ func _create_buttons() -> void:
 		# Move to top
 		move_child(button_instance, get_child_count() - 1)
 
-func _on_swipe_play_pressed(mode: String):
-	print("Playing in mode: " + mode)
-	
-	match mode:
-		"Solo":
-			# Go to mode selection first!
-			get_tree().change_scene_to_file("res://Pyramids/scenes/ui/menus/SinglePlayerModeSelect.tscn")
-		"Multiplayer":
-			get_tree().change_scene_to_file("res://Pyramids/scenes/ui/menus/MultiPlayerScreen.tscn")
-		"Tournament":
-			# TODO: Implement tournament mode
-			print("Tournament not yet implemented")
-
-func _on_play_mode_changed(mode: String):
-	print("Mode changed to: " + mode)
-	# Could save preference to SettingsSystem
-	SettingsSystem.set("last_play_mode", mode)
+func _on_simple_play_pressed() -> void:
+	print("Play button pressed - going to MultiPlayerScreen")
+	get_tree().change_scene_to_file("res://Pyramids/scenes/ui/menus/MultiPlayerScreen.tscn")
 
 func _create_ui_elements() -> void:
 	# Create CogBox
@@ -325,7 +306,8 @@ func _show_menu_buttons():
 
 func _on_play_pressed() -> void:
 	# This shouldn't be called anymore - SwipePlayButton handles it
-	pass
+	_on_simple_play_pressed()  # Redirect just in case
+
 	
 func _on_shop_pressed() -> void:
 	_toggle_menu_panel("shop", shop_button)

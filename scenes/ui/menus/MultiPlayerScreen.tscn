@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3 uid="uid://un7equhhsln0"]
+[gd_scene load_steps=3 format=3 uid="uid://un7equhhsln0"]
 
 [ext_resource type="Script" uid="uid://d2ka3nv1gby3d" path="res://Pyramids/scripts/ui/menus/MultiPlayerScreen.gd" id="1_qvf2i"]
+[ext_resource type="Script" uid="uid://c5xs6ntwdsk3t" path="res://Pyramids/scripts/ui/components/StyledButton.gd" id="2_km7gp"]
 
 [node name="MultiPlayerScreen" type="Control"]
 layout_mode = 3
@@ -41,41 +42,8 @@ size_flags_horizontal = 3
 [node name="RightSection" type="VBoxContainer" parent="MainContainer/ContentHBox"]
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.9
 theme_override_constants/separation = 10
-
-[node name="PanelContainer" type="PanelContainer" parent="MainContainer/ContentHBox/RightSection"]
-layout_mode = 2
-
-[node name="MarginContainer" type="MarginContainer" parent="MainContainer/ContentHBox/RightSection/PanelContainer"]
-layout_mode = 2
-theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 10
-theme_override_constants/margin_right = 10
-theme_override_constants/margin_bottom = 10
-
-[node name="ButtonsHBox" type="HBoxContainer" parent="MainContainer/ContentHBox/RightSection/PanelContainer/MarginContainer"]
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="CreateLobby" type="Button" parent="MainContainer/ContentHBox/RightSection/PanelContainer/MarginContainer/ButtonsHBox"]
-layout_mode = 2
-text = "Create Lobby"
-
-[node name="JoinLobby" type="Button" parent="MainContainer/ContentHBox/RightSection/PanelContainer/MarginContainer/ButtonsHBox"]
-layout_mode = 2
-text = "Join Lobby"
-
-[node name="CreateBattleground" type="Button" parent="MainContainer/ContentHBox/RightSection/PanelContainer/MarginContainer/ButtonsHBox"]
-layout_mode = 2
-text = "Create Battleground"
-
-[node name="JoinBattleground" type="Button" parent="MainContainer/ContentHBox/RightSection/PanelContainer/MarginContainer/ButtonsHBox"]
-layout_mode = 2
-text = "Join Battleground"
-
-[node name="JoinTournament" type="Button" parent="MainContainer/ContentHBox/RightSection/PanelContainer/MarginContainer/ButtonsHBox"]
-layout_mode = 2
-text = "Tournament"
 
 [node name="RightSectionMain" type="HBoxContainer" parent="MainContainer/ContentHBox/RightSection"]
 layout_mode = 2
@@ -135,17 +103,59 @@ size_flags_horizontal = 3
 size_flags_vertical = 0
 theme_override_constants/separation = 8
 
+[node name="HBoxContainer" type="HBoxContainer" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox"]
+layout_mode = 2
+
+[node name="SoloButton" type="Button" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Solo"
+script = ExtResource("2_km7gp")
+button_style = "success"
+metadata/_custom_type_script = "uid://c5xs6ntwdsk3t"
+
+[node name="MultiplayerButton" type="Button" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Multiplayer"
+script = ExtResource("2_km7gp")
+button_style = "danger"
+metadata/_custom_type_script = "uid://c5xs6ntwdsk3t"
+
 [node name="ModeSelector" type="Button" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox"]
 layout_mode = 2
 text = "Mode"
 
-[node name="RankedButton" type="Button" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox"]
-layout_mode = 2
-text = "Ranked"
-
 [node name="UnrankedButton" type="Button" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox"]
 layout_mode = 2
 text = "Unranked"
+
+[node name="LobbyHBox" type="HBoxContainer" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CreateLobby" type="Button" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/LobbyHBox"]
+layout_mode = 2
+text = "Create Lobby"
+
+[node name="JoinLobby" type="Button" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/LobbyHBox"]
+layout_mode = 2
+text = "Join Lobby"
+
+[node name="BattlegroundHBox" type="HBoxContainer" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox"]
+layout_mode = 2
+
+[node name="CreateBattleground" type="Button" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/BattlegroundHBox"]
+layout_mode = 2
+text = "Create Battleground"
+
+[node name="JoinBattleground" type="Button" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/BattlegroundHBox"]
+layout_mode = 2
+text = "Join Battleground"
+
+[node name="JoinTournament" type="Button" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox"]
+layout_mode = 2
+text = "Tournament"
 
 [node name="BackButton" type="Button" parent="MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer"]
 layout_mode = 2

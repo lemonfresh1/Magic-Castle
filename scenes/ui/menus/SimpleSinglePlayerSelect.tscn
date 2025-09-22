@@ -1,0 +1,46 @@
+[gd_scene load_steps=2 format=3 uid="uid://bvqste5pvu5gg"]
+
+[sub_resource type="GDScript" id="GDScript_ngk5g"]
+script/source = "# SimpleSinglePlayerSelect.gd - ULTRA MINIMAL TEST
+extends Control
+
+func _ready():
+	print(\"[TEST] Scene loaded\")
+	
+	# Get the back button and connect it
+	var back = $TopSection/BackButton
+	if back:
+		back.pressed.connect(_on_back)
+	
+	print(\"[TEST] Ready complete\")
+
+func _on_back():
+	get_tree().change_scene_to_file(\"res://Pyramids/scenes/ui/menus/MainMenu.tscn\")
+"
+
+[node name="SimpleSinglePlayerSelect" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = SubResource("GDScript_ngk5g")
+
+[node name="TopSection" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="BackButton" type="Button" parent="TopSection"]
+layout_mode = 0
+offset_right = 8.0
+offset_bottom = 8.0
+
+[node name="CenterSection" type="VBoxContainer" parent="."]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0

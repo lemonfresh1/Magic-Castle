@@ -1,22 +1,6 @@
 # GameSettingsPanel.gd - Reusable game settings display component
 # Location: res://Pyramids/scripts/ui/components/GameSettingsPanel.gd
-# Last Updated: Created for multiplayer mode settings display [Date]
-#
-# Dependencies:
-#   - GameModeManager - Mode configurations
-#   - UIStyleManager - Consistent styling
-#
-# Flow: Can be embedded in any VBoxContainer to show game settings
-#
-# Functionality:
-#   • Displays game mode settings in consistent format
-#   • Supports read-only and editable modes (future)
-#   • Auto-updates when mode changes
-#
-# Usage:
-#   var settings_panel = GameSettingsPanel.new()
-#   settings_vbox.add_child(settings_panel)
-#   settings_panel.setup_display(mode_id, is_editable)
+# Last Updated: Increased font sizes to match stats display [Date]
 
 extends VBoxContainer
 
@@ -31,6 +15,9 @@ var title_label: Label
 var separator: HSeparator
 var mode_label: Label
 var settings_container: VBoxContainer
+
+# === ICON PATHS ===
+const ICON_PATH_BASE = "res://Pyramids/assets/icons/menu/"
 
 # === SIGNALS ===
 signal setting_changed(setting_name: String, value: Variant)
@@ -84,8 +71,8 @@ func _build_display() -> void:
 	if show_title:
 		title_label = Label.new()
 		title_label.text = "Game Settings"
-		title_label.add_theme_font_size_override("font_size", 18 if not compact_mode else 16)
-		title_label.add_theme_color_override("font_color", Color.BLACK)
+		title_label.add_theme_font_size_override("font_size", 22 if not compact_mode else 20)  # Increased from 20/18
+		title_label.add_theme_color_override("font_color", UIStyleManager.colors.gray_900)
 		add_child(title_label)
 		
 		separator = HSeparator.new()
@@ -96,8 +83,8 @@ func _build_display() -> void:
 	mode_label = Label.new()
 	var mode_name = _get_mode_display_name()
 	mode_label.text = "Mode: %s" % mode_name
-	mode_label.add_theme_font_size_override("font_size", 16 if not compact_mode else 14)
-	mode_label.add_theme_color_override("font_color", Color.BLACK)
+	mode_label.add_theme_font_size_override("font_size", 20 if not compact_mode else 18)  # Increased from 18/16
+	mode_label.add_theme_color_override("font_color", UIStyleManager.colors.gray_900)
 	add_child(mode_label)
 	
 	# Settings container
@@ -115,13 +102,13 @@ func _build_settings_rows() -> void:
 	if GameModeManager:
 		mode_config = GameModeManager.available_modes.get(current_mode_id, {})
 	
-	# Define settings to display
+	# Define settings to display with icon paths
 	var settings_info = [
-		{"icon": "🏁", "key": "rounds", "text": _format_rounds_info(mode_config)},
-		{"icon": "⏱️", "key": "timer", "text": _format_timer_info(mode_config)},
-		{"icon": "🎴", "key": "draw", "text": _format_draw_info(mode_config)},
-		{"icon": "🔓", "key": "slots", "text": _format_slot_info(mode_config)},
-		{"icon": "⚡", "key": "combo", "text": _format_combo_info(mode_config)}
+		{"icon_path": "rounds_icon.png", "key": "rounds", "text": _format_rounds_info(mode_config)},
+		{"icon_path": "time_icon.png", "key": "timer", "text": _format_timer_info(mode_config)},
+		{"icon_path": "redraws_icon.png", "key": "draw", "text": _format_draw_info(mode_config)},
+		{"icon_path": "lock_icon.png", "key": "slots", "text": _format_slot_info(mode_config)},
+		{"icon_path": "combo_icon.png", "key": "combo", "text": _format_combo_info(mode_config)}
 	]
 	
 	# Create rows
@@ -136,19 +123,23 @@ func _create_readonly_row(setting: Dictionary) -> void:
 	var info_box = HBoxContainer.new()
 	info_box.add_theme_constant_override("separation", 8)
 	
-	# Icon
-	var icon = Label.new()
-	icon.text = setting.icon
-	icon.add_theme_font_size_override("font_size", 14 if compact_mode else 16)
-	icon.add_theme_color_override("font_color", Color.BLACK)
-	icon.custom_minimum_size.x = 24
+	# Icon using TextureRect with proper sizing
+	var icon = TextureRect.new()
+	var icon_path = ICON_PATH_BASE + setting.icon_path
+	if ResourceLoader.exists(icon_path):
+		icon.texture = load(icon_path)
+	icon.custom_minimum_size = Vector2(20, 20) if not compact_mode else Vector2(16, 16)
+	icon.size = Vector2(20, 20) if not compact_mode else Vector2(16, 16)  # Force size
+	icon.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL  # Scale down to fit
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	# REMOVED: icon.modulate = UIStyleManager.colors.gray_900 - Show original colors
 	info_box.add_child(icon)
 	
 	# Label
 	var label = Label.new()
 	label.text = setting.text
-	label.add_theme_color_override("font_color", Color.BLACK)
-	label.add_theme_font_size_override("font_size", 13 if compact_mode else 14)
+	label.add_theme_color_override("font_color", UIStyleManager.colors.gray_900)
+	label.add_theme_font_size_override("font_size", 18 if not compact_mode else 16)  # Increased from 16/14
 	info_box.add_child(label)
 	
 	settings_container.add_child(info_box)

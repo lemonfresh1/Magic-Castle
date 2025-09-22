@@ -1,17 +1,17 @@
 # StatsManager.gd - Enhanced statistics tracking for achievements
 # Path: res://Pyramids/scripts/autoloads/StatsManager.gd  
-# Last Updated: Cleaned up unnecessary stats, prepared for multiplayer [2025-08-28]
+# Last Updated: Fixed mode names to match GameModeManager [Date]
 extends Node
 
 const SAVE_PATH = "user://stats.save"
-const STATS_VERSION = 3  # Incremented for cleanup
+const STATS_VERSION = 4  # Incremented for mode name fix
 
 var mode_highscores: Dictionary = {}  # mode_id -> Array of {player_name, score, timestamp}
 var player_best_scores: Dictionary = {}  # mode_id -> best_score
 var daily_reward_claimed_today: bool = false
 var last_claim_date: String = ""
 
-# Main stats dictionary
+# Main stats dictionary - FIXED MODE NAMES
 var stats = {
 	"version": STATS_VERSION,
 	
@@ -22,12 +22,14 @@ var stats = {
 	"highscore": {"score": 0, "seed": 0, "date": "", "mode": ""},
 	"longest_combo": {"combo": 0, "seed": 0, "date": "", "mode": ""},
 	
-	# Per mode statistics
+	# Per mode statistics - UPDATED TO MATCH GAMEMODEMANAGER
 	"mode_stats": {
-		"tri_peaks": _create_mode_stats(),
-		"rush": _create_mode_stats(),
-		"chill": _create_mode_stats(),
-		"test": _create_mode_stats()
+		"classic": _create_mode_stats(),      # Was "tri_peaks"
+		"timed_rush": _create_mode_stats(),   # Was "rush"
+		"test": _create_mode_stats(),         # Unchanged
+		"zen": _create_mode_stats(),          # NEW
+		"daily_challenge": _create_mode_stats(), # NEW
+		"puzzle_master": _create_mode_stats()    # NEW
 	},
 	
 	# Total statistics (across all modes)
@@ -46,11 +48,14 @@ var current_game_stats = {
 	"suit_bonuses": 0
 }
 
-# Enhanced multiplayer stats structure
+# Enhanced multiplayer stats structure - FIXED MODE NAMES
 var multiplayer_stats = {
 	"classic": _create_multiplayer_stats(),
 	"timed_rush": _create_multiplayer_stats(),
-	"test": _create_multiplayer_stats()
+	"test": _create_multiplayer_stats(),
+	"zen": _create_multiplayer_stats(),           # NEW
+	"daily_challenge": _create_multiplayer_stats(), # NEW
+	"puzzle_master": _create_multiplayer_stats()    # NEW
 }
 
 var daily_logins: int = 0
@@ -60,6 +65,7 @@ var login_streak: int = 0
 func _ready() -> void:
 	print("StatsManager initializing...")
 	load_stats()
+	_fix_mode_names()  # Run migration on startup
 	print("StatsManager ready")
 
 func _create_mode_stats() -> Dictionary:
@@ -91,9 +97,61 @@ func _create_multiplayer_stats() -> Dictionary:
 		"fastest_clear": -1.0,  # Time in seconds
 		"total_score": 0,
 		"average_score": 0.0,
-		"current_win_streak": 0,  # NEW: Current consecutive wins
-		"best_win_streak": 0      # NEW: Best win streak ever
+		"current_win_streak": 0,  # Current consecutive wins
+		"best_win_streak": 0,      # Best win streak ever
+		"mmr": 1000               # Starting MMR
 	}
+
+# === MODE NAME MIGRATION ===
+func _fix_mode_names() -> void:
+	"""One-time fix to migrate old mode names to new ones"""
+	var needs_save = false
+	
+	# Check if we need to migrate
+	if stats.version < STATS_VERSION:
+		print("Migrating stats from version %d to %d" % [stats.get("version", 0), STATS_VERSION])
+		
+		# Migrate mode_stats
+		if stats.mode_stats.has("tri_peaks"):
+			print("  Migrating tri_peaks -> classic")
+			stats.mode_stats["classic"] = stats.mode_stats["tri_peaks"]
+			stats.mode_stats.erase("tri_peaks")
+			needs_save = true
+		
+		if stats.mode_stats.has("rush"):
+			print("  Migrating rush -> timed_rush")
+			stats.mode_stats["timed_rush"] = stats.mode_stats["rush"]
+			stats.mode_stats.erase("rush")
+			needs_save = true
+		
+		if stats.mode_stats.has("chill"):
+			print("  Removing unused chill mode")
+			stats.mode_stats.erase("chill")
+			needs_save = true
+		
+		# Ensure all expected modes exist
+		for mode in ["classic", "timed_rush", "test", "zen", "daily_challenge", "puzzle_master"]:
+			if not stats.mode_stats.has(mode):
+				print("  Adding new mode: %s" % mode)
+				stats.mode_stats[mode] = _create_mode_stats()
+				needs_save = true
+			if not multiplayer_stats.has(mode):
+				multiplayer_stats[mode] = _create_multiplayer_stats()
+				needs_save = true
+		
+		# Update version
+		stats.version = STATS_VERSION
+		needs_save = true
+	
+	# Also ensure multiplayer stats have all modes
+	for mode in ["classic", "timed_rush", "test", "zen", "daily_challenge", "puzzle_master"]:
+		if not multiplayer_stats.has(mode):
+			multiplayer_stats[mode] = _create_multiplayer_stats()
+			needs_save = true
+	
+	if needs_save:
+		save_stats()
+		print("Mode names migration completed!")
 
 # === SAVE/LOAD ===
 func save_stats() -> void:
@@ -104,13 +162,13 @@ func save_stats() -> void:
 			"mode_highscores": mode_highscores,
 			"player_best_scores": player_best_scores,
 			"multiplayer_stats": multiplayer_stats,
-			"daily_logins": daily_logins,      # NEW: Save login data
-			"last_login_date": last_login_date, # NEW: Save last login
-			"login_streak": login_streak        # NEW: Save streak
+			"daily_logins": daily_logins,
+			"last_login_date": last_login_date,
+			"login_streak": login_streak
 		}
 		save_file.store_var(save_data)
 		save_file.close()
-		print("Stats saved successfully (including %d mode highscores and %d day streak)" % [mode_highscores.size(), login_streak])
+		print("Stats saved successfully (v%d)" % STATS_VERSION)
 
 func load_stats() -> void:
 	if FileAccess.file_exists(SAVE_PATH):
@@ -131,14 +189,13 @@ func load_stats() -> void:
 					last_login_date = loaded_data.get("last_login_date", "")
 					login_streak = loaded_data.get("login_streak", 0)
 					
-					# Handle old multiplayer_stats format
-					var old_mp_stats = loaded_data.get("multiplayer_stats", {})
-					if old_mp_stats and not old_mp_stats.is_empty():
-						_migrate_multiplayer_stats(old_mp_stats)
-					else:
-						multiplayer_stats = old_mp_stats
+					# Load multiplayer stats
+					var loaded_mp = loaded_data.get("multiplayer_stats", {})
+					if loaded_mp:
+						multiplayer_stats = loaded_mp
 					
-					print("Loaded stats with %d mode highscores and %d day streak" % [mode_highscores.size(), login_streak])
+					print("Loaded stats v%d with %d mode highscores and %d day streak" % 
+						[stats.get("version", 0), mode_highscores.size(), login_streak])
 				elif loaded_data.has("version"):
 					# Old format - just stats
 					stats = loaded_data
@@ -151,40 +208,9 @@ func load_stats() -> void:
 	else:
 		print("No stats file found at %s" % SAVE_PATH)
 
-func _migrate_multiplayer_stats(old_stats: Dictionary) -> void:
-	"""Migrate old win/loss format to new placement format"""
-	for mode in old_stats:
-		if not multiplayer_stats.has(mode):
-			multiplayer_stats[mode] = _create_multiplayer_stats()
-		
-		var old = old_stats[mode]
-		var new = multiplayer_stats[mode]
-		
-		# Migrate basic stats
-		new.games = old.get("games", 0)
-		new.first_place = old.get("wins", old.get("first_place", 0))  # Handle both old names
-		
-		# Migrate win streaks if they exist
-		new.current_win_streak = old.get("current_win_streak", 0)
-		new.best_win_streak = old.get("best_win_streak", 0)
-		
-		# If they had wins, add them to placement tracking
-		if old.get("wins", 0) > 0:
-			new.placements[0] = old.get("wins", 0)  # First place
-		
-		# Estimate other placements from losses (distribute evenly for now)
-		var losses = old.get("losses", 0)
-		if losses > 0:
-			# Distribute losses across positions 2-4 for estimation
-			for i in range(1, min(4, 8)):
-				new.placements[i] = losses / 3
-		
-		# Calculate average rank (rough estimate)
-		_calculate_average_rank(new)
-
 func _migrate_stats_if_needed() -> void:
 	if stats.version < STATS_VERSION:
-		print("Migrating stats from version %d to %d" % [stats.version, STATS_VERSION])
+		print("Additional migration needed from version %d to %d" % [stats.version, STATS_VERSION])
 		
 		# Remove deprecated fields from existing stats
 		for mode in stats.mode_stats:
@@ -226,9 +252,6 @@ func _migrate_stats_if_needed() -> void:
 			total_peaks += peak_data.get("2", 0) * 2
 			total_peaks += peak_data.get("3", 0) * 3
 			total["total_peaks_cleared"] = total_peaks
-		
-		stats.version = STATS_VERSION
-		save_stats()
 
 # === GAME TRACKING ===
 func start_game(mode: String) -> void:
@@ -244,6 +267,11 @@ func start_game(mode: String) -> void:
 		"suit_bonuses": 0
 	}
 	
+	# Ensure mode exists
+	if not stats.mode_stats.has(mode):
+		print("Warning: Mode '%s' not in stats, creating it" % mode)
+		stats.mode_stats[mode] = _create_mode_stats()
+	
 	if stats.mode_stats.has(mode):
 		stats.mode_stats[mode].games_played += 1
 	stats.total_stats.games_played += 1
@@ -252,6 +280,11 @@ func start_game(mode: String) -> void:
 
 func end_game(mode: String, final_score: int, rounds_completed: int) -> void:
 	print("StatsManager: Game ended - Mode: %s, Score: %d, Rounds: %d" % [mode, final_score, rounds_completed])
+	
+	# Ensure mode exists
+	if not stats.mode_stats.has(mode):
+		print("Warning: Mode '%s' not in stats, creating it" % mode)
+		stats.mode_stats[mode] = _create_mode_stats()
 	
 	# Update mode and total stats with accumulated values
 	if stats.mode_stats.has(mode):
@@ -270,7 +303,7 @@ func end_game(mode: String, final_score: int, rounds_completed: int) -> void:
 	stats.total_stats.invalid_clicks += current_game_stats.invalid_clicks
 	stats.total_stats.total_score += final_score
 	
-	# Check for new highscore
+	# Check for new highscore (OVERALL)
 	if final_score > stats.highscore.score:
 		stats.highscore = {
 			"score": final_score,
@@ -279,7 +312,7 @@ func end_game(mode: String, final_score: int, rounds_completed: int) -> void:
 			"mode": mode
 		}
 	
-	# Check for longest combo
+	# Check for longest combo (OVERALL)
 	if current_game_stats.highest_combo > stats.longest_combo.combo:
 		stats.longest_combo = {
 			"combo": current_game_stats.highest_combo,
@@ -287,6 +320,9 @@ func end_game(mode: String, final_score: int, rounds_completed: int) -> void:
 			"date": _get_current_date(),
 			"mode": mode
 		}
+	
+	# Also save mode-specific highscore for leaderboard
+	save_score(mode, final_score, SettingsSystem.player_name if SettingsSystem else "Player")
 	
 	save_stats()
 
@@ -304,6 +340,11 @@ func track_peak_clears(peaks_cleared: int, mode: String) -> void:
 		stats.total_stats.total_peaks_cleared += peaks_cleared
 
 func track_round_end(round: int, cleared: bool, score: int, time_left: float, reason: String, mode: String) -> void:
+	# Ensure mode exists
+	if not stats.mode_stats.has(mode):
+		print("Warning: Mode '%s' not in stats, creating it" % mode)
+		stats.mode_stats[mode] = _create_mode_stats()
+	
 	# Update round stats
 	if stats.mode_stats.has(mode):
 		var mode_stat = stats.mode_stats[mode]
@@ -316,7 +357,7 @@ func track_round_end(round: int, cleared: bool, score: int, time_left: float, re
 				mode_stat.fastest_clear = clear_time
 			
 			# Track most cards remaining
-			var cards_remaining = CardManager.draw_pile.size()
+			var cards_remaining = CardManager.draw_pile.size() if CardManager else 0
 			if cards_remaining > mode_stat.most_cards_remaining:
 				mode_stat.most_cards_remaining = cards_remaining
 		else:
@@ -335,7 +376,7 @@ func track_round_end(round: int, cleared: bool, score: int, time_left: float, re
 		if stats.total_stats.fastest_clear < 0 or clear_time < stats.total_stats.fastest_clear:
 			stats.total_stats.fastest_clear = clear_time
 		
-		var cards_remaining = CardManager.draw_pile.size()
+		var cards_remaining = CardManager.draw_pile.size() if CardManager else 0
 		if cards_remaining > stats.total_stats.most_cards_remaining:
 			stats.total_stats.most_cards_remaining = cards_remaining
 	else:
@@ -394,7 +435,11 @@ func _get_yesterday_date_string() -> String:
 # === MULTIPLAYER TRACKING ===
 func track_multiplayer_game(mode: String, placement: int, score: int, combo: int, clear_time: float, player_count: int) -> void:
 	"""Track a multiplayer game with placement (1-8)"""
+	print("Tracking multiplayer game: Mode=%s, Placement=%d/%d, Score=%d" % [mode, placement, player_count, score])
+	
+	# Ensure mode exists
 	if not multiplayer_stats.has(mode):
+		print("Creating multiplayer stats for mode: %s" % mode)
 		multiplayer_stats[mode] = _create_multiplayer_stats()
 	
 	var stat = multiplayer_stats[mode]
@@ -404,17 +449,22 @@ func track_multiplayer_game(mode: String, placement: int, score: int, combo: int
 	if current_mmr == 0:
 		current_mmr = 1000  # Initialize if not set
 	
-	# Calculate MMR change
-	var mmr_change = RankingSystem.calculate_mmr_change(
-		current_mmr,
-		placement,
-		player_count
-	)
+	# Calculate MMR change (only if RankingSystem exists)
+	if has_node("/root/RankingSystem"):
+		var mmr_change = RankingSystem.calculate_mmr_change(
+			current_mmr,
+			placement,
+			player_count
+		)
+		stat["mmr"] = current_mmr + mmr_change
+		print("  MMR: %d -> %d (change: %+d)" % [current_mmr, stat["mmr"], mmr_change])
+	else:
+		# Simple MMR calculation if RankingSystem doesn't exist
+		var mmr_change = (player_count - placement) * 10 - 5
+		stat["mmr"] = max(100, current_mmr + mmr_change)
+		print("  MMR (simple): %d -> %d" % [current_mmr, stat["mmr"]])
 	
-	# Update MMR
-	stat["mmr"] = current_mmr + mmr_change
-	
-	# Update basic counters (existing code)
+	# Update basic counters
 	stat.games += 1
 	stat.total_score += score
 	stat.average_score = float(stat.total_score) / float(stat.games)
@@ -428,6 +478,7 @@ func track_multiplayer_game(mode: String, placement: int, score: int, combo: int
 			stat.current_win_streak += 1
 			if stat.current_win_streak > stat.best_win_streak:
 				stat.best_win_streak = stat.current_win_streak
+			print("  First place! Win streak: %d" % stat.current_win_streak)
 		else:
 			# Reset current streak on non-win
 			stat.current_win_streak = 0
@@ -435,6 +486,7 @@ func track_multiplayer_game(mode: String, placement: int, score: int, combo: int
 	# Update records
 	if score > stat.highscore:
 		stat.highscore = score
+		print("  New multiplayer highscore for %s!" % mode)
 	
 	if combo > stat.longest_combo:
 		stat.longest_combo = combo
@@ -444,9 +496,10 @@ func track_multiplayer_game(mode: String, placement: int, score: int, combo: int
 	
 	# Calculate average rank
 	_calculate_average_rank(stat)
+	print("  Average rank: %.2f" % stat.average_rank)
 	
 	# Also save as highscore in leaderboard if applicable
-	save_score(mode + "_mp", score, SettingsSystem.player_name)
+	save_score(mode + "_mp", score, SettingsSystem.player_name if SettingsSystem else "Player")
 	save_stats()
 
 func _calculate_average_rank(stat: Dictionary) -> void:
@@ -551,7 +604,12 @@ func get_player_rank(mode_id: String) -> int:
 
 # === GETTERS ===
 func get_highscore() -> Dictionary:
+	"""Get overall highscore across all modes"""
 	return stats.highscore
+
+func get_mode_highscore(mode: String) -> int:
+	"""Get highscore for a specific mode"""
+	return player_best_scores.get(mode, 0)
 
 func get_longest_combo() -> Dictionary:
 	return stats.longest_combo
@@ -565,7 +623,10 @@ func get_best_round_score(round: int) -> Dictionary:
 func get_mode_stats(mode: String) -> Dictionary:
 	if stats.mode_stats.has(mode):
 		return stats.mode_stats[mode]
-	return _create_mode_stats()
+	# Create if doesn't exist
+	print("Warning: Mode '%s' not found in stats, creating it" % mode)
+	stats.mode_stats[mode] = _create_mode_stats()
+	return stats.mode_stats[mode]
 
 func get_total_stats() -> Dictionary:
 	return stats.total_stats
@@ -607,18 +668,25 @@ func reset_all_stats() -> void:
 		"highscore": {"score": 0, "seed": 0, "date": "", "mode": ""},
 		"longest_combo": {"combo": 0, "seed": 0, "date": "", "mode": ""},
 		"mode_stats": {
-			"tri_peaks": _create_mode_stats(),
-			"rush": _create_mode_stats(),
-			"chill": _create_mode_stats(),
-			"test": _create_mode_stats()
+			"classic": _create_mode_stats(),
+			"timed_rush": _create_mode_stats(),
+			"test": _create_mode_stats(),
+			"zen": _create_mode_stats(),
+			"daily_challenge": _create_mode_stats(),
+			"puzzle_master": _create_mode_stats()
 		},
 		"total_stats": _create_mode_stats()
 	}
 	multiplayer_stats = {
 		"classic": _create_multiplayer_stats(),
 		"timed_rush": _create_multiplayer_stats(),
-		"test": _create_multiplayer_stats()
+		"test": _create_multiplayer_stats(),
+		"zen": _create_multiplayer_stats(),
+		"daily_challenge": _create_multiplayer_stats(),
+		"puzzle_master": _create_multiplayer_stats()
 	}
+	mode_highscores = {}
+	player_best_scores = {}
 	save_stats()
 	print("All statistics reset")
 
@@ -633,17 +701,27 @@ func print_stats_summary() -> void:
 	print("Clear Rate: %.1f%%" % get_clear_rate())
 	print("Perfect Round Rate: %.1f%%" % get_perfect_round_rate())
 	print("Total Peaks Cleared: %d" % stats.total_stats.total_peaks_cleared)
+	
+	# Print mode-specific stats
+	print("\n--- Mode Stats ---")
+	for mode in ["classic", "timed_rush", "test"]:
+		var mode_stat = get_mode_stats(mode)
+		if mode_stat.games_played > 0:
+			print("%s: %d games, highscore: %d" % [mode, mode_stat.games_played, get_mode_highscore(mode)])
 	print("====================\n")
 
 func print_multiplayer_summary(mode: String = "classic") -> void:
 	var stat = get_multiplayer_stats(mode)
 	print("\n=== MULTIPLAYER STATS (%s) ===" % mode)
 	print("Games Played: %d" % stat.games)
+	print("MMR: %d" % stat.get("mmr", 1000))
 	print("First Place: %d (%.1f%%)" % [stat.first_place, get_win_percentage(mode)])
 	print("Average Rank: %.2f" % stat.average_rank)
 	print("Highscore: %d" % stat.highscore)
 	print("Longest Combo: %d" % stat.longest_combo)
 	print("Average Score: %.1f" % stat.average_score)
+	print("Current Win Streak: %d" % stat.current_win_streak)
+	print("Best Win Streak: %d" % stat.best_win_streak)
 	if stat.fastest_clear > 0:
 		print("Fastest Clear: %.1fs" % stat.fastest_clear)
 	print("====================\n")
