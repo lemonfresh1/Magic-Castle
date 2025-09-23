@@ -1,30 +1,68 @@
-# SeasonPassManager.gd - Manages season pass progression and rewards
+# SeasonPassManager.gd - Manages seasonal battle pass progression with tiered rewards
 # Location: res://Pyramids/scripts/autoloads/SeasonPassManager.gd
-# Last Updated: Removed mission logic, focused on tier progression [Date]
+# Last Updated: Refactored debug logging and function organization [Date]
+#
+# Dependencies:
+#   - StarManager - Premium currency transactions
+#   - XPManager - Experience point rewards
+#   - EquipmentManager - Cosmetic item distribution
+#   - SignalBus - Global signal management (optional)
+#
+# Flow: Game events → Add SP → Unlock tiers → Claim rewards → Grant items
+#
+# Functionality:
+#   • 3-month seasonal passes with 50 tiers
+#   • Dual-track rewards (free and premium)
+#   • Season Points (SP) progression system
+#   • Premium pass purchase and tier skips
+#   • Cosmetic and currency rewards distribution
+#   • Season rotation and expiration tracking
+#   • Persistent save data across sessions
+#
+# Pass Structure:
+#   - 50 tiers total
+#   - 10 SP per tier level
+#   - Free rewards at tiers: 1,3,5,8,10,15,20,25,30,35,40,50
+#   - Premium rewards at tiers: 1,2,3,4,5,7,9,10,12,15,18,20,25,30,35,40,45,50
+#
+# Signals Out:
+#   - tier_unlocked(tier, rewards) - New tier reached
+#   - season_points_gained(amount, source) - SP earned
+#   - season_level_up(new_level) - Level progression
+#   - season_started/ended(season_id) - Season lifecycle
+#   - season_progress_updated() - UI refresh trigger
+#   - tier_claimed(tier_num) - Rewards collected
+#   - season_pass_updated() - Pass state change
 
 extends Node
 
+# === DEBUG CONFIGURATION ===
+var debug_enabled: bool = false
+var global_debug: bool = true
+
+# === SIGNALS ===
 signal tier_unlocked(tier: int, rewards: Dictionary)
 signal season_points_gained(amount: int, source: String)
 signal season_level_up(new_level: int)
 signal season_ended(season_id: String)
 signal season_started(season_id: String)
-signal season_progress_updated()  # NEW: For UI refresh
+signal season_progress_updated()  # For UI refresh
 signal tier_claimed(tier_num: int)
 signal season_pass_updated()
 
+# === CONSTANTS ===
 const SAVE_PATH = "user://season_pass_data.save"
 const SP_PER_LEVEL = 10  # Season Points per level
 const MAX_TIER = 50
-
-# Tiers that have rewards
-const FREE_REWARD_TIERS = [1, 3, 5, 8, 10, 15, 20, 25, 30, 35, 40, 50]
-const PREMIUM_REWARD_TIERS = [1, 2, 3, 4, 5, 7, 9, 10, 12, 15, 18, 20, 25, 30, 35, 40, 45, 50]
 const PREMIUM_PASS_COST: int = 1000
 const TIER_SKIP_COST_PER_5: int = 500
 const TIER_SKIP_BUNDLE_SIZE: int = 5
 
-# Season tier structure
+# Tiers that have rewards
+const FREE_REWARD_TIERS = [1, 3, 5, 8, 10, 15, 20, 25, 30, 35, 40, 50]
+const PREMIUM_REWARD_TIERS = [1, 2, 3, 4, 5, 7, 9, 10, 12, 15, 18, 20, 25, 30, 35, 40, 45, 50]
+
+# === TIER CLASS DEFINITION ===
 class SeasonTier extends Resource:
 	@export var tier: int = 1
 	@export var required_sp: int = 0  # Total SP needed to reach this tier
@@ -34,6 +72,7 @@ class SeasonTier extends Resource:
 	@export var free_claimed: bool = false
 	@export var premium_claimed: bool = false
 
+# === STATE VARIABLES ===
 # Season save data
 var season_data = {
 	"current_season_id": "season_1",
@@ -94,6 +133,10 @@ var season_rewards = {
 	}
 }
 
+# ============================================================================
+# INITIALIZATION
+# ============================================================================
+
 func _ready():
 	load_season_data()
 	_initialize_season_tiers()
@@ -128,8 +171,28 @@ func _initialize_season_tiers():
 		
 		current_season.tiers.append(tier)
 
+# ============================================================================
+# DEBUG FUNCTIONS
+# ============================================================================
+
+func debug_log(message: String) -> void:
+	if debug_enabled and global_debug:
+		print("[SeasonPassManager] %s" % message)
+
+func debug_add_points(amount: int):
+	"""Debug function to add season points"""
+	add_season_points(amount, "debug")
+
+func debug_unlock_all_tiers():
+	"""Debug function to unlock all tiers"""
+	add_season_points(MAX_TIER * SP_PER_LEVEL, "debug_unlock_all")
+
+# ============================================================================
+# PROGRESSION SYSTEM
+# ============================================================================
+
 func add_season_points(amount: int, source: String = "gameplay"):
-	print("[SeasonPassManager] Adding %d SP from %s" % [amount, source])
+	debug_log("Adding %d SP from %s" % [amount, source])
 	season_data.season_points += amount
 	season_points_gained.emit(amount, source)
 	
@@ -150,6 +213,28 @@ func add_season_points(amount: int, source: String = "gameplay"):
 	
 	# Emit progress update for UI refresh
 	season_progress_updated.emit()
+
+func get_current_tier() -> int:
+	return season_data.season_level
+
+func get_tier_progress() -> Dictionary:
+	var current_sp = season_data.season_points
+	var current_tier_sp = (season_data.season_level - 1) * SP_PER_LEVEL
+	var next_tier_sp = season_data.season_level * SP_PER_LEVEL
+	var progress_sp = current_sp - current_tier_sp
+	
+	return {
+		"current_tier": season_data.season_level,
+		"current_sp": progress_sp,
+		"required_sp": SP_PER_LEVEL,
+		"percentage": float(progress_sp) / float(SP_PER_LEVEL),
+		"total_sp": current_sp,
+		"total_required": MAX_TIER * SP_PER_LEVEL
+	}
+
+# ============================================================================
+# REWARD MANAGEMENT
+# ============================================================================
 
 func claim_tier_rewards(tier_num: int, claim_free: bool = true, claim_premium: bool = true) -> bool:
 	"""Claim rewards with separate control for free/premium"""
@@ -185,31 +270,31 @@ func claim_tier_rewards(tier_num: int, claim_free: bool = true, claim_premium: b
 
 func _grant_rewards(rewards: Dictionary):
 	"""Grant rewards through proper managers"""
-	print("[SeasonPassManager] _grant_rewards called with: ", rewards)
+	debug_log("_grant_rewards called with: %s" % str(rewards))
 	
 	# Grant stars
 	if rewards.has("stars"):
-		print("[SeasonPassManager] Granting %d stars" % rewards.stars)
+		debug_log("Granting %d stars" % rewards.stars)
 		if StarManager:
 			var old_state = StarManager.rewards_enabled
 			StarManager.rewards_enabled = true
 			StarManager.add_stars(rewards.stars, "season_pass_tier")
 			StarManager.rewards_enabled = old_state
-			print("[SeasonPassManager] Stars added successfully")
+			debug_log("Stars added successfully")
 	
 	# Grant XP
 	if rewards.has("xp"):
-		print("[SeasonPassManager] Granting %d XP" % rewards.xp)
+		debug_log("Granting %d XP" % rewards.xp)
 		if XPManager:
 			var old_state = XPManager.rewards_enabled
 			XPManager.rewards_enabled = true
 			XPManager.add_xp(rewards.xp, "season_pass_tier")
 			XPManager.rewards_enabled = old_state
-			print("[SeasonPassManager] XP added successfully")
+			debug_log("XP added successfully")
 	
 	# Grant cosmetics - FIX THE CALL
 	if rewards.has("cosmetic_id") and rewards.has("cosmetic_type"):
-		print("[SeasonPassManager] Granting cosmetic: %s (%s)" % [
+		debug_log("Granting cosmetic: %s (%s)" % [
 			rewards.cosmetic_id,
 			rewards.cosmetic_type
 		])
@@ -221,52 +306,21 @@ func _grant_rewards(rewards: Dictionary):
 				"season_pass"  # source as string, not enum
 			)
 			if success:
-				print("[SeasonPassManager] Cosmetic granted successfully")
+				debug_log("Cosmetic granted successfully")
 			else:
 				push_error("[SeasonPassManager] Failed to grant cosmetic: " + rewards.cosmetic_id)
 		else:
 			push_error("[SeasonPassManager] EquipmentManager not found!")
 	
-	print("[SeasonPassManager] _grant_rewards completed")
+	debug_log("_grant_rewards completed")
 
-func purchase_premium_pass() -> bool:
-	# Premium pass costs 1000 stars
-	if StarManager.spend_stars(1000, "premium_pass_purchase"):
-		season_data.has_premium_pass = true
-		save_season_data()
-		season_progress_updated.emit()
-		return true
-	return false
-
-func purchase_tier_skips(num_tiers: int) -> bool:
-	# Each tier skip costs 100 stars
-	var cost = num_tiers * 100
-	if StarManager.spend_stars(cost, "tier_skip_purchase"):
-		add_season_points(num_tiers * SP_PER_LEVEL, "tier_skip")
-		return true
-	return false
-
-func get_current_tier() -> int:
-	return season_data.season_level
-
-func get_tier_progress() -> Dictionary:
-	var current_sp = season_data.season_points
-	var current_tier_sp = (season_data.season_level - 1) * SP_PER_LEVEL
-	var next_tier_sp = season_data.season_level * SP_PER_LEVEL
-	var progress_sp = current_sp - current_tier_sp
-	
-	return {
-		"current_tier": season_data.season_level,
-		"current_sp": progress_sp,
-		"required_sp": SP_PER_LEVEL,
-		"percentage": float(progress_sp) / float(SP_PER_LEVEL),
-		"total_sp": current_sp,
-		"total_required": MAX_TIER * SP_PER_LEVEL
-	}
+# ============================================================================
+# TIER DATA ACCESS
+# ============================================================================
 
 func get_season_tiers() -> Array:
 	return current_season.tiers
-	
+
 func get_tier_data(tier_number: int) -> Dictionary:
 	"""Get complete tier data for UI display"""
 	if tier_number < 1 or tier_number > MAX_TIER:
@@ -296,6 +350,33 @@ func get_season_info() -> Dictionary:
 		"has_premium": season_data.has_premium_pass
 	}
 
+# ============================================================================
+# SEASON LIFECYCLE
+# ============================================================================
+
+func start_new_season(season_config: Dictionary):
+	# Archive old season data
+	season_data.lifetime_seasons_completed += 1
+	
+	# Reset for new season
+	season_data.current_season_id = season_config.id
+	season_data.season_points = 0
+	season_data.season_level = 1
+	season_data.has_premium_pass = false
+	season_data.claimed_tiers.clear()
+	season_data.season_end_date = season_config.end_date
+	
+	current_season = season_config
+	_initialize_season_tiers()
+	
+	save_season_data()
+	season_started.emit(season_config.id)
+
+func check_season_end():
+	# Called daily to check if season should end
+	# Would implement proper date checking
+	pass
+
 func get_seconds_remaining() -> int:
 	"""Get seconds until season ends"""
 	# Parse end date
@@ -319,28 +400,30 @@ func _calculate_days_remaining() -> int:
 	var seconds = get_seconds_remaining()
 	return int(seconds / 86400)
 
-func check_season_end():
-	# Called daily to check if season should end
-	# Would implement proper date checking
-	pass
+# ============================================================================
+# PURCHASES
+# ============================================================================
 
-func start_new_season(season_config: Dictionary):
-	# Archive old season data
-	season_data.lifetime_seasons_completed += 1
-	
-	# Reset for new season
-	season_data.current_season_id = season_config.id
-	season_data.season_points = 0
-	season_data.season_level = 1
-	season_data.has_premium_pass = false
-	season_data.claimed_tiers.clear()
-	season_data.season_end_date = season_config.end_date
-	
-	current_season = season_config
-	_initialize_season_tiers()
-	
-	save_season_data()
-	season_started.emit(season_config.id)
+func purchase_premium_pass() -> bool:
+	# Premium pass costs 1000 stars
+	if StarManager.spend_stars(1000, "premium_pass_purchase"):
+		season_data.has_premium_pass = true
+		save_season_data()
+		season_progress_updated.emit()
+		return true
+	return false
+
+func purchase_tier_skips(num_tiers: int) -> bool:
+	# Each tier skip costs 100 stars
+	var cost = num_tiers * 100
+	if StarManager.spend_stars(cost, "tier_skip_purchase"):
+		add_season_points(num_tiers * SP_PER_LEVEL, "tier_skip")
+		return true
+	return false
+
+# ============================================================================
+# PERSISTENCE
+# ============================================================================
 
 func save_season_data():
 	var save_dict = {
@@ -375,12 +458,3 @@ func reset_season_data():
 	}
 	save_season_data()
 	_initialize_season_tiers()
-
-# Debug functions
-func debug_add_points(amount: int):
-	"""Debug function to add season points"""
-	add_season_points(amount, "debug")
-
-func debug_unlock_all_tiers():
-	"""Debug function to unlock all tiers"""
-	add_season_points(MAX_TIER * SP_PER_LEVEL, "debug_unlock_all")

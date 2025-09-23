@@ -1,9 +1,46 @@
-# HolidayEventManager.gd - Manages holiday pass progression and rewards
+# HolidayEventManager.gd - Manages limited-time holiday pass events with tiered rewards
 # Location: res://Pyramids/scripts/autoloads/HolidayPassManager.gd
-# Last Updated: Created to match SeasonPassManager structure [Date]
+# Last Updated: Refactored debug logging and function organization [Date]
+#
+# Dependencies:
+#   - StarManager - Premium currency transactions
+#   - XPManager - Experience point rewards
+#   - EquipmentManager - Cosmetic item distribution
+#   - SignalBus - Global signal management (optional)
+#
+# Flow: Game events → Add HP → Unlock tiers → Claim rewards → Grant items
+#
+# Functionality:
+#   • Limited-time holiday event passes (30 tiers)
+#   • Dual-track rewards (free and premium)
+#   • Holiday Points (HP) progression system
+#   • Premium pass purchase and tier skips
+#   • Themed cosmetic rewards distribution
+#   • Event rotation and expiration tracking
+#   • Persistent save data across sessions
+#
+# Pass Structure:
+#   - 30 tiers total (shorter than season pass)
+#   - 10 HP per tier level
+#   - Free rewards at tiers: 1,3,5,8,10,15,20,25,30
+#   - Premium rewards at tiers: 1,2,3,5,7,10,12,15,18,20,22,25,27,30
+#
+# Signals Out:
+#   - tier_unlocked(tier, rewards) - New tier reached
+#   - holiday_points_gained(amount, source) - HP earned
+#   - holiday_level_up(new_level) - Level progression
+#   - holiday_event_started/ended(event_id) - Event lifecycle
+#   - holiday_progress_updated() - UI refresh trigger
+#   - tier_claimed(tier_num) - Rewards collected
+#   - holiday_pass_updated() - Pass state change
 
 extends Node
 
+# === DEBUG CONFIGURATION ===
+var debug_enabled: bool = false
+var global_debug: bool = true
+
+# === SIGNALS ===
 signal tier_unlocked(tier: int, rewards: Dictionary)
 signal holiday_points_gained(amount: int, source: String)
 signal holiday_level_up(new_level: int)
@@ -13,6 +50,7 @@ signal holiday_progress_updated()  # For UI refresh
 signal tier_claimed(tier_num: int)
 signal holiday_pass_updated()
 
+# === CONSTANTS ===
 const SAVE_PATH = "user://holiday_pass_data.save"
 const HP_PER_LEVEL = 10  # Holiday Points per level
 const MAX_TIER = 30  # Shorter than season pass
@@ -24,7 +62,7 @@ const TIER_SKIP_BUNDLE_SIZE: int = 5
 const FREE_REWARD_TIERS = [1, 3, 5, 8, 10, 15, 20, 25, 30]
 const PREMIUM_REWARD_TIERS = [1, 2, 3, 5, 7, 10, 12, 15, 18, 20, 22, 25, 27, 30]
 
-# Holiday tier structure
+# === TIER CLASS DEFINITION ===
 class HolidayTier extends Resource:
 	@export var tier: int = 1
 	@export var required_hp: int = 0  # Total HP needed to reach this tier
@@ -34,6 +72,7 @@ class HolidayTier extends Resource:
 	@export var free_claimed: bool = false
 	@export var premium_claimed: bool = false
 
+# === STATE VARIABLES ===
 # Holiday save data
 var holiday_data = {
 	"current_event_id": "winter_2024",
@@ -88,6 +127,10 @@ var holiday_rewards = {
 	}
 }
 
+# ============================================================================
+# INITIALIZATION
+# ============================================================================
+
 func _ready():
 	load_holiday_data()
 	_initialize_holiday_tiers()
@@ -99,21 +142,6 @@ func _check_active_event():
 	# Check if event is active (simplified - would need proper date checking)
 	if holiday_data.current_event_id != current_event.id:
 		start_holiday_event(current_event)
-
-func start_holiday_event(event_config: Dictionary):
-	current_event = event_config
-	holiday_data.current_event_id = event_config.id
-	holiday_data.lifetime_events_participated += 1
-	
-	# Reset progress for new event
-	holiday_data.holiday_points = 0
-	holiday_data.holiday_level = 1
-	holiday_data.has_premium_pass = false
-	holiday_data.claimed_tiers.clear()
-	
-	_initialize_holiday_tiers()
-	save_holiday_data()
-	holiday_event_started.emit(event_config.id)
 
 func _initialize_holiday_tiers():
 	current_event.tiers.clear()
@@ -147,8 +175,83 @@ func _initialize_holiday_tiers():
 		
 		current_event.tiers.append(tier)
 
+# ============================================================================
+# DEBUG FUNCTIONS
+# ============================================================================
+
+func debug_log(message: String) -> void:
+	if debug_enabled and global_debug:
+		print("[HolidayEventManager] %s" % message)
+
+func debug_add_points(amount: int):
+	"""Debug function to add holiday points"""
+	add_holiday_points(amount, "debug")
+
+func debug_unlock_all_tiers():
+	"""Debug function to unlock all tiers"""
+	add_holiday_points(MAX_TIER * HP_PER_LEVEL, "debug_unlock_all")
+
+# ============================================================================
+# EVENT MANAGEMENT
+# ============================================================================
+
+func start_holiday_event(event_config: Dictionary):
+	current_event = event_config
+	holiday_data.current_event_id = event_config.id
+	holiday_data.lifetime_events_participated += 1
+	
+	# Reset progress for new event
+	holiday_data.holiday_points = 0
+	holiday_data.holiday_level = 1
+	holiday_data.has_premium_pass = false
+	holiday_data.claimed_tiers.clear()
+	
+	_initialize_holiday_tiers()
+	save_holiday_data()
+	holiday_event_started.emit(event_config.id)
+
+func get_event_info() -> Dictionary:
+	return {
+		"id": current_event.id,
+		"name": current_event.name,
+		"theme": current_event.theme,
+		"currency_name": current_event.currency_name,
+		"currency_icon": current_event.currency_icon,
+		"days_remaining": _calculate_days_remaining(),
+		"current_tier": holiday_data.holiday_level,
+		"total_hp": holiday_data.holiday_points,
+		"has_premium": holiday_data.has_premium_pass
+	}
+
+func get_seconds_remaining() -> int:
+	"""Get seconds until season ends"""
+	# Parse end date
+	var end_parts = current_event.end_date.split("-")
+	var end_dict = {
+		"year": int(end_parts[0]),
+		"month": int(end_parts[1]), 
+		"day": int(end_parts[2]),
+		"hour": 23,
+		"minute": 59,
+		"second": 59
+	}
+	
+	var current_unix = Time.get_unix_time_from_system()
+	var end_unix = Time.get_unix_time_from_datetime_dict(end_dict)
+	
+	return max(0, int(end_unix - current_unix))
+
+func _calculate_days_remaining() -> int:
+	"""Calculate days remaining until season end"""
+	var seconds = get_seconds_remaining()
+	return int(seconds / 86400)
+
+# ============================================================================
+# PROGRESSION SYSTEM
+# ============================================================================
+
 func add_holiday_points(amount: int, source: String = "gameplay"):
-	print("[HolidayPassManager] Adding %d HP from %s" % [amount, source])
+	debug_log("Adding %d HP from %s" % [amount, source])
 	holiday_data.holiday_points += amount
 	holiday_points_gained.emit(amount, source)
 	
@@ -173,6 +276,28 @@ func add_holiday_points(amount: int, source: String = "gameplay"):
 # Alias for compatibility with old HolidayEventManager
 func add_holiday_currency(amount: int):
 	add_holiday_points(amount, "legacy_currency")
+
+func get_current_tier() -> int:
+	return holiday_data.holiday_level
+
+func get_tier_progress() -> Dictionary:
+	var current_hp = holiday_data.holiday_points
+	var current_tier_hp = (holiday_data.holiday_level - 1) * HP_PER_LEVEL
+	var next_tier_hp = holiday_data.holiday_level * HP_PER_LEVEL
+	var progress_hp = current_hp - current_tier_hp
+	
+	return {
+		"current_tier": holiday_data.holiday_level,
+		"current_hp": progress_hp,
+		"required_hp": HP_PER_LEVEL,
+		"percentage": float(progress_hp) / float(HP_PER_LEVEL),
+		"total_hp": current_hp,
+		"total_required": MAX_TIER * HP_PER_LEVEL
+	}
+
+# ============================================================================
+# REWARD MANAGEMENT
+# ============================================================================
 
 func claim_tier_rewards(tier_num: int, claim_free: bool = true, claim_premium: bool = true) -> bool:
 	"""Claim rewards with separate control for free/premium - matching SeasonPassManager"""
@@ -209,31 +334,31 @@ func claim_tier_rewards(tier_num: int, claim_free: bool = true, claim_premium: b
 
 func _grant_rewards(rewards: Dictionary):
 	"""Grant rewards through proper managers - FIXED VERSION"""
-	print("[HolidayEventManager] _grant_rewards called with: ", rewards)
+	debug_log("_grant_rewards called with: %s" % str(rewards))
 	
 	# Grant stars
 	if rewards.has("stars"):
-		print("[HolidayEventManager] Granting %d stars" % rewards.stars)
+		debug_log("Granting %d stars" % rewards.stars)
 		if StarManager:
 			var old_state = StarManager.rewards_enabled
 			StarManager.rewards_enabled = true
 			StarManager.add_stars(rewards.stars, "holiday_pass_tier")
 			StarManager.rewards_enabled = old_state
-			print("[HolidayEventManager] Stars added successfully")
+			debug_log("Stars added successfully")
 	
 	# Grant XP
 	if rewards.has("xp"):
-		print("[HolidayEventManager] Granting %d XP" % rewards.xp)
+		debug_log("Granting %d XP" % rewards.xp)
 		if XPManager:
 			var old_state = XPManager.rewards_enabled
 			XPManager.rewards_enabled = true
 			XPManager.add_xp(rewards.xp, "holiday_pass_tier")
 			XPManager.rewards_enabled = old_state
-			print("[HolidayEventManager] XP added successfully")
+			debug_log("XP added successfully")
 	
 	# Grant cosmetics - FIXED: Use EquipmentManager like SeasonPassManager does
 	if rewards.has("cosmetic_id") and rewards.has("cosmetic_type"):
-		print("[HolidayEventManager] Granting cosmetic: %s (%s)" % [
+		debug_log("Granting cosmetic: %s (%s)" % [
 			rewards.cosmetic_id,
 			rewards.cosmetic_type
 		])
@@ -245,65 +370,17 @@ func _grant_rewards(rewards: Dictionary):
 				"holiday_pass"  # source as string
 			)
 			if success:
-				print("[HolidayEventManager] Cosmetic granted successfully")
+				debug_log("Cosmetic granted successfully")
 			else:
 				push_error("[HolidayEventManager] Failed to grant cosmetic: " + rewards.cosmetic_id)
 		else:
 			push_error("[HolidayEventManager] EquipmentManager not found!")
 	
-	print("[HolidayEventManager] _grant_rewards completed")
+	debug_log("_grant_rewards completed")
 
-func purchase_premium_pass() -> bool:
-	# Holiday pass costs 1000 stars (same as season pass)
-	if StarManager.spend_stars(1000, "holiday_pass_purchase"):
-		holiday_data.has_premium_pass = true
-		save_holiday_data()
-		holiday_progress_updated.emit()
-		return true
-	return false
-
-func purchase_tier_skips(num_tiers: int) -> bool:
-	# Each tier skip costs 100 stars
-	var cost = num_tiers * 100
-	if StarManager.spend_stars(cost, "holiday_tier_skip"):
-		add_holiday_points(num_tiers * HP_PER_LEVEL, "tier_skip")
-		return true
-	return false
-
-func get_current_tier() -> int:
-	return holiday_data.holiday_level
-
-func get_tier_progress() -> Dictionary:
-	var current_hp = holiday_data.holiday_points
-	var current_tier_hp = (holiday_data.holiday_level - 1) * HP_PER_LEVEL
-	var next_tier_hp = holiday_data.holiday_level * HP_PER_LEVEL
-	var progress_hp = current_hp - current_tier_hp
-	
-	return {
-		"current_tier": holiday_data.holiday_level,
-		"current_hp": progress_hp,
-		"required_hp": HP_PER_LEVEL,
-		"percentage": float(progress_hp) / float(HP_PER_LEVEL),
-		"total_hp": current_hp,
-		"total_required": MAX_TIER * HP_PER_LEVEL
-	}
-
-# Compatibility method for UI that expects SP naming
-func get_season_info() -> Dictionary:
-	return get_event_info()
-
-func get_event_info() -> Dictionary:
-	return {
-		"id": current_event.id,
-		"name": current_event.name,
-		"theme": current_event.theme,
-		"currency_name": current_event.currency_name,
-		"currency_icon": current_event.currency_icon,
-		"days_remaining": _calculate_days_remaining(),
-		"current_tier": holiday_data.holiday_level,
-		"total_hp": holiday_data.holiday_points,
-		"has_premium": holiday_data.has_premium_pass
-	}
+# ============================================================================
+# TIER DATA ACCESS
+# ============================================================================
 
 func get_holiday_tiers() -> Array:
 	return current_event.tiers
@@ -326,28 +403,34 @@ func get_tier_data(tier_number: int) -> Dictionary:
 		"premium_rewards": tier.premium_rewards
 	}
 
-func get_seconds_remaining() -> int:
-	"""Get seconds until season ends"""
-	# Parse end date
-	var end_parts = current_event.end_date.split("-")
-	var end_dict = {
-		"year": int(end_parts[0]),
-		"month": int(end_parts[1]), 
-		"day": int(end_parts[2]),
-		"hour": 23,
-		"minute": 59,
-		"second": 59
-	}
-	
-	var current_unix = Time.get_unix_time_from_system()
-	var end_unix = Time.get_unix_time_from_datetime_dict(end_dict)
-	
-	return max(0, int(end_unix - current_unix))
+# Compatibility method for UI that expects SP naming
+func get_season_info() -> Dictionary:
+	return get_event_info()
 
-func _calculate_days_remaining() -> int:
-	"""Calculate days remaining until season end"""
-	var seconds = get_seconds_remaining()
-	return int(seconds / 86400)
+# ============================================================================
+# PURCHASES
+# ============================================================================
+
+func purchase_premium_pass() -> bool:
+	# Holiday pass costs 1000 stars (same as season pass)
+	if StarManager.spend_stars(1000, "holiday_pass_purchase"):
+		holiday_data.has_premium_pass = true
+		save_holiday_data()
+		holiday_progress_updated.emit()
+		return true
+	return false
+
+func purchase_tier_skips(num_tiers: int) -> bool:
+	# Each tier skip costs 100 stars
+	var cost = num_tiers * 100
+	if StarManager.spend_stars(cost, "holiday_tier_skip"):
+		add_holiday_points(num_tiers * HP_PER_LEVEL, "tier_skip")
+		return true
+	return false
+
+# ============================================================================
+# PERSISTENCE
+# ============================================================================
 
 func save_holiday_data():
 	var save_dict = {
@@ -382,12 +465,3 @@ func reset_holiday_data():
 	}
 	save_holiday_data()
 	_initialize_holiday_tiers()
-
-# Debug functions
-func debug_add_points(amount: int):
-	"""Debug function to add holiday points"""
-	add_holiday_points(amount, "debug")
-
-func debug_unlock_all_tiers():
-	"""Debug function to unlock all tiers"""
-	add_holiday_points(MAX_TIER * HP_PER_LEVEL, "debug_unlock_all")

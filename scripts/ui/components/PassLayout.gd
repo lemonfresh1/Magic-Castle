@@ -28,7 +28,9 @@ extends PanelContainer
 class_name PassLayout
 
 # Debug flag - set to true for testing
-const DEBUG: bool = true
+const DEBUG: bool = false
+var debug_enabled: bool = false  # NEW
+var global_debug: bool = true   # NEW
 
 # UI Constants
 const ICON_SIZE: int = 64
@@ -84,9 +86,7 @@ var is_batch_claiming: bool = false
 var pending_level_ups: Array = []  # NEW: Track level-ups during claims
 var claim_in_progress: bool = false  # NEW: Track if we're claiming
 
-# Add debug variables
-var debug_enabled: bool = true  # NEW
-var global_debug: bool = true   # NEW
+
 
 func _ready():
 	if DEBUG:

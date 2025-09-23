@@ -1,21 +1,45 @@
-# SettingsSystem.gd - Autoload for game settings and preferences
-# Path: res://Pyramids/scripts/autoloads/SettingsSystem.gd
-# Last Updated: Refactored to work with new manager architecture
+# SettingsSystem.gd - Autoload manager for all game settings and user preferences
+# Location: res://Pyramids/scripts/autoloads/SettingsSystem.gd
+# Last Updated: Refactored debug logging and function organization [Date]
 #
-# SettingsSystem handles:
-# - User preferences (audio, controls, performance)
-# - Draw zone configuration sync with DrawZoneManager
-# - Game mode preferences sync with GameModeManager
-# - Display settings and UI scaling for mobile
-# - Player profile basics (name, ID generation)
-# - Battery saver and performance options
+# Dependencies:
+#   - DrawZoneManager - Draw zone configuration
+#   - GameModeManager - Game mode settings
+#   - SignalBus - Global signal management
+#   - AudioServer - Audio bus control
+#   - StatsManager - Player statistics (separate)
+#   - AdManager - Advertisement settings (separate)
 #
-# Flow: User input → SettingsSystem → Sync with managers → Save to disk
-# Dependencies: DrawZoneManager (for zones), GameModeManager (for modes), AudioServer (for volume)
+# Flow: User input → SettingsSystem → Sync managers → Save to disk
+#
+# Functionality:
+#   • User preferences (audio, controls, performance)
+#   • Draw zone configuration sync with DrawZoneManager
+#   • Game mode preferences sync with GameModeManager  
+#   • Display settings and UI scaling for mobile
+#   • Player profile basics (name, ID generation)
+#   • Battery saver and performance optimization
+#   • Persistent storage via ConfigFile
+#
+# Settings Categories:
+#   - Draw Pile: Left/Right/Both/None modes
+#   - Audio: SFX/Music volume, sound toggles
+#   - Game: Mode selection, play preferences
+#   - Profile: Player name and unique ID
+#   - Performance: Particles, animations, battery
+#   - Mobile: Screen scaling and UI adaptation
+#
+# Signals Out:
+#   - sound_setting_changed via SignalBus
+#   - game_mode_changed via SignalBus
 
 extends Node
 
-# === DRAW PILE PREFERENCES ===
+# === DEBUG CONFIGURATION ===
+var debug_enabled: bool = false
+var global_debug: bool = true
+
+# === ENUMS ===
 enum DrawPileMode {
 	LEFT_ONLY,
 	RIGHT_ONLY,
@@ -33,7 +57,6 @@ var haptic_enabled: bool = true
 var current_game_mode: String = "tri_peaks"
 var preferred_play_mode: String = "Solo"  # Default to Solo
 
-
 # === AUDIO SETTINGS ===
 var sfx_volume: float = 1.0
 var music_volume: float = 1.0
@@ -43,9 +66,6 @@ var success_sounds_enabled: bool = true
 # === PROFILE SETTINGS ===
 var player_name: String = "Player"
 var player_id: String = ""  # For multiplayer/cloud saves
-
-# Stats are now handled by StatsManager
-# Ads are now handled by AdManager
 
 # === MOBILE SETTINGS ===
 var target_screen_width: int = 1080   # Pixel 8 width
@@ -57,8 +77,12 @@ var particle_effects_enabled: bool = true
 var reduce_animations: bool = false
 var battery_saver_mode: bool = false
 
+# ============================================================================
+# INITIALIZATION
+# ============================================================================
+
 func _ready() -> void:
-	print("SettingsSystem initialized")
+	debug_log("SettingsSystem initialized")
 	_detect_screen_settings()
 	load_settings()
 	_sync_with_managers()
@@ -67,13 +91,13 @@ func _detect_screen_settings() -> void:
 	var screen_size = DisplayServer.screen_get_size()
 	var window_size = get_viewport().get_visible_rect().size
 	
-	print("Screen size: %v, Window size: %v" % [screen_size, window_size])
+	debug_log("Screen size: %v, Window size: %v" % [screen_size, window_size])
 	
 	# Calculate scale factor for UI elements
 	ui_scale_factor = min(window_size.x / target_screen_width, window_size.y / target_screen_height)
 	ui_scale_factor = max(ui_scale_factor, 0.5)  # Don't scale too small
 	
-	print("UI scale factor: %.2f" % ui_scale_factor)
+	debug_log("UI scale factor: %.2f" % ui_scale_factor)
 
 func _sync_with_managers() -> void:
 	"""Sync settings with the new manager architecture"""
@@ -82,21 +106,28 @@ func _sync_with_managers() -> void:
 		var zone_mode = _convert_to_draw_zone_mode(draw_pile_mode)
 		DrawZoneManager.set_draw_mode(zone_mode)
 
-func _convert_to_draw_zone_mode(mode: DrawPileMode) -> int:
-	"""Convert SettingsSystem mode to DrawZoneManager mode"""
-	match mode:
-		DrawPileMode.LEFT_ONLY:
-			return DrawZoneManager.DrawZoneMode.LEFT_ONLY
-		DrawPileMode.RIGHT_ONLY:
-			return DrawZoneManager.DrawZoneMode.RIGHT_ONLY
-		DrawPileMode.BOTH_SIDES:
-			return DrawZoneManager.DrawZoneMode.BOTH
-		DrawPileMode.NONE:
-			return DrawZoneManager.DrawZoneMode.NONE
-		_:
-			return DrawZoneManager.DrawZoneMode.BOTH
+# ============================================================================
+# DEBUG FUNCTIONS
+# ============================================================================
 
-# === DRAW PILE SETTINGS ===
+func debug_log(message: String) -> void:
+	if debug_enabled and global_debug:
+		print("[SettingsSystem] %s" % message)
+
+func debug_print_settings() -> void:
+	"""Print all current settings for debugging"""
+	debug_log("=== SETTINGS SYSTEM DEBUG ===")
+	debug_log("Draw Pile Mode: %s" % DrawPileMode.keys()[draw_pile_mode])
+	debug_log("Game Mode: %s" % current_game_mode)
+	debug_log("Audio - SFX: %.1f, Music: %.1f" % [sfx_volume, music_volume])
+	debug_log("Performance - Particles: %s, Battery Saver: %s" % [particle_effects_enabled, battery_saver_mode])
+	debug_log("Player: %s (ID: %s)" % [player_name, player_id])
+	debug_log("=============================")
+
+# ============================================================================
+# DRAW PILE SETTINGS
+# ============================================================================
+
 func set_draw_pile_mode(mode: DrawPileMode) -> void:
 	draw_pile_mode = mode
 	
@@ -116,10 +147,10 @@ func is_left_draw_enabled() -> bool:
 func is_right_draw_enabled() -> bool:
 	return draw_pile_mode == DrawPileMode.RIGHT_ONLY or draw_pile_mode == DrawPileMode.BOTH_SIDES
 
-# Note: set_left_draw_enabled and set_right_draw_enabled removed to prevent recursion
-# Use set_draw_pile_mode directly instead
+# ============================================================================
+# AUDIO SETTINGS
+# ============================================================================
 
-# === AUDIO SETTINGS ===
 func set_sound_enabled(enabled: bool) -> void:
 	sound_enabled = enabled
 	SignalBus.sound_setting_changed.emit(enabled)
@@ -142,7 +173,10 @@ func set_music_volume(volume: float) -> void:
 		AudioServer.set_bus_volume_db(bus_idx, linear_to_db(music_volume))
 	save_settings()
 
-# === GAME MODE ===
+# ============================================================================
+# GAME MODE SETTINGS
+# ============================================================================
+
 func set_game_mode(mode_name: String) -> void:
 	"""Set game mode and emit signal for GameModeManager to handle"""
 	if current_game_mode == mode_name:
@@ -163,7 +197,17 @@ func get_game_mode() -> String:
 	"""Get the current game mode"""
 	return current_game_mode
 
-# === PROFILE ===
+func set_preferred_play_mode(mode: String) -> void:
+	preferred_play_mode = mode
+	save_settings()
+
+func get_preferred_play_mode() -> String:
+	return preferred_play_mode
+
+# ============================================================================
+# PROFILE SETTINGS
+# ============================================================================
+
 func set_player_name(name: String) -> void:
 	player_name = name
 	save_settings()
@@ -177,7 +221,10 @@ func generate_player_id() -> String:
 		save_settings()
 	return player_id
 
-# === PERFORMANCE SETTINGS ===
+# ============================================================================
+# PERFORMANCE SETTINGS
+# ============================================================================
+
 func set_particle_effects(enabled: bool) -> void:
 	particle_effects_enabled = enabled
 	save_settings()
@@ -199,7 +246,10 @@ func set_battery_saver(enabled: bool) -> void:
 	
 	save_settings()
 
-# === PERSISTENCE ===
+# ============================================================================
+# PERSISTENCE
+# ============================================================================
+
 func save_settings() -> void:
 	var config = ConfigFile.new()
 	
@@ -218,7 +268,6 @@ func save_settings() -> void:
 	config.set_value("gameplay", "animation_speed", animation_speed)
 	config.set_value("gameplay", "haptic_enabled", haptic_enabled)
 	config.set_value("gameplay", "preferred_play_mode", preferred_play_mode)
-
 	
 	# Profile settings
 	config.set_value("profile", "name", player_name)
@@ -231,16 +280,16 @@ func save_settings() -> void:
 	
 	var error = config.save("user://settings.cfg")
 	if error == OK:
-		print("Settings saved successfully")
+		debug_log("Settings saved successfully")
 	else:
-		print("Error saving settings: %d" % error)
+		debug_log("Error saving settings: %d" % error)
 
 func load_settings() -> void:
 	var config = ConfigFile.new()
 	var error = config.load("user://settings.cfg")
 	
 	if error != OK:
-		print("No settings file found, using defaults")
+		debug_log("No settings file found, using defaults")
 		return
 	
 	# Load draw pile settings
@@ -258,7 +307,7 @@ func load_settings() -> void:
 	animation_speed = config.get_value("gameplay", "animation_speed", 1.0)
 	haptic_enabled = config.get_value("gameplay", "haptic_enabled", true)
 	preferred_play_mode = config.get_value("gameplay", "preferred_play_mode", "Solo")
-
+	
 	# Load profile settings
 	player_name = config.get_value("profile", "name", "Player")
 	player_id = config.get_value("profile", "id", "")
@@ -272,23 +321,8 @@ func load_settings() -> void:
 	set_sfx_volume(sfx_volume)
 	set_music_volume(music_volume)
 	
-	print("Settings loaded: draw_mode=%d, sound=%s" % [draw_pile_mode, sound_enabled])
+	debug_log("Settings loaded: draw_mode=%d, sound=%s" % [draw_pile_mode, sound_enabled])
 
-# === MOBILE OPTIMIZATION ===
-func get_scaled_size(base_size: Vector2) -> Vector2:
-	return base_size * ui_scale_factor
-
-func get_scaled_font_size(base_size: int) -> int:
-	return int(base_size * ui_scale_factor)
-
-func set_preferred_play_mode(mode: String) -> void:
-	preferred_play_mode = mode
-	save_settings()
-
-func get_preferred_play_mode() -> String:
-	return preferred_play_mode
-
-# === RESET FUNCTIONS ===
 func reset_to_defaults() -> void:
 	"""Reset all settings to defaults"""
 	draw_pile_mode = DrawPileMode.BOTH_SIDES
@@ -304,17 +338,34 @@ func reset_to_defaults() -> void:
 	reduce_animations = false
 	battery_saver_mode = false
 	
-	# Don't reset player name
+	# Don't reset player name or ID
 	save_settings()
 	_sync_with_managers()
 
-# === DEBUG ===
-func debug_print_settings() -> void:
-	"""Print all current settings for debugging"""
-	print("\n=== SETTINGS SYSTEM DEBUG ===")
-	print("Draw Pile Mode: %s" % DrawPileMode.keys()[draw_pile_mode])
-	print("Game Mode: %s" % current_game_mode)
-	print("Audio - SFX: %.1f, Music: %.1f" % [sfx_volume, music_volume])
-	print("Performance - Particles: %s, Battery Saver: %s" % [particle_effects_enabled, battery_saver_mode])
-	print("Player: %s (ID: %s)" % [player_name, player_id])
-	print("=============================\n")
+# ============================================================================
+# MOBILE OPTIMIZATION
+# ============================================================================
+
+func get_scaled_size(base_size: Vector2) -> Vector2:
+	return base_size * ui_scale_factor
+
+func get_scaled_font_size(base_size: int) -> int:
+	return int(base_size * ui_scale_factor)
+
+# ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
+
+func _convert_to_draw_zone_mode(mode: DrawPileMode) -> int:
+	"""Convert SettingsSystem mode to DrawZoneManager mode"""
+	match mode:
+		DrawPileMode.LEFT_ONLY:
+			return DrawZoneManager.DrawZoneMode.LEFT_ONLY
+		DrawPileMode.RIGHT_ONLY:
+			return DrawZoneManager.DrawZoneMode.RIGHT_ONLY
+		DrawPileMode.BOTH_SIDES:
+			return DrawZoneManager.DrawZoneMode.BOTH
+		DrawPileMode.NONE:
+			return DrawZoneManager.DrawZoneMode.NONE
+		_:
+			return DrawZoneManager.DrawZoneMode.BOTH

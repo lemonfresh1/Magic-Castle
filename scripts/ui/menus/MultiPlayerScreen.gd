@@ -1,5 +1,32 @@
+# MultiplayerScreen.gd - Main menu screen for solo/multiplayer game mode selection
 # Location: res://Pyramids/scenes/ui/menus/MultiplayerScreen.gd
-# Last Updated: Updated for StyledButton and renamed nodes [Date]
+# Last Updated: Refactored debug logging and function organization [Date]
+#
+# Dependencies:
+#   - SettingsSystem - Persistent settings storage
+#   - StatsManager - Player statistics tracking
+#   - GameModeManager - Game mode configurations
+#   - UIStyleManager - Consistent UI theming
+#   - MultiplayerManager - Multiplayer lobby management
+#
+# Flow: MainMenu → MultiplayerScreen → Solo/Multi → Mode Select → Play/Lobby
+#
+# Functionality:
+#   • Toggle between Solo and Multiplayer modes
+#   • Game mode selection (Classic/Rush/Test) 
+#   • Display mode-specific stats and leaderboards
+#   • Launch solo games or multiplayer lobbies
+#   • Custom seed support for solo play
+#   • Debug panel for development
+#
+# UI Structure:
+#   - Left Section (60%): Leaderboard/Highscores
+#   - Right Section (40%): Mode selection, stats, play buttons
+#
+# Signals Out:
+#   - mode_selected(mode) - When game mode changes
+#   - queue_joined(mode, queue_type) - When joining multiplayer queue
+#   - lobby_action(action) - For lobby create/join actions
 
 extends Control
 
@@ -8,18 +35,21 @@ var debug_enabled: bool = false  # Set to true for debugging
 var global_debug: bool = true
 var is_mobile_platform: bool = false  # Track if on mobile
 
-# Scene references
+# === SCENE REFERENCES ===
 var highscores_panel_scene = preload("res://Pyramids/scenes/ui/components/HighscoresPanel.tscn")
 var game_settings_panel_script = preload("res://Pyramids/scripts/ui/components/GameSettingsPanel.gd")
+var multiplayer_leaderboard_script = preload("res://Pyramids/scripts/ui/components/MultiplayerLeaderboard.gd")
+var swipe_mode_button_scene = preload("res://Pyramids/scenes/ui/components/SwipeModeButton.tscn")
 
-# Existing nodes from scene
+# === NODE REFERENCES ===
+# Main structure nodes
 @onready var background: ColorRect = $Background
 @onready var main_container: MarginContainer = $MainContainer
 @onready var content_hbox: HBoxContainer = $MainContainer/ContentHBox
 @onready var left_section: Control = $MainContainer/ContentHBox/LeftSection
 @onready var right_section: VBoxContainer = $MainContainer/ContentHBox/RightSection
 
-# Middle section
+# Middle section panels
 @onready var middle_vbox: VBoxContainer = $MainContainer/ContentHBox/RightSection/RightSectionMain/MiddleSectionVBox
 @onready var game_mode_stats_panel: PanelContainer = $MainContainer/ContentHBox/RightSection/RightSectionMain/MiddleSectionVBox/GameModeStatsPanel
 @onready var stats_margin: MarginContainer = $MainContainer/ContentHBox/RightSection/RightSectionMain/MiddleSectionVBox/GameModeStatsPanel/MarginContainer
@@ -28,7 +58,7 @@ var game_settings_panel_script = preload("res://Pyramids/scripts/ui/components/G
 @onready var settings_margin: MarginContainer = $MainContainer/ContentHBox/RightSection/RightSectionMain/MiddleSectionVBox/GameModeSettingsPanel/MarginContainer
 @onready var settings_grid: GridContainer = $MainContainer/ContentHBox/RightSection/RightSectionMain/MiddleSectionVBox/GameModeSettingsPanel/MarginContainer/SettingsGrid
 
-# Right section panel and buttons
+# Right section controls
 @onready var right_panel: PanelContainer = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel
 @onready var right_margin: MarginContainer = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer
 @onready var right_section_v_box: VBoxContainer = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox
@@ -38,8 +68,9 @@ var game_settings_panel_script = preload("res://Pyramids/scripts/ui/components/G
 @onready var debug_button: CheckButton = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/HBoxContainer/DebugButton
 @onready var mode_selector: Button = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/ModeSelector
 @onready var unranked_button: Button = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/UnrankedButton
+@onready var ranked_button: Button = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/RankedButton
 
-# Updated Lobby and Battle buttons with StyledButton and new names
+# Lobby and Battle buttons
 @onready var lobby_h_box: HBoxContainer = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/LobbyHBox
 @onready var lobby_rect: TextureRect = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/LobbyHBox/LobbyRect
 @onready var create_lobby: StyledButton = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/LobbyHBox/CreateLobby
@@ -52,40 +83,36 @@ var game_settings_panel_script = preload("res://Pyramids/scripts/ui/components/G
 @onready var seed_button: StyledButton = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/VBoxContainer/SeedButton
 @onready var back_button: StyledButton = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/VBoxContainer/BackButton
 
-# Old ranked button reference (to hide it)
-@onready var ranked_button: Button = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/RankedButton
+# Debug panel
+@onready var debug_panel: ScrollContainer = $MainContainer/ContentHBox/LeftSection/DebugPanel
 
-# UI References
+# === DYNAMIC UI REFERENCES ===
 var leaderboard_panel: Control
 var mode_description_label: RichTextLabel
 var game_settings_component: Control
-var multiplayer_leaderboard_script = preload("res://Pyramids/scripts/ui/components/MultiplayerLeaderboard.gd")
-var swipe_mode_button_scene = preload("res://Pyramids/scenes/ui/components/SwipeModeButton.tscn")
 
-# Debug panel reference - FIXED NAME
-@onready var debug_panel: ScrollContainer = $MainContainer/ContentHBox/LeftSection/DebugPanel
-
-# Debug text display
-var debug_messages: Array[String] = []
-var max_debug_messages: int = 50
-
-# === ICON PATHS ===
+# === CONSTANTS ===
 const ICON_PATH_BASE = "res://Pyramids/assets/icons/menu/"
 
-# State
+# === STATE VARIABLES ===
 var current_mode: String = "Classic"
 var current_mode_id: String = "classic"
 var current_queue_type: String = ""
 var player_stats: Dictionary = {}
 var is_solo_mode: bool = false  # false = multiplayer, true = solo
 
+# Debug state
+var debug_messages: Array[String] = []
+var max_debug_messages: int = 50
+
+# === SIGNALS ===
 signal mode_selected(mode: String)
 signal queue_joined(mode: String, queue_type: String)
 signal lobby_action(action: String)
 
-func debug_log(message: String) -> void:
-	if debug_enabled and global_debug:
-		print("[MultiplayerScreen] %s" % message)
+# ============================================================================
+# INITIALIZATION
+# ============================================================================
 
 func _ready():
 	debug_log("=== READY START ===")
@@ -159,77 +186,9 @@ func _ready():
 	
 	debug_log("=== READY COMPLETE ===")
 
-func _setup_debug_panel():
-	"""Setup the debug panel with initial information"""
-	# Skip debug panel setup entirely on mobile
-	if is_mobile_platform:
-		if debug_panel:
-			debug_panel.visible = false
-		return
-	
-	if not debug_panel:
-		debug_log("Debug panel not found in scene")
-		return
-	
-	debug_log("Setting up debug panel (ScrollContainer)")
-	
-	# Make sure it's visible and sized correctly
-	debug_panel.visible = debug_enabled and global_debug
-	debug_panel.z_index = 100  # On top
-	debug_panel.custom_minimum_size = Vector2(400, 200)
-	debug_panel.size = Vector2(400, 200)
-	
-	# Add a background panel first
-	var bg = Panel.new()
-	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	bg.modulate = Color(0.15, 0.15, 0.15, 0.95)
-	debug_panel.add_child(bg)
-	
-	# Simple approach - just add a TextEdit
-	var debug_text = TextEdit.new()
-	debug_text.custom_minimum_size = Vector2(400, 200)
-	debug_text.size = Vector2(400, 200)
-	debug_text.editable = false
-	debug_text.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
-	debug_text.add_theme_font_size_override("font_size", 11)
-	debug_text.add_theme_color_override("font_color", Color.WHITE)
-	debug_text.add_theme_color_override("background_color", Color.TRANSPARENT)
-	
-	debug_panel.add_child(debug_text)
-	
-	# Store reference
-	debug_panel.set_meta("debug_text", debug_text)
-	
-	debug_log("Debug panel setup complete")
-	
-	# Initial messages
-	_add_debug_message("=== MultiplayerScreen Debug ===")
-	_add_debug_message("Mode: %s" % current_mode_id)
-	_add_debug_message("Type: %s" % ("Solo" if is_solo_mode else "Multiplayer"))
-	_add_debug_message("Stats: %d games" % player_stats.get("games", 0))
-
-func _add_debug_message(msg: String):
-	"""Add a message to the debug panel"""
-	if not debug_panel:
-		return
-	
-	var debug_text = debug_panel.get_meta("debug_text", null)
-	if not debug_text:
-		return
-	
-	var time = Time.get_time_dict_from_system()
-	var timestamp = "[%02d:%02d:%02d]" % [time.hour, time.minute, time.second]
-	
-	debug_text.text += "%s %s\n" % [timestamp, msg]
-	
-	# Keep only last 50 lines
-	var lines = debug_text.text.split("\n")
-	if lines.size() > 50:
-		lines = lines.slice(-50)
-		debug_text.text = "\n".join(lines)
-	
-	# Scroll to bottom
-	debug_text.scroll_vertical = debug_text.get_line_count()
+# ============================================================================
+# SETUP FUNCTIONS
+# ============================================================================
 
 func _setup_styles():
 	"""Apply styles to existing nodes"""
@@ -404,99 +363,89 @@ func _setup_game_settings_component():
 			"compact": true
 		})
 
-func _on_solo_pressed():
-	"""Handle solo button press"""
-	is_solo_mode = true
-	_update_solo_multiplayer_selection()
-	
-	debug_log("Switched to SOLO mode")
-	_add_debug_message("Switched to SOLO mode")
-	
-	# Save preference using existing method
-	if SettingsSystem:
-		SettingsSystem.set_preferred_play_mode("Solo")
-	
-	# Update displays
-	_load_player_stats()
-	_refresh_leaderboard_for_current_mode()
-	_update_multiplayer_buttons_visibility()
-	
-	# Force update GameSettingsPanel with current mode
-	if game_settings_component and game_settings_component.has_method("update_mode"):
-		debug_log("  Force updating GameSettingsPanel with mode: %s" % current_mode_id)
-		game_settings_component.update_mode(current_mode_id)
-		
-	_sync_mode_selector()
+# ============================================================================
+# DEBUG FUNCTIONS
+# ============================================================================
 
-func _on_multiplayer_pressed():
-	"""Handle multiplayer button press"""
-	is_solo_mode = false
-	_update_solo_multiplayer_selection()
-	
-	debug_log("Switched to MULTIPLAYER mode")
-	_add_debug_message("Switched to MULTIPLAYER mode")
-	
-	# Save preference using existing method
-	if SettingsSystem:
-		SettingsSystem.set_preferred_play_mode("Multiplayer")
-	
-	# Update displays
-	_load_player_stats()
-	_refresh_leaderboard_for_current_mode()
-	_update_multiplayer_buttons_visibility()
-	
-	# Force update GameSettingsPanel with current mode
-	if game_settings_component and game_settings_component.has_method("update_mode"):
-		debug_log("  Force updating GameSettingsPanel with mode: %s" % current_mode_id)
-		game_settings_component.update_mode(current_mode_id)
-	
-	# Update MultiplayerManager only when switching TO multiplayer
-	if has_node("/root/MultiplayerManager"):
-		var mp_manager = get_node("/root/MultiplayerManager")
-		mp_manager.select_game_mode(current_mode_id)
-		debug_log("  Updated MultiplayerManager with mode: %s" % current_mode_id)
+func debug_log(message: String) -> void:
+	if debug_enabled and global_debug:
+		print("[MultiplayerScreen] %s" % message)
 
-	_sync_mode_selector()
-
-func _on_seed_button_pressed():
-	"""Handle seed button press - show custom seed dialog"""
-	var dialog_scene = preload("res://Pyramids/scenes/ui/popups/PlaySeedDialog.tscn")
-	if not dialog_scene:
-		print("[MultiplayerScreen] Failed to load PlaySeedDialog scene")
+func _setup_debug_panel():
+	"""Setup the debug panel with initial information"""
+	# Skip debug panel setup entirely on mobile
+	if is_mobile_platform:
+		if debug_panel:
+			debug_panel.visible = false
 		return
 	
-	var dialog = dialog_scene.instantiate()
+	if not debug_panel:
+		debug_log("Debug panel not found in scene")
+		return
 	
-	# Pass current mode to the dialog
-	dialog.setup(current_mode_id, current_mode)
+	debug_log("Setting up debug panel (ScrollContainer)")
 	
-	# Connect to handle play signal if needed
-	dialog.play_pressed.connect(func(seed, mode):
-		print("[MultiplayerScreen] Playing %s with seed: %d" % [mode, seed])
-		# The dialog already handles starting the game
-	)
+	# Make sure it's visible and sized correctly
+	debug_panel.visible = debug_enabled and global_debug
+	debug_panel.z_index = 100  # On top
+	debug_panel.custom_minimum_size = Vector2(400, 200)
+	debug_panel.size = Vector2(400, 200)
 	
-	get_tree().root.add_child(dialog)
+	# Add a background panel first
+	var bg = Panel.new()
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	bg.modulate = Color(0.15, 0.15, 0.15, 0.95)
+	debug_panel.add_child(bg)
+	
+	# Simple approach - just add a TextEdit
+	var debug_text = TextEdit.new()
+	debug_text.custom_minimum_size = Vector2(400, 200)
+	debug_text.size = Vector2(400, 200)
+	debug_text.editable = false
+	debug_text.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+	debug_text.add_theme_font_size_override("font_size", 11)
+	debug_text.add_theme_color_override("font_color", Color.WHITE)
+	debug_text.add_theme_color_override("background_color", Color.TRANSPARENT)
+	
+	debug_panel.add_child(debug_text)
+	
+	# Store reference
+	debug_panel.set_meta("debug_text", debug_text)
+	
+	debug_log("Debug panel setup complete")
+	
+	# Initial messages
+	_add_debug_message("=== MultiplayerScreen Debug ===")
+	_add_debug_message("Mode: %s" % current_mode_id)
+	_add_debug_message("Type: %s" % ("Solo" if is_solo_mode else "Multiplayer"))
+	_add_debug_message("Stats: %d games" % player_stats.get("games", 0))
 
-func _on_debug_toggled(button_pressed: bool):
-	"""Toggle debug panel visibility"""
-	if debug_panel:
-		debug_panel.visible = button_pressed
-		
-		# Update the debug flags
-		debug_enabled = button_pressed
-		global_debug = button_pressed
-		
-		if button_pressed:
-			_add_debug_message("Debug panel enabled")
-		
-		debug_log("Debug panel toggled: %s" % button_pressed)
+func _add_debug_message(msg: String):
+	"""Add a message to the debug panel"""
+	if not debug_panel:
+		return
+	
+	var debug_text = debug_panel.get_meta("debug_text", null)
+	if not debug_text:
+		return
+	
+	var time = Time.get_time_dict_from_system()
+	var timestamp = "[%02d:%02d:%02d]" % [time.hour, time.minute, time.second]
+	
+	debug_text.text += "%s %s\n" % [timestamp, msg]
+	
+	# Keep only last 50 lines
+	var lines = debug_text.text.split("\n")
+	if lines.size() > 50:
+		lines = lines.slice(-50)
+		debug_text.text = "\n".join(lines)
+	
+	# Scroll to bottom
+	debug_text.scroll_vertical = debug_text.get_line_count()
 
-func _sync_mode_selector():
-	"""Ensure the mode selector shows the correct mode"""
-	if mode_selector and mode_selector.has_method("set_mode_by_id"):
-		mode_selector.set_mode_by_id(current_mode_id)
-		debug_log("  Synced mode selector to: %s" % current_mode_id)
+# ============================================================================
+# UI UPDATE FUNCTIONS
+# ============================================================================
 
 func _update_solo_multiplayer_selection():
 	"""Update visual state of solo/multiplayer buttons"""
@@ -533,6 +482,73 @@ func _refresh_leaderboard_for_current_mode():
 		else:
 			mode_key += "_mp"  # Add multiplayer suffix
 		leaderboard_panel.refresh_for_mode(mode_key)
+
+func _update_stats_display():
+	"""Update the player stats grid based on mode"""
+	# Clear existing
+	for child in stats_grid.get_children():
+		child.queue_free()
+	
+	var stats_to_show = []
+	
+	if is_solo_mode:
+		# Solo stats with icon paths
+		stats_to_show = [
+			{"icon_path": "gamepad_icon.png", "label": "Games", "value": str(player_stats.get("games_played", 0))},
+			{"icon_path": "trophy_icon.png", "label": "Highscore", "value": str(player_stats.get("highscore", 0))},
+			{"icon_path": "star_icon.png", "label": "Perfect Rounds", "value": str(player_stats.get("perfect_rounds", 0))}
+		]
+	else:
+		# Multiplayer stats with icon paths
+		stats_to_show = [
+			{"icon_path": "trophy_icon.png", "label": "Rank", "value": player_stats.get("rank", "Unranked")},
+			{"icon_path": "gamesplayed_icon.png", "label": "MMR", "value": str(player_stats.get("mmr", 0))},
+			{"icon_path": "trophy_icon.png", "label": "1st Place", "value": str(player_stats.get("first_place", 0))},
+			{"icon_path": "winrate_icon.png", "label": "Win Rate", "value": str(player_stats.get("winrate", 0)) + "%"},
+			{"icon_path": "star_icon.png", "label": "Avg Rank", "value": "%.1f" % player_stats.get("average_rank", 0.0)},
+			{"icon_path": "gamepad_icon.png", "label": "Games", "value": str(player_stats.get("games", 0))}
+		]
+	
+	for stat in stats_to_show:
+		# Icon + Label container
+		var label_container = HBoxContainer.new()
+		label_container.add_theme_constant_override("separation", 5)
+		
+		# Icon using TextureRect
+		var icon = TextureRect.new()
+		var icon_path = ICON_PATH_BASE + stat.icon_path
+		if ResourceLoader.exists(icon_path):
+			icon.texture = load(icon_path)
+		icon.custom_minimum_size = Vector2(20, 20)
+		icon.size = Vector2(20, 20)
+		icon.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		# NO modulate - we want the original icon colors
+		label_container.add_child(icon)
+		
+		var label = Label.new()
+		label.text = stat.label + ":"
+		label.add_theme_color_override("font_color", UIStyleManager.colors.gray_600)
+		label_container.add_child(label)
+		
+		stats_grid.add_child(label_container)
+		
+		# Value
+		var value = Label.new()
+		value.text = stat.value
+		value.add_theme_font_size_override("font_size", 16)
+		value.add_theme_color_override("font_color", UIStyleManager.colors.gray_900)
+		stats_grid.add_child(value)
+
+func _sync_mode_selector():
+	"""Ensure the mode selector shows the correct mode"""
+	if mode_selector and mode_selector.has_method("set_mode_by_id"):
+		mode_selector.set_mode_by_id(current_mode_id)
+		debug_log("  Synced mode selector to: %s" % current_mode_id)
+
+# ============================================================================
+# DATA LOADING FUNCTIONS
+# ============================================================================
 
 func _load_player_stats():
 	"""Load and display player statistics based on solo/multiplayer mode"""
@@ -652,129 +668,97 @@ func _load_multiplayer_stats():
 		}
 		debug_log("  No StatsManager found")
 
-func _update_stats_display():
-	"""Update the player stats grid based on mode"""
-	# Clear existing
-	for child in stats_grid.get_children():
-		child.queue_free()
-	
-	var stats_to_show = []
-	
-	if is_solo_mode:
-		# Solo stats with icon paths
-		stats_to_show = [
-			{"icon_path": "gamepad_icon.png", "label": "Games", "value": str(player_stats.get("games_played", 0))},
-			{"icon_path": "trophy_icon.png", "label": "Highscore", "value": str(player_stats.get("highscore", 0))},
-			{"icon_path": "star_icon.png", "label": "Perfect Rounds", "value": str(player_stats.get("perfect_rounds", 0))}
-		]
-	else:
-		# Multiplayer stats with icon paths
-		stats_to_show = [
-			{"icon_path": "trophy_icon.png", "label": "Rank", "value": player_stats.get("rank", "Unranked")},
-			{"icon_path": "gamesplayed_icon.png", "label": "MMR", "value": str(player_stats.get("mmr", 0))},
-			{"icon_path": "trophy_icon.png", "label": "1st Place", "value": str(player_stats.get("first_place", 0))},
-			{"icon_path": "winrate_icon.png", "label": "Win Rate", "value": str(player_stats.get("winrate", 0)) + "%"},
-			{"icon_path": "star_icon.png", "label": "Avg Rank", "value": "%.1f" % player_stats.get("average_rank", 0.0)},
-			{"icon_path": "gamepad_icon.png", "label": "Games", "value": str(player_stats.get("games", 0))}
-		]
-	
-	for stat in stats_to_show:
-		# Icon + Label container
-		var label_container = HBoxContainer.new()
-		label_container.add_theme_constant_override("separation", 5)
-		
-		# Icon using TextureRect
-		var icon = TextureRect.new()
-		var icon_path = ICON_PATH_BASE + stat.icon_path
-		if ResourceLoader.exists(icon_path):
-			icon.texture = load(icon_path)
-		icon.custom_minimum_size = Vector2(20, 20)
-		icon.size = Vector2(20, 20)
-		icon.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
-		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		# NO modulate - we want the original icon colors
-		label_container.add_child(icon)
-		
-		var label = Label.new()
-		label.text = stat.label + ":"
-		label.add_theme_color_override("font_color", UIStyleManager.colors.gray_600)
-		label_container.add_child(label)
-		
-		stats_grid.add_child(label_container)
-		
-		# Value
-		var value = Label.new()
-		value.text = stat.value
-		value.add_theme_font_size_override("font_size", 16)
-		value.add_theme_color_override("font_color", UIStyleManager.colors.gray_900)
-		stats_grid.add_child(value)
+# ============================================================================
+# BUTTON EVENT HANDLERS
+# ============================================================================
 
-func _on_lobby_action(action: String):
-	print("Lobby action: " + action)
+func _on_solo_pressed():
+	"""Handle solo button press"""
+	is_solo_mode = true
+	_update_solo_multiplayer_selection()
 	
-	match action:
-		"create_lobby":
-			if has_node("/root/MultiplayerManager"):
-				var mp_manager = get_node("/root/MultiplayerManager")
-				mp_manager.select_game_mode(current_mode_id)
-				mp_manager.create_custom_lobby()
-				get_tree().change_scene_to_file("res://Pyramids/scenes/ui/menus/GameLobby.tscn")
-			else:
-				push_error("MultiplayerManager not found!")
-				
-		"join_lobby":
-			print("Join lobby - not implemented yet")
-			
-		"create_battle":  # Updated from create_battleground
-			print("Create battle - not implemented yet")
-			
-		"join_battle":  # Updated from join_battleground
-			print("Join battle - not implemented yet")
-			
-		"join_tournament":
-			print("Join tournament - not implemented yet")
+	debug_log("Switched to SOLO mode")
+	_add_debug_message("Switched to SOLO mode")
 	
-	lobby_action.emit(action)
-
-func _on_queue_selected(queue_type: String):
-	"""Handle Play button - different behavior for solo vs multiplayer"""
-	current_queue_type = queue_type
+	# Save preference using existing method
+	if SettingsSystem:
+		SettingsSystem.set_preferred_play_mode("Solo")
 	
-	if is_solo_mode:
-		# Solo mode - go directly to game
-		print("Starting solo game with mode: %s" % current_mode_id)
+	# Update displays
+	_load_player_stats()
+	_refresh_leaderboard_for_current_mode()
+	_update_multiplayer_buttons_visibility()
+	
+	# Force update GameSettingsPanel with current mode
+	if game_settings_component and game_settings_component.has_method("update_mode"):
+		debug_log("  Force updating GameSettingsPanel with mode: %s" % current_mode_id)
+		game_settings_component.update_mode(current_mode_id)
 		
-		# Configure GameModeManager
-		if GameModeManager:
-			GameModeManager.set_game_mode(current_mode_id, {})
-		
-		# Set GameState to solo mode
-		if GameState:
-			GameState.game_mode = "solo"
-		
-		# Go directly to game
-		get_tree().change_scene_to_file("res://Pyramids/scenes/game/MobileGameBoard.tscn")
-	else:
-		# Multiplayer mode - existing lobby logic
-		if has_node("/root/MultiplayerManager"):
-			var mp_manager = get_node("/root/MultiplayerManager")
-			mp_manager.select_game_mode(current_mode_id)
-			print("Searching for %s lobby with mode: %s" % [queue_type, current_mode_id])
-			mp_manager.join_or_create_lobby()
-		else:
-			print("MultiplayerManager not found, loading GameLobby directly")
-			get_tree().change_scene_to_file("res://Pyramids/scenes/ui/menus/GameLobby.tscn")
+	_sync_mode_selector()
 
-func _on_back_pressed():
-	get_tree().change_scene_to_file("res://Pyramids/scenes/ui/menus/MainMenu.tscn")
+func _on_multiplayer_pressed():
+	"""Handle multiplayer button press"""
+	is_solo_mode = false
+	_update_solo_multiplayer_selection()
+	
+	debug_log("Switched to MULTIPLAYER mode")
+	_add_debug_message("Switched to MULTIPLAYER mode")
+	
+	# Save preference using existing method
+	if SettingsSystem:
+		SettingsSystem.set_preferred_play_mode("Multiplayer")
+	
+	# Update displays
+	_load_player_stats()
+	_refresh_leaderboard_for_current_mode()
+	_update_multiplayer_buttons_visibility()
+	
+	# Force update GameSettingsPanel with current mode
+	if game_settings_component and game_settings_component.has_method("update_mode"):
+		debug_log("  Force updating GameSettingsPanel with mode: %s" % current_mode_id)
+		game_settings_component.update_mode(current_mode_id)
+	
+	# Update MultiplayerManager only when switching TO multiplayer
+	if has_node("/root/MultiplayerManager"):
+		var mp_manager = get_node("/root/MultiplayerManager")
+		mp_manager.select_game_mode(current_mode_id)
+		debug_log("  Updated MultiplayerManager with mode: %s" % current_mode_id)
 
-func _get_mode_id_from_name(mode_name: String) -> String:
-	"""Convert display name to mode ID"""
-	match mode_name:
-		"Classic": return "classic"
-		"Rush": return "timed_rush"
-		"Test": return "test"
-		_: return "classic"
+	_sync_mode_selector()
+
+func _on_seed_button_pressed():
+	"""Handle seed button press - show custom seed dialog"""
+	var dialog_scene = preload("res://Pyramids/scenes/ui/popups/PlaySeedDialog.tscn")
+	if not dialog_scene:
+		debug_log("Failed to load PlaySeedDialog scene")
+		return
+	
+	var dialog = dialog_scene.instantiate()
+	
+	# Pass current mode to the dialog
+	dialog.setup(current_mode_id, current_mode)
+	
+	# Connect to handle play signal if needed
+	dialog.play_pressed.connect(func(seed, mode):
+		debug_log("Playing %s with seed: %d" % [mode, seed])
+		# The dialog already handles starting the game
+	)
+	
+	get_tree().root.add_child(dialog)
+
+func _on_debug_toggled(button_pressed: bool):
+	"""Toggle debug panel visibility"""
+	if debug_panel:
+		debug_panel.visible = button_pressed
+		
+		# Update the debug flags
+		debug_enabled = button_pressed
+		global_debug = button_pressed
+		
+		if button_pressed:
+			_add_debug_message("Debug panel enabled")
+		
+		debug_log("Debug panel toggled: %s" % button_pressed)
 
 func _on_mode_changed(mode: String):
 	"""Handle mode name change (for display)"""
@@ -813,6 +797,77 @@ func _on_mode_id_changed(mode_id: String):
 		var mp_manager = get_node("/root/MultiplayerManager")
 		mp_manager.select_game_mode(mode_id)
 		debug_log("  Updated MultiplayerManager with mode: %s" % mode_id)
+
+func _on_lobby_action(action: String):
+	debug_log("Lobby action: " + action)
+	
+	match action:
+		"create_lobby":
+			if has_node("/root/MultiplayerManager"):
+				var mp_manager = get_node("/root/MultiplayerManager")
+				mp_manager.select_game_mode(current_mode_id)
+				mp_manager.create_custom_lobby()
+				get_tree().change_scene_to_file("res://Pyramids/scenes/ui/menus/GameLobby.tscn")
+			else:
+				debug_log("ERROR: MultiplayerManager not found!")
+				
+		"join_lobby":
+			debug_log("Join lobby - not implemented yet")
+			
+		"create_battle":  # Updated from create_battleground
+			debug_log("Create battle - not implemented yet")
+			
+		"join_battle":  # Updated from join_battleground
+			debug_log("Join battle - not implemented yet")
+			
+		"join_tournament":
+			debug_log("Join tournament - not implemented yet")
+	
+	lobby_action.emit(action)
+
+func _on_queue_selected(queue_type: String):
+	"""Handle Play button - different behavior for solo vs multiplayer"""
+	current_queue_type = queue_type
+	
+	if is_solo_mode:
+		# Solo mode - go directly to game
+		debug_log("Starting solo game with mode: %s" % current_mode_id)
+		
+		# Configure GameModeManager
+		if GameModeManager:
+			GameModeManager.set_game_mode(current_mode_id, {})
+		
+		# Set GameState to solo mode
+		if GameState:
+			GameState.game_mode = "solo"
+		
+		# Go directly to game
+		get_tree().change_scene_to_file("res://Pyramids/scenes/game/MobileGameBoard.tscn")
+	else:
+		# Multiplayer mode - existing lobby logic
+		if has_node("/root/MultiplayerManager"):
+			var mp_manager = get_node("/root/MultiplayerManager")
+			mp_manager.select_game_mode(current_mode_id)
+			debug_log("Searching for %s lobby with mode: %s" % [queue_type, current_mode_id])
+			mp_manager.join_or_create_lobby()
+		else:
+			debug_log("MultiplayerManager not found, loading GameLobby directly")
+			get_tree().change_scene_to_file("res://Pyramids/scenes/ui/menus/GameLobby.tscn")
+
+func _on_back_pressed():
+	get_tree().change_scene_to_file("res://Pyramids/scenes/ui/menus/MainMenu.tscn")
+
+# ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
+
+func _get_mode_id_from_name(mode_name: String) -> String:
+	"""Convert display name to mode ID"""
+	match mode_name:
+		"Classic": return "classic"
+		"Rush": return "timed_rush"
+		"Test": return "test"
+		_: return "classic"
 
 func _get_mode_display_name_from_id(mode_id: String) -> String:
 	"""Convert mode ID to display name"""

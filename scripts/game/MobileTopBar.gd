@@ -1,20 +1,48 @@
-# MobileTopBar.gd - Mobile-optimized top bar with UIStyleManager integration
-# Path: res://Pyramids/scripts/game/MobileTopBar.gd
-# Last Updated: Added debug mode display [Date]
+# MobileTopBar.gd - Mobile-optimized top bar UI for in-game controls and status display
+# Location: res://Pyramids/scripts/game/MobileTopBar.gd
+# Last Updated: Refactored debug logging and function organization [Date]
+#
+# Dependencies:
+#   - UIStyleManager - Consistent styling and dimensions
+#   - GameState - Core game state tracking
+#   - CardManager - Card and slot management
+#   - GameModeManager - Mode-specific configurations
+#   - ScoreSystem - Combo and scoring mechanics
+#   - SignalBus - Global signal management
+#
+# Flow: GameBoard → MobileTopBar → Display status/controls → Handle user input
+#
+# Functionality:
+#   • Display game timer and combo status
+#   • Show draw pile with remaining draws count
+#   • Manage 3 card slots with progressive unlock
+#   • Provide menu and pause controls
+#   • Debug mode display for development
+#   • Responsive layout with proportional sizing
+#
+# UI Structure (Horizontal sections with stretch ratios):
+#   - Left (1.38): Menu button, timer
+#   - Center (1.6): Draw pile and 3 card slots
+#   - Right (1.72): Combo bar, pause button
+#
+# Signals Connected:
+#   - round_started - Update display for new round
+#   - combo_updated - Update slot unlock progress
+#   - card_selected - Refresh slot display
+#   - draw_pile_clicked - Animate and update
 
 extends Control
 
 # === DEBUG CONFIGURATION ===
-var debug_enabled: bool = true
+var debug_enabled: bool = false
 var global_debug: bool = true
 @onready var debug_label: Label = $HBoxContainer/RightSection/DebugLabel
 
-
-# === SCENE REFERENCES (Updated for new structure) ===
+# === NODE REFERENCES ===
 # Top level container
 @onready var hbox_container: HBoxContainer = $HBoxContainer
 
-# Left Section
+# Left Section nodes
 @onready var left_section: HBoxContainer = $HBoxContainer/LeftSection
 @onready var menu_button: Button = $HBoxContainer/LeftSection/MenuButton
 @onready var timer_container: Control = $HBoxContainer/LeftSection/TimerContainer
@@ -39,22 +67,24 @@ var global_debug: bool = true
 @onready var slot_3_background: TextureRect = $HBoxContainer/CenterSection/Panel/MarginContainer/HBoxContainer/CardSlot3/Background2
 @onready var slot_3_countdown: Label = $HBoxContainer/CenterSection/Panel/MarginContainer/HBoxContainer/CardSlot3/ComboCountdown2
 
-# Right Section
+# Right Section nodes
 @onready var right_section: HBoxContainer = $HBoxContainer/RightSection
 @onready var combo_container: Control = $HBoxContainer/RightSection/ComboContainer
 @onready var combo_bar: ProgressBar = $HBoxContainer/RightSection/ComboContainer/ComboBar
 @onready var combo_label: Label = $HBoxContainer/RightSection/ComboContainer/ComboLabel
 @onready var pause_button: Button = $HBoxContainer/RightSection/PauseButton
 
-# State
-var is_paused: bool = false
-var slot_cards: Array[Control] = []
+# === PRELOADED RESOURCES ===
 var card_scene = preload("res://Pyramids/scenes/game/Card.tscn")
 var card_back_texture = preload("res://Pyramids/assets/cards/card_back.png")
 
-func debug_log(message: String) -> void:
-	if debug_enabled and global_debug:
-		print("[MobileTopBar] %s" % message)
+# === STATE VARIABLES ===
+var is_paused: bool = false
+var slot_cards: Array[Control] = []
+
+# ============================================================================
+# INITIALIZATION
+# ============================================================================
 
 func _ready() -> void:
 	debug_log("=== MobileTopBar READY ===")
@@ -100,6 +130,39 @@ func _ready() -> void:
 	# Enable processing
 	set_process(true)
 	process_mode = Node.PROCESS_MODE_ALWAYS
+
+func _process(_delta: float) -> void:
+	if GameState.is_round_active and not is_paused:
+		# Update timer label
+		if GameState.round_time_limit > 0:
+			timer_bar.value = GameState.time_remaining
+			timer_label.text = "%d" % int(GameState.time_remaining)
+		
+		# Update combo bar and label
+		if ScoreSystem.combo_timer and not ScoreSystem.combo_timer.is_stopped():
+			combo_bar.visible = true
+			combo_bar.value = ScoreSystem.combo_timer.time_left
+			combo_label.text = "%.1f" % ScoreSystem.combo_timer.time_left
+		else:
+			combo_bar.visible = false
+			combo_label.text = ""
+		
+		# Update draw pile label
+		if CardManager:
+			var draw_limit = GameModeManager.get_draw_pile_limit(GameState.current_round)
+			var cards_already_drawn = CardManager.cards_drawn
+			var pile_size = CardManager.draw_pile.size()
+			var draws_remaining = min(pile_size, draw_limit - cards_already_drawn)
+			draws_remaining = max(0, draws_remaining)
+			draw_pile_label.text = "%d" % draws_remaining
+
+# ============================================================================
+# DEBUG FUNCTIONS
+# ============================================================================
+
+func debug_log(message: String) -> void:
+	if debug_enabled and global_debug:
+		print("[MobileTopBar] %s" % message)
 
 func _setup_debug_label():
 	"""Configure the debug label to show game mode and type"""
@@ -150,6 +213,10 @@ func toggle_debug_visibility(show: bool = !debug_label.visible):
 		debug_label.visible = show and debug_enabled and global_debug
 		if debug_label.visible:
 			_update_debug_label()
+
+# ============================================================================
+# LAYOUT AND STYLING
+# ============================================================================
 
 func _setup_proportional_layout() -> void:
 	# Make the top bar fill entire width
@@ -275,30 +342,9 @@ func _apply_ui_styles() -> void:
 	if card_slot_3:
 		card_slot_3.custom_minimum_size = Vector2(slot_size, slot_size * 1.375)
 
-func _process(_delta: float) -> void:
-	if GameState.is_round_active and not is_paused:
-		# Update timer label
-		if GameState.round_time_limit > 0:
-			timer_bar.value = GameState.time_remaining
-			timer_label.text = "%d" % int(GameState.time_remaining)
-		
-		# Update combo bar and label
-		if ScoreSystem.combo_timer and not ScoreSystem.combo_timer.is_stopped():
-			combo_bar.visible = true
-			combo_bar.value = ScoreSystem.combo_timer.time_left
-			combo_label.text = "%.1f" % ScoreSystem.combo_timer.time_left
-		else:
-			combo_bar.visible = false
-			combo_label.text = ""
-		
-		# Update draw pile label
-		if CardManager:
-			var draw_limit = GameModeManager.get_draw_pile_limit(GameState.current_round)
-			var cards_already_drawn = CardManager.cards_drawn
-			var pile_size = CardManager.draw_pile.size()
-			var draws_remaining = min(pile_size, draw_limit - cards_already_drawn)
-			draws_remaining = max(0, draws_remaining)
-			draw_pile_label.text = "%d" % draws_remaining
+# ============================================================================
+# SLOT MANAGEMENT
+# ============================================================================
 
 func update_slots() -> void:
 	# Clear existing cards
@@ -339,6 +385,10 @@ func update_slots() -> void:
 			card.z_index = 25
 			slot_cards.append(card)
 
+# ============================================================================
+# BUTTON EVENT HANDLERS
+# ============================================================================
+
 func _on_menu_pressed() -> void:
 	# If paused, unpause first
 	if is_paused:
@@ -349,14 +399,14 @@ func _on_menu_pressed() -> void:
 	# Clear any stored custom seed
 	if GameState and GameState.has_meta("custom_seed"):
 		GameState.remove_meta("custom_seed")
-		print("[MobileTopBar] Cleared stored custom seed")
+		debug_log("Cleared stored custom seed")
 	
 	# Reset round RNG to ensure clean state
 	if GameState:
 		GameState.round_rng = null
 		GameState.game_seed = 0
 		GameState.deck_seed = 0
-		print("[MobileTopBar] Reset GameState RNG and seeds")
+		debug_log("Reset GameState RNG and seeds")
 	
 	# Call complete reset
 	GameState.reset_game_completely()
@@ -368,6 +418,27 @@ func _on_pause_pressed() -> void:
 	is_paused = not is_paused
 	pause_button.text = "Resume" if is_paused else "Pause"
 	get_tree().paused = is_paused
+
+func _on_draw_pile_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		# Check if draws available
+		if CardManager:
+			var draw_limit = GameModeManager.get_draw_pile_limit(GameState.current_round)
+			var cards_already_drawn = CardManager.cards_drawn
+			var pile_size = CardManager.draw_pile.size()
+			var draws_remaining = min(pile_size, draw_limit - cards_already_drawn)
+			
+			if draws_remaining > 0:
+				# Animate click
+				var tween = create_tween()
+				tween.tween_property(draw_pile_container, "scale", Vector2(0.9, 0.9), 0.05)
+				tween.tween_property(draw_pile_container, "scale", Vector2.ONE, 0.05)
+				
+				SignalBus.draw_pile_clicked.emit()
+
+# ============================================================================
+# SIGNAL HANDLERS
+# ============================================================================
 
 func _on_round_started(_round: int) -> void:
 	debug_log("Round %d started" % _round)
@@ -416,20 +487,3 @@ func _on_draw_pile_clicked() -> void:
 		slot_3_countdown.text = str(GameModeManager.get_slot_unlock_requirement(3))
 	
 	call_deferred("update_slots")
-
-func _on_draw_pile_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		# Check if draws available
-		if CardManager:
-			var draw_limit = GameModeManager.get_draw_pile_limit(GameState.current_round)
-			var cards_already_drawn = CardManager.cards_drawn
-			var pile_size = CardManager.draw_pile.size()
-			var draws_remaining = min(pile_size, draw_limit - cards_already_drawn)
-			
-			if draws_remaining > 0:
-				# Animate click
-				var tween = create_tween()
-				tween.tween_property(draw_pile_container, "scale", Vector2(0.9, 0.9), 0.05)
-				tween.tween_property(draw_pile_container, "scale", Vector2.ONE, 0.05)
-				
-				SignalBus.draw_pile_clicked.emit()
