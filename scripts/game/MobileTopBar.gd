@@ -340,11 +340,28 @@ func update_slots() -> void:
 			slot_cards.append(card)
 
 func _on_menu_pressed() -> void:
+	# If paused, unpause first
 	if is_paused:
 		is_paused = false
 		get_tree().paused = false
 		pause_button.text = "Pause"
+	
+	# Clear any stored custom seed
+	if GameState and GameState.has_meta("custom_seed"):
+		GameState.remove_meta("custom_seed")
+		print("[MobileTopBar] Cleared stored custom seed")
+	
+	# Reset round RNG to ensure clean state
+	if GameState:
+		GameState.round_rng = null
+		GameState.game_seed = 0
+		GameState.deck_seed = 0
+		print("[MobileTopBar] Reset GameState RNG and seeds")
+	
+	# Call complete reset
 	GameState.reset_game_completely()
+	
+	# Return to menu
 	get_tree().change_scene_to_file("res://Pyramids/scenes/ui/menus/MainMenu.tscn")
 
 func _on_pause_pressed() -> void:

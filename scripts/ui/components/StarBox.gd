@@ -1,8 +1,11 @@
 # StarBox.gd - Star display component that auto-updates
 # Location: res://Pyramids/scripts/ui/components/StarBox.gd
 # Last Updated: Fixed signal reconnection issue [Date]
-
 extends PanelContainer
+
+# Debug configuration
+var debug_enabled: bool = false
+var global_debug: bool = false
 
 @onready var star_display: Label = $MarginContainer/HeaderContainer/StarDisplay
 var is_connected: bool = false
@@ -12,15 +15,15 @@ func _ready() -> void:
 	update_star_display()
 	
 	# Connect to StarManager for auto-updates
-	_ensure_signal_connection()
+	ensure_signal_connection()
 	
 	# Also update when becoming visible
 	visibility_changed.connect(_on_visibility_changed)
 
-func _ensure_signal_connection():
+func ensure_signal_connection():
 	"""Ensure we're connected to StarManager signals"""
 	if not StarManager:
-		print("[StarBox] StarManager not found!")
+		debug_log("StarManager not found!")
 		return
 	
 	# Disconnect if already connected (prevents duplicates)
@@ -32,12 +35,12 @@ func _ensure_signal_connection():
 	if not StarManager.stars_changed.is_connected(_on_stars_changed):
 		StarManager.stars_changed.connect(_on_stars_changed)
 		is_connected = true
-		print("[StarBox] Connected to StarManager.stars_changed")
+		debug_log("Connected to StarManager.stars_changed")
 
 func _on_visibility_changed():
 	"""When becoming visible, ensure connection and update display"""
 	if visible:
-		_ensure_signal_connection()
+		ensure_signal_connection()
 		update_star_display()
 
 func update_star_display():
@@ -47,18 +50,18 @@ func update_star_display():
 		
 	var total_stars = StarManager.get_balance()
 	star_display.text = "%d" % total_stars
-	print("[StarBox] Updated display to %d stars" % total_stars)
+	debug_log("Updated display to %d stars" % total_stars)
 
 func _on_stars_changed(new_total: int, change: int):
 	"""Called when stars change in StarManager"""
-	print("[StarBox] Stars changed signal received: %d (change: %d)" % [new_total, change])
+	debug_log("Stars changed signal received: %d (change: %d)" % [new_total, change])
 	update_star_display()
 	
 	# Optional: Add a brief animation for the change
 	if change != 0:
-		_animate_star_change(change)
+		animate_star_change(change)
 
-func _animate_star_change(change: int):
+func animate_star_change(change: int):
 	"""Brief animation when stars change"""
 	if not star_display:
 		return
@@ -81,7 +84,7 @@ func _animate_star_change(change: int):
 func _enter_tree():
 	"""Re-establish connection when entering tree"""
 	if is_inside_tree():
-		call_deferred("_ensure_signal_connection")
+		call_deferred("ensure_signal_connection")
 		call_deferred("update_star_display")
 
 func _exit_tree():
@@ -89,3 +92,8 @@ func _exit_tree():
 	if StarManager and is_connected and StarManager.stars_changed.is_connected(_on_stars_changed):
 		StarManager.stars_changed.disconnect(_on_stars_changed)
 		is_connected = false
+
+func debug_log(message: String) -> void:
+	"""Debug logging with component prefix"""
+	if debug_enabled and global_debug:
+		print("[STARBOX] %s" % message)

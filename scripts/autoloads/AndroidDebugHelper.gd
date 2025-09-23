@@ -7,8 +7,13 @@ extends Node
 signal debug_info_collected(info: Dictionary)
 
 var debug_info: Dictionary = {}
+# Master debug switch
+const DEBUG_ENABLED = false  # Toggle this
 
 func _ready():
+	if not DEBUG_ENABLED:
+		return  # Skip all debug initialization
+
 	print("=== ANDROID DEBUG HELPER STARTED ===")
 	collect_system_info()
 	check_common_issues()

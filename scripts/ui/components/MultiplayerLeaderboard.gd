@@ -356,20 +356,21 @@ func _show_replay_popup(score_data: Dictionary):
 	get_tree().root.add_child(dialog)
 
 func _show_seed_popup(score_data: Dictionary):
-	"""Show seed actions dialog"""
+	"""Show seed actions dialog with full score data"""
 	var dialog_scene = preload("res://Pyramids/scenes/ui/popups/SeedDialog.tscn")
 	if not dialog_scene:
 		print("[MultiplayerLeaderboard] Failed to load SeedDialog scene")
 		return
 		
 	var dialog = dialog_scene.instantiate()
-	var seed = score_data.get("seed", 0)
-	var player_name = score_data.get("player_name", "")
-	dialog.setup(seed, player_name)
+	
+	# Pass the full score_data dictionary
+	dialog.setup(score_data)
 	
 	# Connect signals
-	dialog.play_pressed.connect(func(seed_val):
-		print("[MultiplayerLeaderboard] Play with seed: %d" % seed_val)
+	dialog.play_pressed.connect(func(seed_val, mode):
+		print("[MultiplayerLeaderboard] Play with seed: %d, mode: %s" % [seed_val, mode])
+		# Could navigate to game with seed and mode here if needed
 	)
 	dialog.copy_pressed.connect(func(seed_val):
 		print("[MultiplayerLeaderboard] Seed %d copied to clipboard" % seed_val)

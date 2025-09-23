@@ -1,8 +1,49 @@
-# GameState.gd - Autoload for game state management
+# GameState.gd - Core game state management and round orchestration autoload
 # Path: res://Pyramids/scripts/autoloads/GameState.gd
-# Last Updated: Cleaned debug output while maintaining functionality [Date]
+# Last Updated: Enhanced documentation, added debug system, reorganized functions
+#
+# Purpose: Central authority for game state, managing rounds, scoring, seeding, and game flow.
+# Handles single and multiplayer modes, deterministic seed generation for rounds, timing,
+# and coordinates between all game systems. Tracks game context for different play modes
+# (standard, seeded, tournament, battle, custom lobby) and their leaderboard eligibility.
+#
+# Dependencies:
+# - SignalBus (autoload) - Global event system for game-wide signals
+# - GameConstants (autoload) - Core game constants and rules
+# - GameModeManager (autoload) - Manages different game modes and round settings
+# - CardManager (autoload) - Card system management and valid move checking
+# - ScoreSystem (autoload) - Score calculation and combo tracking
+# - StatsManager (autoload) - Statistics tracking and persistence
+# - AchievementManager (autoload) - Achievement checking and unlocking
+# - XPManager (autoload) - Experience point management
+# - StarManager (autoload) - Star rewards management
+# - MultiplayerManager (optional) - Multiplayer lobby and networking
+#
+# Game Flow:
+# 1. start_new_game() - Initialize game with mode and optional seed
+# 2. start_round() - Generate round-specific seed from master seed
+# 3. Game plays out with timer and card clearing
+# 4. check_round_end() - Monitor win/lose conditions
+# 5. end_round() - Calculate scores, show score screen
+# 6. _continue_to_next_round() or _end_game() based on rounds
+# 7. Track stats, achievements, and leaderboard eligibility
+#
+# Seed System:
+# - Master game_seed generates deterministic round seeds
+# - Round seeds ensure consistent gameplay for replays
+# - Seeded games marked for separate leaderboards
+# - See: res://docs/Seedsystem.txt
+#
+# Context System:
+# - Standard: Random seed, affects global leaderboard
+# - Seeded: Custom seed, separate leaderboard
+# - Tournament/Battle/Lobby: Special modes with custom rules (TODO)
 
 extends Node
+
+# Debug configuration
+var debug_enabled: bool = false
+var global_debug: bool = false
 
 # === GAME MODE ===
 var game_mode: String = "single" # "single", "multi"
@@ -13,7 +54,11 @@ var current_round: int = 1
 var is_round_active: bool = false
 var round_time_limit: int = 60
 var time_remaining: float = 60.0
-var deck_seed: int = 0
+
+# === SEED SYSTEM ===
+var game_seed: int = 0  # Master seed for entire game
+var deck_seed: int = 0  # Current round seed (for compatibility)
+var round_rng: RandomNumberGenerator  # RNG for generating round seeds
 
 # === CARD STATE ===
 var cards_cleared: int = 0
@@ -23,7 +68,7 @@ var board_cleared: bool = false
 var current_score: int = 0
 var round_scores: Array[int] = []
 var total_score: int = 0
-var round_stats: Array[Dictionary] = []  # NEW: Track each round's details
+var round_stats: Array[Dictionary] = []  # Track each round's details
 
 # === MULTIPLAYER ===
 var multiplayer_scores: Dictionary = {}  # player_id -> total_score
@@ -32,7 +77,25 @@ var multiplayer_round_data: Array = []   # Track each round's results
 # === TIMER ===
 var game_timer: Timer
 
+# === GAME CONTEXT ===
+var game_context: Dictionary = {
+	"type": "standard",  # standard, seeded, tournament, battle, custom_lobby
+	"is_seeded": false,
+	"seed_source": "",  # "manual", "leaderboard", "tournament_123", "battle_456"
+	"affects_global_leaderboard": true,
+	"affects_mode_leaderboard": true,  # For mode-specific boards
+	"tournament_id": "",  # TODO:TOURNAMENT - Implement tournament support
+	"battle_id": "",  # TODO:BATTLE - Implement battle support
+	"custom_lobby_id": ""  # TODO:CUSTOM_LOBBY - Implement custom lobby support
+}
+
+# === INITIALIZATION ===
+
 func _ready() -> void:
+	# CRITICAL: Initialize random number generator with system time
+	randomize()
+	debug_log("Randomized RNG seed: %d" % randi())
+	
 	_setup_timer()
 	_connect_signals()
 	set_process(false)  # Don't process until round starts
@@ -56,29 +119,224 @@ func _process(delta: float) -> void:
 			check_round_end()
 
 # === GAME MANAGEMENT ===
-func start_new_game(mode: String = "single") -> void:
+
+func start_new_game(mode: String = "single", custom_seed: int = 0) -> void:
+	debug_log("\n=== START_NEW_GAME DEBUG ===")
+	debug_log("Input parameters: mode=%s, custom_seed=%d" % [mode, custom_seed])
+	
 	# RESET EVERYTHING FIRST
 	game_mode = mode
 	is_multiplayer = (mode == "multi")
-	current_round = 1  # Make sure this is 1, not whatever it was before
+	current_round = 1
 	total_score = 0
 	round_scores.clear()
-	round_stats.clear()  # NEW: Clear round stats
+	round_stats.clear()
 	current_score = 0
 	cards_cleared = 0
 	board_cleared = false
 	
+	# CRITICAL: Clear old RNG to ensure deterministic behavior
+	if round_rng != null:
+		debug_log("Clearing existing round_rng")
+	round_rng = null
+	deck_seed = 0
+	
+	# === SEED SYSTEM SETUP ===
+	# Check for stored custom seed first (from set_custom_seed)
+	if custom_seed == 0 and has_meta("custom_seed"):
+		custom_seed = get_meta("custom_seed")
+		remove_meta("custom_seed")  # Clear it after use
+		debug_log("Found stored custom seed in metadata: %d" % custom_seed)
+		# Also check for seed source
+		if has_meta("seed_source"):
+			var source = get_meta("seed_source")
+			game_context.seed_source = source
+			remove_meta("seed_source")
+	
+	# === GAME CONTEXT SETUP ===
+	if custom_seed != 0:
+		game_seed = custom_seed
+		debug_log("Using CUSTOM seed: %d" % game_seed)
+		
+		# Set context for seeded game
+		game_context = {
+			"type": "seeded",
+			"is_seeded": true,
+			"seed_source": game_context.get("seed_source", "manual"),  # Preserve if set
+			"affects_global_leaderboard": false,  # Seeded games don't affect global
+			"affects_mode_leaderboard": true,  # But they can have their own board
+			"tournament_id": "",  # TODO:TOURNAMENT - Check for tournament context
+			"battle_id": "",  # TODO:BATTLE - Check for battle context
+			"custom_lobby_id": ""  # TODO:CUSTOM_LOBBY - Check for lobby context
+		}
+		debug_log("Game context set to SEEDED - will NOT affect global leaderboard")
+	else:
+		game_seed = randi()
+		debug_log("Generated NEW RANDOM seed: %d" % game_seed)
+		
+		# Set context for standard game
+		game_context = {
+			"type": "standard",
+			"is_seeded": false,
+			"seed_source": "",
+			"affects_global_leaderboard": true,
+			"affects_mode_leaderboard": true,
+			"tournament_id": "",
+			"battle_id": "",
+			"custom_lobby_id": ""
+		}
+		debug_log("Game context set to STANDARD - will affect global leaderboard")
+	
+	# Initialize FRESH round RNG with our game seed
+	round_rng = RandomNumberGenerator.new()
+	round_rng.seed = game_seed
+	debug_log("Created new round_rng with seed: %d" % game_seed)
+	
+	# Store game seed for saving to leaderboard
+	deck_seed = game_seed
+	debug_log("Set deck_seed = game_seed = %d" % game_seed)
+	
 	var game_mode_name = GameModeManager.get_current_mode()
 	var game_type = "multi" if is_multiplayer else "solo"
-	StatsManager.start_game(game_mode_name, game_type)  # Pass game_type!
-	XPManager.rewards_enabled = false
-	StarManager.rewards_enabled = false  # Add similar flag to StarManager
+	debug_log("Game mode: %s, Game type: %s" % [game_mode_name, game_type])
 	
+	StatsManager.start_game(game_mode_name, game_type)
+	XPManager.rewards_enabled = false
+	StarManager.rewards_enabled = false
+	
+	debug_log("=== END START_NEW_GAME ===\n")
 	start_round()
 
+func set_game_context(context_type: String, metadata: Dictionary = {}) -> void:
+	"""Set game context for special game modes
+	TODO:TOURNAMENT - Use this when starting tournament games
+	TODO:BATTLE - Use this when starting battle games
+	TODO:CUSTOM_LOBBY - Use this when starting custom lobby games
+	"""
+	game_context.type = context_type
+	
+	match context_type:
+		"tournament":
+			game_context.is_seeded = true
+			game_context.affects_global_leaderboard = false
+			game_context.affects_mode_leaderboard = false
+			game_context.tournament_id = metadata.get("tournament_id", "")
+			game_context.seed_source = "tournament_" + game_context.tournament_id
+			
+		"battle":
+			game_context.is_seeded = true
+			game_context.affects_global_leaderboard = false
+			game_context.affects_mode_leaderboard = false
+			game_context.battle_id = metadata.get("battle_id", "")
+			game_context.seed_source = "battle_" + game_context.battle_id
+			
+		"custom_lobby":
+			game_context.is_seeded = metadata.get("is_seeded", false)
+			game_context.affects_global_leaderboard = false
+			game_context.affects_mode_leaderboard = true
+			game_context.custom_lobby_id = metadata.get("lobby_id", "")
+			game_context.seed_source = "lobby_" + game_context.custom_lobby_id
+			
+		"seeded":
+			game_context.is_seeded = true
+			game_context.affects_global_leaderboard = false
+			game_context.affects_mode_leaderboard = true
+			game_context.seed_source = metadata.get("source", "manual")
+			
+		_:  # "standard"
+			game_context.is_seeded = false
+			game_context.affects_global_leaderboard = true
+			game_context.affects_mode_leaderboard = true
+			game_context.seed_source = ""
+	
+	debug_log("Context set to: %s (global_lb: %s, mode_lb: %s)" % 
+		[context_type, game_context.affects_global_leaderboard, game_context.affects_mode_leaderboard])
+
+func reset_game_completely() -> void:
+	# Clean up any persistent UI nodes
+	var score_screens = get_tree().get_nodes_in_group("score_screen")
+	for screen in score_screens:
+		screen.queue_free()
+	
+	var post_game_screens = get_tree().get_nodes_in_group("post_game_summary")
+	for screen in post_game_screens:
+		screen.queue_free()
+	
+	# Reset GameState variables
+	current_round = 1
+	total_score = 0
+	round_scores.clear()
+	round_stats.clear()
+	is_round_active = false
+	time_remaining = 0
+	cards_cleared = 0
+	board_cleared = false
+	current_score = 0
+	game_seed = 0
+	deck_seed = 0
+	round_rng = null
+	
+	# CRITICAL: Clear ALL metadata including custom_seed
+	if has_meta("custom_seed"):
+		remove_meta("custom_seed")
+		debug_log("Cleared custom_seed metadata")
+	if has_meta("multiplayer_placement"):
+		remove_meta("multiplayer_placement")
+	if has_meta("multiplayer_player_count"):
+		remove_meta("multiplayer_player_count")
+	if has_meta("multiplayer_mode"):
+		remove_meta("multiplayer_mode")
+	if has_meta("affects_mmr"):
+		remove_meta("affects_mmr")
+	if has_meta("debug_forced_placement"):
+		remove_meta("debug_forced_placement")
+	if has_meta("round_end_reason"):
+		remove_meta("round_end_reason")
+	
+	# Reset CardManager
+	if CardManager:
+		CardManager.current_combo = 0
+		CardManager.cards_drawn = 0
+		CardManager.slot_cards = [null, null, null]
+		CardManager.active_slots = 1
+		CardManager.board_cards.clear()
+		CardManager.draw_pile.clear()
+	
+	# Reset ScoreSystem
+	if ScoreSystem:
+		ScoreSystem.current_multiplier = 1.0
+		ScoreSystem.peaks_cleared_indices.clear()
+		ScoreSystem.last_selected_card = null
+		ScoreSystem.pending_round_end = false
+		if ScoreSystem.combo_timer:
+			ScoreSystem.combo_timer.stop()
+	
+	# Ensure game timer is stopped
+	if game_timer:
+		game_timer.stop()
+	
+	# Stop processing
+	set_process(false)
+	
+	debug_log("Game completely reset")
+
+# === ROUND MANAGEMENT ===
+
 func start_round() -> void:
-	# Generate new seed for each round
-	deck_seed = randi()
+	debug_log("\n=== START_ROUND DEBUG ===")
+	debug_log("Current round: %d" % current_round)
+	debug_log("Game seed: %d" % game_seed)
+	
+	# === GENERATE ROUND-SPECIFIC SEED ===
+	# Get the next seed in our deterministic sequence
+	if round_rng == null:
+		debug_log("ERROR: round_rng is null!")
+		return
+	
+	var round_seed = round_rng.randi()
+	deck_seed = round_seed  # Set deck_seed for this round
+	
+	debug_log("Generated round seed: %d (from game seed: %d)" % [round_seed, game_seed])
 	
 	# Get round settings from current game mode
 	var round_data = GameModeManager.handle_round_start(current_round)
@@ -87,11 +345,13 @@ func start_round() -> void:
 	round_time_limit = round_data.get("time_limit", GameModeManager.get_round_time_limit(current_round))
 	time_remaining = float(round_time_limit)
 	
+	debug_log("Round time limit: %d seconds" % round_time_limit)
+	
 	# Set combo timeout if specified (for chill mode)
 	if round_data.has("combo_timeout") and ScoreSystem.has_method("set_combo_timeout"):
 		ScoreSystem.call("set_combo_timeout", round_data.get("combo_timeout", 5.0))
 	
-	# Reset round state - LOG EACH RESET
+	# Reset round state
 	current_score = 0
 	cards_cleared = 0
 	board_cleared = false
@@ -100,6 +360,7 @@ func start_round() -> void:
 	# Start timer
 	set_process(true)
 	
+	debug_log("=== END START_ROUND ===\n")
 	SignalBus.round_started.emit(current_round)
 
 func check_round_end() -> void:
@@ -131,7 +392,7 @@ func check_round_end() -> void:
 	if should_end:
 		set_meta("round_end_reason", reason)
 		_delayed_end_round(reason)
-	
+
 func _delayed_end_round(reason: String) -> void:
 	"""End round with a small delay to ensure all systems sync"""
 	# Wait 0.2 seconds for all systems to process
@@ -165,7 +426,7 @@ func end_round() -> void:
 	# Store round score
 	round_scores.append(scores.round_total)
 	
-	# NEW: Store detailed round stats
+	# Store detailed round stats
 	round_stats.append({
 		"round": current_round,
 		"score": scores.round_total,
@@ -198,7 +459,7 @@ func end_round() -> void:
 	
 	# Track peak clears with game_type
 	if ScoreSystem.peaks_cleared_indices.size() > 0:
-		StatsManager.track_peak_clears(ScoreSystem.peaks_cleared_indices.size(), mode, game_type)  # ADD game_type!
+		StatsManager.track_peak_clears(ScoreSystem.peaks_cleared_indices.size(), mode, game_type)
 	
 	# Show score screen
 	_show_score_screen(scores)
@@ -234,8 +495,11 @@ func _continue_to_next_round() -> void:
 		start_round()
 
 func _end_game() -> void:
-	print("=== GAME OVER ===")
-	print("Final score: %d" % total_score)
+	debug_log("\n=== GAME OVER DEBUG ===")
+	debug_log("Final score: %d" % total_score)
+	debug_log("Game seed was: %d" % game_seed)
+	debug_log("Current deck_seed: %d" % deck_seed)
+	debug_log("Saving to stats with game_seed: %d" % game_seed)
 	
 	# Get the current game mode
 	var mode = GameModeManager.get_current_mode()
@@ -246,7 +510,7 @@ func _end_game() -> void:
 	# Check if multiplayer or single player
 	if game_mode == "multi":
 		# MULTIPLAYER PATH
-		print("Multiplayer game ending...")
+		debug_log("Multiplayer game ending...")
 		
 		# Get placement and player count
 		var placement = 1
@@ -266,16 +530,16 @@ func _end_game() -> void:
 			# === TESTING OVERRIDE ===
 			# If in test mode and alone, simulate a full lobby
 			if mode == "test" and player_count == 1:
-				print("[TEST MODE] Simulating 8-player lobby")
+				debug_log("[TEST MODE] Simulating 8-player lobby")
 				player_count = 8
 				# Check for forced debug placement, otherwise random
 				if has_meta("debug_forced_placement"):
 					placement = get_meta("debug_forced_placement")
 					remove_meta("debug_forced_placement")
-					print("[TEST MODE] Using forced placement: %d" % placement)
+					debug_log("[TEST MODE] Using forced placement: %d" % placement)
 				else:
 					placement = randi_range(1, 8)
-					print("[TEST MODE] Random placement: %d" % placement)
+					debug_log("[TEST MODE] Random placement: %d" % placement)
 				affects_mmr = true  # Force MMR changes in test
 			else:
 				# TODO: Get actual placement when you have all player scores
@@ -287,7 +551,7 @@ func _end_game() -> void:
 		set_meta("multiplayer_mode", mode)
 		set_meta("affects_mmr", affects_mmr)
 		
-		print("Multiplayer result: Placed %d/%d in %s mode (affects MMR: %s)" % 
+		debug_log("Multiplayer result: Placed %d/%d in %s mode (affects MMR: %s)" % 
 			[placement, player_count, mode, affects_mmr])
 		
 		# Track multiplayer game only if it affects MMR
@@ -295,36 +559,80 @@ func _end_game() -> void:
 			var max_combo = 0  # TODO: Get from ScoreSystem
 			var clear_time = 0.0  # TODO: Track if needed
 			
+			# Pass game_seed for multiplayer tracking
 			StatsManager.track_multiplayer_game(
 				mode,
 				placement,
 				total_score,
 				max_combo,
 				clear_time,
-				player_count
+				player_count,
+				game_seed  # Pass the game seed
 			)
-			print("MMR updated for matchmaking game")
+			debug_log("MMR updated for matchmaking game")
 		else:
-			print("Custom/Tournament game - no MMR change")
+			debug_log("Custom/Tournament game - no MMR change")
 		
-		# Still track regular game for other stats - PASS game_type!
+		# Still track regular game for other stats - with game_seed
 		StatsManager.end_game(mode, total_score, current_round - 1, game_type)
 	else:
 		# SINGLE PLAYER PATH
-		print("Single player game ending...")
-		StatsManager.end_game(mode, total_score, current_round - 1, game_type)  # PASS game_type!
+		debug_log("Single player game ending...")
+		StatsManager.end_game(mode, total_score, current_round - 1, game_type)
 	
 	# Check achievements for both modes
-	print("Checking achievements...")
+	debug_log("Checking achievements...")
 	AchievementManager.check_achievements()
+	
+	debug_log("=== END GAME OVER ===\n")
 	
 	# Emit game over signal
 	SignalBus.game_over.emit(total_score)
 
-# === HELPER FUNCTIONS ===
-func _has_valid_moves() -> bool:
-	"""Check if there are any valid moves available (delegated to CardManager)"""
-	return CardManager.has_valid_moves() if CardManager else false
+func _return_to_menu() -> void:
+	# First reset everything
+	reset_game_completely()
+	
+	# Then return to main menu
+	get_tree().change_scene_to_file("res://Pyramids/scenes/ui/menus/MainMenu.tscn")
+
+# === SEED UTILITIES ===
+
+func get_game_seed() -> int:
+	"""Get the master game seed for replay purposes"""
+	return game_seed
+
+func set_custom_seed(seed: int, source: String = "manual") -> void:
+	"""Set a custom seed for the next game (call before start_new_game)
+	
+	Args:
+		seed: The seed value to use
+		source: Where the seed came from - "manual", "leaderboard", "tournament_123", "battle_456"
+	"""
+	debug_log("\nset_custom_seed called with: %d (source: %s)" % [seed, source])
+	set_meta("custom_seed", seed)
+	set_meta("seed_source", source)
+	debug_log("Stored custom seed in metadata: %d" % seed)
+	debug_log("Seed source marked as: %s" % source)
+
+# === STATE QUERIES ===
+
+func is_eligible_for_global_leaderboard() -> bool:
+	"""Check if current game should be saved to global leaderboard"""
+	return game_context.get("affects_global_leaderboard", true)
+
+func is_eligible_for_mode_leaderboard() -> bool:
+	"""Check if current game should be saved to mode-specific leaderboard"""
+	return game_context.get("affects_mode_leaderboard", true)
+
+func is_game_active() -> bool:
+	return is_round_active
+
+func is_final_round() -> bool:
+	return current_round >= GameModeManager.get_max_rounds()
+
+func get_rounds_remaining() -> int:
+	return max(0, GameModeManager.get_max_rounds() - current_round + 1)
 
 func get_base_card_points() -> int:
 	"""Get base points for current round"""
@@ -344,7 +652,19 @@ func get_game_progress() -> float:
 	"""Get progress through entire game (0.0 to 1.0)"""
 	return float(current_round - 1) / float(GameModeManager.get_max_rounds())
 
-# === MULTIPLAYER HELPERS (Foundation) ===
+func get_current_round_info() -> Dictionary:
+	return {
+		"round": current_round,
+		"time_limit": round_time_limit,
+		"time_remaining": time_remaining,
+		"cards_cleared": cards_cleared,
+		"current_score": current_score,
+		"board_cleared": board_cleared,
+		"draw_limit": get_draw_pile_limit()
+	}
+
+# === MULTIPLAYER HELPERS ===
+
 func get_player_data() -> Dictionary:
 	"""Get current player data for multiplayer"""
 	return {
@@ -360,107 +680,6 @@ func sync_multiplayer_round(round_data: Dictionary) -> void:
 	"""Sync round data in multiplayer (placeholder)"""
 	# This will be implemented in multiplayer phase
 	pass
-
-# === SIGNAL HANDLERS ===
-func _on_timer_timeout() -> void:
-	SignalBus.timer_expired.emit()
-
-func _on_timer_expired() -> void:
-	check_round_end()
-
-# === GAME STATE QUERIES ===
-func is_game_active() -> bool:
-	return is_round_active
-
-func is_final_round() -> bool:
-	return current_round >= GameModeManager.get_max_rounds()
-
-func get_rounds_remaining() -> int:
-	return max(0, GameModeManager.get_max_rounds() - current_round + 1)
-
-func get_current_round_info() -> Dictionary:
-	return {
-		"round": current_round,
-		"time_limit": round_time_limit,
-		"time_remaining": time_remaining,
-		"cards_cleared": cards_cleared,
-		"current_score": current_score,
-		"board_cleared": board_cleared,
-		"draw_limit": get_draw_pile_limit()
-	}
-
-# === DEBUGGING ===
-func get_debug_info() -> Dictionary:
-	return {
-		"game_mode": game_mode,
-		"current_round": current_round,
-		"is_round_active": is_round_active,
-		"time_remaining": time_remaining,
-		"cards_cleared": cards_cleared,
-		"current_score": current_score,
-		"total_score": total_score,
-		"deck_seed": deck_seed
-	}
-
-func print_game_state() -> void:
-	var info = get_debug_info()
-	for key in info:
-		pass  # Debug output removed
-
-func reset_game_completely() -> void:
-	# Clean up any persistent UI nodes
-	var score_screens = get_tree().get_nodes_in_group("score_screen")
-	for screen in score_screens:
-		screen.queue_free()
-	
-	# Reset GameState variables
-	current_round = 1
-	total_score = 0
-	round_scores.clear()
-	round_stats.clear()
-	is_round_active = false
-	time_remaining = 0
-	cards_cleared = 0
-	board_cleared = false
-	current_score = 0
-	
-	# Reset CardManager
-	if CardManager:
-		CardManager.current_combo = 0
-		CardManager.cards_drawn = 0
-		CardManager.slot_cards = [null, null, null]
-		CardManager.active_slots = 1
-	
-	# Reset ScoreSystem
-	if ScoreSystem:
-		ScoreSystem.current_multiplier = 1.0
-		ScoreSystem.peaks_cleared_indices.clear()
-		ScoreSystem.last_selected_card = null
-		ScoreSystem.pending_round_end = false
-		if ScoreSystem.combo_timer:
-			ScoreSystem.combo_timer.stop()
-
-func _return_to_menu() -> void:
-	# First reset everything
-	reset_game_completely()
-	
-	# Then return to main menu
-	get_tree().change_scene_to_file("res://Pyramids/scenes/ui/menus/MainMenu.tscn")
-
-func _unhandled_key_input(event: InputEvent) -> void:
-	if not OS.is_debug_build():
-		return
-		
-	if event is InputEventKey and event.pressed:
-		if event.keycode == KEY_E:		if event.keycode == KEY_E:
-			_delayed_end_round("DEBUG: Forced end")
-			get_viewport().set_input_as_handled()
-		# Press 1-8 to force placement in test mode
-		if game_mode == "multi" and GameModeManager.get_current_mode() == "test":
-			if event.keycode >= KEY_1 and event.keycode <= KEY_8:
-				var forced_placement = event.keycode - KEY_0
-				set_meta("debug_forced_placement", forced_placement)
-				print("[DEBUG] Forcing placement: %d" % forced_placement)
 
 func _handle_multiplayer_end(mode: String) -> void:
 	"""Handle multiplayer game completion"""
@@ -487,12 +706,12 @@ func _handle_multiplayer_end(mode: String) -> void:
 	set_meta("multiplayer_player_count", player_count)
 	set_meta("multiplayer_mode", mode)
 	
-	print("Multiplayer game ended:")
-	print("  Mode: %s" % mode)
-	print("  Placement: %d/%d" % [placement, player_count])
-	print("  Score: %d" % total_score)
+	debug_log("Multiplayer game ended:")
+	debug_log("  Mode: %s" % mode)
+	debug_log("  Placement: %d/%d" % [placement, player_count])
+	debug_log("  Score: %d" % total_score)
 	
-	# Track the game in stats
+	# Track the game in stats with game_seed
 	var max_combo = 0  # TODO: Get from ScoreSystem if available
 	var clear_time = 0.0  # TODO: Track fastest clear if applicable
 	
@@ -502,7 +721,8 @@ func _handle_multiplayer_end(mode: String) -> void:
 		total_score,
 		max_combo,
 		clear_time,
-		player_count
+		player_count,
+		game_seed  # Pass the game seed
 	)
 	
 	# Still call regular end game for achievements
@@ -531,8 +751,62 @@ func _get_multiplayer_final_scores() -> Array:
 		total_score + randi_range(-500, 500)
 	]
 
+# === HELPER FUNCTIONS ===
+
+func _has_valid_moves() -> bool:
+	"""Check if there are any valid moves available (delegated to CardManager)"""
+	return CardManager.has_valid_moves() if CardManager else false
+
+# === SIGNAL HANDLERS ===
+
+func _on_timer_timeout() -> void:
+	SignalBus.timer_expired.emit()
+
+func _on_timer_expired() -> void:
+	check_round_end()
+
+# === DEBUG FUNCTIONS ===
+
+func debug_log(message: String) -> void:
+	"""Debug logging with component prefix"""
+	if debug_enabled and global_debug:
+		print("[GAMESTATE] %s" % message)
+
+func get_debug_info() -> Dictionary:
+	return {
+		"game_mode": game_mode,
+		"current_round": current_round,
+		"is_round_active": is_round_active,
+		"time_remaining": time_remaining,
+		"cards_cleared": cards_cleared,
+		"current_score": current_score,
+		"total_score": total_score,
+		"game_seed": game_seed,
+		"current_round_seed": deck_seed
+	}
+
+func print_game_state() -> void:
+	var info = get_debug_info()
+	for key in info:
+		debug_log("%s: %s" % [key, info[key]])
+
 func debug_simulate_multiplayer_end():
 	set_meta("multiplayer_placement", randi_range(1, 8))
 	set_meta("multiplayer_player_count", 8)
 	set_meta("multiplayer_mode", "classic")
 	set_meta("affects_mmr", true)
+
+func _unhandled_key_input(event: InputEvent) -> void:
+	if not OS.is_debug_build():
+		return
+		
+	if event is InputEventKey and event.pressed:
+		if event.keycode == KEY_E:
+			_delayed_end_round("DEBUG: Forced end")
+			get_viewport().set_input_as_handled()
+		# Press 1-8 to force placement in test mode
+		if game_mode == "multi" and GameModeManager.get_current_mode() == "test":
+			if event.keycode >= KEY_1 and event.keycode <= KEY_8:
+				var forced_placement = event.keycode - KEY_0
+				set_meta("debug_forced_placement", forced_placement)
+				debug_log("[DEBUG] Forcing placement: %d" % forced_placement)

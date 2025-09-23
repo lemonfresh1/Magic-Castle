@@ -49,7 +49,8 @@ var game_settings_panel_script = preload("res://Pyramids/scripts/ui/components/G
 @onready var create_battle: StyledButton = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/BattleHBox/CreateBattle
 @onready var join_battle: StyledButton = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/BattleHBox/JoinBattle
 @onready var join_tournament: StyledButton = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/JoinTournament
-@onready var back_button: StyledButton = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/BackButton
+@onready var seed_button: StyledButton = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/VBoxContainer/SeedButton
+@onready var back_button: StyledButton = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/VBoxContainer/BackButton
 
 # Old ranked button reference (to hide it)
 @onready var ranked_button: Button = $MainContainer/ContentHBox/RightSection/RightSectionMain/RightSectionPanel/MarginContainer/RightSectionVBox/RankedButton
@@ -365,6 +366,12 @@ func _setup_buttons():
 	unranked_button.pressed.connect(func(): _on_queue_selected("play"))
 	UIStyleManager.apply_button_style(unranked_button, "success", "large")
 
+	# Seed button - solo only
+	if seed_button:
+		seed_button.text = "Play with Seed"
+		seed_button.custom_minimum_size = Vector2(0, 50)  # Same height as back button
+		seed_button.pressed.connect(_on_seed_button_pressed)
+
 func _setup_stats_panel():
 	"""Setup stats grid structure"""
 	stats_grid.columns = 2
@@ -421,7 +428,6 @@ func _on_solo_pressed():
 		
 	_sync_mode_selector()
 
-
 func _on_multiplayer_pressed():
 	"""Handle multiplayer button press"""
 	is_solo_mode = false
@@ -451,6 +457,26 @@ func _on_multiplayer_pressed():
 		debug_log("  Updated MultiplayerManager with mode: %s" % current_mode_id)
 
 	_sync_mode_selector()
+
+func _on_seed_button_pressed():
+	"""Handle seed button press - show custom seed dialog"""
+	var dialog_scene = preload("res://Pyramids/scenes/ui/popups/PlaySeedDialog.tscn")
+	if not dialog_scene:
+		print("[MultiplayerScreen] Failed to load PlaySeedDialog scene")
+		return
+	
+	var dialog = dialog_scene.instantiate()
+	
+	# Pass current mode to the dialog
+	dialog.setup(current_mode_id, current_mode)
+	
+	# Connect to handle play signal if needed
+	dialog.play_pressed.connect(func(seed, mode):
+		print("[MultiplayerScreen] Playing %s with seed: %d" % [mode, seed])
+		# The dialog already handles starting the game
+	)
+	
+	get_tree().root.add_child(dialog)
 
 func _on_debug_toggled(button_pressed: bool):
 	"""Toggle debug panel visibility"""
@@ -488,6 +514,10 @@ func _update_multiplayer_buttons_visibility():
 	lobby_h_box.visible = not is_solo_mode
 	battle_h_box.visible = not is_solo_mode
 	join_tournament.visible = not is_solo_mode
+	
+	# Seed button is solo-only
+	if seed_button:
+		seed_button.visible = is_solo_mode
 
 func _refresh_leaderboard_for_current_mode():
 	"""Refresh leaderboard with current solo/multi and mode selection"""
