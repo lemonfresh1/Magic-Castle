@@ -1,7 +1,28 @@
-# ProfileCard.gd - Minimal script for ProfileCard UI interaction
+# ProfileCard.gd - Player profile display and navigation hub in main menu
 # Path: res://Pyramids/scripts/ui/components/ProfileCard.gd
-# Handles displaying player info and navigation buttons
+# Last Updated: Added debug system, enhanced description
+#
+# Purpose: Displays player information (name, level, clan) and provides navigation
+# buttons to various game sections (profile, inventory, achievements, stats, etc).
+# Manages toggle button states to ensure only one section is active at a time.
+#
+# Dependencies:
+# - XPManager (autoload) - For level display and level up notifications
+# - SettingsSystem (autoload) - For player name
+# - UIManager (autoload) - For panel state management
+#
+# Functionality:
+# - Shows player name, level with prestige colors, and clan symbol
+# - Manages 8 toggle buttons for different game sections
+# - Ensures only one button is toggled at a time
+# - Emits signals for section selection
+# - Updates display on level up
+
 extends PanelContainer
+
+# Debug configuration
+var debug_enabled: bool = false
+var global_debug: bool = true
 
 signal section_selected(section_name: String)
 
@@ -93,7 +114,7 @@ func _on_button_pressed(section: String, button: Button) -> void:
 		# Other sections will emit signal for expandable content later
 
 func _on_level_up(new_level: int, rewards: Dictionary) -> void:
-	print("ProfileCard: Level up detected, updating display")
+	debug_log("Level up detected, updating display")
 	_update_display()
 
 # For when player joins a clan
@@ -105,7 +126,7 @@ func set_clan_symbol(clan_symbol: String) -> void:
 		clan_label.visible = false
 		
 func _on_ui_button_toggled(section: String, button: Button, pressed: bool) -> void:
-	print("ProfileCard: Button toggled - ", section, " pressed: ", pressed)
+	debug_log("Button toggled - %s pressed: %s" % [section, pressed])
 	
 	if pressed:
 		# Untoggle all other buttons
@@ -125,3 +146,8 @@ func untoggle_all_buttons():
 	for btn in ui_buttons:
 		if btn and btn.button_pressed:
 			btn.button_pressed = false
+
+func debug_log(message: String) -> void:
+	"""Debug logging with component prefix"""
+	if debug_enabled and global_debug:
+		print("[PROFILECARD] %s" % message)

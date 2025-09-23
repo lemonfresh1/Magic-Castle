@@ -1,6 +1,6 @@
 # TierColumn.gd - Individual tier column display with reward cards
 # Location: res://Pyramids/scripts/ui/components/TierColumn.gd
-# Last Updated: August 23, 2025 - Fixed manager selection bug, added popup display, cleaned debug prints
+# Last Updated: Added debug system, replaced print statements
 #
 # Dependencies:
 #   - UnifiedItemCard - Displays individual rewards
@@ -26,8 +26,9 @@
 extends VBoxContainer
 class_name TierColumn
 
-# Debug flag - set to false for production
-const DEBUG = true
+# Debug configuration
+var debug_enabled: bool = false
+var global_debug: bool = true
 
 # Global counter for debugging
 static var total_instances: int = 0
@@ -170,8 +171,8 @@ func setup(tier_data: Dictionary, theme: String = "battle_pass"):
 	current_tier_level = manager.get_current_tier()
 	
 	# Debug output for tracking (wrapped)
-	if DEBUG and tier_number <= 5:
-		print("[TierColumn] Tier %d - unlocked: %s, premium: %s, free_claimed: %s, premium_claimed: %s" % 
+	if tier_number <= 5:
+		debug_log("Tier %d - unlocked: %s, premium: %s, free_claimed: %s, premium_claimed: %s" % 
 			[tier_number, is_unlocked, has_premium_pass, free_claimed, premium_claimed])
 	
 	# Set tier number
@@ -419,7 +420,7 @@ func _on_free_card_clicked():
 	# Claim ONLY free reward
 	var success = manager.claim_tier_rewards(tier_number, true, false)
 	if success:
-		print("[TierColumn] Successfully claimed FREE reward for tier %d" % tier_number)
+		debug_log("Successfully claimed FREE reward for tier %d" % tier_number)
 		# FIXED: Show popup after successful claim
 		_show_claim_popup(free_reward_data, true)
 		# Update visual state
@@ -440,7 +441,7 @@ func _on_premium_card_clicked():
 	# Claim ONLY premium reward
 	var success = manager.claim_tier_rewards(tier_number, false, true)
 	if success:
-		print("[TierColumn] Successfully claimed PREMIUM reward for tier %d" % tier_number)
+		debug_log("Successfully claimed PREMIUM reward for tier %d" % tier_number)
 		# FIXED: Show popup after successful claim
 		_show_claim_popup(premium_reward_data, false)
 		# Update visual state
@@ -520,3 +521,8 @@ func _draw_tier_glow():
 	var border_color = theme_color
 	border_color.a = 0.2
 	tier_glow_effect.draw_rect(rect, border_color, false, 2.0)
+
+func debug_log(message: String) -> void:
+	"""Debug logging with component prefix"""
+	if debug_enabled and global_debug:
+		print("[TIERCOLUMN] %s" % message)

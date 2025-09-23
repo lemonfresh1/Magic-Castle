@@ -1,6 +1,31 @@
-# SeasonPassUI.gd - Season pass interface with tiers and missions (FIXED)
+# SeasonPassUI.gd - Comprehensive season pass interface with battle pass tiers and mission management
 # Location: res://Pyramids/scripts/ui/season_pass/SeasonPassUI.gd
-# Last Updated: Fixed initialization order to prevent double creation [Date]
+# Last Updated: Applied debug system throughout, enhanced description
+#
+# Purpose: Main UI for the season pass system, providing tabbed interface for overview,
+# battle pass tiers, and daily/weekly missions. Manages pass progression display,
+# tier rewards claiming, mission tracking, and premium pass purchasing.
+#
+# Dependencies:
+# - SeasonPassManager (autoload) - Core season pass data and progression
+# - UnifiedMissionManager (autoload) - Mission completion and claiming
+# - UIStyleManager (autoload) - UI styling and theme application
+# - XPManager (autoload) - Level up notifications during claims
+# - PassLayout (scene) - Tier display and scrolling component
+# - MissionCard (scene) - Individual mission display cards
+#
+# Tab Structure:
+# 1. Overview - Season stats, tier progress, premium status
+# 2. Battle Pass - Scrollable tier rewards with PassLayout
+# 3. Daily Missions - Filterable daily mission cards
+# 4. Weekly Missions - Filterable weekly mission cards
+#
+# Key Features:
+# - Prevents duplicate initialization with has_been_initialized flag
+# - Deferred signal connections to avoid initialization conflicts
+# - Mission filtering (all/open/completed) without recreation
+# - Level-up notification queuing during claims
+# - Dynamic content refresh on tab changes
 
 extends PanelContainer
 
@@ -20,27 +45,28 @@ var mission_cards = {}  # {mission_id: card_instance}
 var pending_level_ups: Array = []
 var claim_in_progress: bool = false
 
-# Debug settings (add after var declarations)
+# Debug settings
 var debug_enabled: bool = false  # Set to true to enable debug logging
 var global_debug: bool = true    # Global debug flag
 
 func _debug_log(message: String) -> void:
 	if debug_enabled and global_debug:
-		print("[SEASONPASSUI] %s" % message)  # or [HOLIDAYUI] for HolidayUI
+		print("[SEASONPASSUI] %s" % message)
 
 func _ready():
-	print("\n[SeasonPassUI] _ready() called - Instance: ", get_instance_id())
-	print("[SeasonPassUI] Stack trace:")
-	print_stack()
-	print("[SeasonPassUI] Parent: ", get_parent(), " Parent's parent: ", get_parent().get_parent() if get_parent() else "none")
+	_debug_log("\n_ready() called - Instance: %s" % get_instance_id())
+	_debug_log("Stack trace:")
+	if debug_enabled and global_debug:
+		print_stack()
+	_debug_log("Parent: %s Parent's parent: %s" % [get_parent(), get_parent().get_parent() if get_parent() else "none"])
 	
 	# Check if we've already initialized
 	if has_been_initialized:
-		print("[SeasonPassUI] WARNING: Already initialized! Skipping duplicate _ready() call")
+		_debug_log("WARNING: Already initialized! Skipping duplicate _ready() call")
 		return
 	
 	if is_initializing:
-		print("[SeasonPassUI] WARNING: Already initializing! Skipping duplicate _ready() call")
+		_debug_log("WARNING: Already initializing! Skipping duplicate _ready() call")
 		return
 	
 	# Set flags
@@ -75,44 +101,43 @@ func _ready():
 	if XPManager:
 		XPManager.level_up_occurred.connect(_on_level_up_occurred)
 
-
 func _initialize_all_tabs():
 	"""Initialize all tabs and wait for their completion"""
-	print("[SeasonPassUI] Starting controlled tab initialization")
+	_debug_log("Starting controlled tab initialization")
 	
 	# Setup Overview tab
 	var overview_tab = tab_container.get_node_or_null("Overview")
 	if overview_tab:
-		print("[SeasonPassUI] Setting up Overview tab")
+		_debug_log("Setting up Overview tab")
 		await UIStyleManager.setup_scrollable_content(overview_tab, _populate_overview_content)
 		await get_tree().process_frame
 	
 	# Setup Battle Pass tab
 	var battle_pass_tab = tab_container.get_node_or_null("Battle Pass")
 	if battle_pass_tab:
-		print("[SeasonPassUI] Setting up Battle Pass tab")
+		_debug_log("Setting up Battle Pass tab")
 		await _setup_battle_pass_tab(battle_pass_tab)
 		await get_tree().process_frame
 	
 	# Setup Daily Missions tab
 	var daily_missions_tab = tab_container.get_node_or_null("Daily Missions")
 	if daily_missions_tab:
-		print("[SeasonPassUI] Setting up Daily Missions tab")
+		_debug_log("Setting up Daily Missions tab")
 		_setup_missions_tab(daily_missions_tab, "daily")
 		await get_tree().process_frame
 	
 	# Setup Weekly Missions tab
 	var weekly_missions_tab = tab_container.get_node_or_null("Weekly Missions")
 	if weekly_missions_tab:
-		print("[SeasonPassUI] Setting up Weekly Missions tab")
+		_debug_log("Setting up Weekly Missions tab")
 		_setup_missions_tab(weekly_missions_tab, "weekly")
 		await get_tree().process_frame
 	
-	print("[SeasonPassUI] All tabs initialized successfully")
+	_debug_log("All tabs initialized successfully")
 
 func _connect_all_signals():
 	"""Connect all signals after tabs are initialized"""
-	print("[SeasonPassUI] Connecting signals")
+	_debug_log("Connecting signals")
 	
 	# Connect tab changed signal
 	if not tab_container.tab_changed.is_connected(_on_tab_changed):
@@ -132,21 +157,21 @@ func _connect_all_signals():
 		if not SeasonPassManager.season_progress_updated.is_connected(_on_season_progress_updated):
 			SeasonPassManager.season_progress_updated.connect(_on_season_progress_updated)
 	
-	print("[SeasonPassUI] All signals connected")
+	_debug_log("All signals connected")
 
 func _setup_battle_pass_tab(battle_pass_tab: Control):
 	"""Setup the Battle Pass tab with PassLayout directly, no wrapper panel"""
-	print("[SeasonPassUI] _setup_battle_pass_tab called")
+	_debug_log("_setup_battle_pass_tab called")
 	
 	# Debug current state
-	print("[SeasonPassUI] Battle Pass tab children before setup: ", battle_pass_tab.get_child_count())
+	_debug_log("Battle Pass tab children before setup: %d" % battle_pass_tab.get_child_count())
 	for i in range(battle_pass_tab.get_child_count()):
 		var child = battle_pass_tab.get_child(i)
-		print("  - Child %d: %s (Type: %s, Instance: %s)" % [i, child.name, child.get_class(), child.get_instance_id()])
+		_debug_log("  - Child %d: %s (Type: %s, Instance: %s)" % [i, child.name, child.get_class(), child.get_instance_id()])
 	
 	# Check if PassLayout already exists and is tracked
 	if pass_layout and is_instance_valid(pass_layout):
-		print("[SeasonPassUI] PassLayout already exists and is valid, using existing")
+		_debug_log("PassLayout already exists and is valid, using existing")
 		return
 	
 	# Check if PassLayout exists in the scene
@@ -154,11 +179,11 @@ func _setup_battle_pass_tab(battle_pass_tab: Control):
 	for child in battle_pass_tab.get_children():
 		if child is PassLayout:
 			existing_pass_layout = child
-			print("[SeasonPassUI] Found existing PassLayout in scene: ", child.get_instance_id())
+			_debug_log("Found existing PassLayout in scene: %s" % child.get_instance_id())
 			break
 	
 	if existing_pass_layout:
-		print("[SeasonPassUI] Using existing PassLayout from scene")
+		_debug_log("Using existing PassLayout from scene")
 		pass_layout = existing_pass_layout
 		
 		# Configure the existing PassLayout
@@ -181,12 +206,12 @@ func _setup_battle_pass_tab(battle_pass_tab: Control):
 		return
 	
 	# Create new PassLayout only if none exists
-	print("[SeasonPassUI] Creating new PassLayout")
+	_debug_log("Creating new PassLayout")
 	
 	# Clear any non-PassLayout children
 	for child in battle_pass_tab.get_children():
 		if not child is PassLayout:
-			print("[SeasonPassUI] Removing child: ", child.name)
+			_debug_log("Removing child: %s" % child.name)
 			child.queue_free()
 	
 	# Wait for cleanup
@@ -195,7 +220,7 @@ func _setup_battle_pass_tab(battle_pass_tab: Control):
 	# Create PassLayout
 	pass_layout = pass_layout_scene.instantiate()
 	battle_pass_tab.add_child(pass_layout)
-	print("[SeasonPassUI] Created new PassLayout: ", pass_layout.get_instance_id())
+	_debug_log("Created new PassLayout: %s" % pass_layout.get_instance_id())
 	
 	# Configure PassLayout
 	pass_layout.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -212,21 +237,21 @@ func _setup_battle_pass_tab(battle_pass_tab: Control):
 	# Setup the pass
 	pass_layout.setup_pass()
 	
-	print("[SeasonPassUI] Battle Pass tab setup complete")
+	_debug_log("Battle Pass tab setup complete")
 
 func _connect_pass_layout_signals():
 	"""Connect PassLayout signals"""
 	if not pass_layout.tier_clicked.is_connected(_on_tier_clicked):
 		pass_layout.tier_clicked.connect(_on_tier_clicked)
-		print("[SeasonPassUI] Connected tier_clicked signal")
+		_debug_log("Connected tier_clicked signal")
 	
 	if not pass_layout.reward_claimed.is_connected(_on_reward_claimed):
 		pass_layout.reward_claimed.connect(_on_reward_claimed)
-		print("[SeasonPassUI] Connected reward_claimed signal")
+		_debug_log("Connected reward_claimed signal")
 
 func _on_season_points_gained(amount: int, source: String):
 	"""Handle when season points are gained"""
-	print("[SeasonPassUI] SP gained: %d from %s" % [amount, source])
+	_debug_log("SP gained: %d from %s" % [amount, source])
 	# Refresh overview if it's the current tab
 	if tab_container.current_tab == 0:
 		_refresh_overview()
@@ -243,23 +268,23 @@ func _on_tab_changed(tab_idx: int):
 	"""Handle tab changes"""
 	# Ignore tab changes during initialization
 	if is_initializing:
-		print("[SeasonPassUI] Ignoring tab change during initialization")
+		_debug_log("Ignoring tab change during initialization")
 		return
 	
-	print("[SeasonPassUI] Tab changed to: ", tab_container.get_tab_title(tab_idx))
+	_debug_log("Tab changed to: %s" % tab_container.get_tab_title(tab_idx))
 	_populate_current_tab()
 
 func _populate_current_tab():
 	"""Populate content for the currently active tab"""
 	if is_initializing:
-		print("[SeasonPassUI] Skipping populate during initialization")
+		_debug_log("Skipping populate during initialization")
 		return
 	
 	var current_tab_idx = tab_container.current_tab
 	var current_tab_name = tab_container.get_tab_title(current_tab_idx)
 	var current_tab = tab_container.get_child(current_tab_idx)
 	
-	print("[SeasonPassUI] Populating tab: ", current_tab_name)
+	_debug_log("Populating tab: %s" % current_tab_name)
 	
 	match current_tab_name:
 		"Overview":
@@ -279,11 +304,11 @@ func _populate_current_tab():
 				
 				if not has_content:
 					# First time - create content
-					print("No content found, setting up scrollable content")
+					_debug_log("No content found, setting up scrollable content")
 					await UIStyleManager.setup_scrollable_content(current_tab, _populate_missions_content)
 				else:
 					# FIXED: Don't recreate, just update existing cards
-					print("Content exists, updating mission cards")
+					_debug_log("Content exists, updating mission cards")
 					_update_mission_visibility()
 
 func _setup_missions_tab(tab: Control, mission_type: String):
@@ -364,7 +389,7 @@ func _populate_overview_content(vbox: VBoxContainer) -> void:
 
 func _populate_missions_content(vbox: VBoxContainer) -> void:
 	"""Initial population of missions - only called once per tab"""
-	print("=== Initial mission population ===")
+	_debug_log("=== Initial mission population ===")
 	
 	vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -417,11 +442,11 @@ func _populate_missions_content(vbox: VBoxContainer) -> void:
 
 func _on_tier_clicked(tier_number: int):
 	"""Handle tier click from PassLayout"""
-	print("Tier %d clicked" % tier_number)
+	_debug_log("Tier %d clicked" % tier_number)
 
 func _on_reward_claimed(tier_number: int, is_premium: bool):
 	"""Handle reward claimed from PassLayout"""
-	print("Reward claimed - Tier: %d, Premium: %s" % [tier_number, is_premium])
+	_debug_log("Reward claimed - Tier: %d, Premium: %s" % [tier_number, is_premium])
 	
 	# Refresh overview if visible
 	if tab_container.current_tab == 0:
@@ -430,14 +455,14 @@ func _on_reward_claimed(tier_number: int, is_premium: bool):
 func _on_purchase_premium():
 	"""Handle premium pass purchase"""
 	if SeasonPassManager.purchase_premium_pass():
-		print("Premium pass purchased!")
+		_debug_log("Premium pass purchased!")
 		# Update pass layout
 		if pass_layout:
 			pass_layout.set_premium_status(true)
 		# Refresh overview
 		_refresh_overview()
 	else:
-		print("Failed to purchase premium pass - not enough stars")
+		_debug_log("Failed to purchase premium pass - not enough stars")
 
 func _refresh_overview():
 	"""Refresh the overview tab content"""
@@ -447,7 +472,7 @@ func _refresh_overview():
 
 func _on_filter_changed(index: int):
 	"""Handle filter change without recreating content"""
-	print("Filter changed to index: ", index)
+	_debug_log("Filter changed to index: %d" % index)
 	match index:
 		0:
 			filter_mode = "all"
@@ -456,12 +481,12 @@ func _on_filter_changed(index: int):
 		2:
 			filter_mode = "completed"
 	
-	print("New filter mode: ", filter_mode)
+	_debug_log("New filter mode: %s" % filter_mode)
 	_apply_mission_filter()  # Just apply filter, don't recreate
 
 func _apply_mission_filter():
 	"""Show/hide mission cards based on current filter"""
-	print("Applying filter: ", filter_mode)
+	_debug_log("Applying filter: %s" % filter_mode)
 	
 	var visible_count = 0
 	
@@ -516,14 +541,14 @@ func _apply_mission_filter():
 
 func _update_mission_visibility():
 	"""Update mission cards when data changes (completion, claims, etc)"""
-	print("[SeasonPassUI] === UPDATE VISIBILITY STARTED")
+	_debug_log("=== UPDATE VISIBILITY STARTED")
 	
 	# Get fresh mission data
 	var current_tab_name = tab_container.get_tab_title(tab_container.current_tab)
 	var mission_type = "daily" if current_tab_name == "Daily Missions" else "weekly"
 	var missions = UnifiedMissionManager.get_missions_for_system("season_pass", mission_type)
 	
-	print("[SeasonPassUI] Got %d missions for %s" % [missions.size(), mission_type])
+	_debug_log("Got %d missions for %s" % [missions.size(), mission_type])
 	
 	# Create a list to track cards that need repositioning
 	var cards_to_reorder = []
@@ -562,7 +587,7 @@ func _update_mission_visibility():
 
 func _refresh_missions():
 	"""Refresh missions when filter changes"""
-	print("Refreshing missions with filter: ", filter_mode)
+	_debug_log("Refreshing missions with filter: %s" % filter_mode)
 	
 	var current_tab_idx = tab_container.current_tab
 	var current_tab_name = tab_container.get_tab_title(current_tab_idx)

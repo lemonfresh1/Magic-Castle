@@ -4,7 +4,7 @@
 extends Control
 
 # === DEBUG CONFIGURATION ===
-var debug_enabled: bool = true  # Set to true for debugging
+var debug_enabled: bool = false  # Set to true for debugging
 var global_debug: bool = true
 var is_mobile_platform: bool = false  # Track if on mobile
 

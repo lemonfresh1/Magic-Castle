@@ -1,8 +1,37 @@
-# HolidayUI.gd - Holiday event interface with pass and missions
+# HolidayUI.gd - Holiday event interface with themed pass and mission management
 # Location: res://Pyramids/scripts/ui/holiday/HolidayUI.gd
-# Last Updated: Fixed references to HolidayEventManager and applied holiday styling [Date]
+# Last Updated: Added debug system, enhanced description
+#
+# Purpose: Main UI for holiday events (Christmas, Halloween, etc), providing tabbed
+# interface for event overview, holiday pass tiers, and themed missions. Mirrors
+# SeasonPassUI functionality but with holiday-specific theming and event data.
+#
+# Dependencies:
+# - HolidayEventManager (autoload) - Core holiday event data and progression
+# - UnifiedMissionManager (autoload) - Mission completion and claiming for holiday events
+# - UIStyleManager (autoload) - UI styling with holiday theme overrides
+# - XPManager (autoload) - Level up notifications during claims
+# - PassLayout (scene) - Tier display component configured for holiday theme
+# - MissionCard (scene) - Individual mission display cards
+#
+# Tab Structure:
+# 1. Overview - Event stats, tier progress, premium status, holiday theming
+# 2. Holiday Pass - Scrollable tier rewards with holiday-themed PassLayout
+# 3. Daily Missions - Holiday-specific daily mission cards
+# 4. Weekly Missions - Holiday-specific weekly mission cards
+#
+# Holiday Theming:
+# - Red (#DC2626) primary color for Christmas/Valentine's
+# - Gold (#FCD34D) accent color for premium/special items
+# - Warm (#FEF3C7) background tints
+# - Custom button styling with holiday colors
+# - Event-specific currency names and icons (e.g., "Snowflakes" for Christmas)
 
 extends PanelContainer
+
+# Debug configuration
+var debug_enabled: bool = false
+var global_debug: bool = true
 
 signal holiday_ui_closed
 
@@ -23,27 +52,24 @@ const HOLIDAY_RED = "#DC2626"
 const HOLIDAY_GOLD = "#FCD34D"
 const HOLIDAY_WARM = "#FEF3C7"
 
-# Debug settings (add after var declarations)
-var debug_enabled: bool = false  # Set to true to enable debug logging
-var global_debug: bool = true    # Global debug flag
-
 func _debug_log(message: String) -> void:
 	if debug_enabled and global_debug:
-		print("[HOLIDAYUI] %s" % message)  # or [HOLIDAYUI] for HolidayUI
+		print("[HOLIDAYUI] %s" % message)
 
 func _ready():
-	print("\n[HolidayUI] _ready() called - Instance: ", get_instance_id())
-	print("[HolidayUI] Stack trace:")
-	print_stack()
-	print("[HolidayUI] Parent: ", get_parent(), " Parent's parent: ", get_parent().get_parent() if get_parent() else "none")
+	_debug_log("\n_ready() called - Instance: %s" % get_instance_id())
+	_debug_log("Stack trace:")
+	if debug_enabled and global_debug:
+		print_stack()
+	_debug_log("Parent: %s Parent's parent: %s" % [get_parent(), get_parent().get_parent() if get_parent() else "none"])
 	
 	# Check if we've already initialized
 	if has_been_initialized:
-		print("[HolidayUI] WARNING: Already initialized! Skipping duplicate _ready() call")
+		_debug_log("WARNING: Already initialized! Skipping duplicate _ready() call")
 		return
 	
 	if is_initializing:
-		print("[HolidayUI] WARNING: Already initializing! Skipping duplicate _ready() call")
+		_debug_log("WARNING: Already initializing! Skipping duplicate _ready() call")
 		return
 	
 	# Set flags
@@ -80,41 +106,41 @@ func _ready():
 
 func _initialize_all_tabs():
 	"""Initialize all tabs and wait for their completion"""
-	print("[HolidayUI] Starting controlled tab initialization")
+	_debug_log("Starting controlled tab initialization")
 	
 	# Setup Overview tab
 	var overview_tab = tab_container.get_node_or_null("Overview")
 	if overview_tab:
-		print("[HolidayUI] Setting up Overview tab")
+		_debug_log("Setting up Overview tab")
 		await UIStyleManager.setup_scrollable_content(overview_tab, _populate_overview_content)
 		await get_tree().process_frame
 	
 	# Setup Holiday Pass tab
 	var holiday_pass_tab = tab_container.get_node_or_null("Holiday Pass")
 	if holiday_pass_tab:
-		print("[HolidayUI] Setting up Holiday Pass tab")
+		_debug_log("Setting up Holiday Pass tab")
 		await _setup_holiday_pass_tab(holiday_pass_tab)
 		await get_tree().process_frame
 	
 	# Setup Daily Missions tab
 	var daily_missions_tab = tab_container.get_node_or_null("Daily Missions")
 	if daily_missions_tab:
-		print("[HolidayUI] Setting up Daily Missions tab")
+		_debug_log("Setting up Daily Missions tab")
 		_setup_missions_tab(daily_missions_tab, "daily")
 		await get_tree().process_frame
 	
 	# Setup Weekly Missions tab
 	var weekly_missions_tab = tab_container.get_node_or_null("Weekly Missions")
 	if weekly_missions_tab:
-		print("[HolidayUI] Setting up Weekly Missions tab")
+		_debug_log("Setting up Weekly Missions tab")
 		_setup_missions_tab(weekly_missions_tab, "weekly")
 		await get_tree().process_frame
 	
-	print("[HolidayUI] All tabs initialized successfully")
+	_debug_log("All tabs initialized successfully")
 
 func _connect_all_signals():
 	"""Connect all signals after tabs are initialized"""
-	print("[HolidayUI] Connecting signals")
+	_debug_log("Connecting signals")
 	
 	# Connect tab changed signal
 	if not tab_container.tab_changed.is_connected(_on_tab_changed):
@@ -134,21 +160,21 @@ func _connect_all_signals():
 		if not HolidayEventManager.holiday_progress_updated.is_connected(_on_holiday_progress_updated):
 			HolidayEventManager.holiday_progress_updated.connect(_on_holiday_progress_updated)
 	
-	print("[HolidayUI] All signals connected")
+	_debug_log("All signals connected")
 
 func _setup_holiday_pass_tab(holiday_pass_tab: Control):
 	"""Setup the Holiday Pass tab with PassLayout directly, no wrapper panel"""
-	print("[HolidayUI] _setup_holiday_pass_tab called")
+	_debug_log("_setup_holiday_pass_tab called")
 	
 	# Debug current state
-	print("[HolidayUI] Holiday Pass tab children before setup: ", holiday_pass_tab.get_child_count())
+	_debug_log("Holiday Pass tab children before setup: %d" % holiday_pass_tab.get_child_count())
 	for i in range(holiday_pass_tab.get_child_count()):
 		var child = holiday_pass_tab.get_child(i)
-		print("  - Child %d: %s (Type: %s, Instance: %s)" % [i, child.name, child.get_class(), child.get_instance_id()])
+		_debug_log("  - Child %d: %s (Type: %s, Instance: %s)" % [i, child.name, child.get_class(), child.get_instance_id()])
 	
 	# Check if PassLayout already exists and is tracked
 	if pass_layout and is_instance_valid(pass_layout):
-		print("[HolidayUI] PassLayout already exists and is valid, using existing")
+		_debug_log("PassLayout already exists and is valid, using existing")
 		return
 	
 	# Check if PassLayout exists in the scene
@@ -156,11 +182,11 @@ func _setup_holiday_pass_tab(holiday_pass_tab: Control):
 	for child in holiday_pass_tab.get_children():
 		if child is PassLayout:
 			existing_pass_layout = child
-			print("[HolidayUI] Found existing PassLayout in scene: ", child.get_instance_id())
+			_debug_log("Found existing PassLayout in scene: %s" % child.get_instance_id())
 			break
 	
 	if existing_pass_layout:
-		print("[HolidayUI] Using existing PassLayout from scene")
+		_debug_log("Using existing PassLayout from scene")
 		pass_layout = existing_pass_layout
 		
 		# Configure the existing PassLayout
@@ -183,12 +209,12 @@ func _setup_holiday_pass_tab(holiday_pass_tab: Control):
 		return
 	
 	# Create new PassLayout only if none exists
-	print("[HolidayUI] Creating new PassLayout")
+	_debug_log("Creating new PassLayout")
 	
 	# Clear any non-PassLayout children
 	for child in holiday_pass_tab.get_children():
 		if not child is PassLayout:
-			print("[HolidayUI] Removing child: ", child.name)
+			_debug_log("Removing child: %s" % child.name)
 			child.queue_free()
 	
 	# Wait for cleanup
@@ -197,7 +223,7 @@ func _setup_holiday_pass_tab(holiday_pass_tab: Control):
 	# Create PassLayout
 	pass_layout = pass_layout_scene.instantiate()
 	holiday_pass_tab.add_child(pass_layout)
-	print("[HolidayUI] Created new PassLayout: ", pass_layout.get_instance_id())
+	_debug_log("Created new PassLayout: %s" % pass_layout.get_instance_id())
 	
 	# Configure PassLayout
 	pass_layout.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -215,21 +241,21 @@ func _setup_holiday_pass_tab(holiday_pass_tab: Control):
 	# Setup the pass
 	pass_layout.setup_pass()
 	
-	print("[HolidayUI] Holiday Pass tab setup complete")
+	_debug_log("Holiday Pass tab setup complete")
 
 func _connect_pass_layout_signals():
 	"""Connect PassLayout signals"""
 	if not pass_layout.tier_clicked.is_connected(_on_tier_clicked):
 		pass_layout.tier_clicked.connect(_on_tier_clicked)
-		print("[HolidayUI] Connected tier_clicked signal")
+		_debug_log("Connected tier_clicked signal")
 	
 	if not pass_layout.reward_claimed.is_connected(_on_reward_claimed):
 		pass_layout.reward_claimed.connect(_on_reward_claimed)
-		print("[HolidayUI] Connected reward_claimed signal")
+		_debug_log("Connected reward_claimed signal")
 
 func _on_holiday_points_gained(amount: int, source: String):
 	"""Handle when holiday points are gained"""
-	print("[HolidayUI] HP gained: %d from %s" % [amount, source])
+	_debug_log("HP gained: %d from %s" % [amount, source])
 	# Refresh overview if it's the current tab
 	if tab_container.current_tab == 0:
 		_refresh_overview()
@@ -246,23 +272,23 @@ func _on_tab_changed(tab_idx: int):
 	"""Handle tab changes"""
 	# Ignore tab changes during initialization
 	if is_initializing:
-		print("[HolidayUI] Ignoring tab change during initialization")
+		_debug_log("Ignoring tab change during initialization")
 		return
 	
-	print("[HolidayUI] Tab changed to: ", tab_container.get_tab_title(tab_idx))
+	_debug_log("Tab changed to: %s" % tab_container.get_tab_title(tab_idx))
 	_populate_current_tab()
 
 func _populate_current_tab():
 	"""Populate content for the currently active tab"""
 	if is_initializing:
-		print("[HolidayUI] Skipping populate during initialization")
+		_debug_log("Skipping populate during initialization")
 		return
 	
 	var current_tab_idx = tab_container.current_tab
 	var current_tab_name = tab_container.get_tab_title(current_tab_idx)
 	var current_tab = tab_container.get_child(current_tab_idx)
 	
-	print("[HolidayUI] Populating tab: ", current_tab_name)
+	_debug_log("Populating tab: %s" % current_tab_name)
 	
 	match current_tab_name:
 		"Overview":
@@ -282,11 +308,11 @@ func _populate_current_tab():
 				
 				if not has_content:
 					# First time - create content
-					print("No content found, setting up scrollable content")
+					_debug_log("No content found, setting up scrollable content")
 					await UIStyleManager.setup_scrollable_content(current_tab, _populate_missions_content)
 				else:
 					# FIXED: Don't recreate, just update existing cards
-					print("Content exists, updating mission cards")
+					_debug_log("Content exists, updating mission cards")
 					_update_mission_visibility()
 
 func _setup_missions_tab(tab: Control, mission_type: String):
@@ -407,7 +433,7 @@ func _apply_holiday_button_style(button: Button):
 
 func _populate_missions_content(vbox: VBoxContainer) -> void:
 	"""Initial population of missions - only called once per tab"""
-	print("=== Initial mission population ===")
+	_debug_log("=== Initial mission population ===")
 	
 	vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -460,11 +486,11 @@ func _populate_missions_content(vbox: VBoxContainer) -> void:
 
 func _on_tier_clicked(tier_number: int):
 	"""Handle tier click from PassLayout"""
-	print("Tier %d clicked" % tier_number)
+	_debug_log("Tier %d clicked" % tier_number)
 
 func _on_reward_claimed(tier_number: int, is_premium: bool):
 	"""Handle reward claimed from PassLayout"""
-	print("Reward claimed - Tier: %d, Premium: %s" % [tier_number, is_premium])
+	_debug_log("Reward claimed - Tier: %d, Premium: %s" % [tier_number, is_premium])
 	
 	# Refresh overview if visible
 	if tab_container.current_tab == 0:
@@ -473,14 +499,14 @@ func _on_reward_claimed(tier_number: int, is_premium: bool):
 func _on_purchase_premium():
 	"""Handle premium pass purchase"""
 	if HolidayEventManager.purchase_premium_pass():  # FIXED: using correct name
-		print("Holiday pass purchased!")
+		_debug_log("Holiday pass purchased!")
 		# Update pass layout
 		if pass_layout:
 			pass_layout.set_premium_status(true)
 		# Refresh overview
 		_refresh_overview()
 	else:
-		print("Failed to purchase holiday pass - not enough stars")
+		_debug_log("Failed to purchase holiday pass - not enough stars")
 
 func _refresh_overview():
 	"""Refresh the overview tab content"""
@@ -490,7 +516,7 @@ func _refresh_overview():
 
 func _on_filter_changed(index: int):
 	"""Handle filter change without recreating content"""
-	print("Filter changed to index: ", index)
+	_debug_log("Filter changed to index: %d" % index)
 	match index:
 		0:
 			filter_mode = "all"
@@ -499,12 +525,12 @@ func _on_filter_changed(index: int):
 		2:
 			filter_mode = "completed"
 	
-	print("New filter mode: ", filter_mode)
+	_debug_log("New filter mode: %s" % filter_mode)
 	_apply_mission_filter()  # Just apply filter, don't recreate
 
 func _apply_mission_filter():
 	"""Show/hide mission cards based on current filter"""
-	print("Applying filter: ", filter_mode)
+	_debug_log("Applying filter: %s" % filter_mode)
 	
 	var visible_count = 0
 	
@@ -601,7 +627,7 @@ func _update_mission_visibility():
 
 func _refresh_missions():
 	"""Refresh missions when filter changes"""
-	print("Refreshing missions with filter: ", filter_mode)
+	_debug_log("Refreshing missions with filter: %s" % filter_mode)
 	
 	var current_tab_idx = tab_container.current_tab
 	var current_tab_name = tab_container.get_tab_title(current_tab_idx)

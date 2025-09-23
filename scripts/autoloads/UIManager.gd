@@ -1,8 +1,12 @@
 # UIManager.gd - Manages all UI panels and ensures only one is open at a time
 # Location: res://Pyramids/scripts/autoloads/UIManager.gd
-# Last Updated: Added button toggle state management [Date]
+# Last Updated: Added debug system, replaced print statements
 
 extends Node
+
+# Debug configuration
+var debug_enabled: bool = false
+var global_debug: bool = true
 
 signal ui_panel_opened(panel_name: String)
 signal ui_panel_closed(panel_name: String)
@@ -16,21 +20,21 @@ var current_button: BaseButton = null
 var button_panel_map = {}
 
 func open_panel(panel: Control, panel_name: String, opening_button: BaseButton = null):
-	print("UIManager: Request to open panel: ", panel_name)
-	print("  - Current panel: ", current_panel_name)
-	print("  - Opening button: ", opening_button.name if opening_button else "none")
-	print("  - Current button: ", current_button.name if current_button else "none")
-	print("  - Button pressed state: ", opening_button.button_pressed if opening_button else "N/A")
+	debug_log("Request to open panel: %s" % panel_name)
+	debug_log("  - Current panel: %s" % current_panel_name)
+	debug_log("  - Opening button: %s" % (opening_button.name if opening_button else "none"))
+	debug_log("  - Current button: %s" % (current_button.name if current_button else "none"))
+	debug_log("  - Button pressed state: %s" % (opening_button.button_pressed if opening_button else "N/A"))
 	
 	# If clicking the same button that opened current panel, close it
 	if opening_button and current_panel == panel and current_button == opening_button:
-		print("  - Same button clicked, closing panel")
+		debug_log("  - Same button clicked, closing panel")
 		close_current_panel()
 		return
 	
 	# Close current panel if different
 	if current_panel and current_panel != panel:
-		print("  - Different panel requested, closing current")
+		debug_log("  - Different panel requested, closing current")
 		close_current_panel()
 	
 	# Open new panel
@@ -47,14 +51,14 @@ func open_panel(panel: Control, panel_name: String, opening_button: BaseButton =
 		opening_button.button_pressed = true
 		current_button = opening_button
 		button_panel_map[opening_button] = panel_name
-		print("  - Set button pressed: ", opening_button.name)
+		debug_log("  - Set button pressed: %s" % opening_button.name)
 	
 	# Call show method if it exists
 	if panel.has_method("show_" + panel_name):
 		panel.call("show_" + panel_name)
 	
 	ui_panel_opened.emit(panel_name)
-	print("UIManager: Opened panel: ", panel_name)
+	debug_log("Opened panel: %s" % panel_name)
 
 func _untoggle_all_profile_buttons(except_button: BaseButton = null):
 	# Get the ProfileCard node if it exists
@@ -74,12 +78,12 @@ func _untoggle_all_profile_buttons(except_button: BaseButton = null):
 			var btn = profile_card.get_node_or_null("MarginContainer/HeaderContainer/ButtonContainer/HBoxContainer/" + btn_name)
 			if btn and btn != except_button and btn is BaseButton and btn.toggle_mode:
 				if btn.button_pressed:
-					print("  - Untoggling button: ", btn.name)
+					debug_log("  - Untoggling button: %s" % btn.name)
 					btn.button_pressed = false
 
 func close_current_panel():
 	if current_panel:
-		print("UIManager: Closing panel: ", current_panel_name)
+		debug_log("Closing panel: %s" % current_panel_name)
 		
 		current_panel.visible = false
 		
@@ -115,3 +119,8 @@ func is_panel_open(panel_name: String) -> bool:
 
 func get_current_panel_name() -> String:
 	return current_panel_name
+
+func debug_log(message: String) -> void:
+	"""Debug logging with component prefix"""
+	if debug_enabled and global_debug:
+		print("[UIMANAGER] %s" % message)
