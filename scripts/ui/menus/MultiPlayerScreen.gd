@@ -492,8 +492,15 @@ func _update_multiplayer_buttons_visibility():
 func _refresh_leaderboard_for_current_mode():
 	"""Refresh leaderboard with current solo/multi and mode selection"""
 	if leaderboard_panel and leaderboard_panel.has_method("refresh_for_mode"):
+		# Set whether it's solo or multiplayer mode first
+		if leaderboard_panel.has_method("set_mode_type"):
+			leaderboard_panel.set_mode_type(is_solo_mode)
+		
+		# Then refresh with the current mode - ADD PROPER SUFFIX
 		var mode_key = current_mode_id
-		if not is_solo_mode:
+		if is_solo_mode:
+			mode_key += "_solo"  # Add solo suffix
+		else:
 			mode_key += "_mp"  # Add multiplayer suffix
 		leaderboard_panel.refresh_for_mode(mode_key)
 

@@ -1,0 +1,72 @@
+[gd_scene load_steps=4 format=3 uid="uid://k24lj52gesg"]
+
+[ext_resource type="Script" uid="uid://c0chbajgdjkat" path="res://Pyramids/scripts/ui/popups/ReplayDialog.gd" id="1_ras87"]
+[ext_resource type="Script" uid="uid://dd2kyyy4exmcl" path="res://Pyramids/scripts/ui/components/StyledPanel.gd" id="2_vrbj5"]
+[ext_resource type="Script" uid="uid://c5xs6ntwdsk3t" path="res://Pyramids/scripts/ui/components/StyledButton.gd" id="3_iph42"]
+
+[node name="ReplayDialog" type="ColorRect"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.74902)
+script = ExtResource("1_ras87")
+
+[node name="StyledPanel" type="PanelContainer" parent="."]
+custom_minimum_size = Vector2(200, 160)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -113.0
+offset_top = -80.0
+offset_right = 113.0
+offset_bottom = 80.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("2_vrbj5")
+panel_style = "modal"
+metadata/_custom_type_script = "uid://dd2kyyy4exmcl"
+
+[node name="MarginContainer" type="MarginContainer" parent="StyledPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 24
+
+[node name="VBoxContainer" type="VBoxContainer" parent="StyledPanel/MarginContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_override_constants/separation = 16
+
+[node name="TitleLabel" type="Label" parent="StyledPanel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.0627451, 0.72549, 0.505882, 1)
+theme_override_font_sizes/font_size = 24
+text = "Purchase Item"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HBoxContainer" type="HBoxContainer" parent="StyledPanel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/separation = 12
+
+[node name="PlayButton" type="Button" parent="StyledPanel/MarginContainer/VBoxContainer/HBoxContainer"]
+custom_minimum_size = Vector2(106, 41)
+layout_mode = 2
+script = ExtResource("3_iph42")
+metadata/_custom_type_script = "uid://c5xs6ntwdsk3t"
+
+[node name="LeaveButton" type="Button" parent="StyledPanel/MarginContainer/VBoxContainer/HBoxContainer"]
+custom_minimum_size = Vector2(60, 31)
+layout_mode = 2
+text = "Leave"
+script = ExtResource("3_iph42")
+button_style = "danger"
+metadata/_custom_type_script = "uid://c5xs6ntwdsk3t"

@@ -1,6 +1,6 @@
 # HighscoresPanel.gd - Flexible highscores display system
 # Location: res://Pyramids/scripts/ui/components/HighscoresPanel.gd
-# Last Updated: Complete flexible implementation for single/multiplayer
+# Last Updated: Added support for image icons in action buttons
 
 extends PanelContainer
 
@@ -452,15 +452,13 @@ func _display_scores() -> void:
 		scores_container.add_child(score_row)
 
 func _create_score_row(score_data: Dictionary, index: int) -> Control:
-	"""Create a single score row"""
+	"""Create a single score row with proper icon support"""
 	var hbox = HBoxContainer.new()
 	hbox.name = "ScoreRow" + str(index)
 	hbox.add_theme_constant_override("separation", 8)
 	
-	# Make row clickable if actions exist
-	if not row_actions.is_empty():
-		hbox.gui_input.connect(_on_row_input.bind(index))
-		hbox.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	# Don't make the whole row clickable - we have action buttons for that
+	# Removed: hbox.gui_input.connect and mouse_default_cursor_shape
 	
 	# Add data columns
 	for col in column_config:
@@ -472,8 +470,8 @@ func _create_score_row(score_data: Dictionary, index: int) -> Control:
 		label.custom_minimum_size.x = col.width
 		label.horizontal_alignment = _get_alignment(col.align)
 		
-		# Apply styling
-		if col.key == "player" and score_data.get("is_current_player", false):
+		# Apply styling - check both "player" and "player_name" keys
+		if (col.key == "player" or col.key == "player_name") and score_data.get("is_current_player", false):
 			label.add_theme_color_override("font_color", UIStyleManager.colors.primary)
 		else:
 			label.add_theme_color_override("font_color", UIStyleManager.colors.gray_900)
@@ -489,14 +487,30 @@ func _create_score_row(score_data: Dictionary, index: int) -> Control:
 		
 		for action in row_actions:
 			var btn = Button.new()
-			btn.text = _get_action_icon(action)
 			btn.tooltip_text = _get_action_tooltip(action)
 			btn.custom_minimum_size = Vector2(28, 28)
 			btn.flat = true
-			btn.pressed.connect(func(): action_triggered.emit(action, score_data))
 			
-			# Style mini button
-			btn.add_theme_font_size_override("font_size", 16)
+			# Get the icon string/path
+			var icon_value = _get_action_icon(action)
+			
+			# Check if it's a file path to an image
+			if icon_value.begins_with("res://") and ResourceLoader.exists(icon_value):
+				# Load as image icon
+				var icon_texture = load(icon_value) as Texture2D
+				if icon_texture:
+					btn.icon = icon_texture
+					btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+					btn.expand_icon = true
+					
+					# Don't modulate the button - let the icon show its natural colors
+					# Could add different hover effect here if needed (like scale or glow)
+			else:
+				# Use as text (emoji or symbol)
+				btn.text = icon_value
+				btn.add_theme_font_size_override("font_size", 16)
+			
+			btn.pressed.connect(func(): action_triggered.emit(action, score_data))
 			
 			actions_container.add_child(btn)
 		
@@ -574,7 +588,7 @@ func _get_alignment(align_str: String) -> HorizontalAlignment:
 		_: return HORIZONTAL_ALIGNMENT_LEFT
 
 func _get_action_icon(action: String) -> String:
-	"""Get icon for action button"""
+	"""Get icon for action button - can return emoji or file path"""
 	match action:
 		"watch": return "👁"
 		"copy_seed": return "📋"
@@ -620,8 +634,8 @@ func _update_filter_buttons() -> void:
 			_apply_filter_button_style(child, filter_id == current_filter)
 
 func _on_row_input(event: InputEvent, index: int) -> void:
-	"""Handle row selection/interaction"""
+	"""Handle row selection/interaction - minimal functionality now that we have action buttons"""
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			selected_row_index = index
-			# Could add row highlighting here
+			# Row selection is now just for tracking, actions are handled by buttons
