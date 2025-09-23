@@ -113,6 +113,7 @@ func _connect_signals() -> void:
 	SignalBus.round_started.connect(_on_round_started)
 	SignalBus.card_selected.connect(_on_card_selected)
 	SignalBus.draw_pile_clicked.connect(_on_draw_pile_clicked)
+	SignalBus.reveal_all_cards.connect(_on_reveal_all_cards)
 	
 	# Connect to DrawZoneManager signals
 	DrawZoneManager.draw_zone_clicked.connect(_on_draw_zone_clicked)
@@ -231,3 +232,11 @@ func _on_draw_pile_clicked() -> void:
 	# Update all cards selectability after drawing
 	await get_tree().process_frame
 	update_all_cards()
+
+func _on_reveal_all_cards() -> void:
+	"""Reveal all remaining cards on the board when score screen shows"""
+	for card in board_card_nodes:
+		if card and is_instance_valid(card) and card.is_on_board:
+			# Only flip cards that are currently face down
+			if not card.is_face_up:
+				card.set_face_up(true)

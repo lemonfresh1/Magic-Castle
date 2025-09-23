@@ -15,29 +15,26 @@ grow_vertical = 2
 script = ExtResource("1_1uoxv")
 
 [node name="Panel" type="Panel" parent="."]
-custom_minimum_size = Vector2(500, 500)
+custom_minimum_size = Vector2(500, 170)
 layout_mode = 1
-anchors_preset = 8
+anchors_preset = -1
 anchor_left = 0.5
-anchor_top = 0.5
+anchor_top = 0.83
 anchor_right = 0.5
-anchor_bottom = 0.5
+anchor_bottom = 0.83
+offset_left = -250.0
+offset_top = -100.0
+offset_right = 250.0
+offset_bottom = 70.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_qqhui")
 
 [node name="MarginContainer" type="MarginContainer" parent="Panel"]
-custom_minimum_size = Vector2(500, 500)
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -4.0
-offset_top = -157.5
-offset_right = 4.0
-offset_bottom = 157.5
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/margin_left = 20
@@ -49,36 +46,58 @@ theme_override_constants/margin_bottom = 20
 layout_mode = 2
 theme_override_constants/separation = 15
 
-[node name="TitleLabel" type="Label" parent="Panel/MarginContainer/VBoxContainer"]
+[node name="HBoxContainer" type="HBoxContainer" parent="Panel/MarginContainer/VBoxContainer"]
 layout_mode = 2
+
+[node name="LeftVBox" type="VBoxContainer" parent="Panel/MarginContainer/VBoxContainer/HBoxContainer"]
+layout_mode = 2
+
+[node name="TitleLabel" type="Label" parent="Panel/MarginContainer/VBoxContainer/HBoxContainer/LeftVBox"]
+layout_mode = 2
+size_flags_horizontal = 0
 theme_override_colors/font_color = Color(0.831373, 0.701961, 0, 1)
-theme_override_font_sizes/font_size = 32
 
-[node name="ScoreLabelBase" type="Label" parent="Panel/MarginContainer/VBoxContainer"]
+[node name="RoundScoreLabel" type="Label" parent="Panel/MarginContainer/VBoxContainer/HBoxContainer/LeftVBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 26
-
-[node name="ScoreLabelCards" type="Label" parent="Panel/MarginContainer/VBoxContainer"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 26
-
-[node name="ScoreLabelTime" type="Label" parent="Panel/MarginContainer/VBoxContainer"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 26
-
-[node name="ScoreLabelClear" type="Label" parent="Panel/MarginContainer/VBoxContainer"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 26
-
-[node name="RoundScoreLabel" type="Label" parent="Panel/MarginContainer/VBoxContainer"]
-layout_mode = 2
+size_flags_horizontal = 0
 theme_override_colors/font_color = Color(0.831373, 0.701961, 0, 1)
-theme_override_font_sizes/font_size = 32
 
-[node name="TotalScoreLabel" type="Label" parent="Panel/MarginContainer/VBoxContainer"]
+[node name="TotalScoreLabel" type="Label" parent="Panel/MarginContainer/VBoxContainer/HBoxContainer/LeftVBox"]
 layout_mode = 2
+size_flags_horizontal = 0
 theme_override_colors/font_color = Color(0.615686, 0, 0, 1)
-theme_override_font_sizes/font_size = 32
 
-[node name="ContinueButton" type="Button" parent="Panel/MarginContainer/VBoxContainer"]
+[node name="ContinueButton" type="Button" parent="Panel/MarginContainer/VBoxContainer/HBoxContainer/LeftVBox"]
+layout_mode = 2
+
+[node name="RightGridContainer" type="GridContainer" parent="Panel/MarginContainer/VBoxContainer/HBoxContainer"]
+layout_mode = 2
+columns = 2
+
+[node name="ScoreLabelBase" type="Label" parent="Panel/MarginContainer/VBoxContainer/HBoxContainer/RightGridContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+
+[node name="ScoreValueBase" type="Label" parent="Panel/MarginContainer/VBoxContainer/HBoxContainer/RightGridContainer"]
+layout_mode = 2
+
+[node name="ScoreLabelCards" type="Label" parent="Panel/MarginContainer/VBoxContainer/HBoxContainer/RightGridContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+
+[node name="ScoreValueCards" type="Label" parent="Panel/MarginContainer/VBoxContainer/HBoxContainer/RightGridContainer"]
+layout_mode = 2
+
+[node name="ScoreLabelTime" type="Label" parent="Panel/MarginContainer/VBoxContainer/HBoxContainer/RightGridContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+
+[node name="ScoreValueTime" type="Label" parent="Panel/MarginContainer/VBoxContainer/HBoxContainer/RightGridContainer"]
+layout_mode = 2
+
+[node name="ScoreLabelClear" type="Label" parent="Panel/MarginContainer/VBoxContainer/HBoxContainer/RightGridContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+
+[node name="ScoreValueClear" type="Label" parent="Panel/MarginContainer/VBoxContainer/HBoxContainer/RightGridContainer"]
 layout_mode = 2

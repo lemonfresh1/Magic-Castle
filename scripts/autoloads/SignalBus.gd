@@ -10,6 +10,8 @@ signal card_invalid_selected(card: Node)
 signal combo_updated(count: int)
 signal combo_multiplier_changed(multiplier: float)
 signal draw_pile_clicked()
+signal reveal_all_cards
+
 
 # === SCORE SIGNALS ===
 signal score_changed(points: int, reason: String)

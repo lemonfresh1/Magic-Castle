@@ -1,18 +1,32 @@
-# ScoreScreen.gd - Round completion score display
+# ScoreScreen.gd - Round completion score display with new layout
 # Path: res://Pyramids/scripts/game/ScoreScreen.gd
-# Last Updated: Applied UIStyleManager styling [Date]
+# Last Updated: Manual styling for Panel and Button [Date]
 
 extends Control
 
+@onready var score_screen: Control = $"."
 @onready var panel: Panel = $Panel
-@onready var title_label: Label = $Panel/MarginContainer/VBoxContainer/TitleLabel
-@onready var score_label_base: Label = $Panel/MarginContainer/VBoxContainer/ScoreLabelBase
-@onready var score_label_cards: Label = $Panel/MarginContainer/VBoxContainer/ScoreLabelCards
-@onready var score_label_time: Label = $Panel/MarginContainer/VBoxContainer/ScoreLabelTime
-@onready var score_label_clear: Label = $Panel/MarginContainer/VBoxContainer/ScoreLabelClear
-@onready var round_score_label: Label = $Panel/MarginContainer/VBoxContainer/RoundScoreLabel
-@onready var total_score_label: Label = $Panel/MarginContainer/VBoxContainer/TotalScoreLabel
-@onready var continue_button: Button = $Panel/MarginContainer/VBoxContainer/ContinueButton
+@onready var margin_container: MarginContainer = $Panel/MarginContainer
+@onready var v_box_container: VBoxContainer = $Panel/MarginContainer/VBoxContainer
+@onready var h_box_container: HBoxContainer = $Panel/MarginContainer/VBoxContainer/HBoxContainer
+@onready var left_v_box: VBoxContainer = $Panel/MarginContainer/VBoxContainer/HBoxContainer/LeftVBox
+@onready var title_label: Label = $Panel/MarginContainer/VBoxContainer/HBoxContainer/LeftVBox/TitleLabel
+@onready var round_score_label: Label = $Panel/MarginContainer/VBoxContainer/HBoxContainer/LeftVBox/RoundScoreLabel
+@onready var total_score_label: Label = $Panel/MarginContainer/VBoxContainer/HBoxContainer/LeftVBox/TotalScoreLabel
+@onready var continue_button: Button = $Panel/MarginContainer/VBoxContainer/HBoxContainer/LeftVBox/ContinueButton
+@onready var right_grid_container: GridContainer = $Panel/MarginContainer/VBoxContainer/HBoxContainer/RightGridContainer
+
+# Score breakdown labels (these are the label names, you'll need to add value labels in scene)
+@onready var score_label_base: Label = $Panel/MarginContainer/VBoxContainer/HBoxContainer/RightGridContainer/ScoreLabelBase
+@onready var score_label_cards: Label = $Panel/MarginContainer/VBoxContainer/HBoxContainer/RightGridContainer/ScoreLabelCards
+@onready var score_label_time: Label = $Panel/MarginContainer/VBoxContainer/HBoxContainer/RightGridContainer/ScoreLabelTime
+@onready var score_label_clear: Label = $Panel/MarginContainer/VBoxContainer/HBoxContainer/RightGridContainer/ScoreLabelClear
+
+# You'll need to add these value labels to the GridContainer in the scene
+@onready var score_value_base: Label = $Panel/MarginContainer/VBoxContainer/HBoxContainer/RightGridContainer/ScoreValueBase
+@onready var score_value_cards: Label = $Panel/MarginContainer/VBoxContainer/HBoxContainer/RightGridContainer/ScoreValueCards
+@onready var score_value_time: Label = $Panel/MarginContainer/VBoxContainer/HBoxContainer/RightGridContainer/ScoreValueTime
+@onready var score_value_clear: Label = $Panel/MarginContainer/VBoxContainer/HBoxContainer/RightGridContainer/ScoreValueClear
 
 signal continue_pressed
 
@@ -40,118 +54,142 @@ func _ready() -> void:
 	# Set as top level to ensure it's always on top
 	set_as_top_level(true)
 	
-	# Apply UIStyleManager styling
-	_apply_ui_styling()
+	# Apply panel styling manually (inspired by StyledPanel)
+	_apply_panel_styling()
 	
-	# Position at center of screen with proper sizing
-	_setup_panel_position()
+	# Apply button styling manually (inspired by StyledButton)
+	_apply_button_styling()
+	
+	# Apply typography and colors from ThemeConstants
+	_apply_theme_styling()
+	
+	# Setup GridContainer columns - just the spacing, not size
+	if right_grid_container:
+		right_grid_container.columns = 2
+		right_grid_container.add_theme_constant_override("h_separation", ThemeConstants.spacing.space_4)
+		right_grid_container.add_theme_constant_override("v_separation", ThemeConstants.spacing.space_2)
 	
 	# Hide on start
 	visible = false
 
-func _apply_ui_styling() -> void:
-	# Apply panel styling with transparency
+func _apply_panel_styling() -> void:
+	# Apply modal-style panel (white bg with shadow, like StyledPanel's "modal" style)
 	if panel:
 		var style = StyleBoxFlat.new()
-		style.bg_color = UIStyleManager.colors.white
-		style.bg_color.a = 0.95  # Slight transparency as requested
-		style.border_color = UIStyleManager.colors.gray_200
-		style.set_border_width_all(UIStyleManager.borders.width_thin)
-		style.set_corner_radius_all(UIStyleManager.dimensions.corner_radius_large)
 		
-		# Add shadow for depth
-		style.shadow_size = UIStyleManager.shadows.size_large
-		style.shadow_offset = UIStyleManager.shadows.offset_large
-		style.shadow_color = UIStyleManager.shadows.color_medium
+		# Colors from modal style
+		style.bg_color = ThemeConstants.colors.white
+		style.bg_color.a = 0.98  # Slight transparency for depth
+		style.border_color = ThemeConstants.colors.gray_200
+		style.set_border_width_all(ThemeConstants.borders.width_thin)
+		
+		# Corner radius
+		style.set_corner_radius_all(ThemeConstants.dimensions.corner_radius_large)
+		
+		# Shadow for depth (modal-like)
+		style.shadow_size = ThemeConstants.shadows.size_large
+		style.shadow_offset = ThemeConstants.shadows.offset_large
+		style.shadow_color = ThemeConstants.shadows.color_large
 		
 		panel.add_theme_stylebox_override("panel", style)
 
-	# Round score - larger and primary color
-	if round_score_label:
-		round_score_label.add_theme_font_size_override("font_size", UIStyleManager.typography.size_h3)
-		round_score_label.add_theme_color_override("font_color", UIStyleManager.colors.primary)
-		round_score_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	
-	# Total score - same size as round but different color
-	if total_score_label:
-		total_score_label.add_theme_font_size_override("font_size", UIStyleManager.typography.size_h3)
-		total_score_label.add_theme_color_override("font_color", UIStyleManager.colors.gray_900)
-		total_score_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	
-	# Style continue button
+func _apply_button_styling() -> void:
+	# Apply primary button style (inspired by StyledButton's primary style)
 	if continue_button:
-		UIStyleManager.apply_button_style(continue_button, "primary", "large")
-		continue_button.custom_minimum_size.x = 200
+		# Create style boxes for different states
+		var style_normal = StyleBoxFlat.new()
+		var style_hover = StyleBoxFlat.new()
+		var style_pressed = StyleBoxFlat.new()
+		var style_disabled = StyleBoxFlat.new()
 		
-		# Center the button in its container
-		var parent = continue_button.get_parent()
-		if parent is VBoxContainer:
-			continue_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	
-	# Apply margins to the container - FURTHER REDUCED BOTTOM
-	var margin_container = $Panel/MarginContainer
-	if margin_container:
-		margin_container.add_theme_constant_override("margin_left", UIStyleManager.spacing.space_8)
-		margin_container.add_theme_constant_override("margin_right", UIStyleManager.spacing.space_8)
-		margin_container.add_theme_constant_override("margin_top", UIStyleManager.spacing.space_12)  # 48px top margin
-		margin_container.add_theme_constant_override("margin_bottom", UIStyleManager.spacing.space_1)  # 4px bottom margin only
-	
-	# Apply spacing to VBoxContainer
-	var vbox = $Panel/MarginContainer/VBoxContainer
-	if vbox:
-		vbox.add_theme_constant_override("separation", UIStyleManager.spacing.space_4)
-	
-	# Apply typography styling
+		# Primary button colors
+		style_normal.bg_color = ThemeConstants.colors.primary
+		style_hover.bg_color = ThemeConstants.colors.primary_dark
+		style_pressed.bg_color = ThemeConstants.colors.primary_dark.darkened(0.1)
+		style_disabled.bg_color = ThemeConstants.colors.primary.lightened(0.3)
+		
+		# Corner radius and padding for all states
+		for style in [style_normal, style_hover, style_pressed, style_disabled]:
+			style.set_corner_radius_all(ThemeConstants.dimensions.corner_radius_medium)
+			style.content_margin_left = ThemeConstants.spacing.button_padding_h
+			style.content_margin_right = ThemeConstants.spacing.button_padding_h
+			style.content_margin_top = ThemeConstants.spacing.button_padding_v
+			style.content_margin_bottom = ThemeConstants.spacing.button_padding_v
+		
+		# Add subtle shadow on hover
+		style_hover.shadow_size = ThemeConstants.shadows.size_small
+		style_hover.shadow_offset = ThemeConstants.shadows.offset_small
+		style_hover.shadow_color = ThemeConstants.shadows.color_default
+		
+		# Apply styles
+		continue_button.add_theme_stylebox_override("normal", style_normal)
+		continue_button.add_theme_stylebox_override("hover", style_hover)
+		continue_button.add_theme_stylebox_override("pressed", style_pressed)
+		continue_button.add_theme_stylebox_override("disabled", style_disabled)
+		
+		# Remove focus outline
+		var empty_style = StyleBoxEmpty.new()
+		continue_button.add_theme_stylebox_override("focus", empty_style)
+		continue_button.focus_mode = Control.FOCUS_NONE
+		
+		# Font colors for button
+		continue_button.add_theme_color_override("font_color", ThemeConstants.colors.white)
+		continue_button.add_theme_color_override("font_hover_color", ThemeConstants.colors.white)
+		continue_button.add_theme_color_override("font_pressed_color", ThemeConstants.colors.white)
+		continue_button.add_theme_color_override("font_disabled_color", ThemeConstants.colors.white.darkened(0.3))
+		
+		# Font size - let the scene handle minimum size
+		continue_button.add_theme_font_size_override("font_size", ThemeConstants.typography.size_body)
+
+func _apply_theme_styling() -> void:
+	# Typography for title - primary color, slightly larger
 	if title_label:
-		title_label.add_theme_font_size_override("font_size", UIStyleManager.typography.size_title)
-		title_label.add_theme_color_override("font_color", UIStyleManager.colors.gray_900)
+		title_label.add_theme_font_size_override("font_size", ThemeConstants.typography.size_body_large)  # 20px
+		title_label.add_theme_color_override("font_color", ThemeConstants.colors.primary)
 		title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	
-	# Subscore labels - smaller size and INDENTED
-	var subscore_labels = [score_label_base, score_label_cards, score_label_time, score_label_clear]
-	for label in subscore_labels:
-		if label:
-			label.add_theme_font_size_override("font_size", UIStyleManager.typography.size_body_small)
-			label.add_theme_color_override("font_color", UIStyleManager.colors.gray_600)
-			label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-			# Add left margin to indent the text
-			if label.get_parent() is VBoxContainer:
-				# Create a margin container for each label to add indentation
-				var parent = label.get_parent()
-				var index = label.get_index()
-				parent.remove_child(label)
-				
-				var indent_container = MarginContainer.new()
-				indent_container.add_theme_constant_override("margin_left", 30)  # 30px indent as requested
-				parent.add_child(indent_container)
-				parent.move_child(indent_container, index)
-				indent_container.add_child(label)
-
-func _setup_panel_position() -> void:
-	# Center the entire Control
-	anchor_left = 0.5
-	anchor_right = 0.5
-	anchor_top = 0.5
-	anchor_bottom = 0.5
+	# Round score - primary color, same size as breakdown
+	if round_score_label:
+		round_score_label.add_theme_font_size_override("font_size", ThemeConstants.typography.size_body)  # 18px
+		round_score_label.add_theme_color_override("font_color", ThemeConstants.colors.gray_900)
+		round_score_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	
-	# Set panel size - increased height by 15px
-	if panel:
-		panel.custom_minimum_size = Vector2(420, 415)  # Increased from 400 to 415
-		panel.size = Vector2(420, 415)
-		
-		# Properly center it using anchors and margins
-		panel.anchor_left = 0.5
-		panel.anchor_right = 0.5
-		panel.anchor_top = 0.5
-		panel.anchor_bottom = 0.5
-		
-		# Use negative margins to center (half of the size)
-		panel.offset_left = -210
-		panel.offset_right = 210
-		panel.offset_top = -207.5  # Half of 415
-		panel.offset_bottom = 207.5
+	# Total score - danger/error color for emphasis
+	if total_score_label:
+		total_score_label.add_theme_font_size_override("font_size", ThemeConstants.typography.size_body)  # 18px
+		total_score_label.add_theme_color_override("font_color", ThemeConstants.colors.gray_900)
+		total_score_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	
+	# Left VBox - remove spacing override, let scene handle it
+	if left_v_box:
+		left_v_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	
+	# HBox spacing between left and right sections
+	if h_box_container:
+		h_box_container.add_theme_constant_override("separation", ThemeConstants.spacing.space_12)
+	
+	# Score breakdown labels - gray900, 18px
+	var breakdown_labels = [score_label_base, score_label_cards, score_label_time, score_label_clear]
+	for label in breakdown_labels:
+		if label:
+			label.add_theme_font_size_override("font_size", ThemeConstants.typography.size_body)  # 18px
+			label.add_theme_color_override("font_color", ThemeConstants.colors.gray_900)
+			label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	
+	# Score breakdown values - primary color for emphasis, 18px
+	var breakdown_values = [score_value_base, score_value_cards, score_value_time, score_value_clear]
+	for value_label in breakdown_values:
+		if value_label:
+			value_label.add_theme_font_size_override("font_size", ThemeConstants.typography.size_body)  # 18px
+			value_label.add_theme_color_override("font_color", ThemeConstants.colors.primary)
+			value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+
+# Remove the setup_panel_position function - now handled in scene
 
 func show_round_complete(round_num: int, scores: Dictionary) -> void:
+	# NEW LINE: Reveal all cards before showing score
+	SignalBus.reveal_all_cards.emit()
+	
 	# Force to front
 	move_to_front()
 	z_index = 1000
@@ -162,32 +200,36 @@ func show_round_complete(round_num: int, scores: Dictionary) -> void:
 	# Store the round score for continue logic
 	current_round_score = scores.round_total
 	
-	# Set title with new format
-	title_label.text = "Round %d: Score Summary" % round_num
+	# Set title
+	title_label.text = "Round %d Complete!" % round_num
 	
-	# Display scores from the dictionary
-	score_label_base.text = "Base Score: %d" % scores.base
-	score_label_cards.text = "Card Bonus: %d" % scores.cards
-	score_label_time.text = "Time Bonus: %d" % scores.time
-	score_label_clear.text = "Peak Bonus: %d" % scores.clear
+	# Set main scores
+	round_score_label.text = "%d" % scores.round_total
+	total_score_label.text = "Total: %d" % (GameState.total_score + scores.round_total)
 	
-	# Make all score labels visible for round screen
-	score_label_base.visible = true
-	score_label_cards.visible = true
-	score_label_time.visible = true
-	score_label_clear.visible = true
+	# Set breakdown labels (static text)
+	score_label_base.text = "Base Score:"
+	score_label_cards.text = "Card Bonus:"
+	score_label_time.text = "Time Bonus:"
+	score_label_clear.text = "Peak Bonus:"
 	
-	if round_score_label:
-		round_score_label.text = "Round Score: %d" % scores.round_total
-		round_score_label.visible = true
+	# Set breakdown values
+	if score_value_base:
+		score_value_base.text = "%d" % scores.base
+	if score_value_cards:
+		score_value_cards.text = "%d" % scores.cards
+	if score_value_time:
+		score_value_time.text = "%d" % scores.time
+	if score_value_clear:
+		score_value_clear.text = "%d" % scores.clear
 	
-	# Total is what we had before + this round
-	total_score_label.text = "Total Score: %d" % (GameState.total_score + scores.round_total)
+	# Show all breakdown elements
+	_set_breakdown_visibility(true)
 	
 	# Update button text based on game state
 	var max_rounds = GameModeManager.get_max_rounds()
 	if round_num >= max_rounds:
-		continue_button.text = "View Results"  # Show game over screen next
+		continue_button.text = "View Results"
 	else:
 		continue_button.text = "Continue"
 	
@@ -195,8 +237,13 @@ func show_round_complete(round_num: int, scores: Dictionary) -> void:
 	continue_button.visible = true
 	continue_button.disabled = false
 	
-	# Animate score counting
+	# Animate entrance
 	_animate_scores()
+
+func _set_breakdown_visibility(show: bool) -> void:
+	# Show/hide the entire right grid
+	if right_grid_container:
+		right_grid_container.visible = show
 
 func _animate_scores() -> void:
 	# Ensure we're on top
@@ -210,8 +257,9 @@ func _animate_scores() -> void:
 	tween.tween_property(self, "modulate:a", 1.0, 0.3)
 	
 	# Scale panel
-	panel.scale = Vector2(0.8, 0.8)
-	tween.tween_property(panel, "scale", Vector2.ONE, 0.3).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	if panel:
+		panel.scale = Vector2(0.8, 0.8)
+		tween.tween_property(panel, "scale", Vector2.ONE, 0.3).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
 
 func _on_continue_pressed() -> void:
 	# Check if game is over based on current mode's max rounds
@@ -220,7 +268,7 @@ func _on_continue_pressed() -> void:
 		# Hide score screen
 		visible = false
 		
-		# CRITICAL: Call _continue_to_next_round which will update total_score AND call _end_game
+		# Update total score and call end game
 		GameState._continue_to_next_round()
 		
 		# Show post-game summary
@@ -229,7 +277,6 @@ func _on_continue_pressed() -> void:
 		summary.add_to_group("post_game_summary")
 		get_tree().root.add_child(summary)
 		
-		# GameState.total_score is now correctly calculated
 		summary.show_summary(GameState.total_score, GameState.round_stats)
 	else:
 		# Hide score screen and continue to next round
@@ -237,65 +284,31 @@ func _on_continue_pressed() -> void:
 		GameState._continue_to_next_round()
 
 func _show_game_over() -> void:
-	# Update UI for game over
+	# This is for a simplified end screen within this same panel
+	# But since PostGameSummary handles the detailed view, we can keep this minimal
+	
 	title_label.text = "Game Complete!"
 	
-	# CRITICAL FIX: Add the current round score to total before displaying
 	var final_total = GameState.total_score + current_round_score
 	
-	# Create round summary
-	var summary_text = "=== ROUND SUMMARY ===\n\n"
-	var best_round = 0
-	var best_score = 0
+	round_score_label.text = "Final: %d" % final_total
+	total_score_label.text = "Mode: %s" % GameModeManager.get_mode_display_name()
 	
-	for stat in GameState.round_stats:
-		summary_text += "Round %d: %d pts %s" % [
-			stat.round, 
-			stat.score, 
-			"✓" if stat.cleared else "✗"
-		]
-		if stat.time_left > 0:
-			summary_text += " (%ds left)" % stat.time_left
-		summary_text += "\n"
-		
-		# Track best round
-		if stat.score > best_score:
-			best_score = stat.score
-			best_round = stat.round
+	# Hide the breakdown for game over
+	_set_breakdown_visibility(false)
 	
-	# Add statistics
-	summary_text += "\n=== STATISTICS ===\n"
-	summary_text += "Total Rounds: %d\n" % GameState.round_stats.size()
-	summary_text += "Rounds Cleared: %d\n" % GameState.round_stats.filter(func(s): return s.cleared).size()
-	summary_text += "Best Round: #%d (%d pts)\n" % [best_round, best_score]
-	summary_text += "Game Mode: %s" % GameModeManager.get_mode_display_name()
-	
-	# Use the base score label to show summary (it's multiline capable)
-	score_label_base.text = summary_text
-	score_label_base.visible = true
-	score_label_base.add_theme_font_size_override("font_size", UIStyleManager.typography.size_caption)
-	
-	# Hide other score breakdowns
-	score_label_cards.visible = false
-	score_label_time.visible = false
-	score_label_clear.visible = false
-	round_score_label.visible = false
-	
-	# Show final score prominently - USE THE CORRECTED TOTAL
-	total_score_label.text = "Final Score: %d" % final_total
-	total_score_label.add_theme_font_size_override("font_size", UIStyleManager.typography.size_h1)
-	
-	# Also update GameState so it's correct if needed elsewhere
-	GameState.total_score = final_total
-	
+	# Update button
 	continue_button.text = "Return to Menu"
 	continue_button.visible = true
 	continue_button.disabled = false
 	
-	# Disconnect old signal and connect new one
+	# Disconnect and reconnect for menu return
 	if continue_button.pressed.is_connected(_on_continue_pressed):
 		continue_button.pressed.disconnect(_on_continue_pressed)
 	continue_button.pressed.connect(_on_play_again_pressed)
+	
+	# Update GameState
+	GameState.total_score = final_total
 
 func _on_play_again_pressed() -> void:
 	visible = false
