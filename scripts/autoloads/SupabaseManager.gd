@@ -1,0 +1,395 @@
+# SupabaseManager.gd - Pure HTTP Supabase implementation (NO PLUGIN)
+# Location: res://Pyramids/scripts/autoloads/SupabaseManager.gd
+# Last Updated: Complete HTTP-only version with no plugin dependencies
+
+extends Node
+
+# === CONFIGURATION ===
+const SUPABASE_URL = "https://nlawlwzjaliewvjetqzf.supabase.co"
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5sYXdsd3pqYWxpZXd2amV0cXpmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg3MjMwOTcsImV4cCI6MjA3NDI5OTA5N30.TVcRp_KjZzLLayXqOc4AmpexjnsQeZN23UZ2PwJHH0o"
+
+# === HTTP REQUEST NODES ===
+var auth_request: HTTPRequest
+var db_request: HTTPRequest
+var realtime_request: HTTPRequest
+
+# === REQUEST TRACKING ===
+var current_request_type: String = ""
+var pending_callbacks: Dictionary = {}
+
+# === STATE ===
+var current_user: Dictionary = {}
+var access_token: String = ""
+var refresh_token: String = ""
+var is_authenticated: bool = false
+var profile: Dictionary = {}
+var mock_mode: bool = false  # For compatibility with NetworkManager
+
+# === DEBUG ===
+var debug_enabled: bool = true
+
+# === SIGNALS ===
+signal authenticated(user_data: Dictionary)
+signal profile_loaded(profile_data: Dictionary)
+signal authentication_failed(error: String)
+signal connection_established()
+signal connection_failed(error: String)
+signal request_completed(data)
+signal request_failed(error: String)
+
+func debug_log(message: String) -> void:
+	if debug_enabled:
+		print("[SupabaseManager] %s" % message)
+
+func _ready():
+	debug_log("Initializing pure HTTP Supabase client...")
+	
+	# Create HTTP request nodes for different operations
+	auth_request = HTTPRequest.new()
+	auth_request.name = "AuthRequest"
+	auth_request.timeout = 10.0
+	add_child(auth_request)
+	auth_request.request_completed.connect(_on_auth_request_completed)
+	
+	db_request = HTTPRequest.new()
+	db_request.name = "DBRequest"
+	db_request.timeout = 10.0
+	add_child(db_request)
+	db_request.request_completed.connect(_on_db_request_completed)
+	
+	realtime_request = HTTPRequest.new()
+	realtime_request.name = "RealtimeRequest"
+	realtime_request.timeout = 10.0
+	add_child(realtime_request)
+	realtime_request.request_completed.connect(_on_realtime_request_completed)
+	
+	debug_log("HTTP client ready")
+	
+	# Emit connection established since HTTP doesn't need connection setup
+	await get_tree().process_frame
+	connection_established.emit()
+
+# === AUTHENTICATION METHODS ===
+
+func login_anonymous() -> void:
+	"""Sign in anonymously - creates a new anonymous user"""
+	debug_log("Attempting anonymous sign in...")
+	current_request_type = "auth_anonymous"
+	
+	var url = SUPABASE_URL + "/auth/v1/signup"
+	var headers = [
+		"apikey: " + SUPABASE_KEY,
+		"Content-Type: application/json"
+	]
+	
+	# Anonymous signup with empty body
+	var body = JSON.stringify({})
+	
+	var error = auth_request.request(url, headers, HTTPClient.METHOD_POST, body)
+	if error != OK:
+		debug_log("Failed to make request: %d" % error)
+		authentication_failed.emit("Request failed")
+
+func sign_out() -> void:
+	"""Sign out current user"""
+	debug_log("Signing out...")
+	current_user = {}
+	access_token = ""
+	refresh_token = ""
+	is_authenticated = false
+	profile = {}
+
+# === DATABASE METHODS ===
+
+func query(table_name: String) -> DatabaseQuery:
+	"""Create a new database query (returns helper object)"""
+	var query = DatabaseQuery.new()
+	query.table = table_name
+	query.manager = self
+	return query
+
+func insert(table_name: String, data: Dictionary) -> void:
+	"""Insert a record into a table"""
+	debug_log("Inserting into %s" % table_name)
+	current_request_type = "insert"
+	
+	var url = SUPABASE_URL + "/rest/v1/" + table_name
+	var headers = _get_db_headers()
+	headers.append("Prefer: return=representation")
+	
+	var body = JSON.stringify(data)
+	db_request.request(url, headers, HTTPClient.METHOD_POST, body)
+
+func update(table_name: String, data: Dictionary, filters: Dictionary) -> void:
+	"""Update records in a table"""
+	debug_log("Updating %s" % table_name)
+	current_request_type = "update"
+	
+	# Build filter string
+	var filter_parts = []
+	for key in filters:
+		filter_parts.append("%s=eq.%s" % [key, filters[key]])
+	
+	var url = SUPABASE_URL + "/rest/v1/" + table_name + "?" + "&".join(filter_parts)
+	var headers = _get_db_headers()
+	headers.append("Prefer: return=representation")
+	
+	var body = JSON.stringify(data)
+	db_request.request(url, headers, HTTPClient.METHOD_PATCH, body)
+
+func select(table_name: String, columns: String = "*", filter: String = "") -> void:
+	"""Select records from a table"""
+	debug_log("Selecting from %s" % table_name)
+	current_request_type = "select"
+	
+	var url = SUPABASE_URL + "/rest/v1/" + table_name
+	url += "?select=" + columns
+	if filter:
+		url += "&" + filter
+	
+	var headers = _get_db_headers()
+	db_request.request(url, headers, HTTPClient.METHOD_GET)
+
+# === PROFILE METHODS ===
+
+func _ensure_profile_exists() -> void:
+	"""Check if profile exists, create if not"""
+	if not is_authenticated or current_user.is_empty():
+		debug_log("Cannot check profile - not authenticated")
+		return
+	
+	var user_id = current_user.get("id", "")
+	if user_id == "":
+		debug_log("No user ID for profile check")
+		return
+	
+	debug_log("Checking profile for user: %s" % user_id)
+	current_request_type = "profile_check"
+	
+	# Query for existing profile
+	var url = SUPABASE_URL + "/rest/v1/pyramids_profiles?id=eq." + user_id
+	var headers = _get_db_headers()
+	
+	db_request.request(url, headers, HTTPClient.METHOD_GET)
+
+func _create_new_profile() -> void:
+	"""Create a new profile for current user"""
+	var user_id = current_user.get("id", "")
+	debug_log("Creating profile for user: %s" % user_id)
+	
+	current_request_type = "profile_create"
+	
+	var display_name = "Player"
+	if has_node("/root/SettingsSystem"):
+		var settings = get_node("/root/SettingsSystem")
+		if "player_name" in settings:
+			display_name = settings.player_name
+	
+	var new_profile = {
+		"id": user_id,
+		"username": "player_%s" % user_id.substr(0, 8),
+		"display_name": display_name,
+		"mmr": 1000,
+		"stats": {}
+	}
+	
+	var url = SUPABASE_URL + "/rest/v1/pyramids_profiles"
+	var headers = _get_db_headers()
+	headers.append("Prefer: return=representation")
+	
+	var body = JSON.stringify(new_profile)
+	db_request.request(url, headers, HTTPClient.METHOD_POST, body)
+
+# === REQUEST HANDLERS ===
+
+func _on_auth_request_completed(result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray):
+	var response_text = body.get_string_from_utf8()
+	debug_log("Auth response code: %d" % response_code)
+	
+	if response_code >= 200 and response_code < 300:
+		var json = JSON.new()
+		var parse_result = json.parse(response_text)
+		
+		if parse_result == OK:
+			var data = json.data
+			
+			# Handle auth response
+			if data.has("access_token"):
+				access_token = data.access_token
+				debug_log("Got access token")
+			
+			if data.has("refresh_token"):
+				refresh_token = data.refresh_token
+			
+			if data.has("user"):
+				current_user = data.user
+				is_authenticated = true
+				debug_log("Authenticated user: %s" % current_user.get("id", "unknown"))
+				authenticated.emit(current_user)
+				
+				# Check/create profile
+				_ensure_profile_exists()
+			else:
+				debug_log("No user in auth response")
+				authentication_failed.emit("No user data")
+		else:
+			debug_log("Failed to parse auth response")
+			authentication_failed.emit("Invalid response format")
+	else:
+		debug_log("Auth failed with code %d: %s" % [response_code, response_text])
+		authentication_failed.emit("HTTP %d" % response_code)
+
+func _on_db_request_completed(result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray):
+	var response_text = body.get_string_from_utf8()
+	debug_log("DB response code: %d for request: %s" % [response_code, current_request_type])
+	
+	if response_code >= 200 and response_code < 300:
+		var json = JSON.new()
+		var parse_result = json.parse(response_text)
+		
+		if parse_result == OK:
+			var data = json.data
+			
+			# Handle based on request type
+			match current_request_type:
+				"profile_check":
+					if data is Array and data.size() > 0:
+						profile = data[0]
+						debug_log("Profile found: %s" % profile.get("display_name", "Unknown"))
+						profile_loaded.emit(profile)
+					else:
+						debug_log("No profile found, creating...")
+						_create_new_profile()
+				
+				"profile_create":
+					if data is Array and data.size() > 0:
+						profile = data[0]
+					elif data is Dictionary:
+						profile = data
+					debug_log("Profile created successfully")
+					profile_loaded.emit(profile)
+				
+				"save_highscore":
+					debug_log("✅ Highscore saved successfully!")
+					request_completed.emit(data)
+				
+				"get_highscores":
+					debug_log("✅ Retrieved %d highscores" % data.size())
+					request_completed.emit(data)
+				
+				"test":
+					debug_log("✅ Database connection successful!")
+					request_completed.emit(data)
+				
+				_:
+					request_completed.emit(data)
+		else:
+			debug_log("Failed to parse DB response")
+			request_failed.emit("Parse error")
+	else:
+		debug_log("DB request failed with code %d" % response_code)
+		request_failed.emit("HTTP %d: %s" % [response_code, response_text])
+
+func _on_realtime_request_completed(result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray):
+	# Placeholder for realtime functionality
+	pass
+
+# === HELPER METHODS ===
+
+func _get_db_headers() -> PackedStringArray:
+	"""Get headers for database requests"""
+	var headers = PackedStringArray()
+	headers.append("apikey: " + SUPABASE_KEY)
+	
+	# Use access token if we have one, otherwise use anon key
+	if access_token:
+		headers.append("Authorization: Bearer " + access_token)
+	else:
+		headers.append("Authorization: Bearer " + SUPABASE_KEY)
+	
+	headers.append("Content-Type: application/json")
+	return headers
+
+# === GAME OPERATIONS ===
+
+func save_highscore(mode: String, score: int, seed: int) -> void:
+	"""Save a highscore to the leaderboard"""
+	debug_log("Saving highscore - Mode: %s, Score: %d" % [mode, score])
+	
+	# Ensure seed fits in PostgreSQL INTEGER range
+	if seed > 2147483647:
+		seed = seed % 2147483647
+	
+	var highscore_data = {
+		"mode": mode,
+		"player_id": current_user.get("id", ""),
+		"player_name": profile.get("display_name", "Unknown"),
+		"score": score,
+		"seed": seed
+	}
+	
+	current_request_type = "save_highscore"
+	
+	var url = SUPABASE_URL + "/rest/v1/pyramids_highscores"
+	var headers = _get_db_headers()
+	headers.append("Prefer: return=representation")
+	
+	var body = JSON.stringify(highscore_data)
+	db_request.request(url, headers, HTTPClient.METHOD_POST, body)
+
+func get_highscores(mode: String, limit: int = 20) -> void:
+	"""Get top highscores for a mode"""
+	debug_log("Getting highscores for mode: %s" % mode)
+	
+	current_request_type = "get_highscores"
+	
+	var url = SUPABASE_URL + "/rest/v1/pyramids_highscores"
+	url += "?mode=eq." + mode
+	url += "&order=score.desc"
+	url += "&limit=" + str(limit)
+	
+	var headers = _get_db_headers()
+	db_request.request(url, headers, HTTPClient.METHOD_GET)
+
+func test_connection() -> void:
+	"""Test database connectivity"""
+	debug_log("Testing database connection...")
+	current_request_type = "test"
+	
+	var url = SUPABASE_URL + "/rest/v1/pyramids_profiles?limit=1"
+	var headers = _get_db_headers()
+	
+	db_request.request(url, headers, HTTPClient.METHOD_GET)
+
+func get_connection_status() -> Dictionary:
+	"""Get current connection status"""
+	return {
+		"supabase_exists": true,  # We're always "connected" with HTTP
+		"auth_exists": auth_request != null,
+		"database_exists": db_request != null,
+		"is_authenticated": is_authenticated,
+		"has_profile": not profile.is_empty(),
+		"user_id": current_user.get("id", "none")
+	}
+
+# === HELPER CLASS ===
+
+class DatabaseQuery:
+	"""Helper class for building database queries"""
+	var table: String = ""
+	var manager: Node = null
+	var filters: Array = []
+	var select_columns: String = "*"
+	
+	func select(columns: String = "*") -> DatabaseQuery:
+		select_columns = columns
+		return self
+	
+	func eq(column: String, value) -> DatabaseQuery:
+		filters.append("%s=eq.%s" % [column, str(value)])
+		return self
+	
+	func execute() -> void:
+		if manager and table:
+			var filter_string = "&".join(filters)
+			manager.select(table, select_columns, filter_string)

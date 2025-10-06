@@ -812,12 +812,19 @@ func _on_lobby_action(action: String):
 				debug_log("ERROR: MultiplayerManager not found!")
 				
 		"join_lobby":
-			debug_log("Join lobby - not implemented yet")
+			var join_scene_path = "res://Pyramids/scenes/ui/menus/JoinLobbyMenu.tscn"
+			if ResourceLoader.exists(join_scene_path):
+				var scene = load(join_scene_path)
+				var instance = scene.instantiate()
+				get_tree().root.add_child(instance)
+				debug_log("Opened JoinLobbyMenu")
+			else:
+				debug_log("ERROR: JoinLobbyMenu scene not found at: " + join_scene_path)
 			
-		"create_battle":  # Updated from create_battleground
+		"create_battle":
 			debug_log("Create battle - not implemented yet")
 			
-		"join_battle":  # Updated from join_battleground
+		"join_battle":
 			debug_log("Join battle - not implemented yet")
 			
 		"join_tournament":

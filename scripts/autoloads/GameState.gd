@@ -465,19 +465,72 @@ func end_round() -> void:
 	_show_score_screen(scores)
 
 func _show_score_screen(scores: Dictionary) -> void:
-	"""Display the score screen"""
+	"""Display the score screen based on game mode"""
+	var score_screen
+	
+	# Check if multiplayer
+	if game_mode == "multi":
+		debug_log("Showing multiplayer score screen")
+		
+		# Determine which multiplayer screen to show
+		var max_rounds = GameModeManager.get_max_rounds()
+		var is_final = (current_round >= max_rounds)
+		
+		var scene_path = ""
+		if is_final:
+			scene_path = "res://Pyramids/scenes/ui/menus/MultiplayerFinalScore.tscn"
+		else:
+			scene_path = "res://Pyramids/scenes/ui/menus/MultiplayerScoreScreen.tscn"
+		
+		# Load and instantiate the scene
+		if ResourceLoader.exists(scene_path):
+			var scene = load(scene_path)
+			score_screen = scene.instantiate()
+			score_screen.add_to_group("score_screen")
+			get_tree().root.add_child(score_screen)
+			
+			# Setup the screen with appropriate data
+			if is_final:
+				# For final score
+				if score_screen.has_method("setup"):
+					score_screen.setup(GameModeManager.get_current_mode(), max_rounds)
+				if score_screen.has_method("display_final_results"):
+					# TODO: Get real data from NetworkManager
+					score_screen.display_final_results([])
+			else:
+				# For round score
+				if score_screen.has_method("setup"):
+					score_screen.setup(current_round, max_rounds)
+				if score_screen.has_method("display_round_scores"):
+					# TODO: Get real data from NetworkManager
+					score_screen.display_round_scores([])
+		else:
+			push_error("Multiplayer score screen not found: " + scene_path)
+			# Fallback to single player screen
+			_show_single_player_score_screen(scores)
+	else:
+		# Single player mode
+		_show_single_player_score_screen(scores)
+
+func _show_single_player_score_screen(scores: Dictionary) -> void:
+	"""Helper function for single player score screen"""
 	var score_screen = get_tree().get_first_node_in_group("score_screen")
 	if not score_screen:
-		var score_scene = load("res://Pyramids/scenes/ui/game_ui/ScoreScreen.tscn")
-		if score_scene:
+		var score_scene_path = "res://Pyramids/scenes/ui/game_ui/ScoreScreen.tscn"
+		if ResourceLoader.exists(score_scene_path):
+			var score_scene = load(score_scene_path)
 			score_screen = score_scene.instantiate()
 			score_screen.add_to_group("score_screen")
 			get_tree().root.add_child(score_screen)
 		else:
+			push_error("ScoreScreen.tscn not found")
 			_continue_to_next_round()
 			return
 	
-	score_screen.show_round_complete(current_round, scores)
+	if score_screen and score_screen.has_method("show_round_complete"):
+		score_screen.show_round_complete(current_round, scores)
+	else:
+		_continue_to_next_round()
 
 func _continue_to_next_round() -> void:
 	"""Continue to next round or end game"""
