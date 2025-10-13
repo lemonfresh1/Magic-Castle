@@ -60,6 +60,11 @@ signal lobby_start_requested()
 signal lobby_invite_requested(slot_index: int)
 signal lobby_player_kicked(player_id: String)
 
+# === MULTIPLAYER GAME SIGNALS ===
+signal multiplayer_round_continue  # When score screen countdown ends
+signal multiplayer_game_complete   # When final game is over
+signal multiplayer_scores_updated(scores: Array)  # When scores change
+
 func _ready() -> void:
 	print("SignalBus initialized")
 	debug_message.emit("SignalBus ready with %d signals" % get_signal_list().size())

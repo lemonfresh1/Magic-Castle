@@ -65,9 +65,13 @@ func _ready():
 	
 	debug_log("HTTP client ready")
 	
-	# Emit connection established since HTTP doesn't need connection setup
+	# Emit connection established
 	await get_tree().process_frame
 	connection_established.emit()
+	
+	# === AUTO-LOGIN FOR MULTIPLAYER ===
+	debug_log("Auto-login: Starting anonymous authentication...")
+	login_anonymous()
 
 # === AUTHENTICATION METHODS ===
 
@@ -287,7 +291,8 @@ func _on_db_request_completed(result: int, response_code: int, headers: PackedSt
 			debug_log("Failed to parse DB response")
 			request_failed.emit("Parse error")
 	else:
-		debug_log("DB request failed with code %d" % response_code)
+		debug_log("❌ DB request failed with code %d" % response_code)
+		debug_log("❌ Error body: %s" % response_text)  # ← DIESE ZEILE IST NEU
 		request_failed.emit("HTTP %d: %s" % [response_code, response_text])
 
 func _on_realtime_request_completed(result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray):

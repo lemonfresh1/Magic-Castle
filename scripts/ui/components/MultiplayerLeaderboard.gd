@@ -17,6 +17,8 @@ var is_solo_mode: bool = false
 # Mode indicator UI element
 var mode_indicator: Label = null
 
+var debug_enabled: bool = true
+
 func _ready():
 	super._ready()
 	
@@ -204,21 +206,35 @@ func _fetch_local_scores(context: Dictionary) -> Array:
 	return _format_scores_for_display(scores, player_name)
 
 func _fetch_network_scores(context: Dictionary) -> Array:
-	"""Network scores placeholder - data will be injected by NetworkManager"""
-	# TODO: NetworkManager will inject data here
-	# Expected format from API:
-	# [
-	#   {
-	#     "player_name": "string",
-	#     "player_profile_id": "string", 
-	#     "highscore": int,
-	#     "seed": int,
-	#     "date": timestamp
-	#   }
-	# ]
+	"""Fetch scores from database via NetworkManager"""
+	if not has_node("/root/NetworkManager"):
+		print("[MultiplayerLeaderboard] NetworkManager not found, using local fallback")
+		return _fetch_local_scores(context)
 	
-	# For now, use local as fallback
-	return _fetch_local_scores(context)
+	var net_manager = get_node("/root/NetworkManager")
+	
+	# Check if we already have cached network data
+	if has_meta("cached_network_scores"):
+		var cached = get_meta("cached_network_scores")
+		if cached.mode == current_mode_id and Time.get_ticks_msec() - cached.timestamp < 5000:
+			debug_log("Using cached network scores")
+			return cached.scores
+	
+	# Request fresh data from database
+	debug_log("Requesting fresh scores from database for mode: %s" % current_mode_id)
+	
+	# Connect to signal if not already connected
+	if not net_manager.highscores_received.is_connected(_on_highscores_received):
+		net_manager.highscores_received.connect(_on_highscores_received)
+	
+	# Request data
+	net_manager.fetch_highscores_from_db(current_mode_id, "multi", 50)
+	
+	# Return placeholder while loading (or cached data if available)
+	if has_meta("cached_network_scores"):
+		return get_meta("cached_network_scores").scores
+	else:
+		return get_placeholder_data()
 
 func _format_scores_for_display(scores: Array, player_name: String) -> Array:
 	"""Format scores consistently regardless of source"""
@@ -231,11 +247,22 @@ func _format_scores_for_display(scores: Array, player_name: String) -> Array:
 		var score_data = scores[i]
 		var is_current = score_data.get("player_name", "") == player_name
 		
+		# Format the date properly
+		var date_value = score_data.get("date", score_data.get("timestamp", ""))
+		var formatted_date = date_value
+		
+		# If date looks like a timestamp string, format it
+		if date_value is String and date_value.contains("-"):
+			formatted_date = _format_database_date(date_value)
+		elif date_value is float or date_value is int:
+			# Unix timestamp - convert to MM/DD
+			formatted_date = _format_unix_timestamp(date_value)
+		
 		formatted_scores.append({
 			"rank": i + 1,
 			"player_name": score_data.get("player_name", "Unknown"),
 			"score": score_data.get("score", score_data.get("highscore", 0)),
-			"date": score_data.get("timestamp", score_data.get("date", Time.get_unix_time_from_system())),
+			"date": formatted_date,  # Use formatted date
 			"is_current_player": is_current,
 			"replay_id": score_data.get("replay_id", ""),
 			"player_id": score_data.get("player_profile_id", score_data.get("player_id", "")),
@@ -243,6 +270,43 @@ func _format_scores_for_display(scores: Array, player_name: String) -> Array:
 		})
 	
 	return formatted_scores
+
+func _format_database_date(timestamp_str: String) -> String:
+	"""Convert database timestamp to MM/DD format"""
+	# Input formats: 
+	# "2025-10-13 21:53:43.954105" (space separator)
+	# "2025-10-13T22:08:27.111863" (ISO 8601 with T)
+	# Output format: "10/13"
+	
+	if timestamp_str == "":
+		return ""
+	
+	# Split by both space and T to handle both formats
+	var parts = timestamp_str.split(" ")
+	if parts.size() == 1:
+		# Try splitting by T for ISO format
+		parts = timestamp_str.split("T")
+	
+	if parts.size() == 0:
+		return timestamp_str
+	
+	# Get just the date part
+	var date_part = parts[0]
+	
+	# Split date by hyphen
+	var date_parts = date_part.split("-")
+	if date_parts.size() != 3:
+		return date_part
+	
+	# Format as MM/DD
+	var month = date_parts[1]
+	var day = date_parts[2]
+	return "%s/%s" % [month, day]
+
+func _format_unix_timestamp(timestamp: float) -> String:
+	"""Convert Unix timestamp to MM/DD format"""
+	var datetime = Time.get_datetime_dict_from_unix_time(int(timestamp))
+	return "%02d/%02d" % [datetime.month, datetime.day]
 
 func get_placeholder_data() -> Array:
 	"""Generate placeholder data for testing/empty state"""
@@ -318,6 +382,25 @@ func _on_action_triggered(action: String, score_data: Dictionary):
 		_:
 			print("[MultiplayerLeaderboard] Unknown action: %s" % action)
 
+func _on_highscores_received(highscores: Array) -> void:
+	"""Handle highscores received from NetworkManager"""
+	debug_log("Received %d highscores from network" % highscores.size())
+	
+	# Cache the results
+	set_meta("cached_network_scores", {
+		"mode": current_mode_id,
+		"timestamp": Time.get_ticks_msec(),
+		"scores": highscores
+	})
+	
+	# Format and display
+	var player_name = "Player"
+	if SettingsSystem:
+		player_name = SettingsSystem.player_name
+	
+	scores_data = _format_scores_for_display(highscores, player_name)
+	_display_scores()
+
 func _show_profile_popup(score_data: Dictionary):
 	"""Show player profile dialog"""
 	var dialog_scene = preload("res://Pyramids/scenes/ui/popups/PlayerDialog.tscn")
@@ -387,3 +470,8 @@ func inject_network_scores(scores: Array) -> void:
 	
 	scores_data = _format_scores_for_display(scores, player_name)
 	_display_scores()
+
+func debug_log(message: String) -> void:
+	"""Debug logging helper"""
+	if debug_enabled:
+		print("[MultiplayerLeaderboard] %s" % message)

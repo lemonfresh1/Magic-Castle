@@ -42,8 +42,8 @@
 extends Node
 
 # Debug configuration
-var debug_enabled: bool = false
-var global_debug: bool = false
+var debug_enabled: bool = true
+var global_debug: bool = true
 
 # === GAME MODE ===
 var game_mode: String = "single" # "single", "multi"
@@ -99,6 +99,10 @@ func _ready() -> void:
 	_setup_timer()
 	_connect_signals()
 	set_process(false)  # Don't process until round starts
+	
+# Connect multiplayer signals
+	if SignalBus.has_signal("multiplayer_round_continue"):
+		SignalBus.multiplayer_round_continue.connect(_continue_to_next_round)
 
 func _setup_timer() -> void:
 	# Create timer for game timing
@@ -125,8 +129,11 @@ func start_new_game(mode: String = "single", custom_seed: int = 0) -> void:
 	debug_log("Input parameters: mode=%s, custom_seed=%d" % [mode, custom_seed])
 	
 	# RESET EVERYTHING FIRST
+	# CRITICAL: Set game_mode BEFORE anything else!
 	game_mode = mode
 	is_multiplayer = (mode == "multi")
+	debug_log("Game mode set to: %s (is_multiplayer: %s)" % [game_mode, is_multiplayer])
+	
 	current_round = 1
 	total_score = 0
 	round_scores.clear()
@@ -145,9 +152,8 @@ func start_new_game(mode: String = "single", custom_seed: int = 0) -> void:
 	# Check for stored custom seed first (from set_custom_seed)
 	if custom_seed == 0 and has_meta("custom_seed"):
 		custom_seed = get_meta("custom_seed")
-		remove_meta("custom_seed")  # Clear it after use
+		remove_meta("custom_seed")
 		debug_log("Found stored custom seed in metadata: %d" % custom_seed)
-		# Also check for seed source
 		if has_meta("seed_source"):
 			var source = get_meta("seed_source")
 			game_context.seed_source = source
@@ -158,23 +164,21 @@ func start_new_game(mode: String = "single", custom_seed: int = 0) -> void:
 		game_seed = custom_seed
 		debug_log("Using CUSTOM seed: %d" % game_seed)
 		
-		# Set context for seeded game
 		game_context = {
 			"type": "seeded",
 			"is_seeded": true,
-			"seed_source": game_context.get("seed_source", "manual"),  # Preserve if set
-			"affects_global_leaderboard": false,  # Seeded games don't affect global
-			"affects_mode_leaderboard": true,  # But they can have their own board
-			"tournament_id": "",  # TODO:TOURNAMENT - Check for tournament context
-			"battle_id": "",  # TODO:BATTLE - Check for battle context
-			"custom_lobby_id": ""  # TODO:CUSTOM_LOBBY - Check for lobby context
+			"seed_source": game_context.get("seed_source", "manual"),
+			"affects_global_leaderboard": false,
+			"affects_mode_leaderboard": true,
+			"tournament_id": "",
+			"battle_id": "",
+			"custom_lobby_id": ""
 		}
 		debug_log("Game context set to SEEDED - will NOT affect global leaderboard")
 	else:
 		game_seed = randi()
 		debug_log("Generated NEW RANDOM seed: %d" % game_seed)
 		
-		# Set context for standard game
 		game_context = {
 			"type": "standard",
 			"is_seeded": false,
@@ -262,6 +266,15 @@ func reset_game_completely() -> void:
 	for screen in post_game_screens:
 		screen.queue_free()
 	
+	# CRITICAL: Clean up multiplayer score screens too
+	var mp_score_screens = get_tree().get_nodes_in_group("multiplayer_score_screen")
+	for screen in mp_score_screens:
+		screen.queue_free()
+		
+	var mp_final_screens = get_tree().get_nodes_in_group("multiplayer_final_screen")
+	for screen in mp_final_screens:
+		screen.queue_free()
+	
 	# Reset GameState variables
 	current_round = 1
 	total_score = 0
@@ -275,6 +288,16 @@ func reset_game_completely() -> void:
 	game_seed = 0
 	deck_seed = 0
 	round_rng = null
+	
+	# CRITICAL: Reset game mode to single player
+	game_mode = "single"
+	is_multiplayer = false
+	debug_log("Reset game_mode to 'single'")
+	
+	# CRITICAL: Reset NetworkManager
+	if has_node("/root/NetworkManager"):
+		var net_manager = get_node("/root/NetworkManager")
+		net_manager.reset_for_new_game()
 	
 	# CRITICAL: Clear ALL metadata including custom_seed
 	if has_meta("custom_seed"):
@@ -406,6 +429,9 @@ func _delayed_end_round(reason: String) -> void:
 
 func end_round() -> void:
 	"""Actually end the current round"""
+	debug_log("=== END_ROUND CALLED ===")
+	debug_log("Current round: %d, is_multiplayer: %s, game_mode: %s" % [current_round, is_multiplayer, game_mode])
+	
 	is_round_active = false
 	set_process(false)  # Stop timer processing
 
@@ -426,6 +452,10 @@ func end_round() -> void:
 	# Store round score
 	round_scores.append(scores.round_total)
 	
+	# CRITICAL FIX: Accumulate total score immediately
+	total_score += scores.round_total
+	debug_log("Round %d score: %d, Total so far: %d" % [current_round, scores.round_total, total_score])
+	
 	# Store detailed round stats
 	round_stats.append({
 		"round": current_round,
@@ -441,10 +471,32 @@ func end_round() -> void:
 	
 	SignalBus.round_completed.emit(scores.round_total)
 	
+	# Submit score to network in multiplayer
+	debug_log("Checking multiplayer submission - game_mode: '%s', has NetworkManager: %s" % 
+		[game_mode, has_node("/root/NetworkManager")])
+	
+	if game_mode == "multi" and has_node("/root/NetworkManager"):
+		debug_log("✅ Submitting multiplayer score for round %d: %d" % [current_round, scores.round_total])
+		var net_manager = get_node("/root/NetworkManager")
+		net_manager.submit_round_score(current_round, scores.round_total, {
+			"cards_cleared": cards_cleared,
+			"time_remaining": time_remaining,
+			"board_cleared": board_cleared
+		})
+	else:
+		debug_log("❌ NOT submitting score - game_mode='%s', has NetworkManager=%s" % 
+			[game_mode, has_node("/root/NetworkManager")])
+		if game_mode != "multi":
+			debug_log("   Reason: Not in multiplayer mode")
+		if not has_node("/root/NetworkManager"):
+			debug_log("   Reason: NetworkManager not found")
+	
 	# Get mode and game_type for tracking
 	var mode = GameModeManager.get_current_mode()
 	var game_type = "multi" if is_multiplayer else "solo"
 	var reason = get_meta("round_end_reason", "Unknown")
+	
+	debug_log("Tracking round end - mode: %s, game_type: %s, reason: %s" % [mode, game_type, reason])
 	
 	# Pass game_type to track_round_end
 	StatsManager.track_round_end(
@@ -460,6 +512,8 @@ func end_round() -> void:
 	# Track peak clears with game_type
 	if ScoreSystem.peaks_cleared_indices.size() > 0:
 		StatsManager.track_peak_clears(ScoreSystem.peaks_cleared_indices.size(), mode, game_type)
+	
+	debug_log("=== END_ROUND COMPLETE - Showing score screen ===")
 	
 	# Show score screen
 	_show_score_screen(scores)
@@ -534,9 +588,8 @@ func _show_single_player_score_screen(scores: Dictionary) -> void:
 
 func _continue_to_next_round() -> void:
 	"""Continue to next round or end game"""
-	# Update total score
-	if round_scores.size() > 0:
-		total_score += round_scores[-1]
+	# DON'T accumulate here - it's already done in end_round()
+	# total_score is already updated
 	
 	current_round += 1
 	
@@ -551,8 +604,7 @@ func _end_game() -> void:
 	debug_log("\n=== GAME OVER DEBUG ===")
 	debug_log("Final score: %d" % total_score)
 	debug_log("Game seed was: %d" % game_seed)
-	debug_log("Current deck_seed: %d" % deck_seed)
-	debug_log("Saving to stats with game_seed: %d" % game_seed)
+	debug_log("Game mode: %s" % game_mode)
 	
 	# Get the current game mode
 	var mode = GameModeManager.get_current_mode()
@@ -620,7 +672,7 @@ func _end_game() -> void:
 				max_combo,
 				clear_time,
 				player_count,
-				game_seed  # Pass the game seed
+				game_seed
 			)
 			debug_log("MMR updated for matchmaking game")
 		else:
@@ -641,6 +693,30 @@ func _end_game() -> void:
 	
 	# Emit game over signal
 	SignalBus.game_over.emit(total_score)
+	
+	# CRITICAL: Load PostGameSummary after all stats are tracked
+	debug_log("Loading PostGameSummary...")
+	_show_post_game_summary()
+
+func _show_post_game_summary() -> void:
+	"""Load and show PostGameSummary screen"""
+	var summary_path = "res://Pyramids/scenes/ui/game_ui/PostGameSummary.tscn"
+	
+	if not ResourceLoader.exists(summary_path):
+		push_error("PostGameSummary scene not found!")
+		_return_to_menu()
+		return
+	
+	var summary_scene = load(summary_path)
+	var summary = summary_scene.instantiate()
+	summary.add_to_group("post_game_summary")
+	get_tree().root.add_child(summary)
+	
+	# Show the summary with game data
+	if summary.has_method("show_summary"):
+		summary.show_summary(total_score, round_stats)
+	
+	debug_log("PostGameSummary loaded successfully")
 
 func _return_to_menu() -> void:
 	# First reset everything

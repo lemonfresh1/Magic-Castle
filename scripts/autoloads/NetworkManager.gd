@@ -1,10 +1,6 @@
-# NetworkManager.gd - Handles all network operations via Supabase (or mock)
+# NetworkManager.gd - Handles all network operations via Supabase
 # Location: res://Pyramids/scripts/autoloads/NetworkManager.gd
-# Last Updated: Initial creation with mock support
-#
-# Works WITH MultiplayerManager:
-# - MultiplayerManager: Game logic, lobby state, player management
-# - NetworkManager: Network calls, Supabase operations, real-time sync
+# Last Updated: Complete implementation with solo-testing support
 
 extends Node
 
@@ -16,7 +12,7 @@ extends Node
 var current_lobby_data: Dictionary = {}
 var round_scores: Dictionary = {}  # player_id -> Array of scores
 var is_connected: bool = false
-var pending_callbacks: Dictionary = {}  # For storing temporary data between requests
+var pending_callbacks: Dictionary = {}
 
 # === POLLING ===
 var poll_timer: Timer
@@ -25,7 +21,7 @@ var is_polling: bool = false
 
 # === DEBUG ===
 var debug_enabled: bool = true
-var mock_mode: bool = false  # CHANGED TO FALSE - Using real Supabase now!
+var mock_mode: bool = false
 
 # === SIGNALS ===
 signal lobby_created(lobby_data: Dictionary)
@@ -35,6 +31,7 @@ signal player_joined(player_data: Dictionary)
 signal player_left(player_id: String)
 signal round_scores_ready(scores: Array)
 signal game_completed(final_results: Dictionary)
+signal highscores_received(highscores: Array)
 
 func debug_log(message: String) -> void:
 	if debug_enabled:
@@ -57,9 +54,7 @@ func _ready():
 		supabase.request_completed.connect(_on_supabase_response)
 		is_connected = supabase.is_authenticated
 	
-	# Check if we're in mock mode
-	mock_mode = false  # Force real mode
-	debug_log("Running in REAL MODE - Using Supabase")
+	debug_log("Running in %s MODE" % ("MOCK" if mock_mode else "REAL"))
 
 # === CONNECTION HANDLERS ===
 
@@ -79,14 +74,13 @@ func find_or_create_lobby(mode: String) -> void:
 	if mock_mode:
 		await _mock_create_lobby(mode)
 	else:
-		# Real Supabase implementation
 		supabase.current_request_type = "find_lobbies"
 		var url = supabase.SUPABASE_URL + "/rest/v1/pyramids_lobbies"
-		url += "?status=eq.waiting"  # Only waiting lobbies
-		url += "&mode=eq." + mode     # Same game mode
-		url += "&player_count=lt.8"   # Not full
-		url += "&order=created_at.desc"  # Newest first
-		url += "&limit=1"              # Just need one
+		url += "?status=eq.waiting"
+		url += "&mode=eq." + mode
+		url += "&player_count=lt.8"
+		url += "&order=created_at.desc"
+		url += "&limit=1"
 		
 		var headers = supabase._get_db_headers()
 		supabase.db_request.request(url, headers, HTTPClient.METHOD_GET)
@@ -99,25 +93,38 @@ func create_lobby(mode: String) -> void:
 		await _mock_create_lobby(mode)
 	else:
 		var player_data = _build_player_data()
+		
+		# CRITICAL: Don't double-stringify the arrays/objects
 		var lobby_data = {
 			"mode": mode,
 			"lobby_type": "matchmaking",
 			"host_id": supabase.current_user.get("id", ""),
-			"players": [player_data],
+			"players": [player_data],  # This will be properly converted to JSONB
 			"player_count": 1,
 			"status": "waiting",
 			"current_round": 0,
 			"max_rounds": _get_max_rounds_for_mode(mode),
-			"settings": {}
+			"settings": {}  # Empty object, not string
 		}
 		
 		supabase.current_request_type = "create_lobby"
 		var url = supabase.SUPABASE_URL + "/rest/v1/pyramids_lobbies"
 		var headers = supabase._get_db_headers()
 		headers.append("Prefer: return=representation")
+		headers.append("Content-Type: application/json")
 		
 		var body = JSON.stringify(lobby_data)
+		debug_log("Creating lobby with body: %s" % body)
 		supabase.db_request.request(url, headers, HTTPClient.METHOD_POST, body)
+
+func ensure_lobby_exists(mode: String) -> void:
+	"""Ensure we have a lobby before submitting scores (for solo testing)"""
+	if current_lobby_data.has("id"):
+		debug_log("Lobby already exists: %s" % current_lobby_data.id)
+		return
+	
+	debug_log("No lobby exists - creating one for solo testing")
+	create_lobby(mode)
 
 func join_lobby(lobby_id: String) -> void:
 	"""Join an existing lobby"""
@@ -126,7 +133,6 @@ func join_lobby(lobby_id: String) -> void:
 	if mock_mode:
 		_mock_join_lobby(lobby_id)
 	else:
-		# First get the current lobby data
 		supabase.current_request_type = "get_lobby"
 		pending_callbacks["join_lobby_id"] = lobby_id
 		
@@ -145,9 +151,6 @@ func leave_lobby() -> void:
 	
 	if mock_mode:
 		_mock_leave_lobby()
-	else:
-		# Real implementation would go here
-		pass
 
 func start_game() -> void:
 	"""Host starts the game"""
@@ -173,19 +176,66 @@ func submit_round_score(round: int, score: int, stats: Dictionary = {}) -> void:
 	if mock_mode:
 		_mock_submit_score(player_id, round, score, stats)
 	else:
-		# Real implementation would go here
-		pass
+		# Check if we have a lobby
+		if not current_lobby_data.has("id"):
+			debug_log("⚠️ No lobby exists - creating one for solo testing")
+			# Store score data for after lobby creation
+			pending_callbacks["pending_score_submission"] = {
+				"round": round,
+				"score": score,
+				"stats": stats
+			}
+			# Create lobby first
+			var mode = "test"  # Default for solo testing
+			if has_node("/root/GameModeManager"):
+				mode = get_node("/root/GameModeManager").get_current_mode()
+			create_lobby(mode)
+			return
+		
+		# Real DB write to pyramids_round_scores
+		var score_data = {
+			"lobby_id": current_lobby_data.id,
+			"player_id": player_id,
+			"round": round,
+			"score": score,
+			"stats": stats
+		}
+		
+		supabase.current_request_type = "submit_round_score"
+		pending_callbacks["submitted_round"] = round
+		pending_callbacks["submitted_score"] = score
+		
+		var url = supabase.SUPABASE_URL + "/rest/v1/pyramids_round_scores"
+		var headers = supabase._get_db_headers()
+		headers.append("Prefer: return=representation")
+		
+		var body = JSON.stringify(score_data)
+		debug_log("Sending score to DB: %s" % body)
+		supabase.db_request.request(url, headers, HTTPClient.METHOD_POST, body)
+
+func _fetch_round_scores(round: int) -> void:
+	"""Fetch all scores for a round"""
+	if not current_lobby_data.has("id"):
+		debug_log("⚠️ Cannot fetch scores - no lobby_id")
+		return
+	
+	debug_log("Fetching scores for round %d" % round)
+	supabase.current_request_type = "fetch_round_scores"
+	pending_callbacks["fetch_round"] = round
+	
+	var url = supabase.SUPABASE_URL + "/rest/v1/pyramids_round_scores"
+	url += "?lobby_id=eq." + current_lobby_data.id
+	url += "&round=eq." + str(round)
+	
+	var headers = supabase._get_db_headers()
+	supabase.db_request.request(url, headers, HTTPClient.METHOD_GET)
 
 func _check_round_complete(round: int) -> void:
 	"""Check if all players have submitted scores"""
 	debug_log("Checking if round %d is complete" % round)
 	
 	if mock_mode:
-		# In mock mode, generate scores for other players
 		await _mock_complete_round(round)
-	else:
-		# Real implementation would go here
-		pass
 
 # === SUPABASE RESPONSE HANDLER ===
 
@@ -197,11 +247,12 @@ func _on_supabase_response(data) -> void:
 	match request_type:
 		"find_lobbies":
 			if data is Array and data.size() > 0:
-				# Join existing lobby
 				join_lobby(data[0].id)
 			else:
-				# No lobbies found, create one
-				create_lobby(mp_manager.selected_game_mode if mp_manager else "classic")
+				var mode = "test"
+				if has_node("/root/GameModeManager"):
+					mode = get_node("/root/GameModeManager").get_current_mode()
+				create_lobby(mode)
 		
 		"create_lobby":
 			if data is Array and data.size() > 0:
@@ -209,50 +260,350 @@ func _on_supabase_response(data) -> void:
 			elif data is Dictionary:
 				current_lobby_data = data
 			
-			debug_log("Lobby created: %s" % current_lobby_data.get("id", "unknown"))
+			# Parse players if it came back as string
+			var players = current_lobby_data.get("players", [])
+			if players is String:
+				var json = JSON.new()
+				var parse_result = json.parse(players)
+				if parse_result == OK:
+					current_lobby_data["players"] = json.data
+					debug_log("Parsed players from string: %d players" % json.data.size())
+			
+			debug_log("✅ Lobby created: %s" % current_lobby_data.get("id", "unknown"))
+			debug_log("Lobby players: %s" % str(current_lobby_data.get("players", [])))
 			lobby_created.emit(current_lobby_data)
 			
-			# Start polling for updates
+			if pending_callbacks.has("pending_score_submission"):
+				var pending = pending_callbacks["pending_score_submission"]
+				pending_callbacks.erase("pending_score_submission")
+				debug_log("Re-submitting pending score now that lobby exists")
+				submit_round_score(pending.round, pending.score, pending.stats)
+			
 			start_polling()
 			
-			# Update MultiplayerManager
 			if mp_manager:
 				mp_manager.current_lobby_id = current_lobby_data.get("id", "")
 				mp_manager.is_host = true
-		
+
 		"get_lobby":
 			if data is Array and data.size() > 0:
 				current_lobby_data = data[0]
-				
-				# Now add ourselves to the players array
 				var lobby_id = pending_callbacks.get("join_lobby_id", "")
 				if lobby_id:
 					_update_lobby_players(lobby_id)
 					pending_callbacks.erase("join_lobby_id")
 		
 		"update_lobby_players":
-			debug_log("Successfully joined lobby")
+			debug_log("✅ Successfully joined lobby")
 			lobby_joined.emit(current_lobby_data)
-			
-			# Start polling for updates
 			start_polling()
 			
-			# Update MultiplayerManager
 			if mp_manager:
 				mp_manager.current_lobby_id = current_lobby_data.get("id", "")
 				mp_manager.is_host = false
 		
 		"poll_lobby":
 			if data is Array and data.size() > 0:
-				current_lobby_data = data[0]
-				lobby_updated.emit(current_lobby_data)
+				var response_data = data[0]
 				
-				# Check if game is starting
+				# Validate this is actually a lobby (has required fields)
+				if not response_data.has("players") or not response_data.has("status"):
+					debug_log("ERROR: Poll returned non-lobby data! Keys: %s" % str(response_data.keys()))
+					return
+				
+				var old_id = current_lobby_data.get("id", "none")
+				var new_id = response_data.get("id", "none")
+				
+				if old_id == new_id:
+					current_lobby_data = response_data
+					lobby_updated.emit(current_lobby_data)
+				else:
+					debug_log("ERROR: Poll returned different lobby! Expected: %s, Got: %s" % [old_id, new_id])
+					# Don't update with wrong lobby
+				
 				if current_lobby_data.get("status", "") == "playing" and mp_manager:
 					if not mp_manager.game_in_progress:
 						debug_log("Game is starting!")
 						stop_polling()
-						# Game will start from signal handler
+			else:
+				debug_log("Poll returned no lobby data")
+
+		"submit_round_score":
+			debug_log("✅ Score submitted successfully!")
+			var submitted_round = pending_callbacks.get("submitted_round", 0)
+			pending_callbacks.erase("submitted_round")
+			pending_callbacks.erase("submitted_score")
+			
+			# Add a small delay to ensure DB write completes
+			await get_tree().create_timer(0.5).timeout
+			
+			_fetch_round_scores(submitted_round)
+			
+			var max_rounds = current_lobby_data.get("max_rounds", 10)
+			if submitted_round >= max_rounds:
+				debug_log("🏁 Game complete! Fetching ALL round scores for final results...")
+				# Mark that this fetch is from round submission
+				pending_callbacks["from_round_submit"] = true
+				# INCREASED DELAY: 2 seconds to ensure all scores are saved
+				await get_tree().create_timer(2.0).timeout
+				_fetch_all_rounds_for_final_results()
+
+		"fetch_round_scores":
+			var round = pending_callbacks.get("fetch_round", 0)
+			pending_callbacks.erase("fetch_round")
+			
+			debug_log("Processing %d score entries from DB" % (data.size() if data is Array else 0))
+			
+			var scores_array = []
+			if data is Array:
+				for score_entry in data:
+					var player_data = {}
+					for player in current_lobby_data.get("players", []):
+						if player.get("id", "") == score_entry.player_id:
+							player_data = player
+							break
+					
+					scores_array.append({
+						"player_id": score_entry.player_id,
+						"name": player_data.get("name", "Unknown"),
+						"round_score": score_entry.score,
+						"total_score": score_entry.score,
+						"position": 1,
+						"position_change": 0,
+						"is_local": score_entry.player_id == supabase.current_user.get("id", "")
+					})
+			
+			debug_log("✅ Emitting round_scores_ready with %d players" % scores_array.size())
+			round_scores_ready.emit(scores_array)
+			
+			var max_rounds = current_lobby_data.get("max_rounds", 10)
+			if round >= max_rounds:
+				debug_log("🏁 Game complete! Fetching ALL round scores for final results...")
+				await get_tree().create_timer(0.3).timeout
+				_fetch_all_rounds_for_final_results()
+
+		"fetch_all_rounds":
+			debug_log("Processing ALL rounds data from DB")
+			
+			if not current_lobby_data.has("id"):
+				debug_log("ERROR: No lobby data available!")
+				return
+			
+			var player_rounds = {}
+			
+			if data is Array:
+				debug_log("Found %d score entries in database" % data.size())
+				for score_entry in data:
+					var player_id = str(score_entry.get("player_id", "")).strip_edges()
+					var round_num = score_entry.get("round", 0)
+					var score = score_entry.get("score", 0)
+					
+					debug_log("  Entry: player=%s, round=%d, score=%d" % [player_id.substr(0, 8), round_num, score])
+					
+					if not player_rounds.has(player_id):
+						player_rounds[player_id] = {}
+					
+					player_rounds[player_id][round_num] = score
+			
+			# DEBUG: Show the complete player_rounds structure
+			debug_log("player_rounds structure: %s" % JSON.stringify(player_rounds))
+			debug_log("player_rounds keys: %s" % str(player_rounds.keys()))
+			
+			var rankings = []
+			var lobby_players = current_lobby_data.get("players", [])
+			
+			if lobby_players is String:
+				debug_log("Players is a string, parsing JSON...")
+				var json = JSON.new()
+				var parse_result = json.parse(lobby_players)
+				if parse_result == OK:
+					lobby_players = json.data
+					debug_log("Parsed %d players from JSON" % lobby_players.size())
+				else:
+					debug_log("ERROR: Failed to parse players JSON")
+					lobby_players = []
+			
+			if lobby_players.size() == 0 and player_rounds.size() > 0:
+				debug_log("WARNING: No players in lobby, creating from scores")
+				for player_id in player_rounds:
+					lobby_players.append({
+						"id": player_id,
+						"name": "Player",
+						"mmr": 1000
+					})
+			
+			debug_log("Lobby has %d players" % lobby_players.size())
+			
+			for player in lobby_players:
+				var player_id = str(player.get("id", "")).strip_edges()
+				var player_name = player.get("name", "Player")
+				
+				debug_log("Processing player: id='%s', name=%s" % [player_id, player_name])
+				
+				# Try to match with full ID and truncated ID
+				var rounds_data = []
+				var total = 0
+				var found_scores = false
+				
+				# Check if we have scores for this player
+				if player_rounds.has(player_id):
+					debug_log("  Found player in player_rounds with full ID")
+					found_scores = true
+				else:
+					# Try truncated ID (first 8 chars)
+					for key in player_rounds.keys():
+						if key.begins_with(player_id.substr(0, 8)):
+							debug_log("  Found player with partial match: %s" % key)
+							player_id = key  # Use the actual key from player_rounds
+							found_scores = true
+							break
+				
+				var max_rounds = current_lobby_data.get("max_rounds", 2)
+				for r in range(1, max_rounds + 1):
+					var round_score = 0
+					
+					if found_scores and player_rounds.has(player_id):
+						# Check for integer key first
+						if player_rounds[player_id].has(r):
+							round_score = player_rounds[player_id][r]
+						# Then check for float key (1.0, 2.0, etc)
+						elif player_rounds[player_id].has(float(r)):
+							round_score = player_rounds[player_id][float(r)]
+						# Finally check for string key
+						elif player_rounds[player_id].has(str(r)):
+							round_score = player_rounds[player_id][str(r)]
+					
+					rounds_data.append(round_score)
+					total += round_score
+				
+				debug_log("  Player %s: total=%d, rounds=%s" % [player_name, total, str(rounds_data)])
+				
+				rankings.append({
+					"id": player.get("id", ""),  # Use original player ID
+					"name": player_name,
+					"total": total,
+					"rounds": rounds_data,
+					"mmr": player.get("mmr", 1000),
+					"placement": 0,
+					"mmr_change": 0,
+					"is_complete": total > 0
+				})
+			
+			rankings.sort_custom(func(a, b): return a.total > b.total)
+			
+			var placement = 1
+			for i in range(rankings.size()):
+				if rankings[i].total > 0:
+					rankings[i].placement = placement
+					placement += 1
+					var base_change = (rankings.size() - rankings[i].placement) * 10 - 5
+					rankings[i].mmr_change = base_change
+				else:
+					rankings[i].placement = 999
+					rankings[i].mmr_change = 0
+			
+			var final_results = {
+				"rankings": rankings,
+				"lobby_id": current_lobby_data.get("id", ""),
+				"mode": current_lobby_data.get("mode", "test"),
+				"all_complete": rankings.all(func(r): return r.total > 0)
+			}
+			
+			debug_log("✅ Emitting game_completed with %d players (%d complete)" % 
+				[rankings.size(), rankings.filter(func(r): return r.total > 0).size()])
+			
+			game_completed.emit(final_results)
+			
+			# Save highscore ONCE per game - check if we haven't saved yet
+			if not has_meta("highscore_saved_this_game") and has_node("/root/GameState"):
+				var game_state = get_node("/root/GameState")
+				
+				# Check if eligible for leaderboards (not seeded)
+				if game_state.is_eligible_for_global_leaderboard():
+					var actual_total = game_state.total_score
+					var game_seed = game_state.get_game_seed()
+					
+					debug_log("Saving highscore: %d (seed: %d) - ELIGIBLE for leaderboards" % [actual_total, game_seed])
+					
+					if actual_total > 0:
+						save_highscore_to_db(
+							actual_total,
+							current_lobby_data.get("mode", "test"),
+							"multi",
+							game_seed
+						)
+						# Mark that we've saved for this game
+						set_meta("highscore_saved_this_game", true)
+				else:
+					debug_log("NOT saving highscore - seeded/tournament game not eligible for leaderboards")
+			else:
+				if has_meta("highscore_saved_this_game"):
+					debug_log("Highscore already saved for this game")
+				else:
+					debug_log("GameState not available")
+
+		"save_highscore":
+			if data:
+				debug_log("✅ Highscore saved successfully!")
+			else:
+				debug_log("⚠️ Failed to save highscore")
+
+		"fetch_highscores":
+			debug_log("Received highscores from DB")
+			
+			var highscores = []
+			
+			if data is Array:
+				debug_log("Found %d highscore entries" % data.size())
+				
+				for entry in data:
+					var timestamp_str = entry.get("created_at", "")
+					var formatted_date = _format_date_string(timestamp_str)
+					
+					highscores.append({
+						"player_name": entry.get("player_name", "Unknown"),
+						"player_id": entry.get("player_id", ""),
+						"score": entry.get("score", 0),
+						"highscore": entry.get("score", 0),  # Alias for compatibility
+						"seed": entry.get("seed", 0),
+						"timestamp": timestamp_str,  # Keep original for sorting
+						"date": formatted_date,  # MM/DD format for display
+						"mode": entry.get("mode", ""),
+						"game_type": entry.get("game_type", ""),
+						"is_current_player": entry.get("player_id", "") == supabase.current_user.get("id", "")
+					})
+			else:
+				debug_log("No highscores found or invalid response")
+			
+			debug_log("✅ Emitting highscores_received with %d entries" % highscores.size())
+			highscores_received.emit(highscores)
+
+func request_final_results() -> void:
+	"""Public method to request final game results - can be called multiple times"""
+	debug_log("Requesting final game results...")
+	
+	if not current_lobby_data.has("id"):
+		debug_log("⚠️ Cannot fetch final results - no lobby")
+		return
+	
+	_fetch_all_rounds_for_final_results()
+
+func _fetch_all_rounds_for_final_results() -> void:
+	"""Fetch all rounds from DB for final results"""
+	if not current_lobby_data.has("id"):
+		debug_log("⚠️ Cannot fetch all rounds - no lobby_id")
+		return
+	
+	var lobby_id = current_lobby_data.get("id", "")
+	debug_log("Fetching ALL rounds for lobby: %s" % lobby_id)
+	supabase.current_request_type = "fetch_all_rounds"
+	
+	var url = supabase.SUPABASE_URL + "/rest/v1/pyramids_round_scores"
+	url += "?lobby_id=eq." + lobby_id
+	url += "&order=round.asc"
+	
+	var headers = supabase._get_db_headers()
+	supabase.db_request.request(url, headers, HTTPClient.METHOD_GET)
 
 # === POLLING ===
 
@@ -275,9 +626,12 @@ func _poll_lobby_status() -> void:
 	if not current_lobby_data.has("id"):
 		return
 	
+	var our_lobby_id = current_lobby_data.get("id", "")
+	debug_log("Polling for lobby: %s" % our_lobby_id)
+	
 	supabase.current_request_type = "poll_lobby"
-	var url = supabase.SUPABASE_URL + "/rest/v1/pyramids_lobbies"
-	url += "?id=eq." + current_lobby_data.id
+	var url = supabase.SUPABASE_URL + "/rest/v1/pyramids_lobbies"  # CORRECT TABLE
+	url += "?id=eq." + our_lobby_id  # Query by specific lobby ID
 	
 	var headers = supabase._get_db_headers()
 	supabase.db_request.request(url, headers, HTTPClient.METHOD_GET)
@@ -303,6 +657,8 @@ func _update_lobby_players(lobby_id: String) -> void:
 	var body = JSON.stringify(update_data)
 	supabase.db_request.request(url, headers, HTTPClient.METHOD_PATCH, body)
 
+# === MOCK FUNCTIONS ===
+
 func _mock_create_lobby(mode: String) -> void:
 	"""Mock lobby creation"""
 	await get_tree().process_frame
@@ -325,38 +681,15 @@ func _mock_create_lobby(mode: String) -> void:
 	}
 	
 	lobby_created.emit(current_lobby_data)
-	
-	# Simulate other players joining after delay
-	if debug_enabled:
-		await get_tree().create_timer(2.0).timeout
-		_mock_add_bot_players()
 
 func _mock_join_lobby(lobby_id: String) -> void:
 	"""Mock joining a lobby"""
-	# In mock mode, just emit the signal
 	lobby_joined.emit(current_lobby_data)
 
 func _mock_leave_lobby() -> void:
 	"""Mock leaving a lobby"""
 	current_lobby_data.clear()
 	round_scores.clear()
-
-func _mock_add_bot_players() -> void:
-	"""Add mock bot players for testing"""
-	var bot_count = randi_range(3, 7)  # Random 3-7 bots
-	
-	for i in range(bot_count):
-		var bot = {
-			"id": "bot_%d" % i,
-			"name": "Bot %d" % (i + 1),
-			"mmr": 1000 + randi_range(-200, 200),
-			"is_bot": true
-		}
-		current_lobby_data.players.append(bot)
-	
-	current_lobby_data.player_count = current_lobby_data.players.size()
-	debug_log("Added %d bot players" % bot_count)
-	lobby_updated.emit(current_lobby_data)
 
 func _mock_submit_score(player_id: String, round: int, score: int, stats: Dictionary) -> void:
 	"""Mock score submission"""
@@ -369,7 +702,6 @@ func _mock_submit_score(player_id: String, round: int, score: int, stats: Dictio
 		"stats": stats
 	})
 	
-	# Check if round is complete
 	await _check_round_complete(round)
 
 func _mock_complete_round(round: int) -> void:
@@ -378,27 +710,16 @@ func _mock_complete_round(round: int) -> void:
 	
 	for player in current_lobby_data.players:
 		var player_id = player.id
-		
-		# Get real score if submitted, otherwise generate mock
 		var score = 0
+		
 		if round_scores.has(player_id):
 			for round_data in round_scores[player_id]:
 				if round_data.round == round:
 					score = round_data.score
 					break
-		else:
-			# Generate mock score for bots
-			score = randi_range(500, 950)
-			if not round_scores.has(player_id):
-				round_scores[player_id] = []
-			round_scores[player_id].append({
-				"round": round,
-				"score": score
-			})
 		
-		# Calculate total score
 		var total = 0
-		for round_data in round_scores[player_id]:
+		for round_data in round_scores.get(player_id, []):
 			total += round_data.score
 		
 		all_scores.append({
@@ -406,78 +727,37 @@ func _mock_complete_round(round: int) -> void:
 			"name": player.name,
 			"round_score": score,
 			"total_score": total,
-			"position": 0,  # Will be calculated
+			"position": 0,
 			"is_local": player_id == supabase.current_user.get("id", "mock_player_1")
 		})
 	
-	# Sort by total score and assign positions
 	all_scores.sort_custom(func(a, b): return a.total_score > b.total_score)
 	for i in range(all_scores.size()):
 		all_scores[i].position = i + 1
-		# Calculate position change (simplified for now)
 		all_scores[i].position_change = 0
 	
-	debug_log("Round %d complete with %d players" % [round, all_scores.size()])
+	debug_log("✅ Round %d complete with %d players" % [round, all_scores.size()])
 	round_scores_ready.emit(all_scores)
-	
-	# Check if game is complete
-	if round >= current_lobby_data.max_rounds:
-		await _mock_end_game()
-
-func _mock_end_game() -> void:
-	"""Generate final game results"""
-	debug_log("Game complete, generating final results")
-	
-	var rankings = []
-	for player in current_lobby_data.players:
-		var total = 0
-		var rounds_data = []
-		
-		if round_scores.has(player.id):
-			for round_data in round_scores[player.id]:
-				total += round_data.score
-				rounds_data.append(round_data.score)
-		
-		rankings.append({
-			"id": player.id,
-			"name": player.name,
-			"total": total,
-			"rounds": rounds_data,
-			"mmr": player.get("mmr", 1000),
-			"placement": 0
-		})
-	
-	# Sort and assign placements
-	rankings.sort_custom(func(a, b): return a.total > b.total)
-	for i in range(rankings.size()):
-		rankings[i].placement = i + 1
-		# Calculate MMR change (simplified)
-		var base_change = (rankings.size() - i - 1) * 10 - 20
-		rankings[i].mmr_change = base_change
-	
-	var final_results = {
-		"rankings": rankings,
-		"lobby_id": current_lobby_data.id,
-		"mode": current_lobby_data.mode
-	}
-	
-	game_completed.emit(final_results)
 
 # === HELPER FUNCTIONS ===
 
 func _build_player_data() -> Dictionary:
-	"""Build player data object with equipment and stats"""
+	"""Build player data object"""
 	var player_data = {
 		"id": supabase.current_user.get("id", "unknown") if supabase else "unknown",
-		"name": SettingsSystem.player_name if has_node("/root/SettingsSystem") else "Player",
-		"level": 1,  # TODO: Get from XPManager
-		"mmr": 1000,  # TODO: Get from profile stats
+		"name": "Player",
+		"level": 1,
+		"mmr": 1000,
 		"equipped": {},
 		"displayed": [],
 		"stats": {}
 	}
 	
-	# Get equipped items from EquipmentManager
+	if has_node("/root/SettingsSystem"):
+		var settings = get_node("/root/SettingsSystem")
+		if "player_name" in settings:
+			player_data.name = settings.player_name
+	
 	if has_node("/root/EquipmentManager"):
 		var equipment = get_node("/root/EquipmentManager")
 		player_data.equipped = {
@@ -487,17 +767,6 @@ func _build_player_data() -> Dictionary:
 		}
 		player_data.displayed = equipment.get_showcased_items()
 	
-	# Get multiplayer stats for current mode
-	if has_node("/root/StatsManager"):
-		var stats = get_node("/root/StatsManager")
-		var mode = mp_manager.selected_game_mode if mp_manager else "classic"
-		var mp_stats = stats.get_multiplayer_stats(mode)
-		player_data.stats = {
-			"games": mp_stats.get("games", 0),
-			"avg_rank": mp_stats.get("average_rank", 0),
-			"mmr": mp_stats.get("mmr", 1000)
-		}
-	
 	return player_data
 
 func _get_max_rounds_for_mode(mode: String) -> int:
@@ -505,7 +774,7 @@ func _get_max_rounds_for_mode(mode: String) -> int:
 	match mode:
 		"classic": return 10
 		"rush": return 5
-		"test": return 3
+		"test": return 2
 		_: return 10
 
 func get_current_lobby() -> Dictionary:
@@ -519,3 +788,105 @@ func is_in_lobby() -> bool:
 func get_player_count() -> int:
 	"""Get current player count in lobby"""
 	return current_lobby_data.get("player_count", 0)
+
+func reset_for_new_game() -> void:
+	"""Reset NetworkManager state for a new game"""
+	debug_log("Resetting NetworkManager for new game")
+	
+	# Stop polling if active
+	stop_polling()
+	
+	# Clear all state
+	current_lobby_data.clear()
+	round_scores.clear()
+	pending_callbacks.clear()
+	is_connected = true  # Keep connection
+	
+	# Clear the highscore saved flag
+	if has_meta("highscore_saved_this_game"):
+		remove_meta("highscore_saved_this_game")
+	
+	debug_log("NetworkManager reset complete")
+
+func save_highscore_to_db(final_score: int, mode: String, game_type: String = "multi", seed: int = 0) -> void:
+	"""Save highscore to pyramids_highscores table"""
+	debug_log("Saving highscore: %d for mode: %s (%s) with seed: %d" % [final_score, mode, game_type, seed])
+	
+	if not supabase or not supabase.current_user.has("id"):
+		debug_log("ERROR: Cannot save highscore - no user")
+		return
+		
+	var player_name = "Player"
+	if has_node("/root/SettingsSystem"):
+		var settings = get_node("/root/SettingsSystem")
+		player_name = settings.player_name
+	
+	var highscore_data = {
+		"player_id": supabase.current_user.get("id", ""),
+		"player_name": player_name,
+		"score": final_score,
+		"mode": mode,
+		"game_type": game_type,
+		"seed": seed  # Now using actual seed
+	}
+	
+	supabase.current_request_type = "save_highscore"
+	var url = supabase.SUPABASE_URL + "/rest/v1/pyramids_highscores"
+	var headers = supabase._get_db_headers()
+	headers.append("Content-Type: application/json")
+	
+	var body = JSON.stringify(highscore_data)
+	debug_log("Saving highscore with body: %s" % body)
+	supabase.db_request.request(url, headers, HTTPClient.METHOD_POST, body)
+
+func fetch_highscores_from_db(mode: String, game_type: String = "multi", limit: int = 50) -> void:
+	"""Fetch top highscores from pyramids_highscores table"""
+	debug_log("Fetching highscores from DB: mode=%s, type=%s, limit=%d" % [mode, game_type, limit])
+	
+	if not supabase:
+		debug_log("ERROR: SupabaseManager not available")
+		highscores_received.emit([])
+		return
+	
+	supabase.current_request_type = "fetch_highscores"
+	
+	var url = supabase.SUPABASE_URL + "/rest/v1/pyramids_highscores"
+	url += "?mode=eq." + mode
+	url += "&game_type=eq." + game_type
+	url += "&order=score.desc"
+	url += "&limit=" + str(limit)
+	
+	var headers = supabase._get_db_headers()
+	supabase.db_request.request(url, headers, HTTPClient.METHOD_GET)
+
+func _format_date_string(timestamp_str: String) -> String:
+	"""Convert database timestamp to MM/DD format"""
+	# Input formats: 
+	# "2025-10-13 21:53:43.954105" (space separator)
+	# "2025-10-13T22:08:27.111863" (ISO 8601 with T)
+	# Output format: "10/13"
+	
+	if timestamp_str == "":
+		return ""
+	
+	# Split by both space and T to handle both formats
+	var parts = timestamp_str.split(" ")
+	if parts.size() == 1:
+		# Try splitting by T for ISO format
+		parts = timestamp_str.split("T")
+	
+	if parts.size() == 0:
+		return timestamp_str
+	
+	# Get just the date part
+	var date_part = parts[0]
+	
+	# Split date by hyphen
+	var date_parts = date_part.split("-")
+	if date_parts.size() != 3:
+		return date_part
+	
+	# Format as MM/DD
+	var month = date_parts[1]
+	var day = date_parts[2]
+	return "%s/%s" % [month, day]

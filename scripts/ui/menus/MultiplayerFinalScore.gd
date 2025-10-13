@@ -1,6 +1,6 @@
 # MultiplayerFinalScore.gd - Display final game results with all rounds
 # Location: res://Pyramids/scripts/ui/game_ui/MultiplayerFinalScore.gd
-# Last Updated: Initial implementation [Date]
+# Last Updated: Connected to NetworkManager, proper signal flow
 
 extends Control
 
@@ -26,49 +26,52 @@ const EMOJI_DURATION = 5.0
 @onready var emoji_button_4: Button = $StyledPanel/MarginContainer/VBoxContainer/BottomHBox/EmojiButton4
 
 # === PROPERTIES ===
-var total_rounds: int = 10  # Will be set based on game mode
-var player_results: Array = []  # Final results data
-var local_player_id: String = "player_local"
+var total_rounds: int = 10
+var player_results: Array = []
+var local_player_id: String = ""
 var game_mode: String = "classic"
+var update_timer: Timer
+var is_updating: bool = false
+var all_players_complete: bool = false
 
-# Emoji system (reused from round score)
+# Emoji system
 var emoji_buttons: Array = []
 var emoji_on_cooldown: bool = false
 var emoji_cooldown_tweens: Array = []
 var emoji_lanes: Array = []
 
-# Mock data for testing
-var mock_players = [
-	{"id": "player_local", "name": "You", "mmr": 1200},
-	{"id": "player_2", "name": "Pharaoh", "mmr": 1350},
-	{"id": "player_3", "name": "Cleopatra", "mmr": 1100},
-	{"id": "player_4", "name": "Sphinx", "mmr": 1250},
-	{"id": "player_5", "name": "Anubis", "mmr": 1400},
-	{"id": "player_6", "name": "Ra", "mmr": 1050},
-	{"id": "player_7", "name": "Osiris", "mmr": 1150},
-	{"id": "player_8", "name": "Thoth", "mmr": 1300}
-]
+# Debug
+var debug_enabled: bool = true
+
+func debug_log(message: String) -> void:
+	if debug_enabled:
+		print("[MultiplayerFinalScore] %s" % message)
 
 func _ready():
+	debug_log("Final score screen loaded")
+	
+	if has_node("/root/SupabaseManager"):
+		var supabase = get_node("/root/SupabaseManager")
+		local_player_id = supabase.current_user.get("id", "")
+	
 	_setup_ui()
 	_setup_emoji_system()
 	_create_emoji_lanes()
 	_connect_signals()
 	_apply_styling()
 	
-	# Test with mock data if running directly
-	if get_tree().current_scene == self:
-		setup("classic", 10)  # Classic mode with 10 rounds
-		display_final_results(_generate_mock_results())
+	update_timer = Timer.new()
+	update_timer.wait_time = 2.0
+	update_timer.timeout.connect(_request_update)
+	add_child(update_timer)
+	
+	_connect_network_signals()
+	_request_initial_data()
 
 # === SETUP ===
 
 func _setup_ui():
 	"""Initialize UI structure"""
-	if get_tree().current_scene == self:
-		get_window().size = Vector2(1000, 600)  # Wider for two grids
-	
-	# Title
 	if title_label:
 		title_label.text = "Final Results!"
 	
@@ -80,21 +83,23 @@ func _setup_ui():
 		score_grid.columns = 5  # Round | Me | Win Score | Best | Player
 
 func _setup_emoji_system():
-	"""Load equipped emojis into buttons - same as round score"""
+	"""Load equipped emojis into buttons"""
 	emoji_buttons = [emoji_button_1, emoji_button_2, emoji_button_3, emoji_button_4]
 	
-	if not EquipmentManager:
+	if not has_node("/root/EquipmentManager"):
 		_setup_mock_emojis()
 		return
 		
-	var equipped_emojis = EquipmentManager.get_equipped_emojis()
+	var equipment = get_node("/root/EquipmentManager")
+	var equipped_emojis = equipment.get_equipped_emojis()
 	
 	for i in range(4):
 		var button = emoji_buttons[i]
 		if i < equipped_emojis.size():
 			var emoji_id = equipped_emojis[i]
-			if ItemManager:
-				var item = ItemManager.get_item(emoji_id)
+			if has_node("/root/ItemManager"):
+				var item_manager = get_node("/root/ItemManager")
+				var item = item_manager.get_item(emoji_id)
 				if item and item.get("texture_path"):
 					_configure_emoji_button(button, item, i)
 				else:
@@ -102,14 +107,15 @@ func _setup_emoji_system():
 		else:
 			button.visible = false
 
-func _configure_emoji_button(button: Button, emoji_item: UnifiedItemData, index: int):
+func _configure_emoji_button(button: Button, emoji_item, index: int):
 	"""Configure a single emoji button"""
 	button.visible = true
 	button.text = ""
-	button.tooltip_text = emoji_item.display_name
+	button.tooltip_text = emoji_item.display_name if emoji_item else ""
 	
-	if UIStyleManager:
-		UIStyleManager.apply_button_style(button, "transparent", "medium")
+	if has_node("/root/UIStyleManager"):
+		var style_manager = get_node("/root/UIStyleManager")
+		style_manager.apply_button_style(button, "transparent", "medium")
 	
 	var texture_path = emoji_item.texture_path if emoji_item else ""
 	if texture_path != "" and ResourceLoader.exists(texture_path):
@@ -119,7 +125,7 @@ func _configure_emoji_button(button: Button, emoji_item: UnifiedItemData, index:
 		button.expand_icon = true
 		button.custom_minimum_size = Vector2(48, 48)
 	
-	button.set_meta("emoji_id", emoji_item.id)
+	button.set_meta("emoji_id", emoji_item.id if emoji_item else "")
 	button.set_meta("emoji_item", emoji_item)
 	button.set_meta("button_index", index)
 
@@ -132,8 +138,6 @@ func _setup_mock_emojis():
 		button.custom_minimum_size = Vector2(48, 48)
 		button.set_meta("emoji_id", "emoji_test_%d" % i)
 		button.set_meta("emoji_item", {"id": "emoji_test_%d" % i, "display_name": "Test", "texture_path": ""})
-		if UIStyleManager:
-			UIStyleManager.apply_button_style(button, "transparent", "medium")
 
 func _create_emoji_lanes():
 	"""Create 8 vertical lanes for emoji display"""
@@ -175,26 +179,40 @@ func _connect_signals():
 	if emoji_button_4:
 		emoji_button_4.pressed.connect(func(): _on_emoji_pressed(3))
 
+func _connect_network_signals():
+	"""Connect to NetworkManager signals"""
+	if not has_node("/root/NetworkManager"):
+		debug_log("WARNING: NetworkManager not found!")
+		return
+	
+	var net_manager = get_node("/root/NetworkManager")
+	
+	if not net_manager.game_completed.is_connected(_on_game_completed):
+		net_manager.game_completed.connect(_on_game_completed)
+		debug_log("Connected to NetworkManager.game_completed")
+
 func _apply_styling():
 	"""Apply theme styling"""
+	# Set HIGH z-index to appear in front of game cards
+	z_index = 150
+	
 	if background:
-		background.z_index = -1
-		var gradient = Gradient.new()
-		gradient.add_point(0.0, Color(0.1, 0.1, 0.2, 0.95))
-		gradient.add_point(1.0, Color(0.2, 0.1, 0.3, 0.95))
+		background.z_index = 149  # Just behind panel
+		# Semi-transparent dark background
+		background.color = Color(0.0, 0.0, 0.0, 0.7)  # 70% opacity black
 	
 	if styled_panel:
-		# Wider panel for final scores
-		styled_panel.custom_minimum_size.x = 800
-		styled_panel.z_index = 1
+		styled_panel.custom_minimum_size.x = 900
+		styled_panel.z_index = 150  # In front of everything
 	
 	if margin_container:
 		margin_container.add_theme_constant_override("margin_left", 20)
 		margin_container.add_theme_constant_override("margin_right", 20)
 	
-	if title_label and ThemeConstants:
-		title_label.add_theme_font_size_override("font_size", ThemeConstants.typography.size_title)
-		title_label.add_theme_color_override("font_color", ThemeConstants.colors.primary)
+	if title_label and has_node("/root/ThemeConstants"):
+		var theme = get_node("/root/ThemeConstants")
+		title_label.add_theme_font_size_override("font_size", theme.typography.size_title)
+		title_label.add_theme_color_override("font_color", theme.colors.primary)
 	
 	if continue_button:
 		continue_button.text = "Continue to Summary"
@@ -205,77 +223,34 @@ func setup(mode: String, rounds: int):
 	"""Setup the final score screen for a specific game mode"""
 	game_mode = mode
 	total_rounds = rounds
-	
-	# RankingGrid is always 5 columns: Rank | Icon | Player | Total | MMR
-	# ScoreGrid is always 5 columns: Round | Me | Winner | Winner Score | Best
-	# No need to adjust columns dynamically anymore
-	
-	# Adjust panel width if needed
-	if styled_panel:
-		styled_panel.custom_minimum_size.x = 900  # Wide enough for both grids
+	debug_log("Setup: Mode=%s, Rounds=%d" % [mode, rounds])
 
 func display_final_results(results: Array):
 	"""Display the final results for all players"""
+	debug_log("Displaying final results for %d players" % results.size())
 	player_results = results
 	_populate_grid()
 
+# === NETWORK HANDLERS ===
+
+func _on_game_completed(final_results: Dictionary):
+	"""Handle game completion from NetworkManager"""
+	debug_log("✅ Received game completed signal")
+	
+	all_players_complete = final_results.get("all_complete", false)
+	
+	if all_players_complete:
+		debug_log("All players complete!")
+		if update_timer:
+			update_timer.stop()
+			is_updating = false
+	else:
+		debug_log("Some players still playing - will continue polling")
+	
+	var rankings = final_results.get("rankings", [])
+	display_final_results(rankings)
+
 # === PRIVATE HELPERS ===
-
-func _generate_mock_results() -> Array:
-	"""Generate mock final results for testing"""
-	var results = []
-	
-	# Generate results for actual player count (not always 8)
-	var player_count = min(mock_players.size(), randi_range(4, 8))
-	
-	for i in range(player_count):
-		var player = mock_players[i]
-		var player_result = {
-			"player_id": player.id,
-			"name": player.name,
-			"placement": 0,  # Will be set after sorting
-			"total_score": 0,
-			"round_scores": [],
-			"mmr_before": player.mmr,
-			"mmr_change": 0,
-			"mmr_after": 0,
-			"is_eliminated": false,
-			"status": "done"
-		}
-		
-		# Generate scores for each round
-		for round in range(total_rounds):
-			var round_score = randi_range(400, 950)
-			player_result.round_scores.append(round_score)
-			player_result.total_score += round_score
-		
-		results.append(player_result)
-	
-	# Sort by total score
-	results.sort_custom(func(a, b): return a.total_score > b.total_score)
-	
-	# Assign placements and calculate MMR changes
-	for i in range(results.size()):
-		results[i]["placement"] = i + 1
-		
-		# Calculate MMR change based on placement
-		var mmr_change = _calculate_mmr_change(i + 1, results.size())
-		results[i]["mmr_change"] = mmr_change
-		results[i]["mmr_after"] = results[i]["mmr_before"] + mmr_change
-		
-		# Mark eliminated players (bottom 2 in elimination modes)
-		if i >= results.size() - 2 and game_mode != "classic":
-			results[i]["is_eliminated"] = true
-	
-	return results
-
-func _calculate_mmr_change(placement: int, total_players: int) -> int:
-	"""Calculate MMR change based on placement"""
-	# Simple formula for now - should use RankingSystem later
-	var base_change = 50
-	var position_factor = float(total_players - placement) / float(total_players - 1)
-	var change = int(base_change * (position_factor * 2 - 1))
-	return change
 
 func _populate_grid():
 	"""Populate both grids with final results"""
@@ -285,24 +260,28 @@ func _populate_grid():
 	for child in score_grid.get_children():
 		child.queue_free()
 	
-	# Populate ranking grid (left side)
 	_populate_ranking_grid()
 	
-	# Add spacing between grids
 	if grid_hbox:
 		grid_hbox.add_theme_constant_override("separation", 30)
 	
-	# Populate score grid (right side)
 	_populate_score_grid()
 
 func _populate_ranking_grid():
 	"""Populate the ranking grid with player standings"""
-	# Add headers - 5 columns (removed Rank, keeping only #)
+	var theme_colors = null
+	if has_node("/root/ThemeConstants"):
+		theme_colors = get_node("/root/ThemeConstants")
+	
+	# Add headers
 	var headers = ["", "#", "Player", "Total", "MMR"]
 	for header_text in headers:
 		var label = Label.new()
 		label.text = header_text
-		label.add_theme_color_override("font_color", ThemeConstants.colors.gray_500 if ThemeConstants else Color.GRAY)
+		if theme_colors:
+			label.add_theme_color_override("font_color", theme_colors.colors.gray_500)
+		else:
+			label.add_theme_color_override("font_color", Color.GRAY)
 		label.add_theme_font_size_override("font_size", 14)
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		ranking_grid.add_child(label)
@@ -313,27 +292,32 @@ func _populate_ranking_grid():
 
 func _populate_score_grid():
 	"""Populate the score grid with round-by-round breakdown"""
-	# Find winner (1st place player)
-	var winner_data = player_results[0] if player_results.size() > 0 else null
+	var theme_colors = null
+	if has_node("/root/ThemeConstants"):
+		theme_colors = get_node("/root/ThemeConstants")
 	
-	# Find local player data
+	# Find winner and local player
+	var winner_data = player_results[0] if player_results.size() > 0 else null
 	var local_data = null
 	for player in player_results:
-		if player.player_id == local_player_id:
+		if player.get("id", "") == local_player_id:
 			local_data = player
 			break
 	
-	# Add headers - 5 columns now
+	# Add headers
 	var headers = ["Round", "Me", "Win Score", "Best", "Player"]
 	for header_text in headers:
 		var label = Label.new()
 		label.text = header_text
-		label.add_theme_color_override("font_color", ThemeConstants.colors.gray_500 if ThemeConstants else Color.GRAY)
+		if theme_colors:
+			label.add_theme_color_override("font_color", theme_colors.colors.gray_500)
+		else:
+			label.add_theme_color_override("font_color", Color.GRAY)
 		label.add_theme_font_size_override("font_size", 14)
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		score_grid.add_child(label)
 	
-	# Track totals for summary row
+	# Track totals
 	var my_total = 0
 	var winner_total = 0
 	var best_total = 0
@@ -344,33 +328,42 @@ func _populate_score_grid():
 		var round_label = Label.new()
 		round_label.text = "R%d" % (round_idx + 1)
 		round_label.add_theme_font_size_override("font_size", 14)
-		round_label.add_theme_color_override("font_color", ThemeConstants.colors.gray_900 if ThemeConstants else Color.BLACK)
+		if theme_colors:
+			round_label.add_theme_color_override("font_color", theme_colors.colors.gray_900)
+		else:
+			round_label.add_theme_color_override("font_color", Color.BLACK)
 		round_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		score_grid.add_child(round_label)
 		
 		# My score
 		var my_score = 0
-		if local_data and round_idx < local_data.round_scores.size():
-			my_score = local_data.round_scores[round_idx]
+		if local_data and local_data.has("rounds") and round_idx < local_data.rounds.size():
+			my_score = local_data.rounds[round_idx]
 		my_total += my_score
 		
 		var my_label = Label.new()
-		my_label.text = str(my_score)
+		my_label.text = "%d" % my_score  # Integer format
 		my_label.add_theme_font_size_override("font_size", 14)
-		my_label.add_theme_color_override("font_color", ThemeConstants.colors.primary if ThemeConstants else Color.GREEN)
+		if theme_colors:
+			my_label.add_theme_color_override("font_color", theme_colors.colors.primary)
+		else:
+			my_label.add_theme_color_override("font_color", Color.GREEN)
 		my_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		score_grid.add_child(my_label)
 		
 		# Winner score
 		var winner_score = 0
-		if winner_data and round_idx < winner_data.round_scores.size():
-			winner_score = winner_data.round_scores[round_idx]
+		if winner_data and winner_data.has("rounds") and round_idx < winner_data.rounds.size():
+			winner_score = winner_data.rounds[round_idx]
 		winner_total += winner_score
 		
 		var winner_score_label = Label.new()
-		winner_score_label.text = str(winner_score)
+		winner_score_label.text = "%d" % winner_score  # Integer format
 		winner_score_label.add_theme_font_size_override("font_size", 14)
-		winner_score_label.add_theme_color_override("font_color", ThemeConstants.colors.gray_900 if ThemeConstants else Color.BLACK)
+		if theme_colors:
+			winner_score_label.add_theme_color_override("font_color", theme_colors.colors.gray_900)
+		else:
+			winner_score_label.add_theme_color_override("font_color", Color.BLACK)
 		winner_score_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		score_grid.add_child(winner_score_label)
 		
@@ -378,16 +371,19 @@ func _populate_score_grid():
 		var best_score = 0
 		var best_player_name = ""
 		for player in player_results:
-			if round_idx < player.round_scores.size():
-				if player.round_scores[round_idx] > best_score:
-					best_score = player.round_scores[round_idx]
-					best_player_name = player.name
+			if player.has("rounds") and round_idx < player.rounds.size():
+				if player.rounds[round_idx] > best_score:
+					best_score = player.rounds[round_idx]
+					best_player_name = player.get("name", "Unknown")
 		best_total += best_score
 		
 		var best_label = Label.new()
-		best_label.text = str(best_score)
+		best_label.text = "%d" % best_score  # Integer format
 		best_label.add_theme_font_size_override("font_size", 14)
-		best_label.add_theme_color_override("font_color", ThemeConstants.colors.gray_900 if ThemeConstants else Color.BLACK)
+		if theme_colors:
+			best_label.add_theme_color_override("font_color", theme_colors.colors.gray_900)
+		else:
+			best_label.add_theme_color_override("font_color", Color.BLACK)
 		best_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		score_grid.add_child(best_label)
 		
@@ -395,11 +391,16 @@ func _populate_score_grid():
 		var player_label = Label.new()
 		player_label.text = best_player_name
 		player_label.add_theme_font_size_override("font_size", 14)
-		# Highlight if it's the local player
-		if best_player_name == (local_data.name if local_data else ""):
-			player_label.add_theme_color_override("font_color", ThemeConstants.colors.primary if ThemeConstants else Color.GREEN)
+		if best_player_name == (local_data.get("name", "") if local_data else ""):
+			if theme_colors:
+				player_label.add_theme_color_override("font_color", theme_colors.colors.primary)
+			else:
+				player_label.add_theme_color_override("font_color", Color.GREEN)
 		else:
-			player_label.add_theme_color_override("font_color", ThemeConstants.colors.gray_900 if ThemeConstants else Color.BLACK)
+			if theme_colors:
+				player_label.add_theme_color_override("font_color", theme_colors.colors.gray_900)
+			else:
+				player_label.add_theme_color_override("font_color", Color.BLACK)
 		player_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		score_grid.add_child(player_label)
 	
@@ -412,31 +413,43 @@ func _populate_score_grid():
 	var total_label = Label.new()
 	total_label.text = "Total"
 	total_label.add_theme_font_size_override("font_size", 16)
-	total_label.add_theme_color_override("font_color", ThemeConstants.colors.gray_900 if ThemeConstants else Color.BLACK)
+	if theme_colors:
+		total_label.add_theme_color_override("font_color", theme_colors.colors.gray_900)
+	else:
+		total_label.add_theme_color_override("font_color", Color.BLACK)
 	total_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	score_grid.add_child(total_label)
 	
 	# My total
 	var my_total_label = Label.new()
-	my_total_label.text = str(my_total)
+	my_total_label.text = "%d" % my_total  # Integer format
 	my_total_label.add_theme_font_size_override("font_size", 16)
-	my_total_label.add_theme_color_override("font_color", ThemeConstants.colors.primary if ThemeConstants else Color.GREEN)
+	if theme_colors:
+		my_total_label.add_theme_color_override("font_color", theme_colors.colors.primary)
+	else:
+		my_total_label.add_theme_color_override("font_color", Color.GREEN)
 	my_total_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	score_grid.add_child(my_total_label)
 	
 	# Winner total
 	var winner_total_label = Label.new()
-	winner_total_label.text = str(winner_total)
+	winner_total_label.text = "%d" % winner_total  # Integer format
 	winner_total_label.add_theme_font_size_override("font_size", 16)
-	winner_total_label.add_theme_color_override("font_color", ThemeConstants.colors.gray_900 if ThemeConstants else Color.BLACK)
+	if theme_colors:
+		winner_total_label.add_theme_color_override("font_color", theme_colors.colors.gray_900)
+	else:
+		winner_total_label.add_theme_color_override("font_color", Color.BLACK)
 	winner_total_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	score_grid.add_child(winner_total_label)
 	
 	# Best possible total
 	var best_total_label = Label.new()
-	best_total_label.text = str(best_total)
+	best_total_label.text = "%d" % best_total  # Integer format
 	best_total_label.add_theme_font_size_override("font_size", 16)
-	best_total_label.add_theme_color_override("font_color", ThemeConstants.colors.gray_900 if ThemeConstants else Color.BLACK)
+	if theme_colors:
+		best_total_label.add_theme_color_override("font_color", theme_colors.colors.gray_900)
+	else:
+		best_total_label.add_theme_color_override("font_color", Color.BLACK)
 	best_total_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	score_grid.add_child(best_total_label)
 	
@@ -447,8 +460,11 @@ func _populate_score_grid():
 
 func _add_ranking_row(result_data: Dictionary, index: int):
 	"""Add a player's row to the ranking grid"""
-	var is_local = result_data.player_id == local_player_id
-	var placement = result_data.placement
+	var is_local = result_data.get("id", "") == local_player_id
+	var placement = result_data.get("placement", index + 1)
+	var theme_colors = null
+	if has_node("/root/ThemeConstants"):
+		theme_colors = get_node("/root/ThemeConstants")
 	
 	# Icon column
 	var icon_container = Control.new()
@@ -462,70 +478,74 @@ func _add_ranking_row(result_data: Dictionary, index: int):
 		crown_icon.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
 		crown_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		icon_container.add_child(crown_icon)
-	elif result_data.is_eliminated:
-		var skull_icon = TextureRect.new()
-		if ResourceLoader.exists("res://Pyramids/assets/icons/menu/skull_icon.png"):
-			skull_icon.texture = load("res://Pyramids/assets/icons/menu/skull_icon.png")
-		skull_icon.custom_minimum_size = Vector2(24, 24)
-		skull_icon.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
-		skull_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		icon_container.add_child(skull_icon)
-	elif result_data.status == "disconnected":
-		var disconnect_label = Label.new()
-		disconnect_label.text = "🔌"
-		disconnect_label.add_theme_font_size_override("font_size", 20)
-		icon_container.add_child(disconnect_label)
 	
 	ranking_grid.add_child(icon_container)
 	
-	# # column (position number)
+	# # column
 	var rank_label = Label.new()
-	rank_label.text = str(placement)
-	rank_label.add_theme_font_size_override("font_size", ThemeConstants.typography.size_body if ThemeConstants else 18)
-	if is_local:
-		rank_label.add_theme_color_override("font_color", ThemeConstants.colors.primary if ThemeConstants else Color.GREEN)
+	rank_label.text = "%d" % placement  # Integer format
+	rank_label.add_theme_font_size_override("font_size", 18)
+	if is_local and theme_colors:
+		rank_label.add_theme_color_override("font_color", theme_colors.colors.primary)
+	elif theme_colors:
+		rank_label.add_theme_color_override("font_color", theme_colors.colors.gray_900)
 	else:
-		rank_label.add_theme_color_override("font_color", ThemeConstants.colors.gray_900 if ThemeConstants else Color.BLACK)
+		rank_label.add_theme_color_override("font_color", Color.GREEN if is_local else Color.BLACK)
 	rank_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	ranking_grid.add_child(rank_label)
 	
 	# Name column
 	var name_label = Label.new()
-	name_label.text = result_data.name
-	name_label.add_theme_font_size_override("font_size", ThemeConstants.typography.size_body if ThemeConstants else 18)
-	if is_local:
-		name_label.add_theme_color_override("font_color", ThemeConstants.colors.primary if ThemeConstants else Color.GREEN)
+	name_label.text = result_data.get("name", "Unknown")
+	name_label.add_theme_font_size_override("font_size", 18)
+	if is_local and theme_colors:
+		name_label.add_theme_color_override("font_color", theme_colors.colors.primary)
+	elif theme_colors:
+		name_label.add_theme_color_override("font_color", theme_colors.colors.gray_900)
 	else:
-		name_label.add_theme_color_override("font_color", ThemeConstants.colors.gray_900 if ThemeConstants else Color.BLACK)
+		name_label.add_theme_color_override("font_color", Color.GREEN if is_local else Color.BLACK)
 	ranking_grid.add_child(name_label)
 	
 	# Total score column
 	var total_label = Label.new()
-	total_label.text = str(result_data.total_score)
-	total_label.add_theme_font_size_override("font_size", ThemeConstants.typography.size_body if ThemeConstants else 18)
-	if is_local:
-		total_label.add_theme_color_override("font_color", ThemeConstants.colors.primary if ThemeConstants else Color.GREEN)
+	total_label.text = "%d" % result_data.get("total", 0)  # Integer format
+	total_label.add_theme_font_size_override("font_size", 18)
+	if is_local and theme_colors:
+		total_label.add_theme_color_override("font_color", theme_colors.colors.primary)
+	elif theme_colors:
+		total_label.add_theme_color_override("font_color", theme_colors.colors.gray_900)
 	else:
-		total_label.add_theme_color_override("font_color", ThemeConstants.colors.gray_900 if ThemeConstants else Color.BLACK)
+		total_label.add_theme_color_override("font_color", Color.GREEN if is_local else Color.BLACK)
 	total_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	ranking_grid.add_child(total_label)
 	
-	# MMR column (final value with change)
+	# MMR column
 	var mmr_label = Label.new()
-	var mmr_change_text = "+" if result_data.mmr_change >= 0 else ""
-	mmr_change_text += str(result_data.mmr_change)
-	mmr_label.text = "%d (%s)" % [result_data.mmr_after, mmr_change_text]
-	mmr_label.add_theme_font_size_override("font_size", ThemeConstants.typography.size_body_small if ThemeConstants else 16)
-	if result_data.mmr_change > 0:
-		mmr_label.add_theme_color_override("font_color", ThemeConstants.colors.primary if ThemeConstants else Color.GREEN)
-	elif result_data.mmr_change < 0:
-		mmr_label.add_theme_color_override("font_color", ThemeConstants.colors.error if ThemeConstants else Color.RED)
+	var mmr_change = result_data.get("mmr_change", 0)
+	var mmr_after = result_data.get("mmr", 1000) + mmr_change
+	var mmr_change_text = "+" if mmr_change >= 0 else ""
+	mmr_change_text += "%d" % mmr_change  # Integer format
+	mmr_label.text = "%d (%s)" % [mmr_after, mmr_change_text]  # Integer format
+	mmr_label.add_theme_font_size_override("font_size", 16)
+	if mmr_change > 0:
+		if theme_colors:
+			mmr_label.add_theme_color_override("font_color", theme_colors.colors.primary)
+		else:
+			mmr_label.add_theme_color_override("font_color", Color.GREEN)
+	elif mmr_change < 0:
+		if theme_colors:
+			mmr_label.add_theme_color_override("font_color", theme_colors.colors.error)
+		else:
+			mmr_label.add_theme_color_override("font_color", Color.RED)
 	else:
-		mmr_label.add_theme_color_override("font_color", ThemeConstants.colors.gray_700 if ThemeConstants else Color.GRAY)
+		if theme_colors:
+			mmr_label.add_theme_color_override("font_color", theme_colors.colors.gray_700)
+		else:
+			mmr_label.add_theme_color_override("font_color", Color.GRAY)
 	mmr_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	ranking_grid.add_child(mmr_label)
 
-# === EMOJI SYSTEM (same as round score) ===
+# === EMOJI SYSTEM ===
 
 func _on_emoji_pressed(emoji_index: int):
 	"""Handle emoji button press"""
@@ -539,10 +559,9 @@ func _on_emoji_pressed(emoji_index: int):
 	if emoji_id == "":
 		return
 	
-	# Find local player's position
 	var lane_index = 0
 	for i in range(player_results.size()):
-		if player_results[i].player_id == local_player_id:
+		if player_results[i].get("id", "") == local_player_id:
 			lane_index = i
 			break
 	
@@ -562,7 +581,6 @@ func _create_floating_emoji(emoji_item, lane_index: int, player_name: String):
 	emoji_container.position.y = 500
 	emoji_container.position.x = 0
 	
-	# Create emoji display
 	if emoji_item and emoji_item.texture_path != null and emoji_item.texture_path != "":
 		var texture_rect = TextureRect.new()
 		if ResourceLoader.exists(emoji_item.texture_path):
@@ -574,21 +592,16 @@ func _create_floating_emoji(emoji_item, lane_index: int, player_name: String):
 	else:
 		var emoji_label = Label.new()
 		var test_emojis = {"emoji_test_0": "🎉", "emoji_test_1": "😢", "emoji_test_2": "😠", "emoji_test_3": "❤️"}
-		var emoji_id = emoji_item.id if emoji_item and emoji_item.id != null else ""
+		var emoji_id = emoji_item.get("id", "") if emoji_item else ""
 		emoji_label.text = test_emojis.get(emoji_id, "❓")
 		emoji_label.add_theme_font_size_override("font_size", 32)
 		emoji_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		emoji_container.add_child(emoji_label)
 	
-	# Name label
 	var name_label = Label.new()
 	name_label.text = player_name
-	if ThemeConstants:
-		name_label.add_theme_font_size_override("font_size", ThemeConstants.typography.size_caption)
-		name_label.add_theme_color_override("font_color", ThemeConstants.colors.gray_500)
-	else:
-		name_label.add_theme_font_size_override("font_size", 12)
-		name_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+	name_label.add_theme_font_size_override("font_size", 12)
+	name_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	emoji_container.add_child(name_label)
 	
@@ -637,13 +650,56 @@ func _clear_emoji_cooldown():
 # === SIGNAL HANDLERS ===
 
 func _on_continue_pressed():
-	"""Handle continue button - go to PostGameSummary"""
-	if SignalBus and SignalBus.has_signal("final_score_continue"):
-		SignalBus.final_score_continue.emit()
+	"""Handle continue button - trigger GameState._end_game()"""
+	debug_log("Continue pressed - calling GameState._end_game()")
 	
-	# Navigate to PostGameSummary
-	if ResourceLoader.exists("res://Pyramids/scenes/ui/game_ui/PostGameSummary.tscn"):
-		get_tree().change_scene_to_file("res://Pyramids/scenes/ui/game_ui/PostGameSummary.tscn")
-	else:
-		print("PostGameSummary scene not found")
-		queue_free()
+	if has_node("/root/SignalBus"):
+		var signal_bus = get_node("/root/SignalBus")
+		if signal_bus.has_signal("multiplayer_game_complete"):
+			signal_bus.multiplayer_game_complete.emit()
+	
+	# CRITICAL: Call GameState._end_game() to set metadata and load PostGameSummary
+	if has_node("/root/GameState"):
+		var game_state = get_node("/root/GameState")
+		if game_state.has_method("_end_game"):
+			debug_log("Calling GameState._end_game()")
+			game_state._end_game()
+		else:
+			push_error("GameState has no _end_game() method!")
+	
+	# Clean up this screen
+	queue_free()
+
+func _request_initial_data():
+	"""Request initial data when screen loads"""
+	debug_log("Requesting initial final results data...")
+	
+	if has_node("/root/NetworkManager"):
+		var net_manager = get_node("/root/NetworkManager")
+		
+		await get_tree().create_timer(0.5).timeout
+		
+		net_manager.request_final_results()
+		
+		if not is_updating:
+			is_updating = true
+			update_timer.start()
+			debug_log("Started polling for updates every 2 seconds")
+
+func _request_update():
+	"""Poll for updated results"""
+	if all_players_complete:
+		update_timer.stop()
+		is_updating = false
+		debug_log("All players complete - stopped polling")
+		return
+	
+	if has_node("/root/NetworkManager"):
+		var net_manager = get_node("/root/NetworkManager")
+		net_manager.request_final_results()
+		debug_log("Polling for updated results...")
+
+func _exit_tree():
+	if update_timer:
+		update_timer.stop()
+		update_timer.queue_free()

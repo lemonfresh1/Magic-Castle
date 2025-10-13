@@ -4,7 +4,7 @@
 [ext_resource type="Script" uid="uid://dd2kyyy4exmcl" path="res://Pyramids/scripts/ui/components/StyledPanel.gd" id="2_d4bs7"]
 [ext_resource type="Script" uid="uid://c5xs6ntwdsk3t" path="res://Pyramids/scripts/ui/components/StyledButton.gd" id="3_0hoek"]
 
-[node name="MultiplayerScoreScreen" type="Control"]
+[node name="MultiplayerFinalScore" type="Control"]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
