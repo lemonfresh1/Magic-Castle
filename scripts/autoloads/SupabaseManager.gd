@@ -25,6 +25,9 @@ var is_authenticated: bool = false
 var profile: Dictionary = {}
 var mock_mode: bool = false  # For compatibility with NetworkManager
 
+var skip_auto_login: bool = false
+
+
 # === DEBUG ===
 var debug_enabled: bool = true
 
@@ -71,7 +74,13 @@ func _ready():
 	
 	# === AUTO-LOGIN FOR MULTIPLAYER ===
 	debug_log("Auto-login: Starting anonymous authentication...")
-	login_anonymous()
+
+	# Skip auto-login if flag is set (for manual login testing)
+	if not skip_auto_login:
+		# Auto-login as anonymous for seamless start
+		login_anonymous()
+	else:
+		print("[SupabaseManager] Skipping auto-login for manual testing")
 
 # === AUTHENTICATION METHODS ===
 
@@ -398,3 +407,88 @@ class DatabaseQuery:
 		if manager and table:
 			var filter_string = "&".join(filters)
 			manager.select(table, select_columns, filter_string)
+
+# === TEST AUTH FUNCTIONS ===
+func quick_test_login(test_number: int) -> void:
+	"""Quick login for testing - just use test1, test2, etc"""
+	var email = "test%d@test.com" % test_number
+	var password = "test123456"
+	sign_in_with_email(email, password)
+
+func quick_create_test_accounts() -> void:
+	"""One-time setup to create test accounts"""
+	for i in range(1, 9):  # Create test1 through test8
+		var email = "test%d@test.com" % i
+		var password = "test123456"
+		var player_name = "Player%d" % i
+		sign_up_with_email(email, password, player_name)
+		await get_tree().create_timer(0.5).timeout  # Avoid rate limiting
+
+func sign_up_with_email(email: String, password: String, player_name: String = "Player") -> void:
+	"""Sign up with email and password"""
+	print("[SupabaseManager] Signing up with email: %s" % email)
+	
+	var body = {
+		"email": email,
+		"password": password,
+		"data": {
+			"player_name": player_name
+		}
+	}
+	
+	current_request_type = "auth_signup"
+	
+	var url = SUPABASE_URL + "/auth/v1/signup"
+	var headers = _get_auth_headers()
+	headers.append("Content-Type: application/json")
+	
+	auth_request.request(url, headers, HTTPClient.METHOD_POST, JSON.stringify(body))
+
+func sign_in_with_email(email: String, password: String) -> void:
+	"""Sign in with email and password"""
+	print("[SupabaseManager] Signing in with email: %s" % email)
+	
+	var body = {
+		"email": email,
+		"password": password
+	}
+	
+	current_request_type = "auth_signin"
+	
+	var url = SUPABASE_URL + "/auth/v1/token?grant_type=password"
+	var headers = _get_auth_headers()
+	headers.append("Content-Type: application/json")
+	
+	auth_request.request(url, headers, HTTPClient.METHOD_POST, JSON.stringify(body))
+
+func _get_auth_headers() -> PackedStringArray:
+	"""Get headers for auth requests"""
+	var headers = PackedStringArray()
+	headers.append("apikey: " + SUPABASE_KEY)
+	return headers
+
+func fetch_data(table: String, column: String, value: String) -> Array:
+	"""Generic fetch helper"""
+	current_request_type = "fetch_profile"
+	var url = SUPABASE_URL + "/rest/v1/" + table
+	url += "?" + column + "=eq." + value
+	
+	var headers = _get_db_headers()
+	db_request.request(url, headers, HTTPClient.METHOD_GET)
+	
+	# Wait for response
+	await request_completed
+	# Return the response data (you'll need to store it in the response handler)
+	return []  # Placeholder - implement based on your response handling
+
+func insert_data(table: String, data: Dictionary) -> void:
+	"""Generic insert helper"""
+	current_request_type = "insert_profile"
+	var url = SUPABASE_URL + "/rest/v1/" + table
+	
+	var headers = _get_db_headers()
+	headers.append("Content-Type: application/json")
+	headers.append("Prefer: return=representation")
+	
+	var body = JSON.stringify(data)
+	db_request.request(url, headers, HTTPClient.METHOD_POST, body)

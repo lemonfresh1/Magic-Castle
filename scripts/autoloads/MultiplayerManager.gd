@@ -122,13 +122,43 @@ func join_or_create_lobby() -> void:
 	# This is from Quick Play/matchmaking - affects MMR
 	current_lobby_type = LobbyType.MATCHMAKING
 	
-	# TODO: First scan for existing lobbies with same mode
-	var existing_lobby = _find_existing_lobby()
-	
-	if existing_lobby:
-		_join_existing_lobby(existing_lobby)
+	# Use NetworkManager for real matchmaking
+	if has_node("/root/NetworkManager"):
+		var net_manager = get_node("/root/NetworkManager")
+		
+		# Connect to signals if not already connected
+		if not net_manager.lobby_created.is_connected(_on_network_lobby_created):
+			net_manager.lobby_created.connect(_on_network_lobby_created)
+		if not net_manager.lobby_joined.is_connected(_on_network_lobby_joined):
+			net_manager.lobby_joined.connect(_on_network_lobby_joined)
+		
+		# This will find or create a lobby
+		net_manager.find_or_create_lobby(selected_game_mode)
 	else:
+		debug_log("NetworkManager not found, creating local lobby")
 		_create_new_lobby()
+
+func _on_network_lobby_joined(lobby_data: Dictionary):
+	"""Handle successful lobby join from NetworkManager"""
+	debug_log("Joined network lobby: %s" % lobby_data.get("id", "unknown"))
+	
+	# Update our local state
+	current_lobby_id = lobby_data.get("id", "")
+	
+	# Extract players
+	var players = lobby_data.get("players", [])
+	if players is String:
+		var json = JSON.new()
+		var parse_result = json.parse(players)
+		if parse_result == OK:
+			players = json.data
+	
+	lobby_players = players
+	is_host = false  # We joined, so we're not the host
+	
+	# Emit signal and navigate
+	lobby_found.emit(lobby_data)
+	get_tree().change_scene_to_file("res://Pyramids/scenes/ui/menus/GameLobby.tscn")
 
 func create_custom_lobby(settings: Dictionary = {}) -> String:
 	"""Create a custom/private lobby with specific settings"""
@@ -136,10 +166,46 @@ func create_custom_lobby(settings: Dictionary = {}) -> String:
 	current_lobby_id = _generate_lobby_id()
 	is_host = true
 	
-	debug_log("Created custom lobby: %s" % current_lobby_id)
-	lobby_created.emit(current_lobby_id)
+	debug_log("Creating custom lobby in Supabase: %s" % current_lobby_id)
+	
+	# Use NetworkManager to create the actual Supabase lobby
+	if has_node("/root/NetworkManager"):
+		var net_manager = get_node("/root/NetworkManager")
+		net_manager.create_lobby(selected_game_mode)
+		
+		# Listen for the lobby creation response
+		if not net_manager.lobby_created.is_connected(_on_network_lobby_created):
+			net_manager.lobby_created.connect(_on_network_lobby_created)
+	else:
+		debug_log("ERROR: NetworkManager not found - creating local lobby only")
+		lobby_created.emit(current_lobby_id)
 	
 	return current_lobby_id
+
+func _on_network_lobby_created(lobby_data: Dictionary):
+	"""Handle successful lobby creation from NetworkManager"""
+	debug_log("Network lobby created: %s" % lobby_data.get("id", "unknown"))
+	
+	# Update our local state with the real lobby data
+	current_lobby_id = lobby_data.get("id", "")
+	lobby_players.clear()
+	
+	# Extract players from lobby data
+	var players = lobby_data.get("players", [])
+	if players is String:
+		# Parse if it's a JSON string
+		var json = JSON.new()
+		var parse_result = json.parse(players)
+		if parse_result == OK:
+			players = json.data
+	
+	lobby_players = players
+	
+	# We're the host since we created it
+	is_host = true
+	
+	# Emit our signal for the UI
+	lobby_created.emit(current_lobby_id)
 
 func create_tournament_lobby(tournament_id: String) -> String:
 	"""Create a tournament lobby"""
@@ -199,15 +265,38 @@ func set_local_player_data(data: Dictionary) -> void:
 
 func get_local_player_data() -> Dictionary:
 	"""Get local player information"""
-	# Always rebuild from current data to stay in sync
+	# Get ID from SupabaseManager first (most reliable)
+	var player_id = ""
+	if has_node("/root/SupabaseManager"):
+		var supabase = get_node("/root/SupabaseManager")
+		if supabase.current_user.has("id"):
+			player_id = supabase.current_user.get("id", "")
+	
+	# Fallback to SettingsSystem
+	if player_id == "" and SettingsSystem:
+		player_id = SettingsSystem.player_id
+	
+	# Final fallback
+	if player_id == "":
+		player_id = "player_" + str(OS.get_unique_id())
+	
+	# Get name from SettingsSystem or ProfileManager
+	var player_name = "Player"
+	if SettingsSystem and SettingsSystem.player_name != "":
+		player_name = SettingsSystem.player_name
+	elif has_node("/root/ProfileManager"):
+		var profile = get_node("/root/ProfileManager")
+		if profile.player_name != "":
+			player_name = profile.player_name
+	
 	local_player_data = {
-		"id": SettingsSystem.player_id if SettingsSystem else "player_" + str(OS.get_unique_id()),
-		"name": SettingsSystem.player_name if SettingsSystem else "Player",
-		"level": 1,  # TODO: Add level/progression system
+		"id": player_id,
+		"name": player_name,
+		"level": 1,
 		"prestige": 0,
-		"equipped": {},  # Will be populated below
-		"stats": {},  # Will be populated below
-		"frame_id": "",  # TODO: Add frame selection
+		"equipped": {},
+		"stats": {},
+		"frame_id": "",
 		"is_ready": false,
 		"is_host": is_host
 	}
@@ -220,19 +309,18 @@ func get_local_player_data() -> Dictionary:
 			"board": EquipmentManager.get_equipped_item("board"),
 			"mini_profile_card_showcased_items": EquipmentManager.get_showcased_items()
 		}
-		
-		debug_log("Showcase items being sent: %s" % str(local_player_data["equipped"]["mini_profile_card_showcased_items"]))
 	
 	# Get multiplayer stats for current mode
 	if StatsManager:
 		local_player_data["stats"] = StatsManager.get_multiplayer_stats(selected_game_mode)
 	else:
-		# Fallback stats
 		local_player_data["stats"] = {
 			"games": 0,
 			"win_rate": 0.0,
 			"mmr": 1200
 		}
+	
+	debug_log("Built local_player_data: ID=%s, Name=%s" % [player_id, player_name])
 	
 	return local_player_data
 

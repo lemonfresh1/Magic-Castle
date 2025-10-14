@@ -69,6 +69,12 @@ var game_started: bool = false
 var showing_debug: bool = false
 var current_game_mode: String = "classic"
 var is_custom_lobby: bool = false
+var network_manager: Node = null
+var lobby_id_label: Label  # Add UI element to show lobby ID
+
+var debug_enabled: bool = true
+var debug_player_tracking: Array = []  # Track all player add/remove operations
+
 
 # Components
 var game_settings_component: Control  # NEW: Reusable settings panel
@@ -81,52 +87,155 @@ var emoji_cooldown_overlays: Array = []
 var emoji_cooldown_tweens: Array = []
 var emoji_progress_bars: Array = []
 
+func debug_log(message: String) -> void:
+	if debug_enabled:
+		var timestamp = Time.get_ticks_msec()
+		var full_message = "[%d] [GameLobby] %s" % [timestamp, message]
+		print(full_message)
+		debug_player_tracking.append(full_message)
+
 func _ready():
-	_load_lobby_state()  # NEW: Load from MultiplayerManager
-	_setup_lobby()
+	debug_log("=== GAMELOBBY _ready() START ===")
+	
+	# Get NetworkManager reference
+	if has_node("/root/NetworkManager"):
+		network_manager = get_node("/root/NetworkManager")
+		debug_log("NetworkManager found")
+	
+	# CREATE SLOTS FIRST - before loading state!
+	debug_log("Creating player slots...")
 	_create_player_slots()
+	
+	# Wait for lobby data if coming from multiplayer
+	if network_manager and has_node("/root/MultiplayerManager"):
+		var mp_manager = get_node("/root/MultiplayerManager")
+		
+		if mp_manager.current_lobby_id != "":
+			debug_log("Coming from MultiplayerManager, waiting for lobby data...")
+			
+			var wait_time = 0.0
+			while not network_manager.current_lobby_data.has("id") and wait_time < 5.0:
+				await get_tree().create_timer(0.1).timeout
+				wait_time += 0.1
+				debug_log("  Waiting for lobby... (%0.1fs)" % wait_time)
+			
+			if network_manager.current_lobby_data.has("id"):
+				debug_log("✅ Lobby data received!")
+			else:
+				debug_log("⚠️ Timeout waiting for lobby data")
+	
+	debug_log("Calling _load_lobby_state()")
+	_load_lobby_state()
+	
+	print_lobby_state("After _load_lobby_state")
+	
+	_setup_lobby()
+	# _create_player_slots() - MOVED UP!
 	_connect_signals()
 	_apply_ui_styling()
 	_setup_emoji_buttons()
 	_update_controls_visibility()
+	_connect_network_signals()
 	
-	# Auto-add local player if from matchmaking
-	_auto_join_if_matchmaking()
+	if network_manager:
+		network_manager.start_polling()
+		debug_log("Started polling")
 	
-	# Test mode if running directly
-	if get_tree().current_scene == self and get_player_count() == 0:
+	var player_count = get_player_count()
+	debug_log("Player count after load: %d" % player_count)
+	
+	if player_count == 0:
+		debug_log("No players loaded, calling _auto_join_if_matchmaking()")
+		_auto_join_if_matchmaking()
+	else:
+		debug_log("Players already loaded, skipping auto-join")
+	
+	print_lobby_state("After _auto_join_if_matchmaking")
+	
+	var is_direct_run = get_tree().current_scene == self
+	var from_mp_manager = has_node("/root/MultiplayerManager") and get_node("/root/MultiplayerManager").current_lobby_id != ""
+	
+	if is_direct_run and not from_mp_manager and get_player_count() == 0:
+		debug_log("Running test lobby (direct scene run)")
 		_test_lobby()
+	else:
+		debug_log("Skipping test mode (is_direct=%s, from_mp=%s, player_count=%d)" % [is_direct_run, from_mp_manager, get_player_count()])
+	
+	debug_log("=== GAMELOBBY _ready() COMPLETE ===")
 
 # === SETUP ===
 
 func _load_lobby_state():
-	"""Load lobby state from MultiplayerManager"""
-	if not has_node("/root/MultiplayerManager"):
-		print("[GameLobby] MultiplayerManager not found, using defaults")
-		return
+	debug_log(">>> _load_lobby_state() START")
 	
-	var mp_manager = get_node("/root/MultiplayerManager")
+	# Clear all slots first
+	debug_log("  Clearing all slots")
+	for slot in player_slots:
+		if slot.has_method("set_empty"):
+			slot.set_empty()
 	
-	# Get selected game mode
-	current_game_mode = mp_manager.get_selected_mode()
+	# First try NetworkManager
+	if network_manager:
+		var lobby_data = network_manager.get_current_lobby()
+		debug_log("  Got lobby data from NetworkManager: %s" % ("YES" if lobby_data.has("id") else "NO"))
+		
+		if lobby_data.has("id"):
+			var lobby_id = lobby_data.get("id", "")
+			debug_log("  Lobby ID: %s" % lobby_id)
+			
+			lobby_name = "Lobby: " + lobby_id.substr(0, 8)
+			current_game_mode = lobby_data.get("mode", "classic")
+			
+			var host_id = lobby_data.get("host_id", "")
+			debug_log("  Host ID from lobby: %s" % host_id)
+			
+			if network_manager.supabase and network_manager.supabase.current_user.has("id"):
+				local_player_id = network_manager.supabase.current_user.get("id", "")
+				is_host = (local_player_id == host_id)
+				host_player_id = host_id
+				debug_log("  Local Player ID: %s" % local_player_id)
+				debug_log("  Am I host? %s" % is_host)
+			
+			# Load players
+			var players = lobby_data.get("players", [])
+			if players is String:
+				debug_log("  Players is String, parsing JSON...")
+				var json = JSON.new()
+				var parse_result = json.parse(players)
+				if parse_result == OK:
+					players = json.data
+					debug_log("  Parsed %d players from JSON" % players.size())
+			else:
+				debug_log("  Players is already Array with %d players" % players.size())
+			
+			debug_log("  Loading %d players from lobby data:" % players.size())
+			for i in range(players.size()):
+				var player_data = players[i]
+				debug_log("    Player %d: %s (ID: %s)" % [i, player_data.get("name", "Unknown"), player_data.get("id", "NO_ID")])
+				_add_player_to_empty_slot(player_data)
+			
+			debug_log("<<< _load_lobby_state() COMPLETE (from NetworkManager)")
+			return
 	
-	# Get lobby info
-	var lobby_info = mp_manager.get_lobby_info()
-	is_custom_lobby = lobby_info.get("is_custom", false)
-	is_host = lobby_info.get("is_host", false)
-	
-	# Get local player data
-	var player_data = mp_manager.get_local_player_data()
-	local_player_id = player_data.get("id", "")
-	host_player_id = local_player_id if is_host else ""
-	
-	print("[GameLobby] Loaded state - Mode: %s, Host: %s, Custom: %s" % [current_game_mode, is_host, is_custom_lobby])
+	debug_log("  No NetworkManager data, falling back to MultiplayerManager")
+	# Fallback code...
+	debug_log("<<< _load_lobby_state() COMPLETE (fallback)")
 
 func _setup_lobby():
 	"""Initialize lobby settings and title"""
 	if lobby_title:
 		var mode_name = _get_mode_display_name()
-		lobby_title.text = "%s Mode Lobby" % mode_name
+		
+		# Show lobby ID if we have one
+		if network_manager:
+			var lobby_data = network_manager.get_current_lobby()
+			if lobby_data.has("id"):
+				var short_id = lobby_data.get("id", "").substr(0, 8)
+				lobby_title.text = "%s Mode - Lobby: %s" % [mode_name, short_id]
+			else:
+				lobby_title.text = "%s Mode Lobby" % mode_name
+		else:
+			lobby_title.text = "%s Mode Lobby" % mode_name
 	
 	# Setup settings panel with game mode info
 	if settings_panel:
@@ -168,14 +277,46 @@ func _get_mode_display_name() -> String:
 		_: return current_game_mode.capitalize()
 
 func _auto_join_if_matchmaking():
-	"""Auto-add local player when joining from matchmaking"""
+	debug_log(">>> _auto_join_if_matchmaking() START")
+	debug_log("  is_custom_lobby: %s" % is_custom_lobby)
+	
 	if not is_custom_lobby and has_node("/root/MultiplayerManager"):
 		var mp_manager = get_node("/root/MultiplayerManager")
 		var player_data = mp_manager.get_local_player_data()
 		player_data["is_host"] = is_host
 		
-		print("[GameLobby] Auto-joining player to matchmaking lobby")
-		add_player(player_data)
+		var player_id = player_data.get("id", "")
+		
+		# FIX: Don't proceed if ID is empty
+		if player_id == "":
+			debug_log("  ERROR: Player ID is empty! Cannot auto-join.")
+			debug_log("<<< _auto_join_if_matchmaking() ABORTED (empty ID)")
+			return
+		
+		debug_log("  AUTO-JOIN TRIGGERED")
+		debug_log("  Player to add: %s (ID: %s)" % [player_data.get("name", "Unknown"), player_id])
+		debug_log("  Checking if player already exists...")
+		
+		# Check if already in lobby
+		var already_exists = false
+		for slot in player_slots:
+			if slot.has_method("get_player_id"):
+				var existing_id = slot.get_player_id()
+				# FIX: Only match if BOTH IDs are non-empty
+				if existing_id != "" and existing_id == player_id:
+					already_exists = true
+					debug_log("  PLAYER ALREADY EXISTS IN SLOT! Skipping add.")
+					break
+		
+		if not already_exists:
+			debug_log("  Player not found, calling add_player()")
+			add_player(player_data)
+		else:
+			debug_log("  Player already in lobby, NOT adding")
+	else:
+		debug_log("  AUTO-JOIN SKIPPED (custom lobby or no MP manager)")
+	
+	debug_log("<<< _auto_join_if_matchmaking() COMPLETE")
 
 func _create_player_slots():
 	"""Create 8 PlayerSlot instances in the grid"""
@@ -318,38 +459,23 @@ func set_local_player(player_id: String):
 			break
 
 func add_player(player_data: Dictionary) -> bool:
-	"""Add a player to the lobby"""
+	var player_id = player_data.get("id", "")
+	debug_log(">>> add_player() called for: %s (ID: %s)" % [player_data.get("name", "Unknown"), player_id])
 	
-	if not player_data.has("equipped") and EquipmentManager:
-		player_data["equipped"] = EquipmentManager.get_equipped_items()
-		
-	# Find first empty slot
+	# Check if player already exists
 	for slot in player_slots:
-		if slot.has_method("is_empty") and slot.is_empty():
-			# Check if this is the local player
-			var is_local = player_data.get("id", "") == local_player_id
-			if is_local and slot.has_method("set_as_local_player"):
-				slot.set_as_local_player(true)
-			
-			# Check if this is the host
-			if player_data.get("id", "") == host_player_id:
-				if slot.has_method("set_as_host"):
-					slot.set_as_host()
-			
+		if slot.has_method("get_player_id") and slot.get_player_id() == player_id:
+			debug_log("  Player already in lobby, updating instead")
 			if slot.has_method("set_player"):
 				slot.set_player(player_data)
-			
-			# Emit signal
-			if SignalBus.has_signal("lobby_player_joined"):
-				SignalBus.lobby_player_joined.emit(
-					player_data.get("id", ""),
-					player_data
-				)
-			
-			_update_start_button_state()
+			debug_log("<<< add_player() COMPLETE (updated existing)")
 			return true
 	
-	return false  # Lobby full
+	# Add to empty slot
+	debug_log("  Player not found, adding to empty slot")
+	var result = _add_player_to_empty_slot(player_data)
+	debug_log("<<< add_player() COMPLETE (result: %s)" % result)
+	return result
 
 func remove_player(player_id: String) -> bool:
 	"""Remove a player from the lobby"""
@@ -374,15 +500,23 @@ func update_player(player_id: String, data: Dictionary):
 
 func set_player_ready(player_id: String, ready: bool):
 	"""Set a player's ready status"""
+	debug_log(">>> set_player_ready(%s, %s)" % [player_id.substr(0, 8), ready])
+	
 	for slot in player_slots:
 		if slot.has_method("get_player_id") and slot.get_player_id() == player_id:
 			if slot.has_method("set_ready"):
 				slot.set_ready(ready)
 			if SignalBus.has_signal("lobby_player_ready_changed"):
 				SignalBus.lobby_player_ready_changed.emit(player_id, ready)
+			
+			debug_log("  Calling _update_start_button_state()")
 			_update_start_button_state()
+			
+			debug_log("  Calling _check_all_ready()")
 			_check_all_ready()
 			break
+	
+	debug_log("<<< set_player_ready()")
 
 func _setup_emoji_buttons():
 	"""Load equipped emojis into buttons"""
@@ -464,20 +598,29 @@ func _clear_emoji_cooldown():
 
 func _update_controls_visibility():
 	"""Update button visibility based on role and state"""
+	debug_log(">>> _update_controls_visibility()")
+	debug_log("  is_host: %s" % is_host)
+	debug_log("  game_started: %s" % game_started)
+	debug_log("  is_ready: %s" % is_ready)
+	
 	if start_button:
 		start_button.visible = is_host
 		var can_start = _can_start_game()
 		start_button.disabled = not can_start or game_started
 		
+		debug_log("  start_button.visible: %s" % start_button.visible)
+		debug_log("  can_start: %s" % can_start)
+		debug_log("  start_button.disabled: %s" % start_button.disabled)
+		
 		if start_button.disabled:
 			start_button.modulate = Color(1, 1, 1, 0.7)
 		else:
 			start_button.modulate = Color.WHITE
-
+	
 	if ready_button:
 		ready_button.visible = true
 		ready_button.disabled = game_started
-		ready_button.text = "Ready"
+		ready_button.text = "Ready" if not is_ready else "Unready"
 		
 		if is_ready:
 			UIStyleManager.apply_button_style(ready_button, "success", "medium")
@@ -496,25 +639,49 @@ func _update_controls_visibility():
 			leave_button.modulate = Color(1, 1, 1, 0.7)
 		else:
 			leave_button.modulate = Color.WHITE
+	
+	debug_log("<<< _update_controls_visibility()")
 
 func _update_start_button_state():
 	"""Update start button based on game conditions"""
+	debug_log(">>> _update_start_button_state()")
 	if start_button and is_host:
-		start_button.disabled = not _can_start_game()
+		var can_start = _can_start_game()
+		start_button.disabled = not can_start
+		debug_log("  Updated start_button.disabled to: %s" % start_button.disabled)
+	else:
+		if not start_button:
+			debug_log("  ERROR: start_button is null!")
+		if not is_host:
+			debug_log("  Not host, skipping start button update")
+	debug_log("<<< _update_start_button_state()")
 
 func _can_start_game() -> bool:
 	"""Check if game can start"""
+	debug_log("  >>> _can_start_game()")
+	debug_log("    game_started: %s" % game_started)
+	
 	if game_started:
+		debug_log("    Result: false (already started)")
 		return false
-		
+	
 	var player_count = get_player_count()
+	debug_log("    player_count: %d" % player_count)
+	debug_log("    MIN_PLAYERS: %d" % MIN_PLAYERS)
 	
 	if player_count < MIN_PLAYERS:
+		debug_log("    Result: false (not enough players)")
 		return false
 	
 	if require_all_ready:
-		return get_ready_count() == player_count
+		var ready_count = get_ready_count()
+		debug_log("    require_all_ready: true")
+		debug_log("    ready_count: %d" % ready_count)
+		var result = ready_count == player_count
+		debug_log("    Result: %s (ready check)" % result)
+		return result
 	
+	debug_log("    Result: true (no ready requirement)")
 	return true
 
 func _check_all_ready():
@@ -595,39 +762,113 @@ func _on_player_ready_changed(player_id: String, ready: bool):
 		SignalBus.lobby_player_ready_changed.emit(player_id, ready)
 
 func _on_ready_pressed():
-	"""Handle ready button toggle"""
+	"""Handle ready button toggle with network sync"""
+	debug_log(">>> _on_ready_pressed()")
+	debug_log("  Current is_ready: %s" % is_ready)
+	
 	is_ready = not is_ready
+	
+	debug_log("  New is_ready: %s" % is_ready)
+	debug_log("  local_player_id: %s" % local_player_id)
+	
+	# Update local display immediately
 	set_player_ready(local_player_id, is_ready)
 	_update_controls_visibility()
+	
+	# Sync to network
+	if network_manager:
+		debug_log("  Syncing to network...")
+		network_manager.update_player_ready_state(local_player_id, is_ready)
+	else:
+		debug_log("  WARNING: No NetworkManager to sync ready state")
+	
+	debug_log("<<< _on_ready_pressed()")
 
 func _on_start_pressed():
 	"""Handle start game button (host only)"""
-	if _can_start_game():
-		game_started = true
+	debug_log(">>> _on_start_pressed()")
+	
+	if not _can_start_game():
+		debug_log("  Cannot start game (conditions not met)")
+		debug_log("<<< _on_start_pressed() ABORTED")
+		return
+	
+	if game_started:
+		debug_log("  Game already started")
+		debug_log("<<< _on_start_pressed() ABORTED")
+		return
+	
+	debug_log("Host starting game...")
+	
+	# DON'T set game_started yet - let _start_game_from_network() do it
+	# game_started = true  // REMOVED
+	
+	# Disable button to prevent double-clicks
+	start_button.disabled = true
+	start_button.modulate = Color(1, 1, 1, 0.7)
+	
+	if SignalBus.has_signal("lobby_start_requested"):
+		SignalBus.lobby_start_requested.emit()
+	
+	debug_log("Starting game with mode: %s, players: %d" % [current_game_mode, get_player_count()])
+	
+	# Update lobby status in Supabase to "playing"
+	if network_manager and network_manager.current_lobby_data.has("id"):
+		var lobby_id = network_manager.current_lobby_data.get("id", "")
 		
-		start_button.disabled = true
-		start_button.modulate = Color(1, 1, 1, 0.7)
+		debug_log("  Updating lobby status to 'playing'...")
 		
-		if SignalBus.has_signal("lobby_start_requested"):
-			SignalBus.lobby_start_requested.emit()
+		# Stop polling BEFORE updating status
+		network_manager.stop_polling()
 		
-		_update_controls_visibility()
-		print("Starting game with mode: %s, players: %d" % [current_game_mode, get_player_count()])
+		# Update lobby status
+		network_manager.supabase.current_request_type = "update_lobby_status"
+		var url = network_manager.supabase.SUPABASE_URL + "/rest/v1/pyramids_lobbies"
+		url += "?id=eq." + lobby_id
 		
-		# Start the game via MultiplayerManager
+		var headers = network_manager.supabase._get_db_headers()
+		headers.append("Content-Type: application/json")
+		headers.append("Prefer: return=representation")
+		
+		var body = JSON.stringify({
+			"status": "playing",
+			"current_round": 1
+		})
+		network_manager.supabase.db_request.request(url, headers, HTTPClient.METHOD_PATCH, body)
+		
+		debug_log("  Waiting for status update to propagate...")
+		# Wait for the update to propagate
+		await get_tree().create_timer(1.0).timeout
+		
+		debug_log("  Calling _start_game_from_network()...")
+		# Then start the game
+		_start_game_from_network()
+	else:
+		debug_log("  No NetworkManager, starting game directly...")
+		# Fallback for non-networked games
 		if has_node("/root/MultiplayerManager"):
 			var mp_manager = get_node("/root/MultiplayerManager")
 			mp_manager.start_game()
 		else:
-			# Fallback: Configure GameModeManager directly
 			if has_node("/root/GameModeManager"):
 				GameModeManager.set_game_mode(current_game_mode, {})
 			get_tree().change_scene_to_file("res://Pyramids/scenes/game/MobileGameBoard.tscn")
+	
+	debug_log("<<< _on_start_pressed()")
 
 func _on_leave_pressed():
 	"""Handle leave lobby button"""
 	if not is_ready and not game_started:
 		print("Leaving lobby")
+		
+		# Stop polling
+		if network_manager:
+			network_manager.stop_polling()
+			
+			# Remove ourselves from the lobby
+			if network_manager.current_lobby_data.has("id"):
+				# TODO: Remove self from players array in Supabase
+				pass
 		
 		# Notify MultiplayerManager
 		if has_node("/root/MultiplayerManager"):
@@ -635,8 +876,8 @@ func _on_leave_pressed():
 			mp_manager.leave_current_lobby()
 		
 		# Return to MultiplayerScreen
-		if ResourceLoader.exists("res://Pyramids/scenes/ui/menus/MultiplayerScreen.tscn"):
-			get_tree().change_scene_to_file("res://Pyramids/scenes/ui/menus/MultiplayerScreen.tscn")
+		get_tree().change_scene_to_file("res://Pyramids/scenes/ui/menus/MultiplayerScreen.tscn")
+
 
 func _on_emoji_pressed(emoji_index: int):
 	"""Handle emoji button press with cooldown"""
@@ -809,3 +1050,236 @@ func _setup_debug_panel():
 			print("Switched to mode: %s" % mode)
 		)
 		settings_vbox.add_child(mode_btn)
+
+func _connect_network_signals():
+	"""Connect to NetworkManager signals for real-time updates"""
+	if not network_manager:
+		print("[GameLobby] No NetworkManager available")
+		return
+	
+	# Connect signals if not already connected
+	if not network_manager.lobby_updated.is_connected(_on_network_lobby_updated):
+		network_manager.lobby_updated.connect(_on_network_lobby_updated)
+	
+	if not network_manager.player_joined.is_connected(_on_network_player_joined):
+		network_manager.player_joined.connect(_on_network_player_joined)
+	
+	if not network_manager.player_left.is_connected(_on_network_player_left):
+		network_manager.player_left.connect(_on_network_player_left)
+	
+	print("[GameLobby] Connected to NetworkManager signals")
+	
+func _on_network_lobby_updated(lobby_data: Dictionary):
+	debug_log(">>> _on_network_lobby_updated()")
+	
+	# Update lobby data
+	if network_manager:
+		network_manager.current_lobby_data = lobby_data
+	
+	# Extract players
+	var players = lobby_data.get("players", [])
+	if players is String:
+		var json = JSON.new()
+		var parse_result = json.parse(players)
+		if parse_result == OK:
+			players = json.data
+	
+	debug_log("Found %d players in lobby update" % players.size())
+	
+	# Build a map of player IDs from the lobby data
+	var player_ids_in_lobby = {}
+	for player_data in players:
+		var pid = player_data.get("id", "")
+		if pid != "":  # Only track non-empty IDs
+			player_ids_in_lobby[pid] = player_data
+	
+	debug_log("  Player IDs in lobby: %s" % str(player_ids_in_lobby.keys()))
+	
+	# Update existing players or add new ones
+	for player_id in player_ids_in_lobby:
+		var player_data = player_ids_in_lobby[player_id]
+		var found = false
+		
+		# Check if player already in a slot
+		for slot in player_slots:
+			if slot.has_method("get_player_id"):
+				var existing_id = slot.get_player_id()
+				if existing_id == player_id:
+					debug_log("  Player %s already in slot, updating" % player_id.substr(0, 8))
+					# Update existing player (including ready state)
+					if slot.has_method("set_player"):
+						slot.set_player(player_data)
+					if slot.has_method("set_ready"):
+						slot.set_ready(player_data.get("is_ready", false))
+					found = true
+					break
+		
+		# Add new player if not found
+		if not found:
+			debug_log("  Player %s not in slots, adding" % player_id.substr(0, 8))
+			_add_player_to_empty_slot(player_data)
+	
+	# Remove players who left (skip empty IDs)
+	for slot in player_slots:
+		if slot.has_method("is_empty") and not slot.is_empty():
+			var slot_player_id = slot.get_player_id()
+			if slot_player_id != "" and not player_ids_in_lobby.has(slot_player_id):
+				debug_log("  Player %s left, removing from slot" % slot_player_id.substr(0, 8))
+				slot.set_empty()
+	
+	# Update start button state
+	_update_start_button_state()
+	
+	# Check if game is starting
+	if lobby_data.get("status", "") == "playing" and not game_started:
+		debug_log("Game is starting - transitioning all clients!")
+		_start_game_from_network()
+	
+	debug_log("<<< _on_network_lobby_updated()")
+
+func _add_player_to_empty_slot(player_data: Dictionary) -> bool:
+	var player_id = player_data.get("id", "")
+	var player_name = player_data.get("name", "Unknown")
+	
+	debug_log(">>> _add_player_to_empty_slot() for: %s (ID: %s)" % [player_name, player_id])
+	
+	# Ensure equipment data
+	if not player_data.has("equipped") and EquipmentManager:
+		player_data["equipped"] = EquipmentManager.get_equipped_items()
+	
+	# Find first empty slot
+	for i in range(player_slots.size()):
+		var slot = player_slots[i]
+		if slot.has_method("is_empty") and slot.is_empty():
+			debug_log("  Found empty slot: %d" % i)
+			
+			var is_local = player_data.get("id", "") == local_player_id
+			if is_local:
+				debug_log("  This is the LOCAL player")
+				if slot.has_method("set_as_local_player"):
+					slot.set_as_local_player(true)
+			
+			if player_data.get("id", "") == host_player_id:
+				debug_log("  This is the HOST")
+				if slot.has_method("set_as_host"):
+					slot.set_as_host()
+			
+			if slot.has_method("set_player"):
+				slot.set_player(player_data)
+			
+			if SignalBus.has_signal("lobby_player_joined"):
+				SignalBus.lobby_player_joined.emit(player_id, player_data)
+			
+			_update_start_button_state()
+			debug_log("<<< _add_player_to_empty_slot() SUCCESS (slot %d)" % i)
+			return true
+	
+	debug_log("<<< _add_player_to_empty_slot() FAILED (no empty slots)")
+	return false
+
+func _on_network_player_joined(player_data: Dictionary):
+	"""Handle new player joining from network"""
+	print("[GameLobby] Player joined: %s" % player_data.get("name", "Unknown"))
+	add_player(player_data)
+
+func _on_network_player_left(player_id: String):
+	"""Handle player leaving from network"""
+	print("[GameLobby] Player left: %s" % player_id)
+	remove_player(player_id)
+
+func _start_game_from_network():
+	"""Start the game when host triggers it or status changes to playing"""
+	debug_log(">>> _start_game_from_network()")
+	
+	if game_started:
+		debug_log("  Game already started, ignoring duplicate call")
+		return
+	
+	debug_log("  Setting game_started = true")
+	game_started = true
+	
+	# Stop polling BEFORE scene change
+	if network_manager and network_manager.is_polling:
+		network_manager.stop_polling()
+	
+	# Get lobby seed from database
+	var lobby_seed = 0
+	if network_manager and network_manager.current_lobby_data.has("game_seed"):
+		lobby_seed = int(network_manager.current_lobby_data.get("game_seed", 0))
+		debug_log("  Using lobby seed: %d" % lobby_seed)
+	else:
+		debug_log("  WARNING: No game_seed in lobby data!")
+	
+	# Store necessary data
+	if has_node("/root/MultiplayerManager"):
+		var mp_manager = get_node("/root/MultiplayerManager")
+		mp_manager.lobby_players = network_manager.current_lobby_data.get("players", []) if network_manager else []
+		mp_manager.current_lobby_id = network_manager.current_lobby_data.get("id", "") if network_manager else ""
+	
+	# Configure GameModeManager
+	if has_node("/root/GameModeManager"):
+		GameModeManager.set_game_mode(current_game_mode, {})
+	
+	# Set GameState
+	if has_node("/root/GameState"):
+		var game_state = get_node("/root/GameState")
+		game_state.game_mode = "multi"
+		game_state.is_multiplayer = true
+		
+		# Store lobby seed for game to use
+		if lobby_seed > 0:
+			game_state.set_meta("multiplayer_lobby_seed", lobby_seed)
+			debug_log("  Stored lobby seed in GameState metadata: %d" % lobby_seed)
+	
+	await get_tree().create_timer(0.5).timeout
+	get_tree().change_scene_to_file("res://Pyramids/scenes/game/MobileGameBoard.tscn")
+	
+	debug_log("<<< _start_game_from_network() COMPLETE")
+
+func _exit_tree():
+	"""Cleanup when leaving the scene"""
+	if network_manager:
+		network_manager.stop_polling()
+
+func _on_lobby_updated(lobby_data: Dictionary):
+	"""Handle lobby updates from network"""
+	var players = lobby_data.get("players", [])
+	if players is String:
+		var json = JSON.new()
+		var parse_result = json.parse(players)
+		if parse_result == OK:
+			players = json.data
+	
+	# DON'T call _refresh_player_list
+	# Instead, use the existing player slot system:
+	
+	# Clear all slots
+	for slot in player_slots:
+		if slot.has_method("set_empty"):
+			slot.set_empty()
+	
+	# Re-add all players
+	for player_data in players:
+		add_player(player_data)
+
+func print_lobby_state(context: String) -> void:
+	"""Print complete lobby state for debugging"""
+	debug_log("=== LOBBY STATE: %s ===" % context)
+	debug_log("  Current Lobby ID: %s" % (network_manager.current_lobby_data.get("id", "NONE") if network_manager else "NO NETWORK"))
+	debug_log("  Local Player ID: %s" % local_player_id)
+	debug_log("  Is Host: %s" % is_host)
+	
+	# Count occupied slots
+	var occupied = 0
+	for i in range(player_slots.size()):
+		var slot = player_slots[i]
+		if slot.has_method("is_empty") and not slot.is_empty():
+			occupied += 1
+			var player_id = slot.get_player_id() if slot.has_method("get_player_id") else "UNKNOWN"
+			var player_name = slot.get_player_name() if slot.has_method("get_player_name") else "UNKNOWN"
+			debug_log("    Slot %d: %s (ID: %s)" % [i, player_name, player_id])
+		else:
+			debug_log("    Slot %d: EMPTY" % i)
+	
+	debug_log("  Total Occupied Slots: %d" % occupied)
+	debug_log("=== END STATE ===")

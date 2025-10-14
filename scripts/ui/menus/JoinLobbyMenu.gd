@@ -182,7 +182,11 @@ func _on_join_pressed(lobby_id: String):
 	
 	# Join via NetworkManager
 	if NetworkManager:
-		NetworkManager.join_lobby(lobby_id)
+		# Check which function exists and use it
+		if NetworkManager.has_method("join_lobby_by_id"):
+			NetworkManager.join_lobby_by_id(lobby_id)  # New function from my changes
+		elif NetworkManager.has_method("join_lobby"):
+			NetworkManager.join_lobby(lobby_id)  # Existing function
 		
 		# Connect to response
 		if not NetworkManager.lobby_joined.is_connected(_on_lobby_joined):

@@ -1,0 +1,10 @@
+[gd_scene load_steps=2 format=3 uid="uid://bn8tlcrx60rmq"]
+
+[ext_resource type="Script" uid="uid://dsg15lq7bv0v6" path="res://Pyramids/scripts/ui/components/TestAccountPanel.gd" id="1_ner3q"]
+
+[node name="TestAccountPanel" type="PanelContainer"]
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+grow_vertical = 0
+script = ExtResource("1_ner3q")

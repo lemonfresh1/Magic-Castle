@@ -129,7 +129,6 @@ func start_new_game(mode: String = "single", custom_seed: int = 0) -> void:
 	debug_log("Input parameters: mode=%s, custom_seed=%d" % [mode, custom_seed])
 	
 	# RESET EVERYTHING FIRST
-	# CRITICAL: Set game_mode BEFORE anything else!
 	game_mode = mode
 	is_multiplayer = (mode == "multi")
 	debug_log("Game mode set to: %s (is_multiplayer: %s)" % [game_mode, is_multiplayer])
@@ -142,15 +141,22 @@ func start_new_game(mode: String = "single", custom_seed: int = 0) -> void:
 	cards_cleared = 0
 	board_cleared = false
 	
-	# CRITICAL: Clear old RNG to ensure deterministic behavior
+	# Clear old RNG
 	if round_rng != null:
 		debug_log("Clearing existing round_rng")
 	round_rng = null
 	deck_seed = 0
 	
 	# === SEED SYSTEM SETUP ===
-	# Check for stored custom seed first (from set_custom_seed)
-	if custom_seed == 0 and has_meta("custom_seed"):
+	# Check for multiplayer lobby seed first
+	var is_multiplayer_lobby = false
+	if has_meta("multiplayer_lobby_seed"):
+		custom_seed = get_meta("multiplayer_lobby_seed")
+		remove_meta("multiplayer_lobby_seed")
+		is_multiplayer_lobby = true
+		debug_log("Found multiplayer lobby seed: %d" % custom_seed)
+	elif custom_seed == 0 and has_meta("custom_seed"):
+		# Solo seeded game
 		custom_seed = get_meta("custom_seed")
 		remove_meta("custom_seed")
 		debug_log("Found stored custom seed in metadata: %d" % custom_seed)
@@ -164,18 +170,34 @@ func start_new_game(mode: String = "single", custom_seed: int = 0) -> void:
 		game_seed = custom_seed
 		debug_log("Using CUSTOM seed: %d" % game_seed)
 		
-		game_context = {
-			"type": "seeded",
-			"is_seeded": true,
-			"seed_source": game_context.get("seed_source", "manual"),
-			"affects_global_leaderboard": false,
-			"affects_mode_leaderboard": true,
-			"tournament_id": "",
-			"battle_id": "",
-			"custom_lobby_id": ""
-		}
-		debug_log("Game context set to SEEDED - will NOT affect global leaderboard")
+		if is_multiplayer_lobby:
+			# Multiplayer with shared seed - COUNTS for leaderboards
+			game_context = {
+				"type": "multiplayer",
+				"is_seeded": true,
+				"seed_source": "multiplayer_lobby",
+				"affects_global_leaderboard": true,  # Competitive multiplayer counts!
+				"affects_mode_leaderboard": true,
+				"tournament_id": "",
+				"battle_id": "",
+				"custom_lobby_id": ""
+			}
+			debug_log("Game context set to MULTIPLAYER - WILL affect leaderboards")
+		else:
+			# Solo seeded game - separate leaderboard
+			game_context = {
+				"type": "seeded",
+				"is_seeded": true,
+				"seed_source": game_context.get("seed_source", "manual"),
+				"affects_global_leaderboard": false,  # Solo seeded is separate
+				"affects_mode_leaderboard": true,
+				"tournament_id": "",
+				"battle_id": "",
+				"custom_lobby_id": ""
+			}
+			debug_log("Game context set to SEEDED - will NOT affect global leaderboard")
 	else:
+		# Random seed
 		game_seed = randi()
 		debug_log("Generated NEW RANDOM seed: %d" % game_seed)
 		

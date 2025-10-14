@@ -177,6 +177,11 @@ var button_configs = [
 var currently_selected_button: Button = null
 
 func _ready() -> void:
+
+	# Disable auto anonymous login for testing
+	var supabase = get_node("/root/SupabaseManager")
+	supabase.skip_auto_login = true
+	
 	if not get_node_or_null("/root/UIManager"):
 		print("MainMenu: Waiting for UIManager...")
 		await get_tree().process_frame
@@ -197,6 +202,11 @@ func _ready() -> void:
 		settings_menu.settings_closed.connect(_on_settings_closed)
 	else:
 		pass
+	
+	if OS.is_debug_build():
+		var test_panel = preload("res://Pyramids/scenes/ui/components/TestAccountPanel.tscn").instantiate()
+		test_panel.position = Vector2(60, 100)  # Top left corner
+		add_child(test_panel)
 
 func _create_buttons() -> void:
 	for i in range(button_configs.size()):

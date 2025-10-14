@@ -18,6 +18,8 @@ var pending_callbacks: Dictionary = {}
 var poll_timer: Timer
 var poll_interval: float = 3.0
 var is_polling: bool = false
+var last_final_results_fetch: float = 0.0
+var fetch_cooldown: float = 2.0  # Don't fetch more than once per 2 seconds
 
 # === DEBUG ===
 var debug_enabled: bool = true
@@ -94,17 +96,21 @@ func create_lobby(mode: String) -> void:
 	else:
 		var player_data = _build_player_data()
 		
-		# CRITICAL: Don't double-stringify the arrays/objects
+		# Generate shared seed for all players
+		var lobby_seed = randi() % 2147483647
+		debug_log("Generated shared lobby seed: %d" % lobby_seed)
+		
 		var lobby_data = {
 			"mode": mode,
 			"lobby_type": "matchmaking",
 			"host_id": supabase.current_user.get("id", ""),
-			"players": [player_data],  # This will be properly converted to JSONB
+			"players": [player_data],
 			"player_count": 1,
 			"status": "waiting",
 			"current_round": 0,
 			"max_rounds": _get_max_rounds_for_mode(mode),
-			"settings": {}  # Empty object, not string
+			"settings": {},
+			"game_seed": lobby_seed  # NEW: Add seed
 		}
 		
 		supabase.current_request_type = "create_lobby"
@@ -114,7 +120,6 @@ func create_lobby(mode: String) -> void:
 		headers.append("Content-Type: application/json")
 		
 		var body = JSON.stringify(lobby_data)
-		debug_log("Creating lobby with body: %s" % body)
 		supabase.db_request.request(url, headers, HTTPClient.METHOD_POST, body)
 
 func ensure_lobby_exists(mode: String) -> void:
@@ -253,6 +258,37 @@ func _on_supabase_response(data) -> void:
 				if has_node("/root/GameModeManager"):
 					mode = get_node("/root/GameModeManager").get_current_mode()
 				create_lobby(mode)
+		
+		"get_lobby_by_id":
+			if data is Array and data.size() > 0:
+				current_lobby_data = data[0]
+				var lobby_id = pending_callbacks.get("join_target_lobby_id", "")
+				
+				# Parse players if needed
+				var players = current_lobby_data.get("players", [])
+				if players is String:
+					var json = JSON.new()
+					var parse_result = json.parse(players)
+					if parse_result == OK:
+						current_lobby_data["players"] = json.data
+				
+				# Now add ourselves to the lobby
+				if lobby_id:
+					_add_self_to_lobby(lobby_id)
+					pending_callbacks.erase("join_target_lobby_id")
+			else:
+				debug_log("Lobby not found!")
+				lobby_joined.emit({"error": "Lobby not found"})
+		
+		"update_lobby_join":
+			if data is Array and data.size() > 0:
+				current_lobby_data = data[0]
+			elif data is Dictionary:
+				current_lobby_data = data
+			
+			debug_log("✅ Successfully joined lobby")
+			lobby_joined.emit(current_lobby_data)
+			start_polling()
 		
 		"create_lobby":
 			if data is Array and data.size() > 0:
@@ -578,9 +614,36 @@ func _on_supabase_response(data) -> void:
 			debug_log("✅ Emitting highscores_received with %d entries" % highscores.size())
 			highscores_received.emit(highscores)
 
+		"update_player_ready":
+			if data:
+				debug_log("✅ Ready state updated successfully")
+				# Update local lobby data with response
+				if data is Array and data.size() > 0:
+					current_lobby_data = data[0]
+				elif data is Dictionary:
+					current_lobby_data = data
+				
+				# Parse players if needed
+				var players = current_lobby_data.get("players", [])
+				if players is String:
+					var json = JSON.new()
+					var parse_result = json.parse(players)
+					if parse_result == OK:
+						current_lobby_data["players"] = json.data
+				
+				# Emit update for UI
+				lobby_updated.emit(current_lobby_data)
+
 func request_final_results() -> void:
-	"""Public method to request final game results - can be called multiple times"""
+	"""Public method to request final game results - with cooldown"""
+	var current_time = Time.get_ticks_msec() / 1000.0
+	
+	if current_time - last_final_results_fetch < fetch_cooldown:
+		debug_log("⏱️ Skipping fetch - too soon (%.1fs since last)" % (current_time - last_final_results_fetch))
+		return
+	
 	debug_log("Requesting final game results...")
+	last_final_results_fetch = current_time
 	
 	if not current_lobby_data.has("id"):
 		debug_log("⚠️ Cannot fetch final results - no lobby")
@@ -624,14 +687,15 @@ func stop_polling() -> void:
 func _poll_lobby_status() -> void:
 	"""Poll for lobby updates"""
 	if not current_lobby_data.has("id"):
+		debug_log("No lobby to poll")
 		return
 	
 	var our_lobby_id = current_lobby_data.get("id", "")
-	debug_log("Polling for lobby: %s" % our_lobby_id)
+	debug_log("Polling lobby: %s" % our_lobby_id)
 	
 	supabase.current_request_type = "poll_lobby"
-	var url = supabase.SUPABASE_URL + "/rest/v1/pyramids_lobbies"  # CORRECT TABLE
-	url += "?id=eq." + our_lobby_id  # Query by specific lobby ID
+	var url = supabase.SUPABASE_URL + "/rest/v1/pyramids_lobbies"
+	url += "?id=eq." + our_lobby_id
 	
 	var headers = supabase._get_db_headers()
 	supabase.db_request.request(url, headers, HTTPClient.METHOD_GET)
@@ -743,29 +807,44 @@ func _mock_complete_round(round: int) -> void:
 
 func _build_player_data() -> Dictionary:
 	"""Build player data object"""
+	var player_id = ""
+	var player_name = "Guest%d" % (randi() % 9999)
+	
+	# Try to get from Supabase first
+	if supabase and supabase.current_user.has("id"):
+		player_id = supabase.current_user.get("id", "")
+	
+	# Try to get player name from settings
+	if has_node("/root/SettingsSystem"):
+		var settings = get_node("/root/SettingsSystem")
+		if "player_name" in settings and settings.player_name != "":
+			player_name = settings.player_name
+	# Or from ProfileManager if it has a name
+	elif has_node("/root/ProfileManager"):
+		var profile = get_node("/root/ProfileManager")
+		if profile.player_name != "" and profile.player_name != "Player":
+			player_name = profile.player_name
+	
 	var player_data = {
-		"id": supabase.current_user.get("id", "unknown") if supabase else "unknown",
-		"name": "Player",
+		"id": player_id,
+		"name": player_name,
 		"level": 1,
 		"mmr": 1000,
 		"equipped": {},
 		"displayed": [],
-		"stats": {}
+		"stats": {},
+		"is_ready": false  # CRITICAL: Add this field
 	}
 	
-	if has_node("/root/SettingsSystem"):
-		var settings = get_node("/root/SettingsSystem")
-		if "player_name" in settings:
-			player_data.name = settings.player_name
-	
+	# Get equipped items if available
 	if has_node("/root/EquipmentManager"):
 		var equipment = get_node("/root/EquipmentManager")
 		player_data.equipped = {
-			"emojis": equipment.get_equipped_emojis(),
-			"frame": equipment.get_equipped_item("frame"),
-			"mini_profile_card": equipment.get_equipped_item("mini_profile_card")
+			"emojis": equipment.get_equipped_emojis() if equipment.has_method("get_equipped_emojis") else [],
+			"frame": equipment.get_equipped_item("frame") if equipment.has_method("get_equipped_item") else "",
+			"mini_profile_card": equipment.get_equipped_item("mini_profile_card") if equipment.has_method("get_equipped_item") else ""
 		}
-		player_data.displayed = equipment.get_showcased_items()
+		player_data.displayed = equipment.get_showcased_items() if equipment.has_method("get_showcased_items") else []
 	
 	return player_data
 
@@ -890,3 +969,97 @@ func _format_date_string(timestamp_str: String) -> String:
 	var month = date_parts[1]
 	var day = date_parts[2]
 	return "%s/%s" % [month, day]
+
+func join_lobby_by_id(lobby_id: String) -> void:
+	"""Join a specific lobby by its ID"""
+	debug_log("Joining lobby by ID: %s" % lobby_id)
+	
+	if mock_mode:
+		_mock_join_lobby(lobby_id)
+		return
+	
+	# First fetch the lobby to get its current state
+	supabase.current_request_type = "get_lobby_by_id"
+	pending_callbacks["join_target_lobby_id"] = lobby_id
+	
+	var url = supabase.SUPABASE_URL + "/rest/v1/pyramids_lobbies"
+	url += "?id=eq." + lobby_id
+	
+	var headers = supabase._get_db_headers()
+	supabase.db_request.request(url, headers, HTTPClient.METHOD_GET)
+	
+func _add_self_to_lobby(lobby_id: String) -> void:
+	"""Add ourselves to an existing lobby"""
+	var player_data = _build_player_data()
+	var players = current_lobby_data.get("players", [])
+	
+	# Check if we're already in the lobby
+	for player in players:
+		if player.get("id", "") == player_data.get("id", ""):
+			debug_log("Already in lobby, just rejoining")
+			lobby_joined.emit(current_lobby_data)
+			start_polling()
+			return
+	
+	# Add ourselves
+	players.append(player_data)
+	
+	var update_data = {
+		"players": players,
+		"player_count": players.size()
+	}
+	
+	supabase.current_request_type = "update_lobby_join"
+	var url = supabase.SUPABASE_URL + "/rest/v1/pyramids_lobbies"
+	url += "?id=eq." + lobby_id
+	
+	var headers = supabase._get_db_headers()
+	headers.append("Prefer: return=representation")
+	headers.append("Content-Type: application/json")
+	
+	var body = JSON.stringify(update_data)
+	supabase.db_request.request(url, headers, HTTPClient.METHOD_PATCH, body)
+
+func update_player_ready_state(player_id: String, is_ready: bool) -> void:
+	"""Update a player's ready state in the lobby"""
+	if not current_lobby_data.has("id"):
+		debug_log("ERROR: No lobby to update ready state")
+		return
+	
+	debug_log("Updating ready state for player %s to %s" % [player_id, is_ready])
+	
+	# Get current players
+	var players = current_lobby_data.get("players", [])
+	if players is String:
+		var json = JSON.new()
+		var parse_result = json.parse(players)
+		if parse_result == OK:
+			players = json.data
+	
+	# Update the specific player's ready state
+	var player_found = false
+	for i in range(players.size()):
+		if players[i].get("id", "") == player_id:
+			players[i]["is_ready"] = is_ready
+			player_found = true
+			break
+	
+	if not player_found:
+		debug_log("ERROR: Player %s not found in lobby" % player_id)
+		return
+	
+	# Update lobby in database
+	var update_data = {
+		"players": players
+	}
+	
+	supabase.current_request_type = "update_player_ready"
+	var url = supabase.SUPABASE_URL + "/rest/v1/pyramids_lobbies"
+	url += "?id=eq." + current_lobby_data.id
+	
+	var headers = supabase._get_db_headers()
+	headers.append("Prefer: return=representation")
+	headers.append("Content-Type: application/json")
+	
+	var body = JSON.stringify(update_data)
+	supabase.db_request.request(url, headers, HTTPClient.METHOD_PATCH, body)
