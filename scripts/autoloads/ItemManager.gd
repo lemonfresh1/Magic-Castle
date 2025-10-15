@@ -27,7 +27,7 @@ const CATEGORIES = [
 	"frames",
 	"avatars",
 	"emojis",
-	"mini_profile_card"
+	"mini_profile_cards"
 ]
 
 # === PROPERTIES ===

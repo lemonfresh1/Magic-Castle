@@ -36,12 +36,15 @@ var waiting_for_network: bool = true
 var all_players_ready: bool = false
 var check_timer: Timer
 var expected_player_count: int = 1
+var poll_count: int = 0
+var max_polls: int = 20  # 20 polls * 1.5s = 30 seconds timeout
 
 # Emoji system
 var emoji_buttons: Array = []
 var emoji_on_cooldown: bool = false
 var emoji_cooldown_tweens: Array = []
 var emoji_lanes: Array = []
+
 
 # Debug
 var debug_enabled: bool = true
@@ -78,6 +81,7 @@ func _ready():
 			expected_player_count = 1
 	
 	_connect_network_signals()
+
 
 func _process(delta):
 	if is_counting_down:
@@ -211,25 +215,25 @@ func _connect_network_signals():
 		debug_log("Connected to NetworkManager.round_scores_ready")
 
 func _apply_styling():
-	"""Apply theme styling"""
+	"""Apply consistent styling to the score screen"""
+	# Remove the white background entirely
 	if background:
-		background.z_index = -1
-		var gradient = Gradient.new()
-		gradient.add_point(0.0, Color(0.1, 0.1, 0.2, 0.95))
-		gradient.add_point(1.0, Color(0.2, 0.1, 0.3, 0.95))
+		background.queue_free()
+		background = null
+	
+	# Set high z-index for the panel to appear above game
+	z_index = 100
 	
 	if styled_panel:
-		styled_panel.custom_minimum_size.x = 550
-		styled_panel.z_index = 1
+		styled_panel.z_index = 100
+		# The panel should have its own semi-transparent background via theme
 	
-	if margin_container:
-		margin_container.add_theme_constant_override("margin_left", 25)
-		margin_container.add_theme_constant_override("margin_right", 25)
-	
+	# Apply title styling
 	if title_label and has_node("/root/ThemeConstants"):
-		var theme = get_node("/root/ThemeConstants")
-		title_label.add_theme_font_size_override("font_size", theme.typography.size_title)
-		title_label.add_theme_color_override("font_color", theme.colors.primary)
+		var theme_constants = get_node("/root/ThemeConstants")
+		title_label.add_theme_font_size_override("font_size", theme_constants.typography.size_title)
+		title_label.add_theme_color_override("font_color", theme_constants.colors.primary)
+		title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
 # === PUBLIC API ===
 
@@ -238,8 +242,18 @@ func setup(round: int, total_rounds: int):
 	current_round = round
 	max_rounds = total_rounds
 	is_final_round = (round == total_rounds)
+	poll_count = 0  # ✅ Reset poll counter
 	
 	debug_log("Setup: Round %d of %d" % [round, total_rounds])
+	
+	# ✅ Get expected player count NOW (not in _ready)
+	if has_node("/root/NetworkManager"):
+		var net_manager = get_node("/root/NetworkManager")
+		var lobby_data = net_manager.current_lobby_data
+		expected_player_count = lobby_data.get("player_count", 1)
+		if expected_player_count == 0:
+			expected_player_count = 1
+		debug_log("Expected players: %d" % expected_player_count)
 	
 	if title_label:
 		if is_final_round:
@@ -279,14 +293,18 @@ func _on_round_scores_ready(scores: Array):
 		_start_countdown()
 	else:
 		# Not all players done yet
-		debug_log("Waiting for all players to finish...")
+		debug_log("Waiting for all players to finish... (%d/%d)" % [scores.size(), expected_player_count])
 		if continue_button:
-			continue_button.text = "Waiting for players..."
+			continue_button.text = "Waiting for players... (%d/%d)" % [scores.size(), expected_player_count]
 			continue_button.disabled = true
 		
-		# Start checking periodically
-		if not check_timer.is_stopped():
+		# ✅ FIX: Correct timer logic - start if stopped
+		if check_timer.is_stopped():
+			poll_count = 0  # Reset counter
 			check_timer.start()
+			debug_log("Started polling timer")
+		else:
+			debug_log("Timer already running")
 
 # === PRIVATE HELPERS ===
 
@@ -559,16 +577,30 @@ func _on_continue_pressed():
 
 func _check_all_players_ready():
 	"""Check if all players have submitted scores"""
+	poll_count += 1
+	debug_log("Polling for scores (attempt %d/%d)" % [poll_count, max_polls])
+	
+	# ✅ Check timeout
+	if poll_count >= max_polls:
+		debug_log("⚠️ Max polling attempts reached (%d), proceeding anyway" % max_polls)
+		check_timer.stop()
+		
+		# Show whatever scores we have
+		if player_scores.size() > 0:
+			_start_countdown()
+		else:
+			debug_log("ERROR: No scores after max polls!")
+		return
+	
+	# Request fresh scores from NetworkManager
 	if has_node("/root/NetworkManager"):
 		var net_manager = get_node("/root/NetworkManager")
 		net_manager._fetch_round_scores(current_round)
+	else:
+		debug_log("ERROR: NetworkManager not found!")
 
 func _check_player_count(scores: Array) -> bool:
 	"""Check if we have scores from all expected players"""
-	var players_with_scores = 0
-	for score in scores:
-		if score.get("round_score", 0) > 0:
-			players_with_scores += 1
-	
+	var players_with_scores = scores.size()
 	debug_log("Players with scores: %d/%d" % [players_with_scores, expected_player_count])
 	return players_with_scores >= expected_player_count

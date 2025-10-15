@@ -34,6 +34,8 @@ signal player_left(player_id: String)
 signal round_scores_ready(scores: Array)
 signal game_completed(final_results: Dictionary)
 signal highscores_received(highscores: Array)
+signal emoji_received(emoji_data: Dictionary)
+
 
 func debug_log(message: String) -> void:
 	if debug_enabled:
@@ -404,10 +406,18 @@ func _on_supabase_response(data) -> void:
 						"name": player_data.get("name", "Unknown"),
 						"round_score": score_entry.score,
 						"total_score": score_entry.score,
-						"position": 1,
+						"position": 0,  # ✅ Will be set below
 						"position_change": 0,
 						"is_local": score_entry.player_id == supabase.current_user.get("id", "")
 					})
+			
+			# ✅ Sort by round_score (highest first) and assign positions
+			scores_array.sort_custom(func(a, b): return a.round_score > b.round_score)
+			
+			var position = 1
+			for i in range(scores_array.size()):
+				scores_array[i].position = position
+				position += 1
 			
 			debug_log("✅ Emitting round_scores_ready with %d players" % scores_array.size())
 			round_scores_ready.emit(scores_array)
@@ -634,6 +644,30 @@ func _on_supabase_response(data) -> void:
 				# Emit update for UI
 				lobby_updated.emit(current_lobby_data)
 
+		"send_emoji":
+			debug_log("✅ Emoji sent successfully")
+
+		"poll_emoji":
+			var screen = pending_callbacks.get("emoji_screen", "")
+			pending_callbacks.erase("emoji_screen")
+			
+			if data is Array:
+				for emoji_event in data:
+					# Skip our own emojis
+					var event_player_id = emoji_event.get("player_id", "")
+					var local_id = supabase.current_user.get("id", "")
+					
+					if event_player_id == local_id:
+						continue
+					
+					# Emit signal for UI to handle
+					emoji_received.emit({
+						"player_id": event_player_id,
+						"player_name": emoji_event.get("player_name", "Player"),
+						"emoji_id": emoji_event.get("emoji_id", ""),
+						"screen": emoji_event.get("screen", "")
+					})
+
 func request_final_results() -> void:
 	"""Public method to request final game results - with cooldown"""
 	var current_time = Time.get_ticks_msec() / 1000.0
@@ -819,32 +853,55 @@ func _build_player_data() -> Dictionary:
 		var settings = get_node("/root/SettingsSystem")
 		if "player_name" in settings and settings.player_name != "":
 			player_name = settings.player_name
-	# Or from ProfileManager if it has a name
 	elif has_node("/root/ProfileManager"):
 		var profile = get_node("/root/ProfileManager")
 		if profile.player_name != "" and profile.player_name != "Player":
 			player_name = profile.player_name
 	
+	# ✅ GET ACTUAL LEVEL
+	var level = 1
+	var prestige = 0
+	if has_node("/root/XPManager"):
+		var xp_manager = get_node("/root/XPManager")
+		level = xp_manager.get_current_level()  
+		prestige = xp_manager.current_prestige  
+	elif has_node("/root/ProfileManager"):
+		var profile = get_node("/root/ProfileManager")
+		level = profile.player_level
+		prestige = profile.prestige
+	
 	var player_data = {
 		"id": player_id,
 		"name": player_name,
-		"level": 1,
+		"level": level,  
+		"prestige": prestige,
 		"mmr": 1000,
 		"equipped": {},
-		"displayed": [],
 		"stats": {},
-		"is_ready": false  # CRITICAL: Add this field
+		"is_ready": false
 	}
 	
 	# Get equipped items if available
 	if has_node("/root/EquipmentManager"):
 		var equipment = get_node("/root/EquipmentManager")
+		
+		# ✅ BUILD COMPLETE EQUIPPED OBJECT
 		player_data.equipped = {
 			"emojis": equipment.get_equipped_emojis() if equipment.has_method("get_equipped_emojis") else [],
 			"frame": equipment.get_equipped_item("frame") if equipment.has_method("get_equipped_item") else "",
-			"mini_profile_card": equipment.get_equipped_item("mini_profile_card") if equipment.has_method("get_equipped_item") else ""
+			"mini_profile_card": equipment.get_equipped_item("mini_profile_card") if equipment.has_method("get_equipped_item") else "",
+			
+			# ✅ ADD THE KEY THAT MINIPROFILECARD EXPECTS!
+			"mini_profile_card_showcased_items": equipment.get_showcased_items() if equipment.has_method("get_showcased_items") else [],
+			
+			# ✅ ADD FALLBACK ITEMS FOR DISPLAY
+			"card_back": equipment.get_equipped_item("card_back") if equipment.has_method("get_equipped_item") else "",
+			"card_front": equipment.get_equipped_item("card_front") if equipment.has_method("get_equipped_item") else "",
+			"board": equipment.get_equipped_item("board") if equipment.has_method("get_equipped_item") else ""
 		}
-		player_data.displayed = equipment.get_showcased_items() if equipment.has_method("get_showcased_items") else []
+		
+		# ❌ REMOVE THIS LINE - showcased_items are now inside equipped
+		# player_data.displayed = equipment.get_showcased_items() if equipment.has_method("get_showcased_items") else []
 	
 	return player_data
 
@@ -1063,3 +1120,55 @@ func update_player_ready_state(player_id: String, is_ready: bool) -> void:
 	
 	var body = JSON.stringify(update_data)
 	supabase.db_request.request(url, headers, HTTPClient.METHOD_PATCH, body)
+
+func send_emoji(emoji_id: String, screen: String) -> void:
+	"""Send emoji event to other players"""
+	if not current_lobby_data.has("id"):
+		debug_log("Cannot send emoji - no lobby")
+		return
+	
+	var player_name = "Player"
+	if has_node("/root/SettingsSystem"):
+		var settings = get_node("/root/SettingsSystem")
+		player_name = settings.player_name
+	
+	var emoji_data = {
+		"lobby_id": current_lobby_data.id,
+		"player_id": supabase.current_user.get("id", ""),
+		"player_name": player_name,
+		"emoji_id": emoji_id,
+		"screen": screen
+	}
+	
+	debug_log("Sending emoji: %s in %s" % [emoji_id, screen])
+	
+	supabase.current_request_type = "send_emoji"
+	var url = supabase.SUPABASE_URL + "/rest/v1/pyramids_emoji_events"
+	var headers = supabase._get_db_headers()
+	headers.append("Content-Type: application/json")
+	
+	var body = JSON.stringify(emoji_data)
+	supabase.db_request.request(url, headers, HTTPClient.METHOD_POST, body)
+
+func poll_emoji_events(screen: String) -> void:
+	"""Poll for new emoji events in current screen"""
+	if not current_lobby_data.has("id"):
+		return
+	
+	supabase.current_request_type = "poll_emoji"
+	pending_callbacks["emoji_screen"] = screen
+	
+	# Get emojis from last 5 seconds only
+	var time_threshold = Time.get_datetime_string_from_system(true)
+	var parts = time_threshold.split("T")
+	if parts.size() == 2:
+		time_threshold = parts[0] + " " + parts[1]
+	
+	var url = supabase.SUPABASE_URL + "/rest/v1/pyramids_emoji_events"
+	url += "?lobby_id=eq." + current_lobby_data.id
+	url += "&screen=eq." + screen
+	url += "&order=created_at.desc"
+	url += "&limit=10"  # Last 10 emojis max
+	
+	var headers = supabase._get_db_headers()
+	supabase.db_request.request(url, headers, HTTPClient.METHOD_GET)
