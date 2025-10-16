@@ -27,6 +27,8 @@ var emoji_poll_timer: Timer = null
 var emoji_current_screen: String = ""
 var emoji_last_poll_time: int = 0
 var emoji_poll_request: HTTPRequest = null  # ✅ NEW: Dedicated request for emoji polling
+var displayed_emoji_ids: Array = []  # ✅ NEW: Track displayed emojis to prevent duplicates
+const MAX_EMOJI_HISTORY: int = 50  # Keep last 50 emoji IDs
 
 # === DEBUG ===
 var debug_enabled: bool = true
@@ -762,10 +764,14 @@ func subscribe_to_emoji_events(lobby_id: String, screen: String) -> void:
 	debug_log("✅ Emoji polling started (1s interval)")
 
 func unsubscribe_from_emoji_events() -> void:
-	"""Unsubscribe from emoji polling"""
+	"""Unsubscribe from emoji polling and clear tracking"""
 	if emoji_poll_timer:
 		emoji_poll_timer.stop()
 		debug_log("Unsubscribed from emoji events")
+	
+	# ✅ Clear displayed emoji tracking
+	displayed_emoji_ids.clear()
+	debug_log("Cleared emoji tracking")
 
 func _poll_emoji_events() -> void:
 	"""Poll for new emoji events using dedicated HTTPRequest"""
@@ -789,7 +795,7 @@ func _poll_emoji_events() -> void:
 	emoji_poll_request.request(url, headers, HTTPClient.METHOD_GET)
 
 func _on_emoji_poll_completed(result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray) -> void:
-	"""Handle dedicated emoji poll response"""
+	"""Handle dedicated emoji poll response with duplicate prevention"""
 	if response_code != 200:
 		return
 	
@@ -803,11 +809,24 @@ func _on_emoji_poll_completed(result: int, response_code: int, headers: PackedSt
 	
 	if data is Array:
 		for emoji_event in data:
+			# Get unique identifier for this emoji event
+			var emoji_id = emoji_event.get("id", "")  # Database row ID
+			
+			# ✅ Skip if we've already displayed this emoji
+			if emoji_id in displayed_emoji_ids:
+				continue
+			
+			# Skip our own emojis
 			var event_player_id = emoji_event.get("player_id", "")
 			var local_id = supabase.current_user.get("id", "")
 			
 			if event_player_id == local_id:
+				# Still track it even though we don't display it
+				displayed_emoji_ids.append(emoji_id)
 				continue
+			
+			# ✅ NEW EMOJI - Display it!
+			debug_log("Displaying new emoji from %s: %s" % [emoji_event.get("player_name", "Player"), emoji_event.get("emoji_id", "")])
 			
 			emoji_received.emit({
 				"player_id": event_player_id,
@@ -815,6 +834,13 @@ func _on_emoji_poll_completed(result: int, response_code: int, headers: PackedSt
 				"emoji_id": emoji_event.get("emoji_id", ""),
 				"screen": emoji_event.get("screen", "")
 			})
+			
+			# ✅ Track this emoji as displayed
+			displayed_emoji_ids.append(emoji_id)
+			
+			# ✅ Keep array size manageable (circular buffer)
+			if displayed_emoji_ids.size() > MAX_EMOJI_HISTORY:
+				displayed_emoji_ids.pop_front()
 
 func send_emoji(emoji_id: String, screen: String) -> void:
 	"""Send emoji event to other players"""
@@ -1049,6 +1075,7 @@ func reset_for_new_game() -> void:
 	current_lobby_data.clear()
 	round_scores.clear()
 	pending_callbacks.clear()
+	displayed_emoji_ids.clear()  # ✅ NEW: Clear emoji tracking
 	is_connected = true
 	
 	if has_meta("highscore_saved_this_game"):

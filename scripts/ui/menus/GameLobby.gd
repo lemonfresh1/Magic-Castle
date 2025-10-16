@@ -1132,7 +1132,7 @@ func _on_network_lobby_updated(lobby_data: Dictionary):
 	var player_ids_in_lobby = {}
 	for player_data in players:
 		var pid = player_data.get("id", "")
-		if pid != "":  # Only track non-empty IDs
+		if pid != "":
 			player_ids_in_lobby[pid] = player_data
 	
 	debug_log("  Player IDs in lobby: %s" % str(player_ids_in_lobby.keys()))
@@ -1147,12 +1147,23 @@ func _on_network_lobby_updated(lobby_data: Dictionary):
 			if slot.has_method("get_player_id"):
 				var existing_id = slot.get_player_id()
 				if existing_id == player_id:
-					debug_log("  Player %s already in slot, updating" % player_id.substr(0, 8))
-					# Update existing player (including ready state)
-					if slot.has_method("set_player"):
-						slot.set_player(player_data)
+					debug_log("  Player %s already in slot" % player_id.substr(0, 8))
+					
+					# ✅ NEW: Only update if data actually changed
+					if _player_data_changed(slot, player_data):
+						debug_log("    → Data changed, updating slot")
+						if slot.has_method("set_player"):
+							slot.set_player(player_data)
+					else:
+						debug_log("    → No changes, skipping update")
+					
+					# ✅ Always update ready state (it changes frequently)
 					if slot.has_method("set_ready"):
-						slot.set_ready(player_data.get("is_ready", false))
+						var new_ready = player_data.get("is_ready", false)
+						var current_ready = slot.is_ready() if slot.has_method("is_ready") else false
+						if new_ready != current_ready:
+							slot.set_ready(new_ready)
+					
 					found = true
 					break
 		
@@ -1178,6 +1189,41 @@ func _on_network_lobby_updated(lobby_data: Dictionary):
 		_start_game_from_network()
 	
 	debug_log("<<< _on_network_lobby_updated()")
+
+func _player_data_changed(slot, new_data: Dictionary) -> bool:
+	"""Check if player data actually changed (excluding ready state)"""
+	# Get current player data from slot
+	if not slot.has_method("get_player_data"):
+		return true  # Can't compare, assume changed
+	
+	var old_data = slot.get_player_data()
+	if not old_data:
+		return true  # No old data, definitely changed
+	
+	# Compare key fields that affect visuals (excluding is_ready)
+	var fields_to_check = ["name", "level", "prestige"]
+	
+	for field in fields_to_check:
+		var old_value = old_data.get(field, null)
+		var new_value = new_data.get(field, null)
+		
+		if old_value != new_value:
+			debug_log("    Field '%s' changed: %s → %s" % [field, old_value, new_value])
+			return true
+	
+	# Check equipped items (these change the showcase)
+	var old_equipped = old_data.get("equipped", {})
+	var new_equipped = new_data.get("equipped", {})
+	
+	# Only check showcase items
+	var old_showcase = old_equipped.get("mini_profile_card_showcased_items", [])
+	var new_showcase = new_equipped.get("mini_profile_card_showcased_items", [])
+	
+	if old_showcase != new_showcase:
+		debug_log("    Showcase items changed")
+		return true
+	
+	return false
 
 func _add_player_to_empty_slot(player_data: Dictionary) -> bool:
 	var player_id = player_data.get("id", "")

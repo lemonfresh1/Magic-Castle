@@ -91,7 +91,22 @@ func _create_mini_profile_card():
 # === PUBLIC API ===
 
 func set_player(data: Dictionary):
-	"""Set player data for occupied slot"""
+	"""Set player data for occupied slot - only update if changed"""
+	
+	# ✅ Check if data actually changed (excluding ready state)
+	if is_occupied and player_data.size() > 0 and not _player_data_changed(data):
+		# Data unchanged - only update ready state if needed
+		var new_ready = data.get("is_ready", false)
+		var current_ready = player_data.get("is_ready", false)
+		
+		if new_ready != current_ready:
+			player_data["is_ready"] = new_ready
+			if mini_profile_card and mini_profile_card.has_method("set_ready"):
+				mini_profile_card.set_ready(new_ready)
+		
+		return  # ✅ Skip full update!
+	
+	# Data changed - do full update
 	player_data = data.duplicate()
 	is_occupied = true
 	
@@ -112,6 +127,40 @@ func set_player(data: Dictionary):
 	# Set data on the card
 	if mini_profile_card and mini_profile_card.has_method("set_player_data"):
 		mini_profile_card.set_player_data(player_data)
+
+func _player_data_changed(new_data: Dictionary) -> bool:
+	"""Check if player data changed (excluding ready state)"""
+	if player_data.is_empty():
+		return true  # First time, definitely changed
+	
+	# Compare fields that affect visuals (excluding is_ready)
+	var fields_to_check = ["id", "name", "level", "prestige"]
+	
+	for field in fields_to_check:
+		var old_value = player_data.get(field, null)
+		var new_value = new_data.get(field, null)
+		
+		if old_value != new_value:
+			return true
+	
+	# Check equipped items (showcase can change)
+	var old_equipped = player_data.get("equipped", {})
+	var new_equipped = new_data.get("equipped", {})
+	
+	var old_showcase = old_equipped.get("mini_profile_card_showcased_items", [])
+	var new_showcase = new_equipped.get("mini_profile_card_showcased_items", [])
+	
+	if old_showcase != new_showcase:
+		return true
+	
+	# Check stats (though these shouldn't change in lobby)
+	var old_stats = player_data.get("stats", {})
+	var new_stats = new_data.get("stats", {})
+	
+	if old_stats != new_stats:
+		return true
+	
+	return false  # No changes detected
 
 func set_empty():
 	"""Set slot as empty/invite"""
