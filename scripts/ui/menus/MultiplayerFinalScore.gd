@@ -589,31 +589,44 @@ func _on_emoji_pressed(emoji_index: int):
 		debug_log("Sent emoji to network: %s" % emoji_id)
 
 func _on_emoji_received(emoji_data: Dictionary) -> void:
-	"""Handle emoji from another player"""
+	"""Handle emoji from another player (NetworkManager already filtered it)"""
 	var player_id = emoji_data.get("player_id", "")
 	var emoji_id = emoji_data.get("emoji_id", "")
 	var screen = emoji_data.get("screen", "")
 	var player_name = emoji_data.get("player_name", "Player")
 	
-	# Skip if wrong screen
+	# Only process emojis for final screen
 	if screen != "final":
 		return
 	
-	debug_log("Received emoji '%s' from %s" % [emoji_id, player_name])
+	debug_log("Displaying emoji '%s' from %s" % [emoji_id, player_name])
 	
-	# Find player's lane index
+	# Find player's lane index in our current results
 	var lane_index = -1
-	for i in range(player_results.size()):
+	for i in range(player_results.size()):  # ← Use player_results (not player_scores)
 		if player_results[i].get("id", "") == player_id:
 			lane_index = i
 			break
 	
-	if lane_index >= 0:
-		_create_floating_emoji(
-			{"id": emoji_id, "texture_path": "", "display_name": "Emoji"}, 
-			lane_index, 
-			player_name
-		)
+	# ✅ Display the emoji (NetworkManager already handled filtering/tracking)
+	if lane_index >= 0 and lane_index < emoji_lanes.size():
+		# Load the actual emoji item to get texture
+		var emoji_item = null
+		if has_node("/root/ItemManager"):
+			var item_manager = get_node("/root/ItemManager")
+			emoji_item = item_manager.get_item(emoji_id)
+		
+		if emoji_item:
+			_create_floating_emoji(emoji_item, lane_index, player_name)
+		else:
+			# Fallback if item not found
+			_create_floating_emoji(
+				{"id": emoji_id, "texture_path": "", "display_name": "Emoji"}, 
+				lane_index, 
+				player_name
+			)
+	else:
+		debug_log("  ⚠️ Player not found in results or invalid lane")
 
 func _create_floating_emoji(emoji_item, lane_index: int, player_name: String):
 	"""Create a floating emoji in the specified lane"""

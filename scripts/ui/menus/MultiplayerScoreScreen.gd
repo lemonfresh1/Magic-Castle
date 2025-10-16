@@ -510,31 +510,39 @@ func _on_emoji_pressed(emoji_index: int):
 		debug_log("Sent emoji to network: %s" % emoji_id)
 
 func _on_emoji_received(emoji_data: Dictionary) -> void:
-	"""Handle emoji from another player"""
+	"""Handle emoji from another player (NetworkManager already filtered it)"""
 	var player_id = emoji_data.get("player_id", "")
 	var emoji_id = emoji_data.get("emoji_id", "")
 	var screen = emoji_data.get("screen", "")
 	var player_name = emoji_data.get("player_name", "Player")
 	
-	# Skip if wrong screen
-	if screen != "score":
+	# Only process emojis for our screen
+	# MultiplayerScoreScreen: screen == "score"
+	# MultiplayerFinalScore: screen == "final"
+	var expected_screen = "score"  # ← Change to "final" in MultiplayerFinalScore.gd
+	if screen != expected_screen:
 		return
 	
-	debug_log("Received emoji '%s' from %s" % [emoji_id, player_name])
+	debug_log("Displaying emoji '%s' from %s" % [emoji_id, player_name])
 	
-	# Find player's lane index
+	# Find player's lane index in our current scores
 	var lane_index = -1
-	for i in range(player_scores.size()):
+	for i in range(player_scores.size()):  # player_scores exists in both files
 		if player_scores[i].get("player_id", "") == player_id:
 			lane_index = i
 			break
 	
-	if lane_index >= 0:
-		_create_floating_emoji(
-			{"id": emoji_id, "texture_path": "", "display_name": "Emoji"}, 
-			lane_index, 
-			player_name
-		)
+	# ✅ Display the emoji (NetworkManager already handled filtering/tracking)
+	if lane_index >= 0 and lane_index < emoji_lanes.size():
+		# Load the actual emoji item to get texture
+		var emoji_item = null
+		if has_node("/root/ItemManager"):
+			var item_manager = get_node("/root/ItemManager")
+			emoji_item = item_manager.get_item(emoji_id)
+		
+		_create_floating_emoji(emoji_item, lane_index, player_name)
+	else:
+		debug_log("  ⚠️ Player not found in current scores or invalid lane")
 
 func _start_global_emoji_cooldown():
 	"""Start cooldown animation on ALL emoji buttons"""
