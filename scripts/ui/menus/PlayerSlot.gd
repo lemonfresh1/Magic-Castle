@@ -99,11 +99,15 @@ func set_player(data: Dictionary):
 	player_data["is_host"] = is_host_slot
 	
 	# Apply equipped mini profile theme if this is the local player
-	if is_local_player and EquipmentManager:
-		var equipped = EquipmentManager.get_equipped_items()
+	if mini_profile_card and mini_profile_card.has_method("apply_mini_profile_theme"):
+		var equipped = data.get("equipped", {})
 		var theme_id = equipped.get("mini_profile_card", "")
-		if theme_id != "" and mini_profile_card and mini_profile_card.has_method("apply_mini_profile_theme"):
+		
+		if theme_id != "":
+			print("[PlayerSlot] Applying theme '%s' for player %s" % [theme_id, data.get("name", "Unknown")])
 			mini_profile_card.apply_mini_profile_theme(theme_id)
+		else:
+			print("[PlayerSlot] No theme for player %s" % data.get("name", "Unknown"))
 	
 	# Set data on the card
 	if mini_profile_card and mini_profile_card.has_method("set_player_data"):

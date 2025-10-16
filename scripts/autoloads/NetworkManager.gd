@@ -1,6 +1,6 @@
 # NetworkManager.gd - Handles all network operations via Supabase
 # Location: res://Pyramids/scripts/autoloads/NetworkManager.gd
-# Last Updated: Complete implementation with solo-testing support
+# Last Updated: Fixed race condition between lobby and emoji polling
 
 extends Node
 
@@ -16,10 +16,17 @@ var pending_callbacks: Dictionary = {}
 
 # === POLLING ===
 var poll_timer: Timer
-var poll_interval: float = 3.0
+var poll_interval: float = 1.0  # ✅ FAST POLLING (changed from 3.0)
 var is_polling: bool = false
 var last_final_results_fetch: float = 0.0
-var fetch_cooldown: float = 2.0  # Don't fetch more than once per 2 seconds
+var fetch_cooldown: float = 2.0
+var lobby_poll_request: HTTPRequest = null  # ✅ NEW: Dedicated request for lobby polling
+
+# === EMOJI POLLING ===
+var emoji_poll_timer: Timer = null
+var emoji_current_screen: String = ""
+var emoji_last_poll_time: int = 0
+var emoji_poll_request: HTTPRequest = null  # ✅ NEW: Dedicated request for emoji polling
 
 # === DEBUG ===
 var debug_enabled: bool = true
@@ -35,7 +42,6 @@ signal round_scores_ready(scores: Array)
 signal game_completed(final_results: Dictionary)
 signal highscores_received(highscores: Array)
 signal emoji_received(emoji_data: Dictionary)
-
 
 func debug_log(message: String) -> void:
 	if debug_enabled:
@@ -112,7 +118,7 @@ func create_lobby(mode: String) -> void:
 			"current_round": 0,
 			"max_rounds": _get_max_rounds_for_mode(mode),
 			"settings": {},
-			"game_seed": lobby_seed  # NEW: Add seed
+			"game_seed": lobby_seed
 		}
 		
 		supabase.current_request_type = "create_lobby"
@@ -186,20 +192,17 @@ func submit_round_score(round: int, score: int, stats: Dictionary = {}) -> void:
 		# Check if we have a lobby
 		if not current_lobby_data.has("id"):
 			debug_log("⚠️ No lobby exists - creating one for solo testing")
-			# Store score data for after lobby creation
 			pending_callbacks["pending_score_submission"] = {
 				"round": round,
 				"score": score,
 				"stats": stats
 			}
-			# Create lobby first
-			var mode = "test"  # Default for solo testing
+			var mode = "test"
 			if has_node("/root/GameModeManager"):
 				mode = get_node("/root/GameModeManager").get_current_mode()
 			create_lobby(mode)
 			return
 		
-		# Real DB write to pyramids_round_scores
 		var score_data = {
 			"lobby_id": current_lobby_data.id,
 			"player_id": player_id,
@@ -266,7 +269,6 @@ func _on_supabase_response(data) -> void:
 				current_lobby_data = data[0]
 				var lobby_id = pending_callbacks.get("join_target_lobby_id", "")
 				
-				# Parse players if needed
 				var players = current_lobby_data.get("players", [])
 				if players is String:
 					var json = JSON.new()
@@ -274,7 +276,6 @@ func _on_supabase_response(data) -> void:
 					if parse_result == OK:
 						current_lobby_data["players"] = json.data
 				
-				# Now add ourselves to the lobby
 				if lobby_id:
 					_add_self_to_lobby(lobby_id)
 					pending_callbacks.erase("join_target_lobby_id")
@@ -298,7 +299,6 @@ func _on_supabase_response(data) -> void:
 			elif data is Dictionary:
 				current_lobby_data = data
 			
-			# Parse players if it came back as string
 			var players = current_lobby_data.get("players", [])
 			if players is String:
 				var json = JSON.new()
@@ -339,32 +339,6 @@ func _on_supabase_response(data) -> void:
 			if mp_manager:
 				mp_manager.current_lobby_id = current_lobby_data.get("id", "")
 				mp_manager.is_host = false
-		
-		"poll_lobby":
-			if data is Array and data.size() > 0:
-				var response_data = data[0]
-				
-				# Validate this is actually a lobby (has required fields)
-				if not response_data.has("players") or not response_data.has("status"):
-					debug_log("ERROR: Poll returned non-lobby data! Keys: %s" % str(response_data.keys()))
-					return
-				
-				var old_id = current_lobby_data.get("id", "none")
-				var new_id = response_data.get("id", "none")
-				
-				if old_id == new_id:
-					current_lobby_data = response_data
-					lobby_updated.emit(current_lobby_data)
-				else:
-					debug_log("ERROR: Poll returned different lobby! Expected: %s, Got: %s" % [old_id, new_id])
-					# Don't update with wrong lobby
-				
-				if current_lobby_data.get("status", "") == "playing" and mp_manager:
-					if not mp_manager.game_in_progress:
-						debug_log("Game is starting!")
-						stop_polling()
-			else:
-				debug_log("Poll returned no lobby data")
 
 		"submit_round_score":
 			debug_log("✅ Score submitted successfully!")
@@ -372,17 +346,13 @@ func _on_supabase_response(data) -> void:
 			pending_callbacks.erase("submitted_round")
 			pending_callbacks.erase("submitted_score")
 			
-			# Add a small delay to ensure DB write completes
 			await get_tree().create_timer(0.5).timeout
-			
 			_fetch_round_scores(submitted_round)
 			
 			var max_rounds = current_lobby_data.get("max_rounds", 10)
 			if submitted_round >= max_rounds:
 				debug_log("🏁 Game complete! Fetching ALL round scores for final results...")
-				# Mark that this fetch is from round submission
 				pending_callbacks["from_round_submit"] = true
-				# INCREASED DELAY: 2 seconds to ensure all scores are saved
 				await get_tree().create_timer(2.0).timeout
 				_fetch_all_rounds_for_final_results()
 
@@ -406,12 +376,11 @@ func _on_supabase_response(data) -> void:
 						"name": player_data.get("name", "Unknown"),
 						"round_score": score_entry.score,
 						"total_score": score_entry.score,
-						"position": 0,  # ✅ Will be set below
+						"position": 0,
 						"position_change": 0,
 						"is_local": score_entry.player_id == supabase.current_user.get("id", "")
 					})
 			
-			# ✅ Sort by round_score (highest first) and assign positions
 			scores_array.sort_custom(func(a, b): return a.round_score > b.round_score)
 			
 			var position = 1
@@ -451,7 +420,6 @@ func _on_supabase_response(data) -> void:
 					
 					player_rounds[player_id][round_num] = score
 			
-			# DEBUG: Show the complete player_rounds structure
 			debug_log("player_rounds structure: %s" % JSON.stringify(player_rounds))
 			debug_log("player_rounds keys: %s" % str(player_rounds.keys()))
 			
@@ -486,21 +454,18 @@ func _on_supabase_response(data) -> void:
 				
 				debug_log("Processing player: id='%s', name=%s" % [player_id, player_name])
 				
-				# Try to match with full ID and truncated ID
 				var rounds_data = []
 				var total = 0
 				var found_scores = false
 				
-				# Check if we have scores for this player
 				if player_rounds.has(player_id):
 					debug_log("  Found player in player_rounds with full ID")
 					found_scores = true
 				else:
-					# Try truncated ID (first 8 chars)
 					for key in player_rounds.keys():
 						if key.begins_with(player_id.substr(0, 8)):
 							debug_log("  Found player with partial match: %s" % key)
-							player_id = key  # Use the actual key from player_rounds
+							player_id = key
 							found_scores = true
 							break
 				
@@ -509,13 +474,10 @@ func _on_supabase_response(data) -> void:
 					var round_score = 0
 					
 					if found_scores and player_rounds.has(player_id):
-						# Check for integer key first
 						if player_rounds[player_id].has(r):
 							round_score = player_rounds[player_id][r]
-						# Then check for float key (1.0, 2.0, etc)
 						elif player_rounds[player_id].has(float(r)):
 							round_score = player_rounds[player_id][float(r)]
-						# Finally check for string key
 						elif player_rounds[player_id].has(str(r)):
 							round_score = player_rounds[player_id][str(r)]
 					
@@ -525,7 +487,7 @@ func _on_supabase_response(data) -> void:
 				debug_log("  Player %s: total=%d, rounds=%s" % [player_name, total, str(rounds_data)])
 				
 				rankings.append({
-					"id": player.get("id", ""),  # Use original player ID
+					"id": player.get("id", ""),
 					"name": player_name,
 					"total": total,
 					"rounds": rounds_data,
@@ -560,11 +522,9 @@ func _on_supabase_response(data) -> void:
 			
 			game_completed.emit(final_results)
 			
-			# Save highscore ONCE per game - check if we haven't saved yet
 			if not has_meta("highscore_saved_this_game") and has_node("/root/GameState"):
 				var game_state = get_node("/root/GameState")
 				
-				# Check if eligible for leaderboards (not seeded)
 				if game_state.is_eligible_for_global_leaderboard():
 					var actual_total = game_state.total_score
 					var game_seed = game_state.get_game_seed()
@@ -578,7 +538,6 @@ func _on_supabase_response(data) -> void:
 							"multi",
 							game_seed
 						)
-						# Mark that we've saved for this game
 						set_meta("highscore_saved_this_game", true)
 				else:
 					debug_log("NOT saving highscore - seeded/tournament game not eligible for leaderboards")
@@ -610,10 +569,10 @@ func _on_supabase_response(data) -> void:
 						"player_name": entry.get("player_name", "Unknown"),
 						"player_id": entry.get("player_id", ""),
 						"score": entry.get("score", 0),
-						"highscore": entry.get("score", 0),  # Alias for compatibility
+						"highscore": entry.get("score", 0),
 						"seed": entry.get("seed", 0),
-						"timestamp": timestamp_str,  # Keep original for sorting
-						"date": formatted_date,  # MM/DD format for display
+						"timestamp": timestamp_str,
+						"date": formatted_date,
 						"mode": entry.get("mode", ""),
 						"game_type": entry.get("game_type", ""),
 						"is_current_player": entry.get("player_id", "") == supabase.current_user.get("id", "")
@@ -627,13 +586,11 @@ func _on_supabase_response(data) -> void:
 		"update_player_ready":
 			if data:
 				debug_log("✅ Ready state updated successfully")
-				# Update local lobby data with response
 				if data is Array and data.size() > 0:
 					current_lobby_data = data[0]
 				elif data is Dictionary:
 					current_lobby_data = data
 				
-				# Parse players if needed
 				var players = current_lobby_data.get("players", [])
 				if players is String:
 					var json = JSON.new()
@@ -641,32 +598,10 @@ func _on_supabase_response(data) -> void:
 					if parse_result == OK:
 						current_lobby_data["players"] = json.data
 				
-				# Emit update for UI
 				lobby_updated.emit(current_lobby_data)
 
 		"send_emoji":
 			debug_log("✅ Emoji sent successfully")
-
-		"poll_emoji":
-			var screen = pending_callbacks.get("emoji_screen", "")
-			pending_callbacks.erase("emoji_screen")
-			
-			if data is Array:
-				for emoji_event in data:
-					# Skip our own emojis
-					var event_player_id = emoji_event.get("player_id", "")
-					var local_id = supabase.current_user.get("id", "")
-					
-					if event_player_id == local_id:
-						continue
-					
-					# Emit signal for UI to handle
-					emoji_received.emit({
-						"player_id": event_player_id,
-						"player_name": emoji_event.get("player_name", "Player"),
-						"emoji_id": emoji_event.get("emoji_id", ""),
-						"screen": emoji_event.get("screen", "")
-					})
 
 func request_final_results() -> void:
 	"""Public method to request final game results - with cooldown"""
@@ -719,7 +654,7 @@ func stop_polling() -> void:
 		debug_log("Stopped polling")
 
 func _poll_lobby_status() -> void:
-	"""Poll for lobby updates"""
+	"""Poll for lobby updates using dedicated HTTPRequest"""
 	if not current_lobby_data.has("id"):
 		debug_log("No lobby to poll")
 		return
@@ -727,12 +662,59 @@ func _poll_lobby_status() -> void:
 	var our_lobby_id = current_lobby_data.get("id", "")
 	debug_log("Polling lobby: %s" % our_lobby_id)
 	
-	supabase.current_request_type = "poll_lobby"
+	# ✅ Create dedicated request if doesn't exist
+	if not lobby_poll_request:
+		lobby_poll_request = HTTPRequest.new()
+		lobby_poll_request.name = "LobbyPollRequest"
+		add_child(lobby_poll_request)
+		lobby_poll_request.request_completed.connect(_on_lobby_poll_completed)
+	
 	var url = supabase.SUPABASE_URL + "/rest/v1/pyramids_lobbies"
 	url += "?id=eq." + our_lobby_id
 	
 	var headers = supabase._get_db_headers()
-	supabase.db_request.request(url, headers, HTTPClient.METHOD_GET)
+	lobby_poll_request.request(url, headers, HTTPClient.METHOD_GET)
+
+func _on_lobby_poll_completed(result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray) -> void:
+	"""Handle dedicated lobby poll response"""
+	if response_code != 200:
+		debug_log("Lobby poll failed: %d" % response_code)
+		return
+	
+	var json = JSON.new()
+	var parse_result = json.parse(body.get_string_from_utf8())
+	
+	if parse_result != OK:
+		debug_log("Failed to parse lobby poll response")
+		return
+	
+	var data = json.data
+	
+	if data is Array and data.size() > 0:
+		var response_data = data[0]
+		
+		# Validate this is actually a lobby
+		if not response_data.has("players") or not response_data.has("status"):
+			debug_log("ERROR: Poll returned non-lobby data!")
+			return
+		
+		var old_id = current_lobby_data.get("id", "none")
+		var new_id = response_data.get("id", "none")
+		
+		if old_id == new_id:
+			debug_log("✅ Lobby poll successful - emitting lobby_updated")
+			current_lobby_data = response_data
+			lobby_updated.emit(current_lobby_data)
+			
+			# Check if game is starting
+			if current_lobby_data.get("status", "") == "playing" and mp_manager:
+				if not mp_manager.game_in_progress:
+					debug_log("Game is starting!")
+					stop_polling()
+		else:
+			debug_log("ERROR: Poll returned different lobby!")
+	else:
+		debug_log("Poll returned no lobby data")
 
 func _update_lobby_players(lobby_id: String) -> void:
 	"""Update lobby with our player data"""
@@ -754,6 +736,114 @@ func _update_lobby_players(lobby_id: String) -> void:
 	
 	var body = JSON.stringify(update_data)
 	supabase.db_request.request(url, headers, HTTPClient.METHOD_PATCH, body)
+
+# === EMOJI SYSTEM ===
+
+func subscribe_to_emoji_events(lobby_id: String, screen: String) -> void:
+	"""Subscribe to emoji events for current lobby and screen (HTTP polling)"""
+	if not supabase:
+		debug_log("Cannot subscribe to emojis - no Supabase")
+		return
+	
+	debug_log("Subscribing to emoji events: lobby=%s, screen=%s" % [lobby_id, screen])
+	
+	emoji_current_screen = screen
+	
+	# Create polling timer if doesn't exist
+	if not emoji_poll_timer:
+		emoji_poll_timer = Timer.new()
+		emoji_poll_timer.name = "EmojiPollTimer"
+		emoji_poll_timer.wait_time = 1.0  # Poll every 1 second
+		emoji_poll_timer.timeout.connect(_poll_emoji_events)
+		add_child(emoji_poll_timer)
+	
+	emoji_poll_timer.start()
+	emoji_last_poll_time = Time.get_unix_time_from_system()
+	debug_log("✅ Emoji polling started (1s interval)")
+
+func unsubscribe_from_emoji_events() -> void:
+	"""Unsubscribe from emoji polling"""
+	if emoji_poll_timer:
+		emoji_poll_timer.stop()
+		debug_log("Unsubscribed from emoji events")
+
+func _poll_emoji_events() -> void:
+	"""Poll for new emoji events using dedicated HTTPRequest"""
+	if not current_lobby_data.has("id"):
+		return
+	
+	# ✅ Create dedicated request if doesn't exist
+	if not emoji_poll_request:
+		emoji_poll_request = HTTPRequest.new()
+		emoji_poll_request.name = "EmojiPollRequest"
+		add_child(emoji_poll_request)
+		emoji_poll_request.request_completed.connect(_on_emoji_poll_completed)
+	
+	var url = supabase.SUPABASE_URL + "/rest/v1/pyramids_emoji_events"
+	url += "?lobby_id=eq." + current_lobby_data.id
+	url += "&screen=eq." + emoji_current_screen
+	url += "&order=created_at.desc"
+	url += "&limit=10"
+	
+	var headers = supabase._get_db_headers()
+	emoji_poll_request.request(url, headers, HTTPClient.METHOD_GET)
+
+func _on_emoji_poll_completed(result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray) -> void:
+	"""Handle dedicated emoji poll response"""
+	if response_code != 200:
+		return
+	
+	var json = JSON.new()
+	var parse_result = json.parse(body.get_string_from_utf8())
+	
+	if parse_result != OK:
+		return
+	
+	var data = json.data
+	
+	if data is Array:
+		for emoji_event in data:
+			var event_player_id = emoji_event.get("player_id", "")
+			var local_id = supabase.current_user.get("id", "")
+			
+			if event_player_id == local_id:
+				continue
+			
+			emoji_received.emit({
+				"player_id": event_player_id,
+				"player_name": emoji_event.get("player_name", "Player"),
+				"emoji_id": emoji_event.get("emoji_id", ""),
+				"screen": emoji_event.get("screen", "")
+			})
+
+func send_emoji(emoji_id: String, screen: String) -> void:
+	"""Send emoji event to other players"""
+	if not current_lobby_data.has("id"):
+		debug_log("Cannot send emoji - no lobby")
+		return
+	
+	var player_name = "Player"
+	if has_node("/root/SettingsSystem"):
+		var settings = get_node("/root/SettingsSystem")
+		player_name = settings.player_name
+	
+	var emoji_data = {
+		"lobby_id": current_lobby_data.id,
+		"player_id": supabase.current_user.get("id", ""),
+		"player_name": player_name,
+		"emoji_id": emoji_id,
+		"screen": screen
+	}
+	
+	debug_log("Sending emoji: %s in %s" % [emoji_id, screen])
+	
+	supabase.current_request_type = "send_emoji"
+	var url = supabase.SUPABASE_URL + "/rest/v1/pyramids_emoji_events"
+	var headers = supabase._get_db_headers()
+	headers.append("Content-Type: application/json")
+	
+	var body = JSON.stringify(emoji_data)
+	supabase.db_request.request(url, headers, HTTPClient.METHOD_POST, body)
 
 # === MOCK FUNCTIONS ===
 
@@ -844,11 +934,9 @@ func _build_player_data() -> Dictionary:
 	var player_id = ""
 	var player_name = "Guest%d" % (randi() % 9999)
 	
-	# Try to get from Supabase first
 	if supabase and supabase.current_user.has("id"):
 		player_id = supabase.current_user.get("id", "")
 	
-	# Try to get player name from settings
 	if has_node("/root/SettingsSystem"):
 		var settings = get_node("/root/SettingsSystem")
 		if "player_name" in settings and settings.player_name != "":
@@ -858,7 +946,6 @@ func _build_player_data() -> Dictionary:
 		if profile.player_name != "" and profile.player_name != "Player":
 			player_name = profile.player_name
 	
-	# ✅ GET ACTUAL LEVEL
 	var level = 1
 	var prestige = 0
 	if has_node("/root/XPManager"):
@@ -881,28 +968,56 @@ func _build_player_data() -> Dictionary:
 		"is_ready": false
 	}
 	
-	# Get equipped items if available
+	debug_log("=== BUILDING PLAYER DATA ===")
+	debug_log("  Player ID: %s" % player_id)
+	debug_log("  Player Name: %s" % player_name)
+	debug_log("  Level: %d, Prestige: %d" % [level, prestige])
+	
+	if has_node("/root/StatsManager"):
+		var stats_mgr = get_node("/root/StatsManager")
+		var current_mode = "classic"
+		if has_node("/root/MultiplayerManager"):
+			var mp_mgr = get_node("/root/MultiplayerManager")
+			current_mode = mp_mgr.get_selected_mode()
+		
+		var mode_stats = stats_mgr.get_multiplayer_stats(current_mode)
+		
+		var win_rate = 0.0
+		if mode_stats.games > 0:
+			win_rate = float(mode_stats.first_place) / float(mode_stats.games)
+		
+		player_data["stats"] = {
+			"games": mode_stats.games,
+			"win_rate": win_rate,
+			"average_rank": mode_stats.average_rank
+		}
+		
+		debug_log("Populated stats from StatsManager: games=%d, win_rate=%.2f, avg_rank=%.2f" % 
+			[mode_stats.games, win_rate, mode_stats.average_rank])
+	else:
+		debug_log("⚠️ StatsManager not available")
+	
 	if has_node("/root/EquipmentManager"):
 		var equipment = get_node("/root/EquipmentManager")
 		
-		# ✅ BUILD COMPLETE EQUIPPED OBJECT
 		player_data.equipped = {
 			"emojis": equipment.get_equipped_emojis() if equipment.has_method("get_equipped_emojis") else [],
 			"frame": equipment.get_equipped_item("frame") if equipment.has_method("get_equipped_item") else "",
 			"mini_profile_card": equipment.get_equipped_item("mini_profile_card") if equipment.has_method("get_equipped_item") else "",
-			
-			# ✅ ADD THE KEY THAT MINIPROFILECARD EXPECTS!
 			"mini_profile_card_showcased_items": equipment.get_showcased_items() if equipment.has_method("get_showcased_items") else [],
-			
-			# ✅ ADD FALLBACK ITEMS FOR DISPLAY
 			"card_back": equipment.get_equipped_item("card_back") if equipment.has_method("get_equipped_item") else "",
 			"card_front": equipment.get_equipped_item("card_front") if equipment.has_method("get_equipped_item") else "",
 			"board": equipment.get_equipped_item("board") if equipment.has_method("get_equipped_item") else ""
 		}
-		
-		# ❌ REMOVE THIS LINE - showcased_items are now inside equipped
-		# player_data.displayed = equipment.get_showcased_items() if equipment.has_method("get_showcased_items") else []
 	
+	debug_log("=== FINAL PLAYER DATA ===")
+	debug_log("  ID: %s" % player_data.get("id", "NONE"))
+	debug_log("  Name: %s" % player_data.get("name", "NONE"))
+	debug_log("  Level: %d, Prestige: %d" % [player_data.get("level", 0), player_data.get("prestige", 0)])
+	debug_log("  Equipped items: %s" % str(player_data.get("equipped", {}).keys()))
+	debug_log("  Stats: %s" % str(player_data.get("stats", {})))
+	debug_log("============================")
+
 	return player_data
 
 func _get_max_rounds_for_mode(mode: String) -> int:
@@ -929,16 +1044,13 @@ func reset_for_new_game() -> void:
 	"""Reset NetworkManager state for a new game"""
 	debug_log("Resetting NetworkManager for new game")
 	
-	# Stop polling if active
 	stop_polling()
 	
-	# Clear all state
 	current_lobby_data.clear()
 	round_scores.clear()
 	pending_callbacks.clear()
-	is_connected = true  # Keep connection
+	is_connected = true
 	
-	# Clear the highscore saved flag
 	if has_meta("highscore_saved_this_game"):
 		remove_meta("highscore_saved_this_game")
 	
@@ -963,7 +1075,7 @@ func save_highscore_to_db(final_score: int, mode: String, game_type: String = "m
 		"score": final_score,
 		"mode": mode,
 		"game_type": game_type,
-		"seed": seed  # Now using actual seed
+		"seed": seed
 	}
 	
 	supabase.current_request_type = "save_highscore"
@@ -997,32 +1109,21 @@ func fetch_highscores_from_db(mode: String, game_type: String = "multi", limit: 
 
 func _format_date_string(timestamp_str: String) -> String:
 	"""Convert database timestamp to MM/DD format"""
-	# Input formats: 
-	# "2025-10-13 21:53:43.954105" (space separator)
-	# "2025-10-13T22:08:27.111863" (ISO 8601 with T)
-	# Output format: "10/13"
-	
 	if timestamp_str == "":
 		return ""
 	
-	# Split by both space and T to handle both formats
 	var parts = timestamp_str.split(" ")
 	if parts.size() == 1:
-		# Try splitting by T for ISO format
 		parts = timestamp_str.split("T")
 	
 	if parts.size() == 0:
 		return timestamp_str
 	
-	# Get just the date part
 	var date_part = parts[0]
-	
-	# Split date by hyphen
 	var date_parts = date_part.split("-")
 	if date_parts.size() != 3:
 		return date_part
 	
-	# Format as MM/DD
 	var month = date_parts[1]
 	var day = date_parts[2]
 	return "%s/%s" % [month, day]
@@ -1035,7 +1136,6 @@ func join_lobby_by_id(lobby_id: String) -> void:
 		_mock_join_lobby(lobby_id)
 		return
 	
-	# First fetch the lobby to get its current state
 	supabase.current_request_type = "get_lobby_by_id"
 	pending_callbacks["join_target_lobby_id"] = lobby_id
 	
@@ -1050,7 +1150,6 @@ func _add_self_to_lobby(lobby_id: String) -> void:
 	var player_data = _build_player_data()
 	var players = current_lobby_data.get("players", [])
 	
-	# Check if we're already in the lobby
 	for player in players:
 		if player.get("id", "") == player_data.get("id", ""):
 			debug_log("Already in lobby, just rejoining")
@@ -1058,7 +1157,6 @@ func _add_self_to_lobby(lobby_id: String) -> void:
 			start_polling()
 			return
 	
-	# Add ourselves
 	players.append(player_data)
 	
 	var update_data = {
@@ -1085,7 +1183,6 @@ func update_player_ready_state(player_id: String, is_ready: bool) -> void:
 	
 	debug_log("Updating ready state for player %s to %s" % [player_id, is_ready])
 	
-	# Get current players
 	var players = current_lobby_data.get("players", [])
 	if players is String:
 		var json = JSON.new()
@@ -1093,7 +1190,6 @@ func update_player_ready_state(player_id: String, is_ready: bool) -> void:
 		if parse_result == OK:
 			players = json.data
 	
-	# Update the specific player's ready state
 	var player_found = false
 	for i in range(players.size()):
 		if players[i].get("id", "") == player_id:
@@ -1105,7 +1201,6 @@ func update_player_ready_state(player_id: String, is_ready: bool) -> void:
 		debug_log("ERROR: Player %s not found in lobby" % player_id)
 		return
 	
-	# Update lobby in database
 	var update_data = {
 		"players": players
 	}
@@ -1121,54 +1216,9 @@ func update_player_ready_state(player_id: String, is_ready: bool) -> void:
 	var body = JSON.stringify(update_data)
 	supabase.db_request.request(url, headers, HTTPClient.METHOD_PATCH, body)
 
-func send_emoji(emoji_id: String, screen: String) -> void:
-	"""Send emoji event to other players"""
-	if not current_lobby_data.has("id"):
-		debug_log("Cannot send emoji - no lobby")
-		return
-	
-	var player_name = "Player"
-	if has_node("/root/SettingsSystem"):
-		var settings = get_node("/root/SettingsSystem")
-		player_name = settings.player_name
-	
-	var emoji_data = {
-		"lobby_id": current_lobby_data.id,
-		"player_id": supabase.current_user.get("id", ""),
-		"player_name": player_name,
-		"emoji_id": emoji_id,
-		"screen": screen
-	}
-	
-	debug_log("Sending emoji: %s in %s" % [emoji_id, screen])
-	
-	supabase.current_request_type = "send_emoji"
-	var url = supabase.SUPABASE_URL + "/rest/v1/pyramids_emoji_events"
-	var headers = supabase._get_db_headers()
-	headers.append("Content-Type: application/json")
-	
-	var body = JSON.stringify(emoji_data)
-	supabase.db_request.request(url, headers, HTTPClient.METHOD_POST, body)
-
-func poll_emoji_events(screen: String) -> void:
-	"""Poll for new emoji events in current screen"""
-	if not current_lobby_data.has("id"):
-		return
-	
-	supabase.current_request_type = "poll_emoji"
-	pending_callbacks["emoji_screen"] = screen
-	
-	# Get emojis from last 5 seconds only
-	var time_threshold = Time.get_datetime_string_from_system(true)
-	var parts = time_threshold.split("T")
-	if parts.size() == 2:
-		time_threshold = parts[0] + " " + parts[1]
-	
-	var url = supabase.SUPABASE_URL + "/rest/v1/pyramids_emoji_events"
-	url += "?lobby_id=eq." + current_lobby_data.id
-	url += "&screen=eq." + screen
-	url += "&order=created_at.desc"
-	url += "&limit=10"  # Last 10 emojis max
-	
-	var headers = supabase._get_db_headers()
-	supabase.db_request.request(url, headers, HTTPClient.METHOD_GET)
+func _exit_tree():
+	"""Cleanup when leaving"""
+	if lobby_poll_request:
+		lobby_poll_request.queue_free()
+	if emoji_poll_request:
+		emoji_poll_request.queue_free()

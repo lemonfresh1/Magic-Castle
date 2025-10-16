@@ -75,7 +75,6 @@ var lobby_id_label: Label  # Add UI element to show lobby ID
 var debug_enabled: bool = true
 var debug_player_tracking: Array = []  # Track all player add/remove operations
 
-
 # Components
 var game_settings_component: Control  # NEW: Reusable settings panel
 var game_settings_panel_script = preload("res://Pyramids/scripts/ui/components/GameSettingsPanel.gd")
@@ -130,7 +129,6 @@ func _ready():
 	print_lobby_state("After _load_lobby_state")
 	
 	_setup_lobby()
-	# _create_player_slots() - MOVED UP!
 	_connect_signals()
 	_apply_ui_styling()
 	_setup_emoji_buttons()
@@ -140,6 +138,13 @@ func _ready():
 	if network_manager:
 		network_manager.start_polling()
 		debug_log("Started polling")
+		
+		# ✅ NEW: Subscribe to realtime emoji events
+		if network_manager.is_in_lobby():
+			var lobby_id = network_manager.current_lobby_data.get("id", "")
+			if lobby_id != "":
+				network_manager.subscribe_to_emoji_events(lobby_id, "lobby")
+				debug_log("Subscribed to realtime emojis")
 	
 	var player_count = get_player_count()
 	debug_log("Player count after load: %d" % player_count)
@@ -280,10 +285,15 @@ func _auto_join_if_matchmaking():
 	debug_log(">>> _auto_join_if_matchmaking() START")
 	debug_log("  is_custom_lobby: %s" % is_custom_lobby)
 	
-	if not is_custom_lobby and has_node("/root/MultiplayerManager"):
-		var mp_manager = get_node("/root/MultiplayerManager")
-		var player_data = mp_manager.get_local_player_data()
+	if not is_custom_lobby and has_node("/root/NetworkManager"):
+		var net_manager = get_node("/root/NetworkManager")
+		
+		# ✅ FIX: Build player data using NetworkManager (has level/prestige/equipment!)
+		var player_data = net_manager._build_player_data()
 		player_data["is_host"] = is_host
+		
+		debug_log("  Built player data from NetworkManager:")
+		debug_log("    Level: %d, Prestige: %d" % [player_data.get("level", 0), player_data.get("prestige", 0)])
 		
 		var player_id = player_data.get("id", "")
 		
@@ -878,7 +888,6 @@ func _on_leave_pressed():
 		# Return to MultiplayerScreen
 		get_tree().change_scene_to_file("res://Pyramids/scenes/ui/menus/MultiplayerScreen.tscn")
 
-
 func _on_emoji_pressed(emoji_index: int):
 	"""Handle emoji button press with cooldown"""
 	if emoji_on_cooldown:
@@ -898,8 +907,36 @@ func _on_emoji_pressed(emoji_index: int):
 				slot.mini_profile_card.show_emoji(emoji_id)
 			break
 	
-	# TODO: Send emoji to network
-	print("Emoji sent: %s" % emoji_id)
+	# ✅ NEW: Send emoji to network
+	if network_manager:
+		network_manager.send_emoji(emoji_id, "lobby")
+		debug_log("Sent emoji to network: %s" % emoji_id)
+
+func _on_emoji_received(emoji_data: Dictionary) -> void:
+	"""Handle emoji from another player"""
+	var player_id = emoji_data.get("player_id", "")
+	var emoji_id = emoji_data.get("emoji_id", "")
+	var screen = emoji_data.get("screen", "")
+	var player_name = emoji_data.get("player_name", "Player")
+	
+	# Skip if wrong screen
+	if screen != "lobby":
+		return
+	
+	# Skip our own emojis
+	var local_id = network_manager.supabase.current_user.get("id", "") if network_manager else ""
+	if player_id == local_id:
+		return
+	
+	debug_log("Received emoji '%s' from %s" % [emoji_id, player_name])
+	
+	# Find player's slot and show emoji
+	for slot in player_slots:
+		if slot.has_method("get_player_id") and slot.get_player_id() == player_id:
+			if slot.mini_profile_card and slot.mini_profile_card.has_method("show_emoji"):
+				slot.mini_profile_card.show_emoji(emoji_id)
+				debug_log("Displayed emoji on slot for %s" % player_name)
+			break
 
 # === TEST/DEBUG ===
 
@@ -1067,6 +1104,11 @@ func _connect_network_signals():
 	if not network_manager.player_left.is_connected(_on_network_player_left):
 		network_manager.player_left.connect(_on_network_player_left)
 	
+	# ✅ NEW: Connect emoji signal
+	if not network_manager.emoji_received.is_connected(_on_emoji_received):
+		network_manager.emoji_received.connect(_on_emoji_received)
+		debug_log("Connected to emoji_received signal")
+	
 	print("[GameLobby] Connected to NetworkManager signals")
 	
 func _on_network_lobby_updated(lobby_data: Dictionary):
@@ -1142,6 +1184,9 @@ func _add_player_to_empty_slot(player_data: Dictionary) -> bool:
 	var player_name = player_data.get("name", "Unknown")
 	
 	debug_log(">>> _add_player_to_empty_slot() for: %s (ID: %s)" % [player_name, player_id])
+	debug_log("  Level: %d, Prestige: %d" % [player_data.get("level", 0), player_data.get("prestige", 0)])
+	debug_log("  Stats: %s" % str(player_data.get("stats", {})))
+	debug_log("  Equipped: %s" % str(player_data.get("equipped", {}).keys()))
 	
 	# Ensure equipment data
 	if not player_data.has("equipped") and EquipmentManager:
@@ -1240,6 +1285,7 @@ func _exit_tree():
 	"""Cleanup when leaving the scene"""
 	if network_manager:
 		network_manager.stop_polling()
+		network_manager.unsubscribe_from_emoji_events()
 
 func _on_lobby_updated(lobby_data: Dictionary):
 	"""Handle lobby updates from network"""

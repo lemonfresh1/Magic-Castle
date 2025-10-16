@@ -31,8 +31,8 @@
 extends PanelContainer
 
 # === DEBUG FLAGS ===
-var debug_enabled: bool = false
-var global_debug: bool = false
+var debug_enabled: bool = true
+var global_debug: bool = true
 
 # === SIGNALS ===
 signal player_clicked(player_id: String)
@@ -344,30 +344,48 @@ func _create_display_cards() -> void:
 
 func set_player_data(data: Dictionary) -> void:
 	"""Main entry point for updating card data"""
+	
+	# ✅ DEBUG: Log what we received
+	debug_log("set_player_data() called:")
+	debug_log("  Name: %s" % data.get("name", "MISSING"))
+	debug_log("  Level: %s (type: %s)" % [data.get("level", "MISSING"), typeof(data.get("level", null))])
+	debug_log("  Prestige: %s" % data.get("prestige", "MISSING"))
+	debug_log("  Is Empty: %s" % data.get("is_empty", false))
+	
 	player_data = data
 	is_empty = data.get("is_empty", false)
 	
-	if not is_empty and StatsManager:
-		# Get the current game mode from MultiplayerManager if available
-		var current_mode = "classic"
-		if has_node("/root/MultiplayerManager"):
-			var mp_manager = get_node("/root/MultiplayerManager")
-			current_mode = mp_manager.get_selected_mode()
+	# ✅ FIX: Only use local stats if stats are missing/empty
+	var stats_dict = data.get("stats", {})
+	if not is_empty and (not data.has("stats") or stats_dict.is_empty()):
+		debug_log("⚠️ No stats in player_data, using local StatsManager data")
 		
-		# Get stats for the current mode
-		var mode_stats = StatsManager.get_multiplayer_stats(current_mode)
-		
-		# Calculate win rate as percentage
-		var win_rate = 0.0
-		if mode_stats.games > 0:
-			win_rate = float(mode_stats.first_place) / float(mode_stats.games)
-		
-		# Override stats with real data from new structure
-		player_data["stats"] = {
-			"games": mode_stats.games,
-			"win_rate": win_rate,
-			"average_rank": mode_stats.average_rank
-		}
+		if StatsManager:
+			var current_mode = "classic"
+			if has_node("/root/MultiplayerManager"):
+				var mp_manager = get_node("/root/MultiplayerManager")
+				current_mode = mp_manager.get_selected_mode()
+			
+			var mode_stats = StatsManager.get_multiplayer_stats(current_mode)
+			
+			var win_rate = 0.0
+			if mode_stats.games > 0:
+				win_rate = float(mode_stats.first_place) / float(mode_stats.games)
+			
+			player_data["stats"] = {
+				"games": mode_stats.games,
+				"win_rate": win_rate,
+				"average_rank": mode_stats.average_rank
+			}
+		else:
+			debug_log("⚠️ No StatsManager available, using default stats")
+			player_data["stats"] = {
+				"games": 0,
+				"win_rate": 0.0,
+				"average_rank": 0.0
+			}
+	else:
+		debug_log("✅ Using stats from network data: %s" % str(stats_dict))
 	
 	# NEW: Use showcased items if available, otherwise fall back to equipped
 	var equipped = data.get("equipped", {})
@@ -383,7 +401,7 @@ func set_player_data(data: Dictionary) -> void:
 	if has_showcase:
 		# Use the showcase items directly
 		player_data["display_items"] = showcase_items
-		debug_log("[MiniProfileCard] Using showcase items: %s" % str(showcase_items))
+		debug_log("Using showcase items: %s" % str(showcase_items))
 	else:
 		# Fall back to equipped items (original behavior)
 		var equipped_items = []
@@ -404,7 +422,7 @@ func set_player_data(data: Dictionary) -> void:
 			equipped_items.append("")
 		
 		player_data["display_items"] = equipped_items
-		debug_log("[MiniProfileCard] Using fallback equipped items: %s" % str(equipped_items))
+		debug_log("Using fallback equipped items: %s" % str(equipped_items))
 	
 	if is_empty:
 		set_empty_state()
@@ -475,8 +493,10 @@ func set_occupied_state() -> void:
 	
 	if profile_frame:
 		profile_frame.visible = true
-		var level = player_data.get("level", 1)
-		var prestige = player_data.get("prestige", 0)
+		var level = int(player_data.get("level", 1))  # ✅ Convert to int
+		var prestige = int(player_data.get("prestige", 0))  # ✅ Convert to int
+
+		debug_log("Setting ProfileFrame level: %d, prestige: %d" % [level, prestige])
 		profile_frame.set_player_level(level, prestige)
 		
 		if profile_frame.has_method("set_frame_size"):

@@ -14,7 +14,7 @@ layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 4
 
-[node name="Label" type="Label" parent="PanelContainer"]
+[node name="LevelLabel" type="Label" parent="PanelContainer"]
 layout_mode = 2
 size_flags_horizontal = 4
 text = "1"

@@ -7,6 +7,10 @@ extends PanelContainer
 signal frame_clicked()
 signal animation_finished(animation_name: String)
 
+# === DEBUG FLAGS ===
+var debug_enabled: bool = true
+var global_debug: bool = true
+
 # Frame customization
 @export var frame_size: int = 80  # Default size for frame
 @export var show_level: bool = true
@@ -15,8 +19,8 @@ signal animation_finished(animation_name: String)
 
 # Node references
 @onready var frame_border: NinePatchRect = $FrameBorder
-@onready var level_container: PanelContainer = $LevelContainer
-@onready var level_label: Label = $LevelContainer/LevelLabel
+@onready var level_container: PanelContainer = $PanelContainer
+@onready var level_label: Label = $PanelContainer/LevelLabel
 @onready var animation_player: AnimationPlayer = $AnimationPlayer
 @onready var particle_container: Node2D = $ParticleContainer
 
@@ -42,6 +46,10 @@ const GLOW_INTENSITY = {
 	"gold": 0.7,
 	"diamond": 0.9
 }
+
+func debug_log(message: String) -> void:
+	if debug_enabled and global_debug:
+		print("[ProfileFrame] %s" % message)
 
 func _ready() -> void:
 	# Set initial size (ensure square for circle)
@@ -84,15 +92,28 @@ func _ready() -> void:
 		print("TODO: Implement water ripple animation for silver prestige frames")
 
 func set_player_level(level: int, prestige: int = 0) -> void:
+	debug_log("set_player_level() called:")
+	debug_log("  Received level: %s (type: %s)" % [level, typeof(level)])
+	debug_log("  Received prestige: %s (type: %s)" % [prestige, typeof(prestige)])
+	
 	current_level = level
 	current_prestige = prestige
 	
+	debug_log("  current_level set to: %d" % current_level)
+	debug_log("  current_prestige set to: %d" % current_prestige)
+	
 	# Update level display
 	if level_label and show_level:
+		debug_log("  Setting level_label.text to: '%s'" % str(level))
 		level_label.text = str(level)
 		level_label.visible = true
+		debug_log("  level_label.text is now: '%s'" % level_label.text)
+		debug_log("  level_label visible: %s" % level_label.visible)
 	elif level_label:
+		debug_log("  show_level is FALSE, hiding label")
 		level_label.visible = false
+	else:
+		debug_log("  ERROR: level_label is NULL!")
 	
 	# Update frame appearance
 	_update_frame_appearance()

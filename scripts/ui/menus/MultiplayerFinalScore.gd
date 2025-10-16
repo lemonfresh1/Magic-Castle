@@ -67,6 +67,15 @@ func _ready():
 	
 	_connect_network_signals()
 	_request_initial_data()
+	
+	# ✅ NEW: Subscribe to realtime emoji events
+	if has_node("/root/NetworkManager"):
+		var net_manager = get_node("/root/NetworkManager")
+		if net_manager.is_in_lobby():
+			var lobby_id = net_manager.current_lobby_data.get("id", "")
+			if lobby_id != "":
+				net_manager.subscribe_to_emoji_events(lobby_id, "final")
+				debug_log("Subscribed to realtime emojis for final screen")
 
 # === SETUP ===
 
@@ -190,6 +199,11 @@ func _connect_network_signals():
 	if not net_manager.game_completed.is_connected(_on_game_completed):
 		net_manager.game_completed.connect(_on_game_completed)
 		debug_log("Connected to NetworkManager.game_completed")
+	
+	# ✅ NEW: Connect emoji signal
+	if not net_manager.emoji_received.is_connected(_on_emoji_received):
+		net_manager.emoji_received.connect(_on_emoji_received)
+		debug_log("Connected to emoji_received signal")
 
 func _apply_styling():
 	"""Apply theme styling"""
@@ -567,6 +581,39 @@ func _on_emoji_pressed(emoji_index: int):
 	
 	_create_floating_emoji(emoji_item, lane_index, "You")
 	_start_global_emoji_cooldown()
+	
+	# ✅ NEW: Send emoji to network
+	if has_node("/root/NetworkManager"):
+		var net_manager = get_node("/root/NetworkManager")
+		net_manager.send_emoji(emoji_id, "final")
+		debug_log("Sent emoji to network: %s" % emoji_id)
+
+func _on_emoji_received(emoji_data: Dictionary) -> void:
+	"""Handle emoji from another player"""
+	var player_id = emoji_data.get("player_id", "")
+	var emoji_id = emoji_data.get("emoji_id", "")
+	var screen = emoji_data.get("screen", "")
+	var player_name = emoji_data.get("player_name", "Player")
+	
+	# Skip if wrong screen
+	if screen != "final":
+		return
+	
+	debug_log("Received emoji '%s' from %s" % [emoji_id, player_name])
+	
+	# Find player's lane index
+	var lane_index = -1
+	for i in range(player_results.size()):
+		if player_results[i].get("id", "") == player_id:
+			lane_index = i
+			break
+	
+	if lane_index >= 0:
+		_create_floating_emoji(
+			{"id": emoji_id, "texture_path": "", "display_name": "Emoji"}, 
+			lane_index, 
+			player_name
+		)
 
 func _create_floating_emoji(emoji_item, lane_index: int, player_name: String):
 	"""Create a floating emoji in the specified lane"""
