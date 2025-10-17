@@ -378,36 +378,43 @@ func _create_player_slots():
 
 func _connect_signals():
 	"""Connect all UI signals"""
-	if ready_button:
-		ready_button.pressed.connect(_on_ready_pressed)
-	
+	# Button signals
 	if start_button:
-		start_button.pressed.connect(_on_start_pressed)
+		if not start_button.pressed.is_connected(_on_start_pressed):
+			start_button.pressed.connect(_on_start_pressed)
 	
 	if leave_button:
-		leave_button.pressed.connect(_on_leave_pressed)
+		if not leave_button.pressed.is_connected(_on_leave_pressed):
+			leave_button.pressed.connect(_on_leave_pressed)
 	
-	# Create and add debug button
-	debug_button = Button.new()
-	debug_button.text = "🛠️"
-	debug_button.tooltip_text = "Toggle Debug Panel"
-	debug_button.custom_minimum_size = Vector2(48, 48)
-	debug_button.pressed.connect(_on_debug_pressed)
-	bottom_buttons.add_child(debug_button)
+	if ready_button:
+		if not ready_button.pressed.is_connected(_on_ready_pressed):
+			ready_button.pressed.connect(_on_ready_pressed)
 	
-	# Apply transparent style for debug button
-	if UIStyleManager:
-		UIStyleManager.apply_button_style(debug_button, "secondary", "medium")
-	
-	# Emoji buttons
+	# Emoji button signals
 	if emoji_button_1:
-		emoji_button_1.pressed.connect(func(): _on_emoji_pressed(1))
+		if not emoji_button_1.pressed.is_connected(_on_emoji_pressed.bind(0)):
+			emoji_button_1.pressed.connect(_on_emoji_pressed.bind(0))
+	
 	if emoji_button_2:
-		emoji_button_2.pressed.connect(func(): _on_emoji_pressed(2))
+		if not emoji_button_2.pressed.is_connected(_on_emoji_pressed.bind(1)):
+			emoji_button_2.pressed.connect(_on_emoji_pressed.bind(1))
+	
 	if emoji_button_3:
-		emoji_button_3.pressed.connect(func(): _on_emoji_pressed(3))
+		if not emoji_button_3.pressed.is_connected(_on_emoji_pressed.bind(2)):
+			emoji_button_3.pressed.connect(_on_emoji_pressed.bind(2))
+	
 	if emoji_button_4:
-		emoji_button_4.pressed.connect(func(): _on_emoji_pressed(4))
+		if not emoji_button_4.pressed.is_connected(_on_emoji_pressed.bind(3)):
+			emoji_button_4.pressed.connect(_on_emoji_pressed.bind(3))
+	
+	# ✅ Connect kick signals from all player slots
+	for i in range(player_slots.size()):
+		var slot = player_slots[i]
+		if slot and slot.has_signal("player_kicked"):
+			if not slot.player_kicked.is_connected(_on_player_kick_requested):
+				slot.player_kicked.connect(_on_player_kick_requested)
+				debug_log("Connected kick signal for slot %d" % i)
 
 func _apply_ui_styling():
 	"""Apply UIStyleManager styling to UI elements"""
@@ -1375,3 +1382,33 @@ func print_lobby_state(context: String) -> void:
 	
 	debug_log("  Total Occupied Slots: %d" % occupied)
 	debug_log("=== END STATE ===")
+
+func _on_player_kick_requested(player_id: String):
+	"""Handle kick request from a player slot"""
+	debug_log("Kick requested for player: %s" % player_id)
+	
+	# Verify we're the host
+	if not network_manager:
+		debug_log("ERROR: NetworkManager not available")
+		return
+	
+	var local_id = network_manager.supabase.current_user.get("id", "")
+	var host_id = network_manager.current_lobby_data.get("host_id", "")
+	
+	if local_id != host_id:
+		debug_log("ERROR: Only host can kick!")
+		return
+	
+	# Show confirmation dialog
+	if DialogService:
+		DialogService.show_dialog(
+			"Kick Player",
+			"Are you sure you want to kick this player?",
+			DialogService.DialogType.CONFIRM,
+			func(confirmed):
+				if confirmed:
+					network_manager.kick_player_from_lobby(player_id)
+		)
+	else:
+		# No dialog service, just kick directly
+		network_manager.kick_player_from_lobby(player_id)

@@ -257,6 +257,25 @@ func _on_db_request_completed(result: int, response_code: int, headers: PackedSt
 	debug_log("DB response code: %d for request: %s" % [response_code, current_request_type])
 	
 	if response_code >= 200 and response_code < 300:
+		# Handle 204 No Content (successful request with no response body)
+		if response_code == 204:
+			debug_log("✅ Request successful (204 No Content)")
+			
+			# Handle specific request types that return 204
+			match current_request_type:
+				"mark_lobby_completed":
+					debug_log("✅ Lobby marked as completed")
+				"cleanup_stale_lobbies":
+					debug_log("✅ Stale lobbies cleaned up")
+				"cleanup_old_completed":
+					debug_log("✅ Old completed lobbies cleaned up")
+				_:
+					debug_log("✅ Operation completed successfully")
+			
+			request_completed.emit(null)
+			return
+		
+		# For all other 2xx responses, parse JSON
 		var json = JSON.new()
 		var parse_result = json.parse(response_text)
 		
@@ -301,7 +320,7 @@ func _on_db_request_completed(result: int, response_code: int, headers: PackedSt
 			request_failed.emit("Parse error")
 	else:
 		debug_log("❌ DB request failed with code %d" % response_code)
-		debug_log("❌ Error body: %s" % response_text)  # ← DIESE ZEILE IST NEU
+		debug_log("❌ Error body: %s" % response_text)
 		request_failed.emit("HTTP %d: %s" % [response_code, response_text])
 
 func _on_realtime_request_completed(result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray):

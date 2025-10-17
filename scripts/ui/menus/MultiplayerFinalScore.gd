@@ -713,6 +713,15 @@ func _on_continue_pressed():
 	"""Handle continue button - trigger GameState._end_game()"""
 	debug_log("Continue pressed - calling GameState._end_game()")
 	
+	# ✅ NEW: Mark lobby as completed before leaving
+	if has_node("/root/NetworkManager"):
+		var net_manager = get_node("/root/NetworkManager")
+		net_manager.mark_lobby_completed()
+		debug_log("Marked lobby as completed")
+		
+		# Unsubscribe from emoji events
+		net_manager.unsubscribe_from_emoji_events()
+	
 	if has_node("/root/SignalBus"):
 		var signal_bus = get_node("/root/SignalBus")
 		if signal_bus.has_signal("multiplayer_game_complete"):

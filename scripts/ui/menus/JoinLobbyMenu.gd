@@ -81,15 +81,18 @@ func _stop_browsing():
 	refresh_timer.stop()
 
 func _refresh_lobby_list():
-	"""Query for available lobbies"""
+	"""Query for available lobbies - only active ones"""
 	if not SupabaseManager or not SupabaseManager.is_authenticated:
 		print("[JoinLobbyMenu] Not authenticated, cannot query lobbies")
 		return
 	
-	# Query for waiting lobbies
+	# ✅ REMOVED: Cleanup now happens in MultiplayerScreen._ready()
+	# No longer needed here since it runs when entering multiplayer mode
+	
+	# Query lobbies immediately
 	SupabaseManager.current_request_type = "get_open_lobbies"
 	var url = SupabaseManager.SUPABASE_URL + "/rest/v1/pyramids_lobbies"
-	url += "?status=eq.waiting"  # Only waiting lobbies
+	url += "?status=eq.waiting"  # Only waiting lobbies (not completed)
 	url += "&player_count=lt.8"  # Not full
 	url += "&order=created_at.desc"  # Newest first
 	

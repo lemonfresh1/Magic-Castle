@@ -168,6 +168,12 @@ func _ready():
 	_update_multiplayer_buttons_visibility()
 	_refresh_leaderboard_for_current_mode()
 	
+	if not is_solo_mode and NetworkManager and NetworkManager.has_method("cleanup_stale_lobbies"):
+		debug_log("Pre-warming lobby cleanup (multiplayer mode detected)")
+		_add_debug_message("Running lobby cleanup...")
+		NetworkManager.cleanup_stale_lobbies()
+	
+	
 	# Initialize MultiplayerManager if available and in multiplayer mode
 	if not is_solo_mode and has_node("/root/MultiplayerManager"):
 		var mp_manager = get_node("/root/MultiplayerManager")

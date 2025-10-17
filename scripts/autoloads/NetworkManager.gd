@@ -604,6 +604,26 @@ func _on_supabase_response(data) -> void:
 
 		"send_emoji":
 			debug_log("✅ Emoji sent successfully")
+			
+		"mark_lobby_completed":
+			debug_log("✅ Lobby marked as completed")
+			# Optionally clear local lobby data
+			current_lobby_data.clear()
+
+		"cleanup_stale_lobbies":
+			debug_log("✅ Stale lobbies cleaned up")
+			
+		"cleanup_old_completed":
+			debug_log("✅ Old completed lobbies cleaned up")
+
+		"kick_player":
+			if data is Array and data.size() > 0:
+				current_lobby_data = data[0]
+			elif data is Dictionary:
+				current_lobby_data = data
+			
+			debug_log("✅ Player kicked successfully")
+			lobby_updated.emit(current_lobby_data)
 
 func request_final_results() -> void:
 	"""Public method to request final game results - with cooldown"""
@@ -1233,6 +1253,133 @@ func update_player_ready_state(player_id: String, is_ready: bool) -> void:
 	}
 	
 	supabase.current_request_type = "update_player_ready"
+	var url = supabase.SUPABASE_URL + "/rest/v1/pyramids_lobbies"
+	url += "?id=eq." + current_lobby_data.id
+	
+	var headers = supabase._get_db_headers()
+	headers.append("Prefer: return=representation")
+	headers.append("Content-Type: application/json")
+	
+	var body = JSON.stringify(update_data)
+	supabase.db_request.request(url, headers, HTTPClient.METHOD_PATCH, body)
+
+func mark_lobby_completed() -> void:
+	"""Mark lobby as completed when game ends"""
+	if not current_lobby_data.has("id"):
+		debug_log("No lobby to mark completed")
+		return
+	
+	var lobby_id = current_lobby_data.get("id", "")
+	debug_log("Marking lobby as completed: %s" % lobby_id)
+	
+	var update_data = {
+		"status": "completed"
+		# Optional: "finished_at": Time.get_datetime_string_from_system()
+	}
+	
+	supabase.current_request_type = "mark_lobby_completed"
+	var url = supabase.SUPABASE_URL + "/rest/v1/pyramids_lobbies"
+	url += "?id=eq." + lobby_id
+	
+	var headers = supabase._get_db_headers()
+	headers.append("Content-Type: application/json")
+	
+	var body = JSON.stringify(update_data)
+	supabase.db_request.request(url, headers, HTTPClient.METHOD_PATCH, body)
+
+func cleanup_stale_lobbies() -> void:
+	"""Delete stale lobbies (waiting > 1 hour) and old completed lobbies (> 24 hours)"""
+	debug_log("Cleaning up stale and old lobbies...")
+	
+	if mock_mode:
+		return
+	
+	# Calculate timestamps
+	var current_time = Time.get_unix_time_from_system()
+	var one_hour_ago = current_time - 3600  # 3600 seconds = 1 hour
+	var one_day_ago = current_time - 86400  # 86400 seconds = 24 hours
+	
+	# Convert to ISO 8601 format with timezone for Postgres
+	var one_hour_ago_dt = Time.get_datetime_dict_from_unix_time(one_hour_ago)
+	var iso_one_hour = "%04d-%02d-%02dT%02d:%02d:%02d+00:00" % [
+		one_hour_ago_dt.year,
+		one_hour_ago_dt.month,
+		one_hour_ago_dt.day,
+		one_hour_ago_dt.hour,
+		one_hour_ago_dt.minute,
+		one_hour_ago_dt.second
+	]
+	
+	var one_day_ago_dt = Time.get_datetime_dict_from_unix_time(one_day_ago)
+	var iso_one_day = "%04d-%02d-%02dT%02d:%02d:%02d+00:00" % [
+		one_day_ago_dt.year,
+		one_day_ago_dt.month,
+		one_day_ago_dt.day,
+		one_day_ago_dt.hour,
+		one_day_ago_dt.minute,
+		one_day_ago_dt.second
+	]
+	
+	debug_log("  Current time (UTC): %s" % Time.get_datetime_string_from_system(true))
+	debug_log("  Deleting 'waiting' lobbies older than: %s" % iso_one_hour)
+	debug_log("  Deleting 'completed' lobbies older than: %s" % iso_one_day)
+	
+	# Delete stale waiting lobbies (> 1 hour old)
+	supabase.current_request_type = "cleanup_stale_lobbies"
+	var url = supabase.SUPABASE_URL + "/rest/v1/pyramids_lobbies"
+	url += "?status=eq.waiting"
+	url += "&created_at=lt." + iso_one_hour
+	
+	var headers = supabase._get_db_headers()
+	supabase.db_request.request(url, headers, HTTPClient.METHOD_DELETE)
+	
+	# Small delay between requests
+	await get_tree().create_timer(0.1).timeout
+	
+	# Delete old completed lobbies (> 24 hours old)
+	supabase.current_request_type = "cleanup_old_completed"
+	var url2 = supabase.SUPABASE_URL + "/rest/v1/pyramids_lobbies"
+	url2 += "?status=eq.completed"
+	url2 += "&created_at=lt." + iso_one_day
+	
+	supabase.db_request.request(url2, headers, HTTPClient.METHOD_DELETE)
+
+func kick_player_from_lobby(player_id: String) -> void:
+	"""Remove a player from the current lobby (host only)"""
+	if not current_lobby_data.has("id"):
+		debug_log("ERROR: No lobby to kick from")
+		return
+	
+	var local_id = supabase.current_user.get("id", "")
+	var host_id = current_lobby_data.get("host_id", "")
+	
+	# Verify we're the host
+	if local_id != host_id:
+		debug_log("ERROR: Only host can kick players")
+		return
+	
+	debug_log("Kicking player: %s" % player_id)
+	
+	var players = current_lobby_data.get("players", [])
+	if players is String:
+		var json = JSON.new()
+		var parse_result = json.parse(players)
+		if parse_result == OK:
+			players = json.data
+	
+	# Remove the player
+	var new_players = []
+	for player in players:
+		if player.get("id", "") != player_id:
+			new_players.append(player)
+	
+	# Update lobby
+	var update_data = {
+		"players": new_players,
+		"player_count": new_players.size()
+	}
+	
+	supabase.current_request_type = "kick_player"
 	var url = supabase.SUPABASE_URL + "/rest/v1/pyramids_lobbies"
 	url += "?id=eq." + current_lobby_data.id
 	
