@@ -158,14 +158,66 @@ func join_lobby(lobby_id: String) -> void:
 		supabase.db_request.request(url, headers, HTTPClient.METHOD_GET)
 
 func leave_lobby() -> void:
-	"""Leave current lobby"""
-	if not current_lobby_data.has("id"):
+	"""Remove current player from lobby and update database"""
+	if mock_mode:
 		return
 	
-	debug_log("Leaving lobby: %s" % current_lobby_data.id)
+	if not current_lobby_data.has("id"):
+		debug_log("No lobby to leave")
+		return
 	
-	if mock_mode:
-		_mock_leave_lobby()
+	var lobby_id = current_lobby_data.get("id", "")
+	var player_id = supabase.current_user.get("id", "") if supabase else ""
+	
+	if player_id == "":
+		debug_log("ERROR: Cannot leave lobby - no player ID")
+		return
+	
+	debug_log("Leaving lobby: %s" % lobby_id)
+	debug_log("  Removing player: %s" % player_id.substr(0, 8))
+	
+	# Get current players array
+	var players = current_lobby_data.get("players", [])
+	if players is String:
+		var json = JSON.new()
+		var parse_result = json.parse(players)
+		if parse_result == OK:
+			players = json.data
+	
+	# Remove this player from the array
+	var new_players = []
+	for player in players:
+		if player.get("id", "") != player_id:
+			new_players.append(player)
+	
+	debug_log("  Players before: %d" % players.size())
+	debug_log("  Players after: %d" % new_players.size())
+	
+	# If this was the last player, mark lobby as completed
+	var new_status = current_lobby_data.get("status", "waiting")
+	if new_players.size() == 0:
+		new_status = "completed"
+		debug_log("  Last player left - marking lobby as completed")
+	
+	# Update lobby in database
+	supabase.current_request_type = "leave_lobby"
+	var url = supabase.SUPABASE_URL + "/rest/v1/pyramids_lobbies"
+	url += "?id=eq." + lobby_id
+	
+	var headers = supabase._get_db_headers()
+	headers.append("Content-Type: application/json")
+	headers.append("Prefer: return=representation")
+	
+	var update_data = {
+		"players": new_players,
+		"player_count": new_players.size(),
+		"status": new_status
+	}
+	
+	var body = JSON.stringify(update_data)
+	supabase.db_request.request(url, headers, HTTPClient.METHOD_PATCH, body)
+	
+	debug_log("✅ Leave lobby request sent")
 
 func start_game() -> void:
 	"""Host starts the game"""
@@ -624,6 +676,9 @@ func _on_supabase_response(data) -> void:
 			
 			debug_log("✅ Player kicked successfully")
 			lobby_updated.emit(current_lobby_data)
+
+		"leave_lobby":
+			debug_log("✅ Left lobby successfully")
 
 func request_final_results() -> void:
 	"""Public method to request final game results - with cooldown"""

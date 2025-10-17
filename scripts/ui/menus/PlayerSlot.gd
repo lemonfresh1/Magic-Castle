@@ -195,9 +195,24 @@ func set_as_host():
 
 func set_host_viewing(is_host: bool):
 	"""Set whether the host is viewing (shows kick buttons)"""
+	print("[PlayerSlot %d] >>> set_host_viewing(%s)" % [slot_index, is_host])
+	print("[PlayerSlot %d]   is_host_slot: %s" % [slot_index, is_host_slot])
+	print("[PlayerSlot %d]   Calculating: is_host=%s AND not is_host_slot=%s" % [slot_index, is_host, not is_host_slot])
+	
 	show_kick_button = is_host and not is_host_slot
+	
+	print("[PlayerSlot %d]   Result: show_kick_button = %s" % [slot_index, show_kick_button])
+	
 	if mini_profile_card and mini_profile_card.has_method("set_host_viewing"):
+		print("[PlayerSlot %d]   Calling mini_profile_card.set_host_viewing(%s)" % [slot_index, is_host])
 		mini_profile_card.set_host_viewing(is_host)
+	else:
+		if not mini_profile_card:
+			print("[PlayerSlot %d]   ERROR: mini_profile_card is null!" % slot_index)
+		else:
+			print("[PlayerSlot %d]   ERROR: mini_profile_card has no set_host_viewing() method!" % slot_index)
+	
+	print("[PlayerSlot %d] <<< set_host_viewing() complete" % slot_index)
 
 func set_as_local_player(is_local: bool = true):
 	"""Mark this as the local player's slot"""

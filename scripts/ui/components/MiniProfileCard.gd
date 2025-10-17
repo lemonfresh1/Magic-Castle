@@ -780,6 +780,10 @@ func debug_check_display_cards() -> void:
 
 func _update_overlay_controls() -> void:
 	"""Update ready sign and kick button visibility"""
+	debug_log(">>> _update_overlay_controls()")
+	debug_log("  show_kick_button flag: %s" % show_kick_button)
+	debug_log("  is_empty: %s" % is_empty)
+	debug_log("  player_data.is_host: %s" % player_data.get("is_host", false))
 	
 	# Ready sign stays top-left
 	if ready_sign:
@@ -793,16 +797,26 @@ func _update_overlay_controls() -> void:
 		# Hide kick button, show host indicator
 		if kick_button:
 			kick_button.visible = false
+			debug_log("  Host card - kick button hidden")
 		_show_host_indicator()
 	else:
 		# Hide host indicator, potentially show kick button
 		if host_indicator:
-			host_indicator.visible = false  # HIDE THE HOST INDICATOR!
+			host_indicator.visible = false
 		
 		if kick_button:
 			kick_button.set_position(Vector2(size.x - 25, 5))
 			var is_host_viewing = show_kick_button
 			kick_button.visible = is_host_viewing and not is_empty
+			
+			debug_log("  Non-host card:")
+			debug_log("    is_host_viewing (show_kick_button): %s" % is_host_viewing)
+			debug_log("    not is_empty: %s" % (not is_empty))
+			debug_log("    Final kick_button.visible: %s" % kick_button.visible)
+		else:
+			debug_log("  ERROR: kick_button is null!")
+	
+	debug_log("<<< _update_overlay_controls()")
 
 # === HELPER FUNCTIONS ===
 
@@ -900,8 +914,20 @@ func set_ready(ready: bool) -> void:
 
 func set_host_viewing(is_host: bool) -> void:
 	"""Set whether host is viewing (shows kick button)"""
-	show_kick_button = is_host
+	debug_log(">>> set_host_viewing(%s)" % is_host)
+	debug_log("  Current show_kick_button: %s" % show_kick_button)
+	debug_log("  player_data.is_host: %s" % player_data.get("is_host", false))
+	debug_log("  is_empty: %s" % is_empty)
+	
+	# Set the flag (but only if this is NOT the host's own card)
+	show_kick_button = is_host and not player_data.get("is_host", false)
+	
+	debug_log("  New show_kick_button: %s" % show_kick_button)
+	debug_log("  Calling _update_overlay_controls()...")
+	
 	_update_overlay_controls()
+	
+	debug_log("<<< set_host_viewing() complete")
 
 func highlight() -> void:
 	"""Highlight the card"""

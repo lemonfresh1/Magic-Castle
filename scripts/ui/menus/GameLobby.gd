@@ -71,6 +71,8 @@ var current_game_mode: String = "classic"
 var is_custom_lobby: bool = false
 var network_manager: Node = null
 var lobby_id_label: Label  # Add UI element to show lobby ID
+var is_voluntarily_leaving: bool = false  # ✅ ADD THIS
+
 
 var debug_enabled: bool = true
 var debug_player_tracking: Array = []  # Track all player add/remove operations
@@ -200,6 +202,11 @@ func _load_lobby_state():
 				host_player_id = host_id
 				debug_log("  Local Player ID: %s" % local_player_id)
 				debug_log("  Am I host? %s" % is_host)
+				
+				# ✅ NEW: Call set_as_host() to propagate kick button visibility
+				if is_host:
+					debug_log("  Calling set_as_host(true) to enable kick buttons")
+					set_as_host(true)
 			
 			# Load players
 			var players = lobby_data.get("players", [])
@@ -452,17 +459,25 @@ func _apply_ui_styling():
 
 func set_as_host(host: bool = true):
 	"""Set this player as the host"""
+	debug_log(">>> set_as_host(%s)" % host)
 	is_host = host
 	_update_controls_visibility()
 	
 	# Update all slots to show/hide kick buttons
-	for slot in player_slots:
+	debug_log("  Updating %d player slots with host viewing" % player_slots.size())
+	for i in range(player_slots.size()):
+		var slot = player_slots[i]
 		if slot.has_method("set_host_viewing"):
+			debug_log("    Slot %d: Calling set_host_viewing(%s)" % [i, is_host])
 			slot.set_host_viewing(is_host)
+		else:
+			debug_log("    Slot %d: ERROR - no set_host_viewing() method" % i)
 	
 	# Update settings panel if it's a custom lobby
 	if is_custom_lobby and game_settings_component and game_settings_component.has_method("set_editable"):
 		game_settings_component.set_editable(is_host)
+	
+	debug_log("<<< set_as_host() complete")
 
 func set_local_player(player_id: String):
 	"""Set the local player ID"""
@@ -875,25 +890,131 @@ func _on_start_pressed():
 
 func _on_leave_pressed():
 	"""Handle leave lobby button"""
+	debug_log(">>> _on_leave_pressed()")
+	debug_log("  is_ready: %s, game_started: %s" % [is_ready, game_started])
+	debug_log("  OS: %s" % OS.get_name())
+	
 	if not is_ready and not game_started:
-		print("Leaving lobby")
+		debug_log("Leaving lobby")
 		
-		# Stop polling
-		if network_manager:
-			network_manager.stop_polling()
+		is_voluntarily_leaving = true
+
+		leave_button.disabled = true
+		
+		# FIRST: Remove from database (and WAIT for it)
+		if network_manager and network_manager.current_lobby_data.has("id"):
+			debug_log("  Removing self from lobby database...")
+			network_manager.leave_lobby()
 			
-			# Remove ourselves from the lobby
-			if network_manager.current_lobby_data.has("id"):
-				# TODO: Remove self from players array in Supabase
-				pass
+			# Wait for the database update to complete
+			debug_log("  Waiting for database update...")
+			await get_tree().create_timer(0.5).timeout
+			debug_log("  Database update should be complete")
+		
+		# THEN: Stop polling and cleanup
+		if network_manager:
+			debug_log("  Force stopping all network activity...")
+			network_manager.stop_polling()
+			network_manager.unsubscribe_from_emoji_events()
+			
+			# Disconnect signals to prevent callbacks during transition
+			if network_manager.lobby_updated.is_connected(_on_network_lobby_updated):
+				network_manager.lobby_updated.disconnect(_on_network_lobby_updated)
+			if network_manager.emoji_received.is_connected(_on_emoji_received):
+				network_manager.emoji_received.disconnect(_on_emoji_received)
+			
+			# Reset network state
+			network_manager.current_lobby_data = {}
+			network_manager.is_polling = false
+			
+			debug_log("  Network activity stopped and signals disconnected")
 		
 		# Notify MultiplayerManager
 		if has_node("/root/MultiplayerManager"):
+			debug_log("  Notifying MultiplayerManager...")
 			var mp_manager = get_node("/root/MultiplayerManager")
 			mp_manager.leave_current_lobby()
 		
-		# Return to MultiplayerScreen
-		get_tree().change_scene_to_file("res://Pyramids/scenes/ui/menus/MultiplayerScreen.tscn")
+		# Android needs more time - wait 2 frames
+		var os_name = OS.get_name()
+		if os_name == "Android" or os_name == "iOS":
+			debug_log("  Mobile platform detected - waiting 2 frames...")
+			await get_tree().process_frame
+			await get_tree().process_frame
+		
+		# Finally: Change scene
+		debug_log("  Scheduling deferred scene change...")
+		call_deferred("_change_scene_to_multiplayer")
+	else:
+		debug_log("Cannot leave - is_ready=%s or game_started=%s" % [is_ready, game_started])
+	
+	debug_log("<<< _on_leave_pressed()")
+	
+
+func _change_scene_to_multiplayer():
+	"""Deferred scene change helper"""
+	debug_log(">>> _change_scene_to_multiplayer() ATTEMPT 1")
+	
+	# Final safety check - ensure we're not in the middle of another scene change
+	if not is_inside_tree():
+		debug_log("  ERROR: Node not in tree! Cannot change scene.")
+		return
+	
+	var scene_tree = get_tree()
+	if not scene_tree:
+		debug_log("  ERROR: No SceneTree!")
+		return
+	
+	# Try to change scene
+	var result = scene_tree.change_scene_to_file("res://Pyramids/scenes/ui/menus/MultiPlayerScreen.tscn")
+	debug_log("  Scene change result: %d (0=OK)" % result)
+	
+	if result != OK:
+		debug_log("  ERROR: Scene change failed with code %d! Trying alternative method..." % result)
+		
+		# Alternative method: Load scene manually and switch
+		await get_tree().create_timer(0.1).timeout
+		
+		debug_log(">>> _change_scene_to_multiplayer() ATTEMPT 2")
+		
+		if not is_inside_tree():
+			debug_log("  ERROR: Node no longer in tree after wait!")
+			return
+		
+		var scene_path = "res://Pyramids/scenes/ui/menus/MultiPlayerScreen.tscn"
+		if ResourceLoader.exists(scene_path):
+			debug_log("  Loading scene resource...")
+			var packed_scene = load(scene_path)
+			
+			if packed_scene:
+				debug_log("  Scene loaded, instantiating...")
+				var new_scene = packed_scene.instantiate()
+				
+				if new_scene:
+					debug_log("  Scene instantiated, switching...")
+					# Get root and swap scenes manually
+					var root = scene_tree.root
+					var current_scene = scene_tree.current_scene
+					
+					if current_scene:
+						debug_log("  Removing current scene...")
+						root.remove_child(current_scene)
+						current_scene.queue_free()
+					
+					debug_log("  Adding new scene...")
+					root.add_child(new_scene)
+					scene_tree.current_scene = new_scene
+					debug_log("  ✅ Scene switched successfully!")
+				else:
+					debug_log("  ERROR: Failed to instantiate scene!")
+			else:
+				debug_log("  ERROR: Failed to load packed scene!")
+		else:
+			debug_log("  ERROR: Scene file doesn't exist!")
+	else:
+		debug_log("  ✅ Scene change successful on first attempt!")
+	
+	debug_log("<<< _change_scene_to_multiplayer()")
 
 func _on_emoji_pressed(emoji_index: int):
 	"""Handle emoji button press with cooldown"""
@@ -1121,6 +1242,8 @@ func _connect_network_signals():
 func _on_network_lobby_updated(lobby_data: Dictionary):
 	debug_log(">>> _on_network_lobby_updated()")
 	
+	debug_log("  Raw lobby data player_count: %d" % lobby_data.get("player_count", -1))
+	
 	# Update lobby data
 	if network_manager:
 		network_manager.current_lobby_data = lobby_data
@@ -1189,6 +1312,15 @@ func _on_network_lobby_updated(lobby_data: Dictionary):
 	
 	# Update start button state
 	_update_start_button_state()
+	
+	if local_player_id != "" and not player_ids_in_lobby.has(local_player_id):
+		if is_voluntarily_leaving:
+			debug_log("Local player removed (voluntary leave)")
+			# Don't show kicked popup - we're leaving on purpose
+		else:
+			debug_log("⚠️ Local player was kicked from lobby!")
+			_handle_being_kicked()
+		return
 	
 	# Check if game is starting
 	if lobby_data.get("status", "") == "playing" and not game_started:
@@ -1386,29 +1518,116 @@ func print_lobby_state(context: String) -> void:
 func _on_player_kick_requested(player_id: String):
 	"""Handle kick request from a player slot"""
 	debug_log("Kick requested for player: %s" % player_id)
-	
+
 	# Verify we're the host
 	if not network_manager:
 		debug_log("ERROR: NetworkManager not available")
 		return
-	
+
 	var local_id = network_manager.supabase.current_user.get("id", "")
 	var host_id = network_manager.current_lobby_data.get("host_id", "")
-	
+
 	if local_id != host_id:
 		debug_log("ERROR: Only host can kick!")
 		return
-	
-	# Show confirmation dialog
-	if DialogService:
-		DialogService.show_dialog(
-			"Kick Player",
-			"Are you sure you want to kick this player?",
-			DialogService.DialogType.CONFIRM,
-			func(confirmed):
-				if confirmed:
-					network_manager.kick_player_from_lobby(player_id)
-		)
-	else:
-		# No dialog service, just kick directly
+
+	# Find player name
+	var player_name = "Player"
+	for slot in player_slots:
+		if slot.has_method("get_player_id") and slot.get_player_id() == player_id:
+			if slot.has_method("get_player_name"):
+				player_name = slot.get_player_name()
+			break
+
+	# Load KickDialog
+	var popup_scene_path = "res://Pyramids/scenes/ui/popups/KickDialog.tscn"
+	if not ResourceLoader.exists(popup_scene_path):
+		debug_log("ERROR: KickDialog scene not found, kicking directly")
 		network_manager.kick_player_from_lobby(player_id)
+		return
+
+	var popup_scene = load(popup_scene_path)
+	var popup = popup_scene.instantiate()
+
+	# Setup
+	popup.setup(player_name)
+
+	# Connect signals
+	popup.confirmed.connect(func():
+		debug_log("Kick confirmed for: %s" % player_name)
+		network_manager.kick_player_from_lobby(player_id)
+	)
+
+	popup.cancelled.connect(func():
+		debug_log("Kick cancelled")
+	)
+
+	# Show
+	get_tree().root.add_child(popup)
+	debug_log("Showing kick dialog for: %s" % player_name)
+
+func _show_kicked_popup():
+	"""Show 'You've been kicked' popup"""
+	var popup_scene_path = "res://Pyramids/scenes/ui/popups/KickedDialog.tscn"
+
+	if not ResourceLoader.exists(popup_scene_path):
+		debug_log("ERROR: KickedDialog scene not found")
+		_return_to_multiplayer_screen()
+		return
+
+	var popup_scene = load(popup_scene_path)
+	var popup = popup_scene.instantiate()
+
+	# Setup (no parameters needed, just sets title)
+	popup.setup()
+
+	# Connect
+	popup.confirmed.connect(func():
+		debug_log("Kicked dialog closed")
+		_return_to_multiplayer_screen()
+	)
+
+	# Show
+	get_tree().root.add_child(popup)
+	debug_log("Kicked dialog displayed")
+
+func _handle_being_kicked():
+	"""Handle being kicked from the lobby"""
+	debug_log(">>> _handle_being_kicked()")
+	
+	# Stop polling immediately
+	if network_manager:
+		network_manager.stop_polling()
+		network_manager.unsubscribe_from_emoji_events()
+	
+	# Show kicked popup
+	_show_kicked_popup()
+	
+	debug_log("<<< _handle_being_kicked()")
+
+func _return_to_multiplayer_screen():
+	"""Return to multiplayer screen after being kicked"""
+	debug_log(">>> _return_to_multiplayer_screen() START")
+	debug_log("  OS: %s" % OS.get_name())
+	
+	# FORCE CLEANUP
+	if network_manager:
+		debug_log("  Force stopping all network activity...")
+		network_manager.stop_polling()
+		network_manager.unsubscribe_from_emoji_events()
+		
+		# Disconnect signals
+		if network_manager.lobby_updated.is_connected(_on_network_lobby_updated):
+			network_manager.lobby_updated.disconnect(_on_network_lobby_updated)
+		if network_manager.emoji_received.is_connected(_on_emoji_received):
+			network_manager.emoji_received.disconnect(_on_emoji_received)
+		
+		# Reset state
+		network_manager.reset_for_new_game()
+		debug_log("  Cleanup complete")
+	
+	# Use call_deferred for scene change
+	debug_log("  Scheduling deferred scene change...")
+	call_deferred("_change_scene_to_multiplayer")
+	
+	debug_log("<<< _return_to_multiplayer_screen() COMPLETE")
