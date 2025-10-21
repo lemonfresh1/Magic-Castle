@@ -25,6 +25,15 @@ var is_authenticated: bool = false
 var profile: Dictionary = {}
 var mock_mode: bool = false  # For compatibility with NetworkManager
 
+# Retry configuration
+const MAX_RETRIES: int = 3
+const RETRY_DELAY: float = 1.0
+var retry_counts: Dictionary = {}  # request_id -> count
+
+# Request queue for offline mode
+var request_queue: Array[Dictionary] = []
+var is_offline: bool = false
+
 var skip_auto_login: bool = false
 
 
@@ -72,15 +81,9 @@ func _ready():
 	await get_tree().process_frame
 	connection_established.emit()
 	
-	# === AUTO-LOGIN FOR MULTIPLAYER ===
-	debug_log("Auto-login: Starting anonymous authentication...")
-
-	# Skip auto-login if flag is set (for manual login testing)
-	if not skip_auto_login:
-		# Auto-login as anonymous for seamless start
-		login_anonymous()
-	else:
-		print("[SupabaseManager] Skipping auto-login for manual testing")
+	# NO AUTO-LOGIN HERE - LoginUI handles all authentication
+	# The skip_auto_login flag is no longer needed
+	debug_log("SupabaseManager ready - waiting for authentication requests")
 
 # === AUTHENTICATION METHODS ===
 
@@ -301,6 +304,14 @@ func _on_db_request_completed(result: int, response_code: int, headers: PackedSt
 					debug_log("Profile created successfully")
 					profile_loaded.emit(profile)
 				
+				"profile_upsert":
+					if data is Array and data.size() > 0:
+						profile = data[0]
+					elif data is Dictionary:
+						profile = data
+					debug_log("Profile upserted successfully")
+					profile_loaded.emit(profile)
+				
 				"save_highscore":
 					debug_log("✅ Highscore saved successfully!")
 					request_completed.emit(data)
@@ -309,8 +320,22 @@ func _on_db_request_completed(result: int, response_code: int, headers: PackedSt
 					debug_log("✅ Retrieved %d highscores" % data.size())
 					request_completed.emit(data)
 				
+				"insert":
+					debug_log("✅ Insert successful")
+					request_completed.emit(data)
+				
+				"update":
+					debug_log("✅ Update successful")
+					request_completed.emit(data)
+				
+				"select":
+					debug_log("✅ Select returned %d records" % data.size())
+					request_completed.emit(data)
+				
 				"test":
 					debug_log("✅ Database connection successful!")
+					is_offline = false
+					_on_connection_restored()
 					request_completed.emit(data)
 				
 				_:
@@ -319,9 +344,8 @@ func _on_db_request_completed(result: int, response_code: int, headers: PackedSt
 			debug_log("Failed to parse DB response")
 			request_failed.emit("Parse error")
 	else:
-		debug_log("❌ DB request failed with code %d" % response_code)
-		debug_log("❌ Error body: %s" % response_text)
-		request_failed.emit("HTTP %d: %s" % [response_code, response_text])
+		# Enhanced error handling
+		_handle_db_error(response_code, response_text)
 
 func _on_realtime_request_completed(result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray):
 	# Placeholder for realtime functionality
@@ -511,3 +535,139 @@ func insert_data(table: String, data: Dictionary) -> void:
 	
 	var body = JSON.stringify(data)
 	db_request.request(url, headers, HTTPClient.METHOD_POST, body)
+
+func upsert_profile(profile_data: Dictionary) -> void:
+	"""Insert or update profile (handles conflicts)"""
+	debug_log("Upserting profile for user: %s" % profile_data.get("id", "unknown"))
+	current_request_type = "profile_upsert"
+	
+	var url = SUPABASE_URL + "/rest/v1/pyramids_profiles"
+	var headers = _get_db_headers()
+	headers.append("Prefer: resolution=merge-duplicates,return=representation")
+	
+	var body = JSON.stringify(profile_data)
+	db_request.request(url, headers, HTTPClient.METHOD_POST, body)
+
+func _retry_request(request_data: Dictionary) -> void:
+	"""Retry a failed request"""
+	var request_id = request_data.get("id", "")
+	var retry_count = retry_counts.get(request_id, 0)
+	
+	if retry_count >= MAX_RETRIES:
+		debug_log("Max retries reached for request: %s" % request_id)
+		request_failed.emit("Max retries exceeded")
+		retry_counts.erase(request_id)
+		return
+	
+	retry_count += 1
+	retry_counts[request_id] = retry_count
+	
+	debug_log("Retrying request %s (attempt %d/%d)" % [request_id, retry_count, MAX_RETRIES])
+	
+	# Wait before retry
+	await get_tree().create_timer(RETRY_DELAY * retry_count).timeout
+	
+	# Retry based on request type
+	match request_data.get("type", ""):
+		"profile_update":
+			update("pyramids_profiles", request_data.get("data", {}), {"id": request_data.get("user_id", "")})
+		"profile_insert":
+			insert("pyramids_profiles", request_data.get("data", {}))
+		_:
+			debug_log("Unknown request type for retry")
+
+func _queue_request(request_data: Dictionary) -> void:
+	"""Queue request for later when connection is restored"""
+	request_queue.append(request_data)
+	debug_log("Request queued (total: %d)" % request_queue.size())
+
+func _process_queued_requests() -> void:
+	"""Process all queued requests when connection is restored"""
+	if request_queue.is_empty():
+		return
+	
+	debug_log("Processing %d queued requests..." % request_queue.size())
+	
+	for request in request_queue:
+		match request.get("type", ""):
+			"profile_update":
+				update("pyramids_profiles", request.get("data", {}), {"id": request.get("user_id", "")})
+			"profile_insert":
+				insert("pyramids_profiles", request.get("data", {}))
+		
+		await get_tree().create_timer(0.5).timeout  # Space out requests
+	
+	request_queue.clear()
+	
+func _handle_db_error(response_code: int, response_text: String) -> void:
+	"""Enhanced error handling with retry logic"""
+	debug_log("Database error %d: %s" % [response_code, response_text])
+	
+	var should_retry = false
+	var error_message = ""
+	
+	match response_code:
+		401:  # Unauthorized
+			error_message = "Authentication expired"
+			# TODO: Refresh token
+		409:  # Conflict
+			error_message = "Data conflict"
+			# For profiles, this might be OK (duplicate)
+			if current_request_type == "profile_create":
+				debug_log("Profile already exists, loading it instead")
+				_ensure_profile_exists()
+				return
+		429:  # Rate limited
+			error_message = "Rate limited"
+			should_retry = true
+		500, 502, 503, 504:  # Server errors
+			error_message = "Server error"
+			should_retry = true
+		0:  # Network error
+			error_message = "Network error"
+			is_offline = true
+			_handle_offline_mode()
+			return
+		_:
+			error_message = "Request failed: %d" % response_code
+	
+	if should_retry:
+		var request_data = {
+			"id": str(Time.get_ticks_msec()),
+			"type": current_request_type,
+			"data": {},  # Would need to store this
+			"user_id": current_user.get("id", "")
+		}
+		_retry_request(request_data)
+	else:
+		request_failed.emit(error_message)
+
+func _handle_offline_mode() -> void:
+	"""Switch to offline mode"""
+	debug_log("Entering offline mode")
+	is_offline = true
+	connection_failed.emit("No connection")
+	
+	# Try to reconnect periodically
+	_schedule_reconnect()
+
+func _schedule_reconnect() -> void:
+	"""Schedule reconnection attempt"""
+	await get_tree().create_timer(5.0).timeout
+	
+	if is_offline:
+		debug_log("Attempting to reconnect...")
+		test_connection()
+		
+		# If still offline, schedule another attempt
+		if is_offline:
+			_schedule_reconnect()
+			
+func _on_connection_restored() -> void:
+	"""Handle connection restoration"""
+	debug_log("Connection restored!")
+	is_offline = false
+	connection_established.emit()
+	
+	# Process any queued requests
+	_process_queued_requests()

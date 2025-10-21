@@ -177,17 +177,41 @@ var button_configs = [
 var currently_selected_button: Button = null
 
 func _ready() -> void:
-
-	# Disable auto anonymous login for testing
+	# === AUTHENTICATION CHECK ===
+	# Check if we have proper authentication before proceeding
+	if not has_node("/root/AuthManager"):
+		push_error("MainMenu: AuthManager not found! Returning to login.")
+		get_tree().change_scene_to_file("res://Pyramids/scenes/ui/menus/LoginUI.tscn")
+		return
+	
+	var auth_manager = get_node("/root/AuthManager")
+	if not auth_manager.is_logged_in():
+		print("MainMenu: Not authenticated, returning to login")
+		get_tree().change_scene_to_file("res://Pyramids/scenes/ui/menus/LoginUI.tscn")
+		return
+	
+	# === PROFILE CHECK ===
+	var profile_manager = get_node("/root/ProfileManager")
+	if not profile_manager.is_loaded:
+		print("MainMenu: Waiting for profile to load...")
+		await profile_manager.profile_loaded
+	
+	# Display welcome message
+	var display_name = profile_manager.get_display_name()
+	var is_guest = auth_manager.is_anonymous_account()
+	print("MainMenu: Welcome %s! (Guest: %s)" % [display_name, is_guest])
+	
+	# === DISABLE SUPABASE AUTO-LOGIN ===
+	# Since we're already logged in, prevent duplicate login attempts
 	var supabase = get_node("/root/SupabaseManager")
 	supabase.skip_auto_login = true
 	
+	# === UI SETUP ===
 	if not get_node_or_null("/root/UIManager"):
 		print("MainMenu: Waiting for UIManager...")
 		await get_tree().process_frame
-
-	_setup_background()
 	
+	_setup_background()
 	_setup_profile_card()
 	_create_buttons()
 	_create_ui_elements()
@@ -196,17 +220,49 @@ func _ready() -> void:
 	_setup_debug_panel()
 	_connect_ui_manager()
 	
+	# === UPDATE PROFILE DISPLAY ===
+	# If you have a profile display element, update it here
+	if has_method("_update_profile_display"):
+		_update_profile_display(display_name, is_guest)
+	
+	# === CONNECT OVERLAY SIGNALS ===
 	# Safely connect overlay signals
 	if settings_overlay and settings_overlay.has_node("SettingsMenu"):
 		var settings_menu = settings_overlay.get_node("SettingsMenu")
-		settings_menu.settings_closed.connect(_on_settings_closed)
-	else:
-		pass
+		if settings_menu.has_signal("settings_closed"):
+			settings_menu.settings_closed.connect(_on_settings_closed)
 	
-	if OS.is_debug_build():
-		var test_panel = preload("res://Pyramids/scenes/ui/components/TestAccountPanel.tscn").instantiate()
-		test_panel.position = Vector2(60, 100)  # Top left corner
-		add_child(test_panel)
+	# === DEBUG TOOLS ===
+	# Don't show TestAccountPanel anymore since we have proper LoginUI
+	# Remove or comment out the old test panel code
+	# if OS.is_debug_build():
+	#     var test_panel = preload("res://Pyramids/scenes/ui/components/TestAccountPanel.tscn").instantiate()
+	#     test_panel.position = Vector2(60, 100)
+	#     add_child(test_panel)
+	
+	# === SHOW UPGRADE PROMPT FOR GUESTS ===
+	if is_guest and has_method("_show_guest_upgrade_prompt"):
+		# Optionally show a small prompt to upgrade account
+		_show_guest_upgrade_prompt()
+
+func _update_profile_display(display_name: String, is_guest: bool) -> void:
+	# Update any UI elements that show the player's name
+	# For example, if you have a profile card or label
+	if has_node("ProfileCard/NameLabel"):
+		var name_label = get_node("ProfileCard/NameLabel")
+		if is_guest:
+			name_label.text = "%s (Guest)" % display_name
+		else:
+			name_label.text = display_name
+	
+	# Update stars display if you have one
+	if has_node("ProfileCard/StarsLabel"):
+		var stars_label = get_node("ProfileCard/StarsLabel")
+		var profile_manager = get_node("/root/ProfileManager")
+		stars_label.text = "★ %d" % profile_manager.get_stars()
+
+func _show_guest_upgrade_prompt() -> void:
+	pass
 
 func _create_buttons() -> void:
 	for i in range(button_configs.size()):
