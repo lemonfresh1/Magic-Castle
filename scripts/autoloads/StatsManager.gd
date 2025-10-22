@@ -67,6 +67,10 @@ var daily_logins: int = 0
 var last_login_date: String = ""
 var login_streak: int = 0
 
+# === SYNC MANAGER ===
+var sync_enabled: bool = true
+var last_sync_timestamp: int = 0
+
 # === MAIN STATS DICTIONARY ===
 var stats = {
 	"version": STATS_VERSION,
@@ -447,6 +451,8 @@ func end_game(mode: String, final_score: int, rounds_completed: int, game_type: 
 		current_seed)  # PASS THE GAME SEED
 	
 	save_stats()
+	
+	sync_stats_to_db()
 
 func track_round_end(round: int, cleared: bool, score: int, time_left: float, reason: String, mode: String, game_type: String = "solo") -> void:
 	var stats_key = "%s_%s" % [mode, game_type]
@@ -511,6 +517,8 @@ func track_round_end(round: int, cleared: bool, score: int, time_left: float, re
 	current_game_stats.round_invalid_clicks = 0
 	
 	save_stats()
+	
+	sync_stats_to_db()
 
 # === TRACKING HELPERS ===
 
@@ -618,7 +626,10 @@ func track_multiplayer_game(mode: String, placement: int, score: int, combo: int
 	save_score(mode + "_mp", score, 
 		SettingsSystem.player_name if SettingsSystem else "Player",
 		seed)  # PASS THE SEED
+	
 	save_stats()
+	
+	sync_stats_to_db()
 
 func _calculate_average_rank(stat: Dictionary) -> void:
 	"""Calculate average placement from placement array"""
@@ -1111,3 +1122,205 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			print_stats_summary()
 		elif event.keycode == KEY_M:
 			print_multiplayer_summary()
+
+func sync_stats_to_db(immediate: bool = false) -> void:
+	"""Sync current stats to Supabase database via SyncManager"""
+	if not sync_enabled:
+		debug_log("Sync disabled")
+		return
+	
+	# Check if SyncManager exists
+	if not has_node("/root/SyncManager"):
+		debug_log("SyncManager not found - stats will not sync")
+		return
+	
+	debug_log("Preparing stats for database sync...")
+	
+	# Prepare stats data
+	var stats_data = _prepare_stats_for_db()
+	
+	# Queue via SyncManager
+	var sync_mgr = get_node("/root/SyncManager")
+	sync_mgr.queue_stats_update(stats_data, not immediate)  # debounce unless immediate
+	
+	debug_log("Stats queued for sync")
+
+# StatsManager.gd - FIND AND REPLACE _prepare_stats_for_db() METHOD
+
+func _prepare_stats_for_db() -> Dictionary:
+	"""Convert local stats format to database format"""
+	
+	# Calculate totals from total_stats
+	var total_games = stats.total_stats.games_played
+	var total_score = stats.total_stats.total_score
+	var highest_combo = stats.longest_combo.combo
+	var total_peaks = stats.total_stats.total_peaks_cleared
+	
+	# Prepare mode_stats as JSONB-compatible dictionary
+	var mode_stats_json = {}
+	for mode in stats.mode_stats:
+		mode_stats_json[mode] = stats.mode_stats[mode].duplicate()
+	
+	# Prepare best_rounds as JSONB
+	var best_rounds_json = stats.best_rounds.duplicate()
+	
+	# Prepare highscore records with proper structure
+	var highscore_solo = {
+		"score": stats.get("highscore_solo", {}).get("score", 0),
+		"seed": stats.get("highscore_solo", {}).get("seed", 0),
+		"date": stats.get("highscore_solo", {}).get("date", ""),
+		"mode": stats.get("highscore_solo", {}).get("mode", "")
+	}
+	
+	var highscore_multi = {
+		"score": stats.get("highscore_multi", {}).get("score", 0),
+		"seed": stats.get("highscore_multi", {}).get("seed", 0),
+		"date": stats.get("highscore_multi", {}).get("date", ""),
+		"mode": stats.get("highscore_multi", {}).get("mode", "")
+	}
+	
+	var longest_combo_solo = {
+		"combo": stats.get("longest_combo_solo", {}).get("combo", 0),
+		"seed": stats.get("longest_combo_solo", {}).get("seed", 0),
+		"date": stats.get("longest_combo_solo", {}).get("date", ""),
+		"mode": stats.get("longest_combo_solo", {}).get("mode", "")
+	}
+	
+	var longest_combo_multi = {
+		"combo": stats.get("longest_combo_multi", {}).get("combo", 0),
+		"seed": stats.get("longest_combo_multi", {}).get("seed", 0),
+		"date": stats.get("longest_combo_multi", {}).get("date", ""),
+		"mode": stats.get("longest_combo_multi", {}).get("mode", "")
+	}
+	
+	# Prepare data dictionary
+	var data = {
+		"total_games": total_games,
+		"total_score": total_score,
+		"highest_combo": highest_combo,
+		"total_peaks_cleared": total_peaks,
+		"mode_stats": mode_stats_json,
+		"best_rounds": best_rounds_json,
+		"highscore_solo": highscore_solo,
+		"highscore_multi": highscore_multi,
+		"longest_combo_solo": longest_combo_solo,
+		"longest_combo_multi": longest_combo_multi,
+		"login_streak": login_streak,
+		"daily_logins": daily_logins
+	}
+	
+	# Only add last_login_date if it's valid (not empty)
+	# PostgreSQL date columns reject empty strings
+	if last_login_date != "" and last_login_date != null:
+		# Ensure it's in YYYY-MM-DD format
+		if last_login_date.length() == 10 and last_login_date.contains("-"):
+			data["last_login_date"] = last_login_date
+		else:
+			# Convert to proper format if needed
+			var today = Time.get_date_string_from_system()
+			data["last_login_date"] = today
+	else:
+		# Set to today's date if empty
+		var today = Time.get_date_string_from_system()
+		data["last_login_date"] = today
+	
+	return data
+
+func load_stats_from_db(db_stats: Dictionary) -> void:
+	"""Load stats from database and merge with local data"""
+	debug_log("Loading stats from database...")
+	
+	if db_stats.is_empty():
+		debug_log("No database stats to load")
+		return
+	
+	# SERVER WINS strategy (you can change this if needed)
+	
+	# Load simple stats
+	if db_stats.has("total_games"):
+		stats.total_stats.games_played = db_stats.total_games
+	
+	if db_stats.has("total_score"):
+		stats.total_stats.total_score = db_stats.total_score
+	
+	if db_stats.has("highest_combo"):
+		stats.longest_combo.combo = db_stats.highest_combo
+	
+	if db_stats.has("total_peaks_cleared"):
+		stats.total_stats.total_peaks_cleared = db_stats.total_peaks_cleared
+	
+	# Load JSONB fields (these come as dictionaries from Supabase)
+	if db_stats.has("mode_stats") and db_stats.mode_stats is Dictionary:
+		stats.mode_stats = db_stats.mode_stats.duplicate()
+	
+	if db_stats.has("best_rounds") and db_stats.best_rounds is Dictionary:
+		stats.best_rounds = db_stats.best_rounds.duplicate()
+	
+	# Load highscore records
+	if db_stats.has("highscore_solo") and db_stats.highscore_solo is Dictionary:
+		stats["highscore_solo"] = db_stats.highscore_solo.duplicate()
+	
+	if db_stats.has("highscore_multi") and db_stats.highscore_multi is Dictionary:
+		stats["highscore_multi"] = db_stats.highscore_multi.duplicate()
+	
+	if db_stats.has("longest_combo_solo") and db_stats.longest_combo_solo is Dictionary:
+		stats["longest_combo_solo"] = db_stats.longest_combo_solo.duplicate()
+	
+	if db_stats.has("longest_combo_multi") and db_stats.longest_combo_multi is Dictionary:
+		stats["longest_combo_multi"] = db_stats.longest_combo_multi.duplicate()
+	
+	# Load login tracking
+	if db_stats.has("login_streak"):
+		login_streak = db_stats.login_streak
+	
+	if db_stats.has("last_login_date"):
+		last_login_date = db_stats.last_login_date
+	
+	if db_stats.has("daily_logins"):
+		daily_logins = db_stats.daily_logins
+	
+	debug_log("Stats loaded from database successfully")
+	
+	# Save to local cache
+	save_stats()
+
+func sync_multiplayer_stats_to_db(mode: String) -> void:
+	"""Sync multiplayer stats for a specific mode"""
+	if not sync_enabled or not multiplayer_stats.has(mode):
+		return
+	
+	if not has_node("/root/SyncManager"):
+		debug_log("SyncManager not found")
+		return
+	
+	if not has_node("/root/ProfileManager"):
+		debug_log("ProfileManager not found")
+		return
+	
+	var profile_manager = get_node("/root/ProfileManager")
+	if profile_manager.user_id.is_empty():
+		debug_log("No user_id - cannot sync multiplayer stats")
+		return
+	
+	var mp_stats = multiplayer_stats[mode]
+	
+	var mp_data = {
+		"mode_id": mode,
+		"games": mp_stats.games,
+		"first_place": mp_stats.first_place,
+		"placements": mp_stats.placements,
+		"average_rank": mp_stats.average_rank,
+		"highscore": mp_stats.highscore,
+		"longest_combo": mp_stats.longest_combo,
+		"fastest_clear": mp_stats.fastest_clear,
+		"total_score": mp_stats.total_score,
+		"average_score": mp_stats.average_score,
+		"current_win_streak": mp_stats.current_win_streak,
+		"best_win_streak": mp_stats.best_win_streak,
+		"mmr": mp_stats.mmr
+	}
+	
+	var sync_mgr = get_node("/root/SyncManager")
+	sync_mgr.queue_multiplayer_stats_update(mp_data)
+	
+	debug_log("Multiplayer stats queued for sync (mode: %s)" % mode)

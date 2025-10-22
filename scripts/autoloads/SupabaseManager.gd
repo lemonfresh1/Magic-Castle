@@ -288,6 +288,17 @@ func _on_db_request_completed(result: int, response_code: int, headers: PackedSt
 			# Handle based on request type
 			match current_request_type:
 				"profile_check":
+					if response_code == 401:
+						# Token expired
+						debug_log("Token expired during profile check")
+						authentication_failed.emit("Token expired")
+						
+						# Tell AuthManager to handle expired token
+						if has_node("/root/AuthManager"):
+							var auth = get_node("/root/AuthManager")
+							auth._on_token_expired()
+						return
+					
 					if data is Array and data.size() > 0:
 						profile = data[0]
 						debug_log("Profile found: %s" % profile.get("display_name", "Unknown"))
@@ -336,6 +347,44 @@ func _on_db_request_completed(result: int, response_code: int, headers: PackedSt
 					debug_log("✅ Database connection successful!")
 					is_offline = false
 					_on_connection_restored()
+					request_completed.emit(data)
+				
+				"stats_upsert":
+					if data is Array and data.size() > 0:
+						debug_log("✅ Stats synced successfully")
+					elif data is Dictionary:
+						debug_log("✅ Stats synced successfully (single record)")
+					else:
+						debug_log("✅ Stats sync completed")
+					request_completed.emit(data)
+				
+				"mp_stats_upsert":
+					debug_log("✅ Multiplayer stats synced successfully")
+					request_completed.emit(data)
+				
+				"stats_load":
+					if data is Array and data.size() > 0:
+						var stats_data = data[0]
+						debug_log("✅ Stats loaded from database")
+						
+						# Pass to StatsManager to merge with local
+						if has_node("/root/StatsManager"):
+							var stats_mgr = get_node("/root/StatsManager")
+							stats_mgr.load_stats_from_db(stats_data)
+					else:
+						debug_log("No stats found in database - will create on first sync")
+					request_completed.emit(data)
+				
+				"inventory_load":
+					debug_log("✅ Inventory loaded (Chunk 3)")
+					request_completed.emit(data)
+				
+				"achievement_load":
+					debug_log("✅ Achievements loaded (Chunk 4)")
+					request_completed.emit(data)
+				
+				"mission_load":
+					debug_log("✅ Missions loaded (Chunk 5)")
 					request_completed.emit(data)
 				
 				_:
@@ -607,27 +656,44 @@ func _handle_db_error(response_code: int, response_text: String) -> void:
 	var error_message = ""
 	
 	match response_code:
-		401:  # Unauthorized
+		401:  # Unauthorized - Token expired
 			error_message = "Authentication expired"
-			# TODO: Refresh token
+			
+			# Special handling for profile_check - token is expired
+			if current_request_type == "profile_check":
+				debug_log("Token expired during profile check")
+				authentication_failed.emit("Token expired")
+				
+				# Tell AuthManager to handle expired token
+				if has_node("/root/AuthManager"):
+					var auth = get_node("/root/AuthManager")
+					auth._on_token_expired()
+				return  # Don't continue with normal error handling
+			
+			# For other 401s, might need token refresh
+			# TODO: Implement token refresh
+			
 		409:  # Conflict
 			error_message = "Data conflict"
-			# For profiles, this might be OK (duplicate)
 			if current_request_type == "profile_create":
 				debug_log("Profile already exists, loading it instead")
 				_ensure_profile_exists()
 				return
+				
 		429:  # Rate limited
 			error_message = "Rate limited"
 			should_retry = true
+			
 		500, 502, 503, 504:  # Server errors
 			error_message = "Server error"
 			should_retry = true
+			
 		0:  # Network error
 			error_message = "Network error"
 			is_offline = true
 			_handle_offline_mode()
 			return
+			
 		_:
 			error_message = "Request failed: %d" % response_code
 	
@@ -635,7 +701,7 @@ func _handle_db_error(response_code: int, response_text: String) -> void:
 		var request_data = {
 			"id": str(Time.get_ticks_msec()),
 			"type": current_request_type,
-			"data": {},  # Would need to store this
+			"data": {},
 			"user_id": current_user.get("id", "")
 		}
 		_retry_request(request_data)
@@ -671,3 +737,27 @@ func _on_connection_restored() -> void:
 	
 	# Process any queued requests
 	_process_queued_requests()
+
+func load_stats_from_db(profile_id: String) -> void:
+	"""Load stats for a profile from database"""
+	debug_log("Loading stats for profile: %s" % profile_id)
+	
+	current_request_type = "stats_load"
+	
+	var url = SUPABASE_URL + "/rest/v1/pyramids_stats?profile_id=eq." + profile_id
+	var headers = _get_db_headers()
+	
+	db_request.request(url, headers, HTTPClient.METHOD_GET)
+
+func load_multiplayer_stats_from_db(profile_id: String, mode: String = "") -> void:
+	"""Load multiplayer stats for a profile"""
+	debug_log("Loading multiplayer stats for profile: %s" % profile_id)
+	
+	current_request_type = "mp_stats_load"
+	
+	var url = SUPABASE_URL + "/rest/v1/pyramids_multiplayer_stats?profile_id=eq." + profile_id
+	if mode != "":
+		url += "&mode_id=eq." + mode
+	
+	var headers = _get_db_headers()
+	db_request.request(url, headers, HTTPClient.METHOD_GET)

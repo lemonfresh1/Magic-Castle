@@ -59,28 +59,29 @@ func attempt_auto_login() -> void:
 
 func _validate_saved_session() -> void:
 	"""Validate saved access token and restore session"""
-	# For now, assume token is valid and try to use it
-	
-	if not access_token.is_empty():
-		is_authenticated = true
-		debug_log("Using saved session")
-		
-		# Update SupabaseManager with the token
-		if has_node("/root/SupabaseManager"):
-			var supabase = get_node("/root/SupabaseManager")
-			supabase.access_token = access_token
-			supabase.refresh_token = refresh_token
-			supabase.is_authenticated = true
-			supabase.current_user = current_user
-			
-			# Load profile for the restored session
-			debug_log("Loading profile for restored session...")
-			supabase._ensure_profile_exists()
-		
-		# Emit login completed so LoginUI knows we're authenticated
-		login_completed.emit(current_user)
-	else:
+	if access_token.is_empty():
 		debug_log("No valid access token in saved session")
+		login_anonymous()
+		return
+	
+	debug_log("Validating saved token...")
+	
+	# Update SupabaseManager with the token
+	if has_node("/root/SupabaseManager"):
+		var supabase = get_node("/root/SupabaseManager")
+		supabase.access_token = access_token
+		supabase.refresh_token = refresh_token
+		supabase.is_authenticated = true
+		supabase.current_user = current_user
+		
+		# Try to load profile - this will test if token is valid
+		debug_log("Testing token by loading profile...")
+		supabase._ensure_profile_exists()
+		
+		# DON'T emit login_completed yet - wait for profile check
+		# If token is invalid, we'll get a 401 and handle it in _on_token_expired()
+	else:
+		debug_log("SupabaseManager not found")
 		login_anonymous()
 
 # === ANONYMOUS AUTH ===
@@ -407,6 +408,7 @@ func _on_supabase_authenticated(user_data: Dictionary) -> void:
 	if is_anonymous:
 		anonymous_account_created.emit()
 	
+	# Emit login completed
 	login_completed.emit(current_user)
 
 func _on_authentication_failed(error: String) -> void:
@@ -429,3 +431,17 @@ func get_user_email() -> String:
 	if is_anonymous:
 		return ""
 	return current_user.get("email", "")
+
+func _on_token_expired() -> void:
+	"""Handle expired token - create new anonymous session"""
+	debug_log("Token expired - creating new anonymous session")
+	
+	# Clear old tokens
+	access_token = ""
+	refresh_token = ""
+	current_user.clear()
+	is_authenticated = false
+	_clear_saved_tokens()
+	
+	# Create new anonymous session
+	login_anonymous()
