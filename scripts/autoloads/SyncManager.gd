@@ -105,14 +105,17 @@ func _sync_inventory_immediate(inventory_data: Dictionary) -> void:
 # === ACHIEVEMENTS SYNCING ===
 
 func queue_achievement_update(achievement_data: Dictionary) -> void:
-	"""Queue achievement unlock (immediate, important)"""
-	debug_log("Queueing achievement update")
+	"""Queue achievement unlock/claim (immediate, no batching)"""
+	debug_log("Queueing achievement update: %s" % achievement_data.get("achievement_id", "unknown"))
 	
 	if has_node("/root/ProfileManager"):
 		var pm = get_node("/root/ProfileManager")
-		pm.sync_game_data({"achievement_update": achievement_data})
+		# Call directly, bypass batch queue
+		pm._sync_achievement_to_supabase(achievement_data)
 		last_sync_times["achievements"] = Time.get_ticks_msec()
 		sync_started.emit("achievements")
+	else:
+		push_error("ProfileManager not found!")
 
 # === MISSIONS SYNCING ===
 

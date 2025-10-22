@@ -485,3 +485,8 @@ func highlight_new_achievements():
 func on_screen_entered():
 	"""Called when returning to achievements screen"""
 	reset_to_default_sorting()
+
+func _exit_tree() -> void:
+	"""Force sync any pending achievements when closing screen"""
+	if AchievementManager:
+		AchievementManager.force_sync()

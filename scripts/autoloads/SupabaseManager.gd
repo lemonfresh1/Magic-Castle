@@ -362,6 +362,10 @@ func _on_db_request_completed(result: int, response_code: int, headers: PackedSt
 					debug_log("✅ Multiplayer stats synced successfully")
 					request_completed.emit(data)
 				
+				"achievement_upsert":
+					debug_log("✅ Achievement synced successfully")
+					request_completed.emit(data)
+				
 				"stats_load":
 					if data is Array and data.size() > 0:
 						var stats_data = data[0]

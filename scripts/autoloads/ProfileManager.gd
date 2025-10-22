@@ -258,11 +258,6 @@ func _process_sync_queue() -> void:
 		_sync_inventory_to_supabase(inventory_data)
 		merged_data.erase("inventory_update")
 	
-	if merged_data.has("achievement_update"):
-		var achievement_data = merged_data["achievement_update"]
-		_sync_achievement_to_supabase(achievement_data)
-		merged_data.erase("achievement_update")
-	
 	if merged_data.has("mission_update"):
 		var mission_data = merged_data["mission_update"]
 		_sync_mission_to_supabase(mission_data)
@@ -333,8 +328,36 @@ func _sync_inventory_to_supabase(inventory_data: Dictionary) -> void:
 	# TODO: Implement in Chunk 3
 
 func _sync_achievement_to_supabase(achievement_data: Dictionary) -> void:
-	debug_log("Syncing achievement to database...")
-	# TODO: Implement in Chunk 4
+	"""Sync achievement to pyramids_achievements table with proper upsert"""
+	if user_id.is_empty():
+		debug_log("Cannot sync achievement - no user_id")
+		return
+	
+	debug_log("Syncing achievement to database: %s" % achievement_data.get("achievement_id", "unknown"))
+	
+	if not has_node("/root/SupabaseManager"):
+		debug_log("SupabaseManager not found")
+		return
+	
+	var supabase = get_node("/root/SupabaseManager")
+	achievement_data["profile_id"] = user_id
+	
+	supabase.current_request_type = "achievement_upsert"
+	
+	# Proper Supabase/PostgREST upsert pattern:
+	# POST with on_conflict URL parameter + resolution=merge-duplicates header
+	# The unique constraint is on (profile_id, achievement_id)
+	var url = supabase.SUPABASE_URL + "/rest/v1/pyramids_achievements?on_conflict=profile_id,achievement_id"
+	var headers = supabase._get_db_headers()
+	headers.append("Content-Type: application/json")
+	headers.append("Prefer: resolution=merge-duplicates,return=representation")
+	
+	var body = JSON.stringify(achievement_data)
+	
+	# POST with on_conflict URL param = proper upsert
+	supabase.db_request.request(url, headers, HTTPClient.METHOD_POST, body)
+	
+	debug_log("Achievement sync request sent (upsert on profile_id, achievement_id)")
 
 func _sync_mission_to_supabase(mission_data: Dictionary) -> void:
 	debug_log("Syncing mission to database...")
@@ -353,7 +376,7 @@ func _sync_mp_stats_to_supabase(mp_data: Dictionary) -> void:
 	mp_data["profile_id"] = user_id
 	
 	supabase.current_request_type = "mp_stats_upsert"
-	var url = supabase.SUPABASE_URL + "/rest/v1/pyramids_multiplayer_stats"
+	var url = supabase.SUPABASE_URL + "/rest/v1/pyramids_multiplayer_stats?on_conflict=profile_id,mode_id"
 	var headers = supabase._get_db_headers()
 	headers.append("Prefer: resolution=merge-duplicates,return=representation")
 	

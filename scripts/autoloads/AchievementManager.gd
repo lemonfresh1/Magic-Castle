@@ -29,6 +29,10 @@ var claimed_tiers = {}   # Format: {achievement_id: highest_claimed_tier}
 var achievement_progress = {}
 var new_achievements = []  # List of newly unlocked but not viewed achievements
 var session_achievements = []  # Achievements unlocked in this session
+var pending_unlocks: Array = []  # achievement_ids waiting to sync
+var sync_timer: Timer
+var sync_enabled: bool = true
+const SYNC_DEBOUNCE_TIME: float = 5.0
 
 # Debug
 var debug_enabled: bool = false  # Per-script debug toggle
@@ -37,6 +41,7 @@ var global_debug: bool = true   # Ready for global toggle integration
 func _ready():
 	_generate_achievements()
 	load_achievements()
+	_setup_sync_timer()  # NEW LINE
 	print("AchievementManager initialized")
 	
 func _debug_log(message: String) -> void:
@@ -269,6 +274,9 @@ func unlock_achievement_tier(base_id: String, tier: int):
 	var achievement = achievement_definitions[achievement_id]
 	_debug_log("   ✅ UNLOCKED: %s" % achievement.name)
 	_debug_log("   Rewards available: %d⭐ %dXP" % [achievement.star_reward, achievement.xp_reward])
+	
+	# Queue for debounced sync (NEW)
+	_queue_unlock_sync(base_id)
 
 func claim_achievement_tier(base_id: String, tier: int):
 	"""Claim rewards for an unlocked achievement tier - NOW WITH MULTI-TIER CLAIMING"""
@@ -323,6 +331,10 @@ func claim_achievement_tier(base_id: String, tier: int):
 	achievement_claimed.emit(base_id, tier)
 	
 	_debug_log("   ✅ Successfully claimed tiers %s" % str(tiers_claimed))
+	
+	# Sync immediately (no debouncing for claims) (NEW)
+	_sync_single_achievement(base_id)
+	
 	return true
 
 func get_unlocked_tier(base_id: String) -> int:
@@ -521,3 +533,82 @@ func is_achievement_unlocked(achievement_id: String) -> bool:
 	var tier = parts[1].to_int()
 	
 	return get_unlocked_tier(base_id) >= tier
+
+# === SYNC SYSTEM ===
+
+func _queue_unlock_sync(base_id: String) -> void:
+	"""Queue an achievement unlock for debounced syncing"""
+	if not sync_enabled:
+		return
+	
+	if base_id not in pending_unlocks:
+		pending_unlocks.append(base_id)
+		_debug_log("   📋 Queued for sync: %s" % base_id)
+	
+	# Restart timer (extends debounce if more unlocks happen)
+	if sync_timer:
+		sync_timer.start(SYNC_DEBOUNCE_TIME)
+
+func _sync_single_achievement(base_id: String) -> void:
+	"""Sync a single achievement to database immediately"""
+	if not sync_enabled:
+		return
+	
+	if not has_node("/root/SyncManager"):
+		_debug_log("SyncManager not found")
+		return
+	
+	if not has_node("/root/ProfileManager"):
+		_debug_log("ProfileManager not found")
+		return
+	
+	var profile_manager = get_node("/root/ProfileManager")
+	if profile_manager.user_id.is_empty():
+		_debug_log("No user_id - cannot sync achievement")
+		return
+	
+	var achievement_data = {
+		"achievement_id": base_id,
+		"unlocked_tier": get_unlocked_tier(base_id),
+		"claimed_tier": get_claimed_tier(base_id)
+	}
+	
+	_debug_log("🔄 Syncing achievement: %s (unlocked: %d, claimed: %d)" % 
+		[base_id, achievement_data.unlocked_tier, achievement_data.claimed_tier])
+	
+	var sync_mgr = get_node("/root/SyncManager")
+	sync_mgr.queue_achievement_update(achievement_data)
+
+func _on_sync_timer_timeout() -> void:
+	"""Sync all pending unlocked achievements"""
+	if pending_unlocks.is_empty():
+		return
+	
+	_debug_log("⏰ Sync timer expired - syncing %d achievements" % pending_unlocks.size())
+	
+	for achievement_id in pending_unlocks:
+		_sync_single_achievement(achievement_id)
+	
+	pending_unlocks.clear()
+
+func force_sync() -> void:
+	"""Force immediate sync of all pending achievements (call on screen exit)"""
+	if pending_unlocks.is_empty():
+		return
+	
+	_debug_log("🚀 Force syncing %d pending achievements" % pending_unlocks.size())
+	
+	if sync_timer and not sync_timer.is_stopped():
+		sync_timer.stop()
+	
+	_on_sync_timer_timeout()
+
+func _setup_sync_timer() -> void:
+	"""Setup debounce timer for achievement syncing"""
+	sync_timer = Timer.new()
+	sync_timer.name = "AchievementSyncTimer"
+	sync_timer.wait_time = SYNC_DEBOUNCE_TIME
+	sync_timer.one_shot = true
+	sync_timer.timeout.connect(_on_sync_timer_timeout)
+	add_child(sync_timer)
+	_debug_log("Sync timer initialized")
