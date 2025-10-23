@@ -229,7 +229,28 @@ func _on_auth_request_completed(result: int, response_code: int, headers: Packed
 		if parse_result == OK:
 			var data = json.data
 			
-			# Handle auth response
+			# ✅ Handle token refresh separately
+			if current_request_type == "token_refresh":
+				if data.has("access_token"):
+					access_token = data.access_token
+					refresh_token = data.get("refresh_token", refresh_token)  # Use new or keep old
+					debug_log("✅ Token refreshed successfully")
+					
+					# Update current user
+					if data.has("user"):
+						current_user = data.user
+					
+					is_authenticated = true
+					authenticated.emit(current_user)
+					
+					# Check/create profile
+					_ensure_profile_exists()
+				else:
+					debug_log("❌ Token refresh failed - no access_token in response")
+					authentication_failed.emit("Refresh failed")
+				return
+			
+			# Handle regular auth response (login/signup)
 			if data.has("access_token"):
 				access_token = data.access_token
 				debug_log("Got access token")
@@ -765,3 +786,24 @@ func load_multiplayer_stats_from_db(profile_id: String, mode: String = "") -> vo
 	
 	var headers = _get_db_headers()
 	db_request.request(url, headers, HTTPClient.METHOD_GET)
+
+func refresh_session(refresh_tok: String) -> void:
+	"""Refresh expired access token using refresh token"""
+	debug_log("Refreshing session...")
+	
+	var url = SUPABASE_URL + "/auth/v1/token?grant_type=refresh_token"
+	var headers = [
+		"apikey: " + SUPABASE_KEY,
+		"Content-Type: application/json"
+	]
+	
+	var body = JSON.stringify({
+		"refresh_token": refresh_tok
+	})
+	
+	current_request_type = "token_refresh"
+	
+	var error = auth_request.request(url, headers, HTTPClient.METHOD_POST, body)
+	if error != OK:
+		debug_log("Failed to refresh token: %d" % error)
+		authentication_failed.emit("Refresh failed")

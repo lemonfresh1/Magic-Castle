@@ -433,15 +433,24 @@ func get_user_email() -> String:
 	return current_user.get("email", "")
 
 func _on_token_expired() -> void:
-	"""Handle expired token - create new anonymous session"""
-	debug_log("Token expired - creating new anonymous session")
+	"""Handle expired token - refresh it instead of creating new account"""
+	debug_log("Token expired - attempting to refresh...")
 	
-	# Clear old tokens
-	access_token = ""
-	refresh_token = ""
-	current_user.clear()
-	is_authenticated = false
-	_clear_saved_tokens()
+	if refresh_token.is_empty():
+		debug_log("No refresh token available, creating new session")
+		# Clear and create new
+		access_token = ""
+		current_user.clear()
+		is_authenticated = false
+		_clear_saved_tokens()
+		login_anonymous()
+		return
 	
-	# Create new anonymous session
-	login_anonymous()
+	# ✅ Refresh the token instead!
+	debug_log("Refreshing session with refresh_token...")
+	if has_node("/root/SupabaseManager"):
+		var supabase = get_node("/root/SupabaseManager")
+		supabase.refresh_session(refresh_token)
+	else:
+		debug_log("SupabaseManager not found")
+		login_anonymous()
