@@ -10,17 +10,18 @@ extends Node
 
 # === STATE ===
 var current_lobby_data: Dictionary = {}
-var round_scores: Dictionary = {}  # player_id -> Array of scores
+var round_scores: Dictionary = {}  
 var is_connected: bool = false
 var pending_callbacks: Dictionary = {}
 
 # === POLLING ===
 var poll_timer: Timer
-var poll_interval: float = 1.0  # ✅ FAST POLLING (changed from 3.0)
+var poll_interval: float = 1.0  
 var is_polling: bool = false
 var last_final_results_fetch: float = 0.0
 var fetch_cooldown: float = 2.0
-var lobby_poll_request: HTTPRequest = null  # ✅ NEW: Dedicated request for lobby polling
+var lobby_poll_request: HTTPRequest = null 
+var cleanup_request: HTTPRequest = null  
 
 # === EMOJI POLLING ===
 var emoji_poll_timer: Timer = null
@@ -58,6 +59,11 @@ func _ready():
 	poll_timer.wait_time = poll_interval
 	poll_timer.timeout.connect(_poll_lobby_status)
 	add_child(poll_timer)
+	
+	cleanup_request = HTTPRequest.new()
+	cleanup_request.name = "CleanupRequest"
+	cleanup_request.request_completed.connect(_on_cleanup_completed)
+	add_child(cleanup_request)
 	
 	# Connect to SupabaseManager
 	if supabase:
@@ -381,8 +387,41 @@ func _on_supabase_response(data) -> void:
 			if data is Array and data.size() > 0:
 				current_lobby_data = data[0]
 				var lobby_id = pending_callbacks.get("join_lobby_id", "")
+				
 				if lobby_id:
-					_update_lobby_players(lobby_id)
+					# ✅ Parse players array
+					var players = current_lobby_data.get("players", [])
+					if players is String:
+						var json = JSON.new()
+						var parse_result = json.parse(players)
+						if parse_result == OK:
+							current_lobby_data["players"] = json.data
+							players = json.data
+					
+					# ✅ Check if we're already in this lobby
+					var my_id = supabase.current_user.get("id", "")
+					var already_in_lobby = false
+					
+					for player in players:
+						if player.get("id", "") == my_id:
+							already_in_lobby = true
+							debug_log("Already in lobby - rejoining without update")
+							break
+					
+					if already_in_lobby:
+						# ✅ Just rejoin - don't add again
+						debug_log("✅ Rejoining existing lobby session")
+						lobby_joined.emit(current_lobby_data)
+						start_polling()
+						
+						if mp_manager:
+							mp_manager.current_lobby_id = current_lobby_data.get("id", "")
+							mp_manager.is_host = (my_id == current_lobby_data.get("host_id", ""))
+					else:
+						# Add as new player
+						debug_log("Not in lobby yet - adding player")
+						_update_lobby_players(lobby_id)
+					
 					pending_callbacks.erase("join_lobby_id")
 		
 		"update_lobby_players":
@@ -1248,17 +1287,29 @@ func join_lobby_by_id(lobby_id: String) -> void:
 	supabase.db_request.request(url, headers, HTTPClient.METHOD_GET)
 	
 func _add_self_to_lobby(lobby_id: String) -> void:
-	"""Add ourselves to an existing lobby"""
+	"""Add ourselves to an existing lobby (removes old entries first)"""
 	var player_data = _build_player_data()
 	var players = current_lobby_data.get("players", [])
 	
-	for player in players:
-		if player.get("id", "") == player_data.get("id", ""):
-			debug_log("Already in lobby, just rejoining")
-			lobby_joined.emit(current_lobby_data)
-			start_polling()
-			return
+	var my_id = player_data.get("id", "")
 	
+	# ✅ Check if already in lobby
+	var already_in_lobby = false
+	for player in players:
+		if player.get("id", "") == my_id:
+			already_in_lobby = true
+			break
+	
+	if already_in_lobby:
+		debug_log("Already in lobby - removing old entry and adding fresh")
+		# Remove ALL old entries of this player (handles duplicates too!)
+		var clean_players = []
+		for player in players:
+			if player.get("id", "") != my_id:
+				clean_players.append(player)
+		players = clean_players
+	
+	# Add fresh player data
 	players.append(player_data)
 	
 	var update_data = {
@@ -1343,61 +1394,49 @@ func mark_lobby_completed() -> void:
 	supabase.db_request.request(url, headers, HTTPClient.METHOD_PATCH, body)
 
 func cleanup_stale_lobbies() -> void:
-	"""Delete stale lobbies (waiting > 1 hour) and old completed lobbies (> 24 hours)"""
+	"""Delete stale lobbies (waiting > 10 min) and completed lobbies (> 10 min)"""
 	debug_log("Cleaning up stale and old lobbies...")
 	
 	if mock_mode:
 		return
 	
-	# Calculate timestamps
+	# Calculate timestamp for 10 minutes ago
 	var current_time = Time.get_unix_time_from_system()
-	var one_hour_ago = current_time - 3600  # 3600 seconds = 1 hour
-	var one_day_ago = current_time - 86400  # 86400 seconds = 24 hours
+	var ten_minutes_ago = current_time - 600  # 600 seconds = 10 minutes
 	
-	# Convert to ISO 8601 format with timezone for Postgres
-	var one_hour_ago_dt = Time.get_datetime_dict_from_unix_time(one_hour_ago)
-	var iso_one_hour = "%04d-%02d-%02dT%02d:%02d:%02d+00:00" % [
-		one_hour_ago_dt.year,
-		one_hour_ago_dt.month,
-		one_hour_ago_dt.day,
-		one_hour_ago_dt.hour,
-		one_hour_ago_dt.minute,
-		one_hour_ago_dt.second
+	var ten_minutes_ago_dt = Time.get_datetime_dict_from_unix_time(ten_minutes_ago)
+	var db_ten_minutes = "%04d-%02d-%02d %02d:%02d:%02d" % [
+		ten_minutes_ago_dt.year,
+		ten_minutes_ago_dt.month,
+		ten_minutes_ago_dt.day,
+		ten_minutes_ago_dt.hour,
+		ten_minutes_ago_dt.minute,
+		ten_minutes_ago_dt.second
 	]
 	
-	var one_day_ago_dt = Time.get_datetime_dict_from_unix_time(one_day_ago)
-	var iso_one_day = "%04d-%02d-%02dT%02d:%02d:%02d+00:00" % [
-		one_day_ago_dt.year,
-		one_day_ago_dt.month,
-		one_day_ago_dt.day,
-		one_day_ago_dt.hour,
-		one_day_ago_dt.minute,
-		one_day_ago_dt.second
-	]
+	debug_log("  Deleting lobbies older than: %s" % db_ten_minutes)
 	
-	debug_log("  Current time (UTC): %s" % Time.get_datetime_string_from_system(true))
-	debug_log("  Deleting 'waiting' lobbies older than: %s" % iso_one_hour)
-	debug_log("  Deleting 'completed' lobbies older than: %s" % iso_one_day)
-	
-	# Delete stale waiting lobbies (> 1 hour old)
-	supabase.current_request_type = "cleanup_stale_lobbies"
+	# Delete BOTH waiting and completed lobbies in ONE request
 	var url = supabase.SUPABASE_URL + "/rest/v1/pyramids_lobbies"
-	url += "?status=eq.waiting"
-	url += "&created_at=lt." + iso_one_hour
+	url += "?created_at=lt." + db_ten_minutes.uri_encode()
+	url += "&status=in.(waiting,completed)"  # ✅ Both statuses in one query!
 	
 	var headers = supabase._get_db_headers()
-	supabase.db_request.request(url, headers, HTTPClient.METHOD_DELETE)
+	var result = cleanup_request.request(url, headers, HTTPClient.METHOD_DELETE)
 	
-	# Small delay between requests
-	await get_tree().create_timer(0.1).timeout
+	debug_log("  Cleanup request sent (result: %d)" % result)
+
+func _on_cleanup_completed(result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray) -> void:
+	"""Handle cleanup response"""
+	debug_log("Cleanup response code: %d" % response_code)
 	
-	# Delete old completed lobbies (> 24 hours old)
-	supabase.current_request_type = "cleanup_old_completed"
-	var url2 = supabase.SUPABASE_URL + "/rest/v1/pyramids_lobbies"
-	url2 += "?status=eq.completed"
-	url2 += "&created_at=lt." + iso_one_day
-	
-	supabase.db_request.request(url2, headers, HTTPClient.METHOD_DELETE)
+	if response_code == 204 or response_code == 200:
+		debug_log("✅ Old lobbies cleaned up successfully!")
+	elif response_code == 404:
+		debug_log("ℹ️ No old lobbies found")
+	else:
+		var response_text = body.get_string_from_utf8()
+		debug_log("⚠️ Cleanup failed: %d - %s" % [response_code, response_text])
 
 func kick_player_from_lobby(player_id: String) -> void:
 	"""Remove a player from the current lobby (host only)"""
@@ -1451,3 +1490,5 @@ func _exit_tree():
 		lobby_poll_request.queue_free()
 	if emoji_poll_request:
 		emoji_poll_request.queue_free()
+	if cleanup_request:
+		cleanup_request.queue_free()

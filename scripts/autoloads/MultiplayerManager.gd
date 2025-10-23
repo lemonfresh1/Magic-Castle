@@ -154,10 +154,11 @@ func _on_network_lobby_joined(lobby_data: Dictionary):
 			players = json.data
 	
 	lobby_players = players
-	is_host = false  # We joined, so we're not the host
+	is_host = false
 	
-	# Emit signal and navigate
 	lobby_found.emit(lobby_data)
+	
+	# ✅ ADD THIS: Navigate to GameLobby
 	get_tree().change_scene_to_file("res://Pyramids/scenes/ui/menus/GameLobby.tscn")
 
 func create_custom_lobby(settings: Dictionary = {}) -> String:
@@ -184,28 +185,28 @@ func create_custom_lobby(settings: Dictionary = {}) -> String:
 
 func _on_network_lobby_created(lobby_data: Dictionary):
 	"""Handle successful lobby creation from NetworkManager"""
-	debug_log("Network lobby created: %s" % lobby_data.get("id", "unknown"))
+	debug_log("Joined network lobby: %s" % lobby_data.get("id", "unknown"))
 	
-	# Update our local state with the real lobby data
+	# Update our local state
 	current_lobby_id = lobby_data.get("id", "")
 	lobby_players.clear()
 	
 	# Extract players from lobby data
 	var players = lobby_data.get("players", [])
 	if players is String:
-		# Parse if it's a JSON string
 		var json = JSON.new()
 		var parse_result = json.parse(players)
 		if parse_result == OK:
 			players = json.data
 	
 	lobby_players = players
-	
-	# We're the host since we created it
 	is_host = true
 	
-	# Emit our signal for the UI
 	lobby_created.emit(current_lobby_id)
+	
+	# ✅ ADD THIS: Navigate to GameLobby
+	get_tree().change_scene_to_file("res://Pyramids/scenes/ui/menus/GameLobby.tscn")
+
 
 func create_tournament_lobby(tournament_id: String) -> String:
 	"""Create a tournament lobby"""
