@@ -659,7 +659,7 @@ func load_season_content(season_id: String) -> Dictionary:
 	
 	Example: load_season_content("Q4_2025") loads SeasonPassQ4_2025.gd
 	"""
-	var content_path = "res://Pyramids/content/season_passes/SeasonPass%s.gd" % season_id
+	var content_path = "res://Pyramids/content/seasonpass/SeasonPass%s.gd" % season_id
 	
 	if not FileAccess.file_exists(content_path):
 		push_error("Season content not found: " + content_path)
