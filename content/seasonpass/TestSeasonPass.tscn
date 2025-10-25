@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://cbth31d1c8n1j"]
+
+[ext_resource type="Script" uid="uid://cfflrtxynw8sr" path="res://Pyramids/content/seasonpass/test_season_content.gd" id="1_oo036"]
+
+[node name="SeasonPassTest" type="Node"]
+script = ExtResource("1_oo036")
