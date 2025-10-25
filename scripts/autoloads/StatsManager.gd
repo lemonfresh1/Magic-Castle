@@ -96,6 +96,17 @@ var stats = {
 	"total_stats": _create_mode_stats()
 }
 
+var weekly_stats = {
+	"cards_clicked": 0,
+	"cards_drawn": 0,
+	"games_played": 0,
+	"multiplayer_games": 0,
+	"suit_bonuses": 0,
+	"total_score": 0,
+	"logins_this_week": 0,  # Track unique login days this week
+	"last_weekly_reset": ""  # Store week identifier
+}
+
 # === TEMPORARY TRACKING ===
 var current_game_stats = {
 	"cards_clicked": 0,
@@ -1324,3 +1335,29 @@ func sync_multiplayer_stats_to_db(mode: String) -> void:
 	sync_mgr.queue_multiplayer_stats_update(mp_data)
 	
 	debug_log("Multiplayer stats queued for sync (mode: %s)" % mode)
+
+func check_weekly_reset():
+	"""Check if we need to reset weekly stats (Monday)"""
+	var datetime = Time.get_datetime_dict_from_system()
+	var days_since_epoch = Time.get_unix_time_from_system() / 86400
+	var week_number = int(days_since_epoch / 7)
+	var week_string = "week_%d" % week_number
+	
+	if weekly_stats.last_weekly_reset != week_string and datetime.weekday == 1:
+		# It's Monday and we haven't reset yet this week
+		weekly_stats.cards_clicked = 0
+		weekly_stats.cards_drawn = 0
+		weekly_stats.games_played = 0
+		weekly_stats.multiplayer_games = 0
+		weekly_stats.suit_bonuses = 0
+		weekly_stats.total_score = 0
+		weekly_stats.logins_this_week = 0
+		weekly_stats.last_weekly_reset = week_string
+		save_stats()
+		SignalBus.weekly_stats_reset.emit()
+
+func increment_weekly_stat(stat_name: String, amount: int = 1):
+	"""Increment a weekly stat and notify UnifiedMissionManager"""
+	if weekly_stats.has(stat_name):
+		weekly_stats[stat_name] += amount
+		SignalBus.weekly_stat_updated.emit(stat_name, amount)
