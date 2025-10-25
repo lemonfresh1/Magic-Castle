@@ -2,7 +2,7 @@
 **Magic Castle Solitaire - Season Pass & Mission Overhaul**
 **Last Updated:** October 25, 2025
 
----
+----
 
 ## 📊 PROJECT STATUS OVERVIEW
 
