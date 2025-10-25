@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://cfgp75jugaexu"]
 
-[ext_resource type="Script" uid="uid://c3yofylgntspe" path="res://Pyramids/content/holiday_events/test_holiday_content.gd" id="1_x30dx"]
+[ext_resource type="Script" uid="uid://dqid5a7ivye77" path="res://Pyramids/content/seasonpass/testunifiedmissions.gd" id="1_x30dx"]
 
 [node name="TestScene" type="Node"]
 script = ExtResource("1_x30dx")
